@@ -1,11 +1,21 @@
-DU-03A RUNTIME VERIFICATION
+DU-03A REV1 RUNTIME VERIFICATION
 unity=6000.4.0f1
 raw=D:\Project-DoodleUp\DU03A_Runtime_Raw.csv
-rawSha256=6f797fbe8086d4d9fa117c0430ea7e736b742f71a44939ee9dc751a432702a4a
-scenario=short_cancel stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.160000 lengthBefore=0.000000 lengthAfter=0.160000 inkBefore=5.000000 inkAfter=4.840000 pending=0 committed=0 terminal=Cancelled chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
-scenario=pending_confirm stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=1 terminal=Committed chargedLength=0.240000 simplifiedPoints=2 colliderCount=0 atomicUnchanged=True result=PASS
-scenario=pending_cancel stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=0 terminal=Cancelled chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
-scenario=reach_atomic stateBefore=Drawing stateAfter=Drawing candidateValid=False appended=False reason=ReachInvalid requiredInk=0.000000 lengthBefore=0.160000 lengthAfter=0.160000 inkBefore=4.840000 inkAfter=4.840000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
-scenario=ink_atomic stateBefore=Drawing stateAfter=Drawing candidateValid=False appended=False reason=InkInvalid requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.000000 inkBefore=0.150000 inkAfter=0.150000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
-scenario=r_reset_pending stateBefore=Pending stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+rawSha256=1bd31b518943cd8fac03263f6bf5c832258a2d9cd9445d60dc4724a59b83083a
+scenario=short_cancel mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=DIRECT result=PASS
+scenario=pending_confirm mode=Trajectory state=Idle finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.240000 ledgerTotal=5.000000 colliders=1 phase=LATE_UPDATE order=CANDIDATE>RELEASE result=PASS
+scenario=pending_cancel mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=DIRECT result=PASS
+scenario=reach_atomic mode=Trajectory state=Drawing finalAvailable=4.840000 finalDrawing=0.160000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=DIRECT result=PASS
+scenario=ink_atomic mode=Trajectory state=Drawing finalAvailable=0.200001 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=4.800000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=DIRECT result=PASS
+scenario=r_reset_pending mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=DIRECT result=PASS
+scenario=invalid_release_under_min mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=CANDIDATE>RELEASE result=PASS
+scenario=invalid_release_over_min mode=Trajectory state=Pending finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.240000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=CANDIDATE>RELEASE result=PASS
+scenario=drawing_cancel mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=CANCEL result=PASS
+scenario=pending_new_draw_reject mode=Trajectory state=Pending finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.240000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=PRESS_REJECTED result=PASS
+scenario=out_of_state_confirm mode=Trajectory state=Idle finalAvailable=5.000000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=CONFIRM_REJECTED result=PASS
+scenario=confirm_release_same_frame mode=Trajectory state=Pending finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.240000 finalCommitted=0.000000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=CONFIRM_REJECTED>CANDIDATE>RELEASE result=PASS
+scenario=mode_parity_aim mode=Aim state=Idle finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.240000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=IDENTICAL_SEQUENCE result=PASS
+scenario=mode_parity_trajectory mode=Trajectory state=Idle finalAvailable=4.760000 finalDrawing=0.000000 finalPending=0.000000 finalCommitted=0.240000 ledgerTotal=5.000000 colliders=0 phase=LATE_UPDATE order=IDENTICAL_SEQUENCE result=PASS
+ledgerFormula=final_available+final_drawing_reserved+final_pending_reserved+final_committed_charged=5.000000
+scenarios=14
 result=PASS

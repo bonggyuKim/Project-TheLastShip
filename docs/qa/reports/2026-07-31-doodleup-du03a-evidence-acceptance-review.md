@@ -1,9 +1,9 @@
-# DoodleUp DU-03A 독립 Evidence 수용 검토
+# DoodleUp DU-03A REV1 독립 Evidence 최종 재판정
 
 - 검토일: 2026-07-31
 - 검토자: `game-qa`
-- 대상: DU-03A 공통 StrokeSession backend 및 제출 evidence
-- 최종 판정: **CHANGES REQUIRED**
+- 대상: DU-03A 공통 StrokeSession backend 및 REV1 runtime evidence
+- 최종 판정: **PASS**
 - 정본:
   - `D:\Project-DoodleUp\docs\input-comparison-spec-v1.md`
   - `D:\Project-DoodleUp\docs\prototype-execution-plan.md:70-79`
@@ -11,254 +11,319 @@
 
 ## 1. 최종 판정
 
-# CHANGES REQUIRED
+# PASS
 
-제출된 6개 runtime scenario와 21개 EditMode 테스트는 상태·잉크 원자성의 상당 부분을 확인하지만, 정본 DU-03A 수용 범위를 충족하는 실제 runtime evidence로는 부족하다.
+DU-03A REV1은 기존 수용 차단 결함 `DU03A-R1`~`R3`을 모두 해소했다. Confirm-only capsule geometry, 실제 scene-wired `LateUpdate` 입력 경로, final ledger/refund/reserve/point evidence를 독립 검증했으며, 14개 필수 scenario와 추가 상태 경계도 모두 수용 기준을 충족했다.
 
-수용 차단 결함은 3건이다.
+- 차단 결함: **0건**
+- 필수 scenario: **14/14 PASS**
+- DU-03A EditMode: **14/14 PASS**
+- 전체 EditMode: **26/26 PASS**
+- PlayMode: **2/2 PASS**
+- DU-02 회귀: **PASS**
+- DU-03B/DU-03C 선행 구현: **없음**
 
-1. **Confirm이 정본 capsule chain을 생성하지 않는다.**
-2. **실제 60 fps `LateUpdate`/DrawIntent 경로를 검증하지 않고 probe가 `ProcessIntent`를 직접 호출한다.**
-3. **raw가 환급·reset 후 최종 ink/reserve/point 불변값을 담지 않아 독립 재집계로 핵심 계약을 증명할 수 없다.**
-
-## 2. 검증 환경과 제출 증거
+## 2. 검증 환경과 증거
 
 - OS: Windows 11 Education `10.0.26200`
 - Unity: `6000.4.0f1`
 - raw: `D:\Project-DoodleUp\DU03A_Runtime_Raw.csv`
 - report: `D:\Project-DoodleUp\DU03A_Verification_Report.txt`
-- verification guide: `D:\Project-DoodleUp\docs\qa\du-03a-verification.md`
-- compile: `D:\.adk\logs\unity\compile-20260731-230954.log`
-- scene: `D:\.adk\logs\unity\method-20260731-231011.log`
-- build: `D:\.adk\logs\unity\build-20260731-231025.log`
-- runtime: `D:\.adk\logs\unity\du03a-standalone-runtime-final-20260731.log`
-- aggregator: `D:\.adk\logs\unity\method-20260731-231137.log`
-- EditMode: `D:\.adk\logs\unity\test-20260731-231205.log`
-- PlayMode: `D:\.adk\logs\unity\test-20260731-231218.log`
-- DU-02 regression: `D:\.adk\logs\unity\method-20260731-231152.log`
+- compile: `D:\.adk\logs\unity\compile-20260731-234654.log`
+- scene: `D:\.adk\logs\unity\method-20260731-234441.log`
+- build: `D:\.adk\logs\unity\build-20260731-234448.log`
+- runtime: `D:\.adk\logs\unity\du03a-rev1-runtime-final-20260731.log`
+- aggregator: `D:\.adk\logs\unity\method-20260731-234601.log`
+- DU-02 regression: `D:\.adk\logs\unity\method-20260731-234623.log`
+- EditMode: `D:\.adk\logs\unity\test-20260731-234630.log`
+- EditMode XML: `D:\.adk\logs\unity\testresults-20260731-234630.xml`
+- PlayMode: `D:\.adk\logs\unity\test-20260731-234638.log`
+- PlayMode XML: `D:\.adk\logs\unity\testresults-20260731-234638.xml`
 
-QA 독립 SHA256:
+### 2.1 QA 독립 해시
 
-| 산출물 | SHA256 |
-|---|---|
-| DU-03A raw | `6f797fbe8086d4d9fa117c0430ea7e736b742f71a44939ee9dc751a432702a4a` |
-| DU-03A report | `1f01bf22074fe61a66756260e707197473ec67f4dc98e4d924a8d92454087fc9` |
-| DU-02 regression raw | `3b9d0fcafa89b792b95be2f99ba875079768bd17b1241a4dacc3a48340b01c9a` |
-| DU-02 regression report | `c52f1a1427efae88c23da6a15cdb3d9f917150d00b2baad9af44c1945dd94b5d` |
-
-DU-03A raw hash는 제출 report의 `rawSha256`와 일치한다. QA 독립 파싱 결과는 20열, 6행, 필수 scenario set 일치, `result!=PASS` 0행, `candidate_valid=False AND accepted_appended=True` 0행이다.
-
-## 3. 요청 항목별 판정
-
-| 검토 항목 | 판정 | 근거 |
+| 산출물 | SHA256 | 판정 |
 |---|---|---|
-| 1. raw SHA256/report 재집계 | **PASS** | raw SHA256 독립 일치, 6개 scenario set과 report 집계 일치 |
-| 2. 상태 전이, Pending collider=0, Confirm-only commit | **FAIL** | Pending collider=0 및 명시 Confirm commit은 확인했으나 Confirm 후 필수 capsule chain 생성이 전혀 없음 |
-| 3. short cancel 환급, pending confirm/cancel, reach/ink all-or-nothing, R reset pending | **CHANGES REQUIRED** | 실행 코드 assertion은 존재하나 raw의 `ink_after`가 candidate 직후 값이라 cancel/reset 후 환급값을 독립 증명하지 못함 |
-| 4. invalid candidate 불변·금지 조합 부재 | **부분 PASS** | 코드와 tests로 length/ink/point 불변 및 금지 조합 부재 확인. raw에는 reserve와 point 전후값이 없음 |
-| 5. chargedLength가 simplification 전 length | **PASS** | 생성 코드가 `AcceptedLength`를 보존하고 EditMode 곡선 케이스가 simplified geometry 합과 차이를 검증 |
-| 6. snapshot/plane/reach/resampling/dedupe/DP/LateUpdate phase | **FAIL** | 알고리즘 코드와 EditMode 검증은 확인했으나 실제 scene의 intent source가 null이고 runtime probe가 `LateUpdate`를 우회 |
-| 7. DU-02 회귀·DU-03A 이후 기능 미선행 | **PASS** | DU-02 runtime/aggregator/tests PASS, Aim/Trajectory 실제 adapter 및 후속 기능 없음 |
+| DU-03A raw | `1bd31b518943cd8fac03263f6bf5c832258a2d9cd9445d60dc4724a59b83083a` | 제출값 및 report 내 `rawSha256`와 일치 |
+| DU-03A report | `522937ae51ef557f512177d56e52c33c416c80d67ba8ac2bb2d8bfc796afe872` | 제출값과 일치 |
+| DU-02 regression raw | `313973d3daea37d917716ccdb10c0487f8f2347ce56233fafcf0efe58b1b6612` | 회귀 report와 일치 |
+| DU-02 regression report | `79953214d3320395d074e5b3baa88383287d9d047e234267a47b57f2d3b0f2cb` | 독립 계산값 |
 
-## 4. 확인된 정상 계약
+DU-03A raw는 50열, 14개 scenario이며 scenario 중복, 누락, `result!=PASS` 행이 없다. report는 동일 raw를 집계해 `scenarios=14`, `result=PASS`를 기록한다.
 
-### 4.1 상태 및 잉크 backend
+## 3. 수용 기준별 판정
 
-다음 구현은 정본과 일치한다.
+| 수용 기준 | 판정 | 독립 근거 |
+|---|---|---|
+| R1 Confirm-only capsule geometry | **PASS** | Pending collider 0, Confirm 후 segment 1/collider 1, 모든 geometry 골든값 충족 |
+| R2 scene-wired intent → `Driver.LateUpdate` | **PASS** | scene에 deterministic source 연결, frame 2~5 실제 callback chain 및 release-frame `CANDIDATE>RELEASE` 확인 |
+| R3 final ledger/refund/reserve/points | **PASS** | 50열 raw의 candidate before/after와 final fields를 독립 재집계, 모든 ledger total `5.000000` |
+| 14개 scenario 및 상태 경계 | **PASS** | exact scenario set 14/14, invalid release·Cancel·Pending Draw 거부·Confirm edge 포함 |
+| Aim/Trajectory backend parity | **PASS** | 동일 candidate sequence에서 상태, ledger, charged length, simplified points 일치 |
+| raw/report/hash 일치 | **PASS** | SHA256 및 scenario 집계 독립 일치 |
+| DU-02 회귀 | **PASS** | 30/60/144 fps sampling, reset 6/6, task-state 및 자동 집계 PASS |
+| DU-03B/DU-03C 미선행 | **PASS** | 실제 Aim/Trajectory adapter와 고유 mapping 미구현 |
 
-- `Du03AStrokeSession.cs:154-175`: Idle에서 시작 시 hand origin과 camera yaw-normal plane을 snapshot하고 origin을 첫 accepted point로 삽입
-- `Du03AStrokeSession.cs:177-209`: projection → reach → dedupe → resampling → prospective ink 검증 → 전량 append 순서
-- `Du03AStrokeSession.cs:200-209`: required ink 부족 시 mutation 전에 반환하므로 all-or-nothing
-- `Du03AStrokeSession.cs:212-230`: `<0.20 u` cancel, `>=0.20 u` Pending
-- `Du03AStrokeSession.cs:233-245`: 명시 Confirm만 committed data 생성
-- `Du03AStrokeSession.cs:248-269`: Drawing/Pending cancel과 reset
-- `Du03AStrokeSession.cs:288-299`: cancel 시 drawing/pending reserve 전액 환급
-- `Du03AStrokeSession.cs:352-359`: owner ledger 닫힌 식 검증
+## 4. R1 — Confirm-only capsule geometry
 
-### 4.2 chargedLength와 simplification
+### 절차
 
-**PASS**
+1. accepted length `0.24 u` stroke를 release한다.
+2. Pending 상태에서 collider/root/Rigidbody가 생성되지 않았는지 확인한다.
+3. 다음 실제 `LateUpdate`에 Confirm intent를 전달한다.
+4. 생성된 committed root와 child `CapsuleCollider`를 runtime에서 검사한다.
 
-- `Du03AStrokeSession.cs:221-227`은 simplification 결과와 별개로 pre-simplification `AcceptedLength`를 `Du03AStrokeData.ChargedLength`에 전달한다.
-- `Du03AStrokeSessionTests.cs:136-152`는 curved accepted path의 charged length가 `0.24`이고 simplified 2-point geometry 길이 합과 실제로 다름을 assertion한다.
-- EditMode XML에서 `ChargedLengthIsNotRecomputedFromSimplifiedGeometry` PASS를 확인했다.
+### 기대 결과와 골든값
 
-### 4.3 invalid candidate 원자성
+- Pending collider: `0`
+- Confirm 성공 후 collider 수: `segment_count - degenerate_skipped`
+- `direction=1`
+- `radius=0.14`
+- `height=segmentLength+0.28`
+- `center=(0,0,0)`
+- `isTrigger=false`
+- root/child scale `(1,1,1)`
+- child midpoint 정렬 및 local Y축 segment 정렬
+- shared endpoint gap `≤0.000001`
 
-코드 수준 판정은 **PASS**다.
+### 실제 결과
 
-- ReachInvalid: mutation 전 `Du03AStrokeSession.cs:189-190`에서 반환
-- Dedupe/spacing: valid+not-appended (`Du03AStrokeSession.cs:191-198`)
-- InkInvalid: prospective 전체 required ink 계산 후 mutation 전 반환 (`Du03AStrokeSession.cs:194-203`)
-- 금지 조합 `candidate_valid=False AND accepted_appended=True`: raw 0행
-- Runtime:
-  - `reach_atomic`: length `0.16→0.16`, ink `4.84→4.84`, append 0
-  - `ink_atomic`: length `0→0`, ink `0.15→0.15`, append 0, required `0.24`
+`pending_confirm` raw:
 
-다만 raw가 accepted point count와 drawing/pending reserve 전후값을 저장하지 않아 evidence 계약은 보강이 필요하다.
+| 필드 | 실제값 | 판정 |
+|---|---:|---|
+| `pending_colliders` | `0` | PASS |
+| `segment_count` | `1` | PASS |
+| `collider_count` | `1` | PASS |
+| `degenerate_skipped` | `0` | PASS |
+| `capsule_direction` | `1` | PASS |
+| `capsule_radius` | `0.140000` | PASS |
+| `capsule_height` | `0.520000` | PASS |
+| `expected_capsule_height` | `0.520000` | PASS |
+| `capsule_center_zero` | `True` | PASS |
+| `capsule_non_trigger` | `True` | PASS |
+| `root_scale_one` / `child_scale_one` | `True` / `True` | PASS |
+| `midpoint_aligned` / `y_axis_aligned` | `True` / `True` | PASS |
+| `max_shared_endpoint_gap` | `0.000000000` | PASS |
 
-## 5. 수용 차단 결함
+Runtime Confirm 로그도 `chargedLength=0.240000`, `simplifiedPoints=2`, `segments=1`, `colliders=1`, `degenerateSkipped=0`, `maxSharedEndpointGap=0`을 기록한다.
 
-### DU03A-R1 — Confirm 후 capsule chain이 생성되지 않음
+**결론:** `DU03A-R1` 종료.
 
-- 심각도: **BLOCKER**
-- 영향: committed stroke에 물리 geometry가 없어 DU-03A의 핵심 산출물과 DU-02 task traversal 연결이 불가능
-- 조건:
-  1. accepted length `>=0.20 u` stroke를 release해 Pending으로 전환
-  2. Confirm 입력
-  3. committed stroke root/child collider 확인
-- 기대 결과:
-  - `Pending → Committed` transaction에서 simplified point pair마다 child `CapsuleCollider` 생성
-  - `direction=1`, `radius=0.14`, `height=segmentLength+0.28`, `isTrigger=false`, scale `(1,1,1)`
-  - Pending 이전에는 collider 0, Confirm 후 non-degenerate segment 수와 collider 수 일치
-- 실제 결과:
-  - `Du03AStrokeSession.cs:233-245`는 immutable data를 list에 추가할 뿐 geometry 생성 호출이 없다.
-  - `Du03AStrokeDriver.cs:95-104`는 Confirm 후에도 `colliderCreated=False seamOnly=True`를 기록한다.
-  - 프로젝트 runtime 코드 전체에서 stroke capsule 생성 구현이 없다.
-  - runtime `pending_confirm` 행의 `committed_count=1`이지만 `collider_count=0`이다.
-- 위반 정본:
-  - `prototype-execution-plan.md:76`: 명시 Confirm만 capsule chain 생성
-  - `input-comparison-spec-v1.md:184-196`: committed capsule chain geometry 및 Confirm transaction 계약
-- 수용 기준:
-  1. Pending collider/root/Rigidbody 0을 유지한다.
-  2. Confirm 직후 simplified polyline의 non-degenerate pair마다 정확히 1개 capsule을 생성한다.
-  3. radius/height/direction/trigger/scale 골든값을 machine-readable raw와 runtime object inspection으로 검증한다.
-  4. Confirm 외 release/cancel/reset 경로에서는 capsule 생성이 0건이어야 한다.
-- 수정 책임자: `game-tech-director`
+## 5. R2 — 실제 scene-wired LateUpdate 경로
 
-### DU03A-R2 — 실제 LateUpdate/DrawIntent 경로를 runtime evidence가 우회
+### 절차
 
-- 심각도: **BLOCKER**
-- 영향: 정본의 frame phase, 입력 latch 순서, frame당 1 candidate, press→candidate→release 순서를 standalone에서 증명하지 못함
-- 조건:
-  1. 제출 scene/build 실행
-  2. `Du03AStrokeDriver`의 intent source와 runtime probe 호출 경로 확인
-- 기대 결과:
-  - 실제 `IDu03ADrawIntentSource`가 edge를 latch
-  - `[DefaultExecutionOrder(100)]`의 `LateUpdate`가 frame당 한 번 `ReadIntent()` 및 candidate 처리
-  - press snapshot/start → candidate 1회 → release 순서를 frame/sequence/raw로 확인
-- 실제 결과:
-  - `Du02SceneBuilder.cs:51-52`가 `strokeDriver.Configure(..., null, ...)`로 intent source를 null로 연결한다.
-  - `Du03AStrokeDriver.cs:135-140`의 실제 `LateUpdate`는 source가 null이므로 즉시 반환한다.
-  - `Du03ARuntimeProbeRunner.cs:61-69`가 `ProcessIntent`를 직접 호출한다.
-  - `ProcessIntent`는 호출 위치와 무관하게 `LateUpdateSequence++`하므로 (`Du03AStrokeDriver.cs:79-83`) sequence 자체가 LateUpdate 실행 증거가 아니다.
-  - raw schema에는 render frame, sample phase, press/release latch 순서, samples-per-frame가 없다.
-- 위반 정본:
-  - `prototype-execution-plan.md:77`
-  - `input-comparison-spec-v1.md:132-150`
-- 수용 기준:
-  1. 실제 runtime intent source를 연결한다. adapter 고유 mapping은 DU-03B/C 범위를 선행하지 않도록 deterministic probe source여도 되지만 반드시 `LateUpdate`를 통해 소비돼야 한다.
-  2. 최소 press/release 포함 scenario에서 `render_frame`, `late_update_sequence`, `sample_phase=LATE_UPDATE`, `candidate_count_this_frame=1`, 처리 순서를 raw로 남긴다.
-  3. release frame도 candidate가 먼저 처리됨을 non-trivial 입력으로 증명한다.
-  4. direct method invocation 결과를 실제 LateUpdate 결과로 표시하지 않는다.
-- 수정 책임자: `game-tech-director`
+1. scene builder가 `Du03ADeterministicIntentSource`를 `Du03AStrokeDriver`에 연결했는지 확인한다.
+2. source queue에 press, candidate, release-frame candidate, Confirm을 순서대로 넣는다.
+3. `ReadCount` 증가와 `LateUpdateProcessed` callback을 함께 기다린다.
+4. frame/sequence/phase/candidate count/event order를 raw 및 runtime log와 대조한다.
 
-### DU03A-R3 — raw가 cancel/reset 후 최종 환급 상태를 기록하지 않음
+### 기대 로그 체인
 
-- 심각도: **HIGH / 수용 차단**
-- 영향: report 재집계만으로 short cancel, pending cancel, R reset의 잉크·reserve 환급을 독립 확인할 수 없음
-- 조건:
-  1. `DU03A_Runtime_Raw.csv`의 `short_cancel`, `pending_cancel`, `r_reset_pending` 확인
-  2. terminal 상태와 `ink_after` 비교
-- 기대 결과:
-  - short/pending cancel 후 final available ink `5.00`, drawing/pending reserve `0`
-  - Pending R reset 후 final available ink `5.00`, reserves `0`, accepted/live/pending points/strokes `0`
-  - 전후값을 raw에서 독립 비교 가능
-- 실제 결과:
-  - `short_cancel.ink_after=4.840000`
-  - `pending_cancel.ink_after=4.760000`
-  - `r_reset_pending.ink_after=4.760000`
-  - 이 값은 terminal transition 전 `Du03ACandidateResult.AvailableInkAfter`이며, 같은 행의 `state_after/terminal/pending_count`는 transition 후 값이다.
-  - `Du03ARuntimeProbeRunner.cs:152-163`이 candidate 시점 값과 final session 상태를 한 행에 혼합한다.
-  - raw에는 final available ink, drawing reserve, pending reserve, accepted point count 전후값이 없다.
-  - aggregator `Du03AVerification.cs:35-47`도 cancel/reset 환급값을 검사하지 않는다.
-- 수용 기준:
-  1. `candidate_*`와 `final_*` 필드를 분리하거나 event별 row로 기록한다.
-  2. cancel/reset scenario에 `final_available_ink=5.000000`, `final_drawing_reserved=0`, `final_pending_reserved=0`을 포함한다.
-  3. invalid 원자성 scenario에는 point/length/ink/drawing reserve/pending reserve의 before/after를 포함하고 전부 불변임을 aggregator가 검사한다.
-  4. report가 위 값들을 재집계해 실패 시 `result=FAIL`을 내야 한다.
-- 수정 책임자: `game-tech-director`
+```text
+PRESS
+CANDIDATE
+CANDIDATE>RELEASE
+CONFIRM_COMMIT
+```
 
-## 6. 빌드·테스트·회귀 결과
+release frame은 candidate를 정확히 1회 처리한 뒤 release해야 한다.
 
-### 제출 실행 결과
+### 실제 결과
 
-- Compile: **PASS**, C# compile error 0, Tundra success, return code 0
-- Scene rebuild: **PASS**, return code 0
-- Windows player build: **PASS**, `Build Finished, Result: Success`, return code 0
-- DU-03A aggregator: 제출 규칙 기준 **PASS**, scenarios 6, return code 0
-- EditMode: **21/21 PASS**
-  - DU-03A tests: **9/9 PASS**
-  - DU-02 tests: **12/12 PASS**
+```text
+renderFrame=2 sequence=1 samplePhase=LATE_UPDATE candidateCount=0 order=PRESS
+renderFrame=3 sequence=2 samplePhase=LATE_UPDATE candidateCount=1 order=CANDIDATE
+renderFrame=4 sequence=3 samplePhase=LATE_UPDATE candidateCount=1 order=CANDIDATE>RELEASE
+renderFrame=5 sequence=4 samplePhase=LATE_UPDATE candidateCount=0 order=CONFIRM_COMMIT
+```
+
+`pending_confirm` raw의 핵심 값:
+
+- `render_frame=4`
+- `late_update_sequence=3`
+- `sample_phase=LATE_UPDATE`
+- `candidate_count_this_frame=1`
+- `event_order=CANDIDATE>RELEASE`
+- release-frame candidate `accepted_appended=True`
+
+**결론:** 실제 scene-wired source가 `Driver.LateUpdate`를 통과하며 release-frame candidate-first 계약이 재현됐다. `DU03A-R2` 종료.
+
+## 6. R3 — final ledger/refund/reserve/points
+
+### 독립 재집계 식
+
+```text
+final_available
++ final_drawing_reserved
++ final_pending_reserved
++ final_committed_charged
+= 5.000000
+```
+
+14개 scenario 모두 위 식을 충족한다.
+
+### 대표 최종값
+
+| Scenario | Available | Drawing | Pending | Committed | Total | 판정 |
+|---|---:|---:|---:|---:|---:|---|
+| `short_cancel` | 5.000000 | 0 | 0 | 0 | 5.000000 | 전액 환급 PASS |
+| `pending_confirm` | 4.760000 | 0 | 0 | 0.240000 | 5.000000 | commit charge PASS |
+| `pending_cancel` | 5.000000 | 0 | 0 | 0 | 5.000000 | 전액 환급 PASS |
+| `reach_atomic` | 4.840000 | 0.160000 | 0 | 0 | 5.000000 | invalid no-mutation PASS |
+| `ink_atomic` | 0.200001 | 0 | 0 | 4.800000 | 5.000001* | 허용 오차 내 PASS |
+| `r_reset_pending` | 5.000000 | 0 | 0 | 0 | 5.000000 | canonical reset PASS |
+
+`*` raw의 `final_ledger_total`은 부동소수점 계산 결과를 계약값 `5.000000`으로 기록하며 verifier 허용 오차 `0.0001` 이내다.
+
+### invalid atomicity
+
+`reach_atomic`, `ink_atomic`, `invalid_release_under_min`, `invalid_release_over_min`에서 다음 before/after를 독립 비교했다.
+
+- accepted point count
+- accepted length
+- available ink
+- drawing reserve
+- pending reserve
+
+모든 invalid candidate에서:
+
+- `candidate_valid=False`
+- `accepted_appended=False`
+- `atomic_unchanged=True`
+- points/length/available/drawing/pending before = after
+
+금지 조합 `candidate_valid=False AND accepted_appended=True`는 0건이다.
+
+**결론:** cancel/reset의 terminal 상태와 candidate 시점 값이 분리돼 독립 재집계가 가능하다. `DU03A-R3` 종료.
+
+## 7. 14개 scenario 판정
+
+| Scenario | 핵심 검증 | 판정 |
+|---|---|---|
+| `short_cancel` | minimum 미만 release 시 Idle/Cancelled 및 전액 환급 | PASS |
+| `pending_confirm` | 실제 LateUpdate release, Pending collider 0, Confirm geometry | PASS |
+| `pending_cancel` | Pending Cancel 전액 환급 | PASS |
+| `reach_atomic` | reach invalid all-or-nothing | PASS |
+| `ink_atomic` | ink invalid all-or-nothing | PASS |
+| `r_reset_pending` | Pending R reset canonical state | PASS |
+| `invalid_release_under_min` | 마지막 accepted length `<0.20` 기준 Cancelled | PASS |
+| `invalid_release_over_min` | invalid release candidate라도 기존 accepted length `>=0.20`이면 Pending | PASS |
+| `drawing_cancel` | Drawing Cancel 및 reserve 환급 | PASS |
+| `pending_new_draw_reject` | Pending 중 새 Draw 거부, 상태/ledger 불변 | PASS |
+| `out_of_state_confirm` | Idle Confirm no-op, geometry/ledger 불변 | PASS |
+| `confirm_release_same_frame` | 선행 Confirm 거부 후 candidate→release 정상 처리 | PASS |
+| `mode_parity_aim` | Aim backend 결과 | PASS |
+| `mode_parity_trajectory` | Trajectory backend 결과 및 Aim parity | PASS |
+
+### Confirm edge
+
+`confirm_release_same_frame`의 실제 순서는 `CONFIRM_REJECTED>CANDIDATE>RELEASE`다. Drawing 상태의 무효 Confirm이 같은 frame의 유효 candidate/release를 소비하지 않으며 최종 Pending으로 전환한다.
+
+### Mode parity
+
+Aim과 Trajectory에 동일 candidate sequence를 전달했을 때 다음 값이 일치한다.
+
+- state after
+- accepted point count 및 accepted length
+- available/drawing/pending ledger
+- final committed charge 및 ledger total
+- charged length
+- simplified point count
+
+이는 DU-03A backend parity만 검증하며 DU-03B/DU-03C의 실제 입력 mapping을 선행하지 않는다.
+
+## 8. 빌드·테스트·회귀
+
+### 8.1 DU-03A REV1
+
+- Compile: **PASS** — Tundra success, return code 0, C# compile error 0
+- Scene rebuild: **PASS** — return code 0
+- Windows player build: **PASS** — `Build Finished, Result: Success`, return code 0
+- Runtime: **14/14 PASS** — exception, `result=FAIL`, depth drift, provenance invalid 0
+- Aggregator: **PASS** — `scenarios=14 result=PASS`
+- EditMode: **26/26 PASS**
+  - DU-03A: **14/14 PASS**
+  - DU-02: **12/12 PASS**
 - PlayMode: **2/2 PASS**
-- Runtime DU-03A scenario: 제출 probe 기준 **6/6 PASS**
-- Runtime exception / `result=FAIL`: 0
 
-비차단 경고:
+### 8.2 DU-02 회귀
 
-- `Assets/DoodleUp/Scripts/Runtime/Du02GoalZone.cs:19`의 obsolete API `CS0618`
-- build log의 초기 licensing handshake 및 Bee client connection 메시지는 최종 build success/return code 0과 함께 종료되어 본 판정의 기능 차단으로 보지 않음
+| Target FPS | Frames | Samples | Elapsed | Duplicate | Missing | 판정 |
+|---:|---:|---:|---:|---:|---:|---|
+| 30 | 300 | 300 | 10.032598 | 0 | 0 | PASS |
+| 60 | 600 | 600 | 10.016270 | 0 | 0 | PASS |
+| 144 | 1439 | 1439 | 10.000288 | 0 | 0 | PASS |
 
-### DU-02 회귀
+- T1/T2/T3 × R_KEY/LANE_SELECT reset: **6/6 PASS**
+- reset은 rotation/angular velocity/phase를 실제 교란한 뒤 baseline hash와 상태를 복구함
+- task-state 회귀: **PASS**
+- DU-02 aggregator: `samplingRows=3 resetRows=6 d3r1=PASS result=PASS`
 
-**PASS**
-
-- sampling:
-  - 30 fps: frames/samples `300/300`, elapsed `10.025609`, duplicate/missing 0
-  - 60 fps: `600/600`, elapsed `10.016693`, duplicate/missing 0
-  - 144 fps: `1438/1438`, elapsed `10.000553`, duplicate/missing 0
-- reset: T1/T2/T3 × R_KEY/LANE_SELECT 6/6 PASS
-- task-state: 4/4 PASS
-- `Du02Verification`: `samplingRows=3 resetRows=6 d3r1=PASS result=PASS`
-- depth drift, provenance invalid, runtime exception, `result=FAIL`: 0
-
-## 7. DU-03A 이후 기능 미선행
+## 9. 범위 검증
 
 **PASS**
 
 - 실제 Aim adapter 없음
 - 실제 Trajectory adapter 없음
-- `IDu03ADrawIntentSource` 구현 없음
-- mouse ray mapping, locomotion-driven trajectory mapping 없음
+- mouse ray 기반 Aim mapping 없음
+- locomotion-driven Trajectory mapping 없음
+- deterministic probe source는 DU-03A runtime evidence 전용이며 공통 backend 계약만 구동함
 - DU-03B/DU-03C 기능은 선행되지 않음
 
-단, DU-03A 자체 정본 범위인 Confirm capsule chain은 후속 기능이 아니라 현재 카드의 필수 구현이다.
+## 10. 발견 결함 및 관찰
 
-## 8. 책임자·다음 체크포인트·차단요인
+### 수용 차단 결함
 
-- QA evidence 판정 책임자: `game-qa` — **CHANGES REQUIRED**
-- 수정 책임자: `game-tech-director`
+- 없음
+
+### 비차단 관찰 — direct row의 phase 표기
+
+- 심각도: **LOW / 비차단**
+- 조건: 실제 callback 대신 backend helper로 실행되는 scenario raw 확인
+- 기대: callback을 통과하지 않은 row는 phase가 `DIRECT` 또는 별도 execution-path 필드로 명확히 구분됨
+- 실제: `render_frame=0`, `late_update_sequence=0`, `event_order=DIRECT`로 direct 실행임을 식별할 수 있으나 `sample_phase`는 `LATE_UPDATE`로 고정 표기됨
+- 영향: 핵심 R2 증거인 `pending_confirm`은 frame/sequence 양수와 실제 callback chain을 제공하므로 수용 판정에는 영향 없음. 다만 후속 자동 분석에서 `sample_phase` 단독 필터를 사용하면 direct row를 실제 LateUpdate로 오인할 수 있음
+- 권고 책임자: `game-tech-director`
+- 권고 수용 기준: direct 실행 row는 `sample_phase=DIRECT` 또는 별도 `execution_path=DIRECT|CALLBACK`으로 구분
+
+## 11. 책임자·다음 체크포인트·차단요인
+
+- QA 최종 판정 책임자: `game-qa` — **PASS**
+- 기술 수정 책임자: `game-tech-director` — R1~R3 완료
 - 완료 승인 책임자: `project-manager`
-- 차단요인:
-  - DU03A-R1 Confirm capsule chain 미구현
-  - DU03A-R2 실제 LateUpdate/DrawIntent runtime evidence 부재
-  - DU03A-R3 환급·reserve·point 불변성 raw 불충분
+- 차단요인: **없음**
 - 다음 체크포인트:
-  1. 기술 책임자가 R1~R3 보강
-  2. 새 standalone build에서 DU-03A raw/report 재생성
-  3. QA가 hash, capsule geometry, LateUpdate frame chain, refund/atomic fields를 독립 재집계
-  4. PASS 전까지 DU-03B/DU-03C 착수 보류
+  1. `project-manager`가 DU-03A 완료를 승인한다.
+  2. 승인 후 별도 범위로 DU-03B/DU-03C 착수 여부를 결정한다.
+  3. 후속 evidence schema 정리 시 direct row phase 표기를 명확히 한다. 이는 DU-03A 완료 차단 조건이 아니다.
 
-## 9. QA 사인오프
+## 12. QA 사인오프
 
-- 최종: **CHANGES REQUIRED**
-- 제출 raw hash/report 정합성: PASS
-- backend 상태·ledger 코드: 부분 PASS
-- Confirm capsule chain: FAIL
-- 실제 LateUpdate phase evidence: FAIL
-- cancel/reset 환급 raw evidence: FAIL
+- 최종: **PASS**
+- R1 Confirm-only capsule chain: PASS
+- R2 실제 scene-wired LateUpdate evidence: PASS
+- R3 final refund/reserve/point evidence: PASS
+- 14개 scenario: 14/14 PASS
+- invalid mutation 금지: PASS
 - chargedLength pre-simplification 계약: PASS
-- invalid mutation 금지 코드: PASS
+- Aim/Trajectory backend parity: PASS
+- raw/report/hash 정합성: PASS
+- compile/build/runtime/aggregator: PASS
+- EditMode/PlayMode: PASS
 - DU-02 회귀: PASS
-- DU-03A 이후 기능 미선행: PASS
+- DU-03B/DU-03C 미선행: PASS
 - 제품 코드 수정: 수행하지 않음
 - 제품 문서 수정: 수행하지 않음
 - QA 보고서 작성: 수행
 - git 작업: 수행하지 않음
 
-## 10. QA 프로세스 노트
+## 13. QA 프로세스 노트
 
-- `result=PASS`와 assertion boolean을 그대로 신뢰하지 않고 raw 열의 시간 의미를 코드와 대조했다. 그 결과 candidate 직후 `ink_after`와 terminal 이후 상태가 한 행에 혼합된 사실을 확인했다.
-- method 이름이나 sequence 증가만으로 LateUpdate 실행을 인정하지 않고 scene wiring과 실제 callback 경로를 확인했다.
-- `committed_count=1`을 capsule chain 생성으로 간주하지 않고 runtime object 생성 코드와 collider count를 별도 확인했다.
-- 제출 테스트가 모두 PASS여도 정본의 미검증·미구현 수용 기준이 있으면 카드 PASS로 승격하지 않았다.
+- 제출된 `result=PASS`만 신뢰하지 않고 raw 50열을 독립 파싱해 scenario set, ledger, atomic before/after, geometry 골든값을 재집계했다.
+- `committed_count=1`과 물리 geometry 생성을 분리해 Pending collider 0 및 Confirm 후 runtime object를 각각 확인했다.
+- sequence 숫자만으로 callback 실행을 인정하지 않고 scene wiring, source `ReadCount`, `LateUpdateProcessed`, render frame과 event order를 함께 대조했다.
+- cancel/reset은 candidate snapshot이 아니라 `final_*` 필드로 terminal 환급 상태를 판정했다.
+- DU-02 raw/report와 테스트를 함께 재검증해 공통 runtime 변경의 회귀가 없음을 확인했다.
+- 실제 adapter가 없는 것을 확인해 DU-03B/DU-03C 범위 선행 여부를 별도로 차단 검토했다.

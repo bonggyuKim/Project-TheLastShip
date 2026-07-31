@@ -12,7 +12,7 @@
 - `DoodleUp.Runtime`: 코스·카메라·HandMarker·task state·reset orchestration·runtime evidence
 - `DoodleUp.Editor`: 재현 scene 생성, Windows probe build, raw evidence 집계 보고서
 
-`Runtime`만 하위 경계를 조립한다. DU-02 단계에서는 `StrokeSession`을 구현하지 않았고, DU-03A에서 공통 backend와 ghost preview seam을 추가했다. Aim/Trajectory 완성 adapter와 capsule 생성은 후속 단계 범위다.
+`Runtime`만 하위 경계를 조립한다. DU-02 단계에서는 `StrokeSession`을 구현하지 않았고, DU-03A에서 공통 backend, ghost preview, Confirm capsule chain과 deterministic LateUpdate probe source를 추가했다. Aim/Trajectory 완성 adapter와 traverse gameplay는 후속 단계 범위다.
 
 ## 데이터 흐름
 

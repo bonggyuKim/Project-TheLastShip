@@ -68,4 +68,4 @@ QA는 최종 report와 별개로 다음을 직접 확인한다.
 
 ## 범위 제한
 
-DU-02 증거 범위는 기존 sampling/reset/task-state다. DU-03A 공통 StrokeSession backend 검증은 `docs/qa/du-03a-verification.md`를 따른다. Aim/Trajectory 완성 adapter와 capsule chain은 여전히 후속 단계 범위다.
+DU-02 증거 범위는 기존 sampling/reset/task-state다. DU-03A 공통 StrokeSession backend와 Confirm capsule chain 검증은 `docs/qa/du-03a-verification.md`를 따른다. Aim/Trajectory 완성 adapter와 traverse gameplay는 후속 단계 범위다.

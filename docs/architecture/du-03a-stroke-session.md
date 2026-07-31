@@ -1,17 +1,19 @@
 # DU-03A 공통 StrokeSession backend
 
-상태: 구현·standalone runtime 검증 완료 (2026-07-31)
+상태: REV1 구현·standalone runtime 검증 완료 (2026-07-31)
 정본: `docs/input-comparison-spec-v1.md` §3.3, §4, `docs/prototype-execution-plan.md:70-79`
 
 ## 책임 경계
 
 - `DoodleUp.Stroke.Du03AStrokeSession`: 상태머신, plane projection, reach, 거리 resampling, dedupe, ink 원자 판정, simplification, immutable `Du03AStrokeData`를 소유한다.
-- `DoodleUp.Stroke.Du03AStrokeDriver`: `LateUpdate`에서 adapter의 `Du03ADrawIntent`만 소비하고 backend 호출, ghost `LineRenderer`, 상태·candidate 로그를 담당한다.
+- `DoodleUp.Stroke.Du03AStrokeDriver`: `LateUpdate`에서 adapter의 `Du03ADrawIntent`만 소비하고 backend 호출, ghost `LineRenderer`, Confirm geometry transaction, 상태·candidate 로그를 담당한다.
+- `DoodleUp.Stroke.Du03AStrokeGeometry`: Confirm 전에 비활성 root/child capsule chain을 준비·검증하고 session commit 성공 후 활성화한다. 생성 실패 시 Pending을 유지한다.
 - `IDu03ADrawIntentSource`: adapter 경계다. adapter는 candidate mapping과 input edge만 제공하고 물리·잉크·ownership을 알지 않는다.
-- `DoodleUp.Runtime.Du02ResetCoordinator`: R/lane reset 때 `Du03AStrokeDriver.ResetSession`을 호출해 live/pending stroke와 reserve를 제거한다.
-- `DoodleUp.Runtime.Du03ARuntimeProbeRunner`: standalone에서 commit/cancel, Pending 무충돌, atomic reject, R reset을 raw로 검증한다.
+- `DoodleUp.Runtime.Du03ADeterministicIntentSource`: standalone evidence 전용 deterministic source다. 제품 Aim/Trajectory mapping을 선행하지 않는다.
+- `DoodleUp.Runtime.Du02ResetCoordinator`: R/lane reset 때 `Du03AStrokeDriver.ResetSession`을 호출해 live/pending stroke, collider root와 reserve를 제거한다.
+- `DoodleUp.Runtime.Du03ARuntimeProbeRunner`: 실제 `LateUpdate` 경로, commit/cancel, capsule geometry, terminal ledger, atomic reject, R reset과 mode parity를 raw로 검증한다.
 
-DU-03A는 Aim/Trajectory 완성 adapter, capsule collider chain, 삭제, 완성 ink ledger UI를 구현하지 않는다. Confirm은 immutable committed `StrokeData`까지만 생성하며 `[DU03A_COMMIT] colliderCreated=False seamOnly=True`로 범위를 명시한다.
+DU-03A는 Aim/Trajectory 완성 adapter, 삭제, traverse 물리 gameplay, 완성 ink ledger UI를 구현하지 않는다. 단, 정본상 현재 범위인 Confirm capsule chain은 구현한다.
 
 ## 상태 전이
 
@@ -24,8 +26,11 @@ Drawing|Pending --Cancel--> Cancelled --> Idle
 ```
 
 - `LastTerminalState`가 `Committed|Cancelled` 결과를 보존하고 안정 상태는 다시 `Idle`이다.
-- Pending은 `Du03AStrokeData`와 ghost preview만 가지며 collider/Rigidbody가 없다.
+- Pending은 `Du03AStrokeData`와 ghost preview만 가지며 collider/root/Rigidbody가 없다.
+- accepted Confirm은 simplified point pair별 capsule을 비활성 상태로 준비·검증한 뒤 session commit과 같은 transaction에서 활성화한다.
+- Capsule은 local Y 정렬, `direction=1`, `radius=0.14`, `height=segmentLength+0.28`, `center=0`, non-trigger, root/child scale one을 강제한다. `<=1e-6` segment는 skip telemetry를 남긴다.
 - Pending 중 새 Draw는 backend `TryBegin`에서 거부한다.
+- out-of-state Confirm은 같은 frame의 candidate/release 처리를 삼키지 않는다. 실제 Pending commit 성공 시에만 frame 처리를 종료한다.
 
 ## Candidate transaction
 

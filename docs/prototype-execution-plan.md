@@ -1,6 +1,6 @@
 # DOODLE UP — P0 프로토타입 실행계획
 
-상태: DU-01 InputComparisonSpec v1 승인 / DU-02 REV2 구현·독립 QA PASS 및 PM 완료 승인 / DU-03A 착수 / Gate A 세션은 계측 sample·QA pilot 전까지 보류  
+상태: DU-01 승인 / DU-02 REV2 완료 승인 / DU-03A REV1 기획 APPROVE·독립 QA PASS 및 PM 완료 승인 / DU-03B·DU-03C 착수 / Gate A 세션은 계측 sample·QA pilot 전까지 보류
 정본 갱신일: 2026-07-31  
 작업공간: `D:\Project-DoodleUp`  
 목표 엔진: Unity 6000.4.0f1
@@ -67,12 +67,12 @@ Gate A PASS 이후 동일 모델 gamepad 2개로 남의 낙서를 이용하거�
   - T1/T2/T3 × R_KEY/LANE_SELECT 6개 경로에서 player rotation·angular velocity·task phase를 포함한 atomic reset을 machine-readable baseline/before/after로 검증한다.
   - 정본 QA 보고서는 `docs/qa/reports/2026-07-31-doodleup-du02-acceptance-review.md`이며 D1~D7 모두 PASS다.
 
-### DU-03A 공통 StrokeSession backend
+### DU-03A 공통 StrokeSession backend — 완료 승인 (2026-07-31)
 
-- 책임자: `game-tech-director` DRI / `game-planning` 공정성 review
-- 다음 체크포인트: 고스트 1획 commit/cancel
-- 차단요인: 없음 — DU-01 승인 및 DU-02 REV2 QA PASS
-- 수용 기준:
+- 책임자: `game-tech-director` 구현 / `game-planning` 공정성 승인 / `game-qa` 독립 수용 판정 / `project-manager` 완료 승인
+- 다음 체크포인트: DU-03B Aim M+K adapter / DU-03C Trajectory M+K thin adapter
+- 차단요인: 없음 — DU-03A REV1 기획 APPROVE 및 독립 QA PASS
+- 수용 기준(승인 완료):
   - Idle→Drawing→Pending→Committed|Cancelled 상태머신을 구현한다. release는 simplification 전 accepted resampled length로 Cancelled 또는 Pending을 결정하며, Pending에는 collider가 없고 명시적 Confirm만 capsule chain을 생성한다. stroke 시작 시 hand origin과 camera yaw-normal `n`을 snapshot한다.
   - 고정 child HandMarker와 60 fps LateUpdate candidate phase, hand-origin yaw-normal vertical plane projection, reach validation, 거리 resampling, dedupe, Douglas-Peucker `0.02 u` simplification을 담당한다.
   - `StrokeData(simplifiedPoints,chargedLength,ownerId,mode)`를 불변 데이터로 산출한다. `simplifiedPoints`는 Douglas-Peucker `0.02 u` 적용 후 collider geometry이고, `chargedLength`는 simplification 전 accepted resampled polyline length이며 `simplifiedPoints`에서 재계산하지 않는다.
