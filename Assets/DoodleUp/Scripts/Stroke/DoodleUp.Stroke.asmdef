@@ -1,0 +1,6 @@
+{
+  "name": "DoodleUp.Stroke",
+  "rootNamespace": "DoodleUp.Stroke",
+  "references": ["DoodleUp.Core"],
+  "autoReferenced": true
+}

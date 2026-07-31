@@ -1,0 +1,71 @@
+# DoodleUp DU-02 QA Logging Guide
+
+상태: REV2 standalone runtime 검증 기준 (2026-07-31)
+
+## 로그 형식
+
+고정 tag와 `key=value` payload를 사용한다. 수치와 Vector는 invariant culture로 출력한다.
+
+| Tag | 발생 조건 | PASS 기준 |
+|---|---|---|
+| `[DU02_PROVENANCE]` | scene 시작 1회 | Unity/Input System, build ID, hash, `MainCamera=True`, layers `8/9/10`, `runtimeConfigurationValid=True` |
+| `[DU02_COURSE]` | scene 시작 | 정확히 3건, T1 gap `0.70`, T2 offset, T3 gap `0.95`/band `0.12` |
+| `[DU02_TASK_RESET]` | 모든 reset | Idle, countdown `3`, timer `0`, lock true, goal false, stroke 0, ink 5 |
+| `[DU02_TASK_GO]` | countdown 종료 | timer `0`, lock false |
+| `[DU02_RESET]` | scene/R/lane reset | generation 증가, canonical transform/state, depthError `0` |
+| `[DU02_RUNTIME_SAMPLE]` | fps probe 종료 | frame=sample, duplicate=0, missing=0, elapsed≥10초 |
+| `[DU02_RUNTIME_RESET]` | 교란 후 R/lane reset | beforeHash≠baselineHash, afterHash=baselineHash, before rotation/angular velocity/phase 비정상, after identity/zero/Idle, restoration flags=True |
+| `[DU02_RUNTIME_TASK_STATE]` | success seam probe | T1/T2 contact+hold 성공, T3 단일 band 실패/양 band 성공 |
+| `[DU02_RUNTIME_PROBE_COMPLETE]` | raw 파일 저장 완료 | result=PASS |
+| `[DU02_DEPTH_DRIFT]` | depth tolerance 초과 | clean probe에서 0건 |
+
+## 재현 명령
+
+프로젝트: `D:/Project-DoodleUp`, Unity `6000.4.0f1`. Unity Editor가 프로젝트를 열고 있으면 먼저 닫는다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/.adk/scripts/unity-cli.ps1 compile '' EditMode D:/Project-DoodleUp
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/.adk/scripts/unity-cli.ps1 method DoodleUp.Editor.Du02SceneBuilder.RebuildSoloCourse EditMode D:/Project-DoodleUp
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/.adk/scripts/unity-cli.ps1 build DoodleUp.Editor.Du02PlayerBuild.BuildWindowsProbe EditMode D:/Project-DoodleUp
+D:/Project-DoodleUp/Builds/DU02_RuntimeProbe/DoodleUp-DU02-Probe.exe -batchmode -nographics -logFile D:/.adk/logs/unity/du02-runtime.log
+```
+
+Player가 exit 0이면 다음 raw 파일을 프로젝트 루트로 복사한다.
+
+```powershell
+Copy-Item "$env:USERPROFILE/AppData/LocalLow/DoodleUp/Doodle Up DU-02/DU02_Runtime_Raw.csv" D:/Project-DoodleUp/DU02_Runtime_Raw.csv -Force
+$env:DU02_RUNTIME_RAW_PATH = 'D:/Project-DoodleUp/DU02_Runtime_Raw.csv'
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/.adk/scripts/unity-cli.ps1 method DoodleUp.Editor.Du02Verification.RunFromRaw EditMode D:/Project-DoodleUp
+powershell -NoProfile -ExecutionPolicy Bypass -File D:/.adk/scripts/unity-cli.ps1 test '' EditMode D:/Project-DoodleUp
+```
+
+## Raw CSV 독립 재계산
+
+`DU02_Runtime_Raw.csv` header는 다음 27열이다.
+
+```text
+record_type,requested_fps,observed_frames,observed_samples,duplicate_frames,missing_frames,elapsed_seconds,reset_generation,task,reset_path,baseline_hash,before_hash,after_hash,before_differs,after_equal,baseline_rotation,before_rotation,after_rotation,baseline_angular_velocity,before_angular_velocity,after_angular_velocity,baseline_phase,before_phase,after_phase,rotation_restored,angular_velocity_restored,phase_restored
+```
+
+QA는 최종 report와 별개로 다음을 직접 확인한다.
+
+1. `sampling` 행이 요청 fps `30/60/144`마다 정확히 1개인지 확인한다.
+2. 각 행에서 `observed_frames > 0`, `observed_frames == observed_samples`, duplicate/missing `0`, elapsed `>=10.0`인지 확인한다.
+3. fps target은 속도 요청값이지 정확한 frame total 보장이 아니다. 예: 144fps 10초 실행에서 scheduler에 따라 1439 frame이어도 frame/sample equality와 elapsed 조건을 만족하면 PASS다.
+4. `reset` 행은 T1/T2/T3 × `R_KEY`/`LANE_SELECT` 정확히 6개인지 확인한다.
+5. 각 reset 행에서 `before_differs=True`, baseline/before hash 불일치, `after_equal=True`, baseline/after hash 일치를 확인한다.
+6. 각 reset 행의 `before`가 non-identity rotation, non-zero angular velocity, `ProbePerturbed` phase인지 확인한다.
+7. 각 reset 행의 `baseline`과 `after`가 identity rotation, zero angular velocity, `Idle` phase이며 세 restoration flag가 모두 `True`인지 확인한다.
+8. runtime log에서 provenance 1건, course 3건, scene-start reset, R/lane reset, task-state 4건, completion 1건을 확인한다.
+9. runtime log에서 `[DU02_DEPTH_DRIFT]`, `[DU02_PROVENANCE_INVALID]`, exception, `result=FAIL`이 0건인지 확인한다.
+
+## Success seam 회귀
+
+- T1/T2: committed stroke contact + goal inside + 1초 hold → `goalReached=True`
+- T3 음성: start band만 + goal inside + 1초 tick → `goalReached=False`
+- T3 양성: start/goal band + goal inside + 1초 hold → `goalReached=True`
+- 모든 reset 직후 goal/stroke/ink/timer/countdown/phase는 canonical state로 복원돼야 한다.
+
+## 범위 제한
+
+DU-02 증거 범위는 기존 sampling/reset/task-state다. DU-03A 공통 StrokeSession backend 검증은 `docs/qa/du-03a-verification.md`를 따른다. Aim/Trajectory 완성 adapter와 capsule chain은 여전히 후속 단계 범위다.

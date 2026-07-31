@@ -1,0 +1,7 @@
+{
+  "name": "DoodleUp.Tests.PlayMode",
+  "rootNamespace": "DoodleUp.Tests.PlayMode",
+  "references": ["DoodleUp.Core", "DoodleUp.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

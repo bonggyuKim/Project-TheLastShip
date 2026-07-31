@@ -1,0 +1,6 @@
+{
+  "name": "DoodleUp.Physics",
+  "rootNamespace": "DoodleUp.Physics",
+  "references": ["DoodleUp.Core"],
+  "autoReferenced": true
+}

@@ -1,0 +1,7 @@
+{
+  "name": "DoodleUp.Editor",
+  "rootNamespace": "DoodleUp.Editor",
+  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Physics", "DoodleUp.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}

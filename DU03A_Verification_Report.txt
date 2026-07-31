@@ -1,0 +1,11 @@
+DU-03A RUNTIME VERIFICATION
+unity=6000.4.0f1
+raw=D:\Project-DoodleUp\DU03A_Runtime_Raw.csv
+rawSha256=6f797fbe8086d4d9fa117c0430ea7e736b742f71a44939ee9dc751a432702a4a
+scenario=short_cancel stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.160000 lengthBefore=0.000000 lengthAfter=0.160000 inkBefore=5.000000 inkAfter=4.840000 pending=0 committed=0 terminal=Cancelled chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+scenario=pending_confirm stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=1 terminal=Committed chargedLength=0.240000 simplifiedPoints=2 colliderCount=0 atomicUnchanged=True result=PASS
+scenario=pending_cancel stateBefore=Drawing stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=0 terminal=Cancelled chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+scenario=reach_atomic stateBefore=Drawing stateAfter=Drawing candidateValid=False appended=False reason=ReachInvalid requiredInk=0.000000 lengthBefore=0.160000 lengthAfter=0.160000 inkBefore=4.840000 inkAfter=4.840000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+scenario=ink_atomic stateBefore=Drawing stateAfter=Drawing candidateValid=False appended=False reason=InkInvalid requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.000000 inkBefore=0.150000 inkAfter=0.150000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+scenario=r_reset_pending stateBefore=Pending stateAfter=Idle candidateValid=True appended=True reason=Appended requiredInk=0.240000 lengthBefore=0.000000 lengthAfter=0.240000 inkBefore=5.000000 inkAfter=4.760000 pending=0 committed=0 terminal=Idle chargedLength=0.000000 simplifiedPoints=0 colliderCount=0 atomicUnchanged=True result=PASS
+result=PASS
