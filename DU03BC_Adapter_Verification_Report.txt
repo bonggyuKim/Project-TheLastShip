@@ -1,0 +1,16 @@
+DU-03B/C ADAPTER RUNTIME VERIFICATION
+unity=6000.4.0f1
+raw=D:\Project-DoodleUp\DU03BC_Adapter_Runtime_Raw.csv
+rawSha256=08df1c14a0ed083d650c4a65486cfbda1f12236d17a2b2bd64792a7a3758ed18
+framesObserved=260
+samplesObserved=260
+duplicateFrames=0
+missingFrames=0
+mappingMaxError=0.000000000
+releaseCandidateFirst=True
+backendParity=PASS
+backendProfileHash=reach=1.25|spacing=0.08|dedupe=0.02|min=0.20|ink=5.00
+du03aRegression=PASS|rawSha256=1bd31b518943cd8fac03263f6bf5c832258a2d9cd9445d60dc4724a59b83083a
+du02Regression=PASS|rawSha256=313973d3daea37d917716ccdb10c0487f8f2347ce56233fafcf0efe58b1b6612
+scenarios=35
+result=PASS

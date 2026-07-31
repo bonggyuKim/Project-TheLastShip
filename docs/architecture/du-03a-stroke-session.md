@@ -9,8 +9,9 @@
 - `DoodleUp.Stroke.Du03AStrokeDriver`: `LateUpdate`에서 adapter의 `Du03ADrawIntent`만 소비하고 backend 호출, ghost `LineRenderer`, Confirm geometry transaction, 상태·candidate 로그를 담당한다.
 - `DoodleUp.Stroke.Du03AStrokeGeometry`: Confirm 전에 비활성 root/child capsule chain을 준비·검증하고 session commit 성공 후 활성화한다. 생성 실패 시 Pending을 유지한다.
 - `IDu03ADrawIntentSource`: adapter 경계다. adapter는 candidate mapping과 input edge만 제공하고 물리·잉크·ownership을 알지 않는다.
-- `DoodleUp.Runtime.Du03ADeterministicIntentSource`: standalone evidence 전용 deterministic source다. 제품 Aim/Trajectory mapping을 선행하지 않는다.
-- `DoodleUp.Runtime.Du02ResetCoordinator`: R/lane reset 때 `Du03AStrokeDriver.ResetSession`을 호출해 live/pending stroke, collider root와 reserve를 제거한다.
+- `DoodleUp.Runtime.Du03ADeterministicIntentSource`: DU-03A standalone evidence 전용 deterministic source다.
+- `DoodleUp.Runtime.Du03BCAdapterRouter`: DU-03B/C 구현 이후 driver가 참조하는 단일 source다. deterministic evidence/Aim/Trajectory adapter 중 하나를 route하며 상세 계약은 `du-03bc-input-adapters.md`에 있다.
+- `DoodleUp.Runtime.Du02ResetCoordinator`: R/lane reset 때 `Du03AStrokeDriver.ResetSession`과 active adapter reset을 호출해 live/pending stroke, collider root, reserve, plane snapshot과 stale edges를 제거한다.
 - `DoodleUp.Runtime.Du03ARuntimeProbeRunner`: 실제 `LateUpdate` 경로, commit/cancel, capsule geometry, terminal ledger, atomic reject, R reset과 mode parity를 raw로 검증한다.
 
 DU-03A는 Aim/Trajectory 완성 adapter, 삭제, traverse 물리 gameplay, 완성 ink ledger UI를 구현하지 않는다. 단, 정본상 현재 범위인 Confirm capsule chain은 구현한다.

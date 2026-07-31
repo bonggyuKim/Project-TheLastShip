@@ -14,6 +14,7 @@ namespace DoodleUp.Runtime
         [SerializeField] private Du02CandidateSamplingSeam samplingSeam;
         [SerializeField] private Du02TaskState taskState;
         [SerializeField] private Du03AStrokeDriver strokeDriver;
+        [SerializeField] private Du03BCAdapterRouter adapterRouter;
 
         public int Generation { get; private set; }
         public Du02TaskId ActiveTask { get; private set; }
@@ -25,7 +26,8 @@ namespace DoodleUp.Runtime
             Camera cameraComponent,
             Du02CandidateSamplingSeam seam,
             Du02TaskState state,
-            Du03AStrokeDriver stroke = null)
+            Du03AStrokeDriver stroke = null,
+            Du03BCAdapterRouter router = null)
         {
             playerMotor = motor;
             handMarker = marker;
@@ -34,6 +36,7 @@ namespace DoodleUp.Runtime
             samplingSeam = seam;
             taskState = state;
             strokeDriver = stroke;
+            adapterRouter = router;
         }
 
         public Du02ResetSnapshot ResetToLane(Du02TaskId taskId, string reason)
@@ -49,6 +52,7 @@ namespace DoodleUp.Runtime
             cameraRig.ResetPose(lane.SpawnPosition);
             taskState.ResetState(taskId);
             strokeDriver?.ResetSession();
+            adapterRouter?.ResetActiveAdapter();
 
             var planeOrigin = handMarker.position;
             var planeNormal = Vector3.forward;

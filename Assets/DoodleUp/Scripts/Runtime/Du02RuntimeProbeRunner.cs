@@ -20,6 +20,7 @@ namespace DoodleUp.Runtime
         [SerializeField] private Transform handMarker;
         [SerializeField] private Camera targetCamera;
         [SerializeField] private Du03ARuntimeProbeRunner du03AProbeRunner;
+        [SerializeField] private Du03BCRuntimeProbeRunner du03BCProbeRunner;
 
         private readonly List<string> rawRows = new();
 
@@ -35,7 +36,8 @@ namespace DoodleUp.Runtime
             Du02RuntimeController controller,
             Transform marker,
             Camera cameraComponent,
-            Du03ARuntimeProbeRunner du03AProbe = null)
+            Du03ARuntimeProbeRunner du03AProbe = null,
+            Du03BCRuntimeProbeRunner du03BCProbe = null)
         {
             frameProbe = probe;
             samplingSeam = seam;
@@ -46,6 +48,7 @@ namespace DoodleUp.Runtime
             handMarker = marker;
             targetCamera = cameraComponent;
             du03AProbeRunner = du03AProbe;
+            du03BCProbeRunner = du03BCProbe;
         }
 
         private IEnumerator Start()
@@ -58,6 +61,10 @@ namespace DoodleUp.Runtime
             if (du03AProbeRunner != null)
             {
                 yield return new WaitUntil(() => File.Exists(Du03ARuntimeProbeRunner.RawPath));
+            }
+            if (du03BCProbeRunner != null)
+            {
+                yield return new WaitUntil(() => du03BCProbeRunner.IsComplete && File.Exists(Du03BCRuntimeProbeRunner.RawPath));
             }
 
             foreach (var fps in new[] { 30, 60, 144 })

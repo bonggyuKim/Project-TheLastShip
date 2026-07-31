@@ -48,7 +48,15 @@ namespace DoodleUp.Editor
             previewLine.positionCount = 0;
             previewLine.enabled = false;
 
-            var intentSource = runtime.AddComponent<Du03ADeterministicIntentSource>();
+            var inputEdgeLatch = runtime.AddComponent<Du03BCInputEdgeLatch>();
+            var deterministicIntentSource = runtime.AddComponent<Du03ADeterministicIntentSource>();
+            var aimAdapter = runtime.AddComponent<Du03BCAimInputAdapter>();
+            aimAdapter.Configure(inputEdgeLatch, handMarker, camera);
+            var trajectoryAdapter = runtime.AddComponent<Du03BCTrajectoryInputAdapter>();
+            trajectoryAdapter.Configure(inputEdgeLatch, handMarker, camera);
+            var adapterRouter = runtime.AddComponent<Du03BCAdapterRouter>();
+            adapterRouter.Configure(deterministicIntentSource, aimAdapter, trajectoryAdapter);
+            adapterRouter.SetRoute(Du03BCAdapterRoute.Trajectory);
             var committedStrokeRoot = new GameObject("DU03A_CommittedStrokes");
             committedStrokeRoot.transform.SetParent(runtime.transform, false);
             committedStrokeRoot.transform.localScale = Vector3.one;
@@ -57,23 +65,28 @@ namespace DoodleUp.Editor
             strokeDriver.Configure(
                 handMarker,
                 camera,
-                intentSource,
+                adapterRouter,
                 "player-1",
                 Du03AStrokeMode.Trajectory,
                 previewLine,
                 committedStrokeRoot.transform);
+            adapterRouter.SetStrokeDriver(strokeDriver);
 
             var motor = player.GetComponent<Du02PlayerMotor>();
             var reset = runtime.AddComponent<Du02ResetCoordinator>();
-            reset.Configure(motor, handMarker, cameraRig, camera, samplingSeam, taskState, strokeDriver);
+            reset.Configure(motor, handMarker, cameraRig, camera, samplingSeam, taskState, strokeDriver, adapterRouter);
 
             var controller = runtime.AddComponent<Du02RuntimeController>();
             controller.Configure(inputReader, motor, handMarker, reset, taskState);
+            var resetInputBridge = runtime.AddComponent<Du03BCResetInputBridge>();
+            resetInputBridge.Configure(inputEdgeLatch, controller);
             runtime.AddComponent<Du02ProvenanceLogger>();
             var du03AProbe = runtime.AddComponent<Du03ARuntimeProbeRunner>();
-            du03AProbe.Configure(strokeDriver, controller, intentSource);
+            du03AProbe.Configure(strokeDriver, controller, deterministicIntentSource);
+            var du03BCProbe = runtime.AddComponent<Du03BCRuntimeProbeRunner>();
+            du03BCProbe.Configure(strokeDriver, adapterRouter, aimAdapter, trajectoryAdapter, inputEdgeLatch, controller, handMarker, camera);
             var probeRunner = runtime.AddComponent<Du02RuntimeProbeRunner>();
-            probeRunner.Configure(frameProbe, samplingSeam, reset, taskState, motor, controller, handMarker, camera, du03AProbe);
+            probeRunner.Configure(frameProbe, samplingSeam, reset, taskState, motor, controller, handMarker, camera, du03AProbe, du03BCProbe);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };

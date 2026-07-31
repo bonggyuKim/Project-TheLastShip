@@ -93,11 +93,12 @@ Gate A PASS 이후 동일 모델 gamepad 2개로 남의 낙서를 이용하거�
   - `StrokeData(simplifiedPoints,chargedLength,ownerId,mode)`를 불변 데이터로 산출한다. `simplifiedPoints`는 Douglas-Peucker `0.02 u` 적용 후 collider geometry이고, `chargedLength`는 simplification 전 accepted resampled polyline length이며 `simplifiedPoints`에서 재계산하지 않는다.
   - adapter는 물리·잉크·소유권을 모르고 DrawIntent만 전달한다.
 
-### DU-03B Aim M+K adapter / DU-03C Trajectory M+K thin adapter — 착수 (2026-08-01)
+### DU-03B Aim M+K adapter / DU-03C Trajectory M+K thin adapter — 에디터 플레이 구현 완료 (2026-08-01)
 
 - 책임자: `game-tech-director` 구현 / `game-qa` 독립 판정 / `project-manager` 완료 승인 / mapping·공정성 계약 변경은 `game-planning` + `project-manager`
 - 다음 체크포인트: 공통 input latch·execution manifest·adapter evidence schema 확정 후 각 source 구현
-- 차단요인: 없음 — DU-03A 완료 승인, 기술 `CONDITIONAL READY`, QA `READY WITH ACCEPTANCE GATES`
+- 차단요인: 사용자 직접 재미 판정 대기
+- PM 축소 완료 기준(2026-08-01): `Tab`으로 Aim/Trajectory 전환 가능한 에디터 플레이, 공통 latch/backend, mapping EditMode, LateUpdate PlayMode, T1/T2/T3 mode별 1회 확인. RAW/aggregator/standalone/hash와 독립 QA는 DU-06A-A로 이관한다.
 - 실행 순서:
   1. 공통 M+K input-edge latch(LMB Draw, `E` Confirm, `RMB`/`Esc` Cancel), execution manifest, adapter evidence schema를 먼저 고정한다. `R`은 trial reset 소유이며 Cancel로 소비하지 않는다.
   2. Aim source와 Trajectory source, 각 mapping 단위 테스트는 병렬로 진행한다.
