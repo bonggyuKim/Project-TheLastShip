@@ -5,6 +5,21 @@
 작업공간: `D:\Project-DoodleUp`  
 목표 엔진: Unity 6000.4.0f1
 
+## 0. 프로토타입 운영 기준 (2026-08-01 결정)
+
+P0의 목적은 재미와 입력 사용성을 빠르게 판정하는 것이다. 따라서 Gate A 판정 전 구현 카드에는 출시 수준 증거 절차를 적용하지 않는다.
+
+- 구현 카드 완료 조건은 컴파일, 실제 플레이 가능, 핵심 계약 테스트, 기존 카드 EditMode 회귀까지다.
+- RAW CSV, 독립 aggregator, hash 정합, standalone paired runtime, manifest, 장치 provenance는 `DU-06A-A` Gate A 증거팩에서 한 번에 수행한다.
+- Gate A 재미 판정 전까지 구현 카드에 `game-qa`를 투입하지 않는다. 구현 카드는 `game-tech-director` 자체 확인과 `project-manager` 승인, 사용자 직접 플레이로 닫는다.
+- `game-qa`는 `DU-06A-A` Gate A 증거팩에서 재투입한다. 그 시점에 축적된 acceptance 기준으로 한 번에 검증한다.
+- 계약 변경이 필요한 경우에만 `game-planning` 재검토를 요청한다.
+- 카드 단위는 하루 안에 플레이로 확인 가능한 크기로 쪼갠다.
+
+이 결정의 위험은 자체 판정 오류를 즉시 잡지 못하는 것이다. 실제로 DU-02와 DU-03A에서 자체 PASS가 틀린 전례가 있으므로, 구현 카드 완료 승인 시 PM은 최소한 컴파일·플레이 가능·기존 카드 EditMode 회귀를 직접 확인한다.
+
+이 기준은 Gate A 판정 이후 hardening 단계에서 원래 증거 수준으로 복원한다.
+
 ## 1. 의사결정 원칙
 
 모델·공급자별 의견을 섞지 않고 역할별 결정권으로 통합한다.
