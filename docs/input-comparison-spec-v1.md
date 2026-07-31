@@ -81,6 +81,16 @@ right = Normalize(Cross(up, n))
 - Gravity와 jump는 world `Y`, 수평 이동은 `right`축만 사용한다. 따라서 camera pitch `-10°`는 이동·점프 축을 기울이지 않는다.
 - Stroke 시작 시 그 frame의 `HandMarker.position`을 `planeOrigin`, 고정 `n`을 `planeNormal`로 snapshot한다. Stroke 중 camera transform이 바뀌어도 plane은 다시 계산하지 않는다.
 
+#### 3.2.2 비증거 플레이성 pretest camera orbit 예외
+
+`profile_id=PRETEST_CAMERA_ORBIT_V1`인 비증거 플레이성 pretest에서만 visual camera orbit을 허용한다.
+
+- `LeftArrow`/`RightArrow` hold로 spawn camera yaw 기준 `60°/s` 속도로 회전하며 `yawOffset`은 `-30°~+30°`로 clamp한다. 가속·관성은 적용하지 않는다.
+- Orbit 입력은 `StrokeSession.Idle`에서만 허용한다. `Draw press`부터 `Commit` 또는 `Cancel`로 `Idle`에 복귀할 때까지 현재 `camera_visual_yaw`를 freeze한다.
+- Visual camera만 회전한다. Player root rotation, spawn gameplay `n0/right0`, locomotion axis, depth plane, 고정 `HandMarker` pose는 변경하지 않는다. Aim ray는 visual camera에서 만들되 gameplay `n0`을 normal로 하는 stroke snapshot plane과 교차시킨다.
+- `profile_id`, frame별 `camera_visual_yaw`, gameplay `n0`을 로그에 남긴다.
+- 이 profile의 attempt와 결과는 Gate A의 72개 evaluation row, participant qualified 판정, mode 성공률·완료시간 비교 및 최종 mode 선택에 사용할 수 없다. Gate A 본 측정은 §3.2의 camera/yaw 고정 profile만 사용한다.
+
 ### 3.3 stroke·잉크
 
 | 항목 | v1 값 | 판정 정의 |
@@ -243,6 +253,7 @@ Confirm된 simplified polyline의 연속된 각 point pair마다 child `CapsuleC
 
 - player position/rotation/velocity, grounded state, hand pose
 - camera transform/FOV, camera yaw-normal `n`, cursor 기준점
+- `PRETEST_CAMERA_ORBIT_V1`에서는 visual camera `yawOffset=0°`
 - HandMarker 고정 local pose와 root/hand depth `0`
 - Drawing/Pending/Committed stroke `0`, 모든 reserve `0`, available ink `5.00 u`
 - task geometry와 goal state
@@ -286,6 +297,7 @@ Gate A 판정표의 evaluation row는 `4 participants × 2 modes × 9 trial slot
 - `TECH_INVALID` attempt는 삭제하지 않고 `evaluation_included=false`로 보존한 뒤 같은 slot을 `attempt_no + 1`로 즉시 재시행한다.
 - 같은 mode session에서 `TECH_INVALID`가 3회 연속 발생하면 그 mode session 전체를 중단한다. 해당 session의 9개 slot attempt를 모두 `evaluation_included=false`로 유지하고, 새 `session_id`에서 그 mode의 9개를 처음부터 다시 실행한다.
 - 서로 다른 `session_id`의 유효 row를 골라 9개를 만드는 세션 간 짜깁기는 금지한다.
+- Gate A 측정 build에서 yaw input action이 활성화되거나 trial 중 camera yaw가 baseline에서 `0.01°`를 초과하거나 `PRETEST_CAMERA_ORBIT_V1` 결과가 evaluation row에 유입되면 `TECH_INVALID/CAMERA_YAW_INPUT_ENABLED`로 기록하고 해당 attempt를 제외한다.
 
 `result`는 다음 세 값만 허용한다.
 
