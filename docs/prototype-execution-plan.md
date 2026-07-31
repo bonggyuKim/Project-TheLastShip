@@ -78,15 +78,27 @@ Gate A PASS 이후 동일 모델 gamepad 2개로 남의 낙서를 이용하거�
   - `StrokeData(simplifiedPoints,chargedLength,ownerId,mode)`를 불변 데이터로 산출한다. `simplifiedPoints`는 Douglas-Peucker `0.02 u` 적용 후 collider geometry이고, `chargedLength`는 simplification 전 accepted resampled polyline length이며 `simplifiedPoints`에서 재계산하지 않는다.
   - adapter는 물리·잉크·소유권을 모르고 DrawIntent만 전달한다.
 
-### DU-03B Aim M+K adapter / DU-03C Trajectory M+K thin adapter
+### DU-03B Aim M+K adapter / DU-03C Trajectory M+K thin adapter — 착수 (2026-08-01)
 
-- 책임자: `game-tech-director`
-- 다음 체크포인트: 각 mode 동일 코스 3회 통과
-- 차단요인: DU-03A
+- 책임자: `game-tech-director` 구현 / `game-qa` 독립 판정 / `project-manager` 완료 승인 / mapping·공정성 계약 변경은 `game-planning` + `project-manager`
+- 다음 체크포인트: 공통 input latch·execution manifest·adapter evidence schema 확정 후 각 source 구현
+- 차단요인: 없음 — DU-03A 완료 승인, 기술 `CONDITIONAL READY`, QA `READY WITH ACCEPTANCE GATES`
+- 실행 순서:
+  1. 공통 M+K input-edge latch(LMB Draw, `E` Confirm, `RMB`/`Esc` Cancel), execution manifest, adapter evidence schema를 먼저 고정한다. `R`은 trial reset 소유이며 Cancel로 소비하지 않는다.
+  2. Aim source와 Trajectory source, 각 mapping 단위 테스트는 병렬로 진행한다.
+  3. scene active-source 선택과 reset wiring은 한 곳에서 순차 통합한다.
+  4. 동일 build로 두 mode paired runtime evidence를 생성한다.
+  5. 각 mode가 T1/T2/T3를 동일 조건에서 3회 통과한다.
+  6. DU-03A 14/14와 DU-02 sampling/reset/task-state 회귀를 확인한다.
 - 수용 기준:
   - Aim은 60 fps LateUpdate에서 mouse ray를 stroke 시작 시 hand origin과 camera yaw-normal `n`으로 snapshot한 world-vertical plane에 투영한다. Trajectory는 같은 LateUpdate에서 locomotion/physics 적용 후 고정 child `HandMarker.position`을 읽는다.
   - Trajectory는 cursor steering·원격 point를 금지하며, Aim/Trajectory 모두 같은 candidate sample phase와 공통 backend를 사용한다.
-  - backend 수정 없이 adapter만 교체하고 성공시간·reject·cancel 지표를 동일하게 산출한다.
+  - backend 수정 없이 adapter만 교체하고 성공시간·reject·cancel 지표를 동일하게 산출한다. 두 adapter는 `IDu03ADrawIntentSource`만 구현하고 자체 상태머신·잉크·물리·소유권·geometry를 갖지 않으며, 기존 `Du03AStrokeDriver`의 단일 LateUpdate가 intent를 소비한다.
+  - 실제 Input System edge가 latch되고 실제 LateUpdate에서 정확히 1회 소비된다. Drawing 중 frame당 candidate는 정확히 1개이고 release frame은 `CANDIDATE>RELEASE`다.
+  - 정상 raw candidate는 독립 계산값과 오차 `1e-5 u` 이내다. Aim은 ray-plane 교점, Trajectory는 같은 tick `HandMarker.position`과 일치하며 Trajectory candidate는 mouse 입력에 영향받지 않는다.
+  - mapping 실패는 숫자 0이 아니라 null과 `NO_PLANE_INTERSECTION`/`NON_FINITE`로 기록하고 ledger·state를 변경하지 않는다.
+  - QA 필수 scenario는 DU-03B `A01~A12`, DU-03C `T01~T12`이며 정본 QA 기준은 `docs/qa/reports/2026-08-01-doodleup-du03bc-adapter-preflight-review.md`다.
+  - `X` committed Delete/refund와 tester mouse 장치 provenance는 이 카드 범위가 아니며 각각 DU-05A와 DU-06A-A에서 수용한다. 두 adapter가 Delete/refund나 backend API를 구현·호출하면 즉시 FAIL이다.
 
 ### DU-04A 최소 정적 capsule 발판
 
