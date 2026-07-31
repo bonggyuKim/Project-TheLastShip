@@ -84,6 +84,7 @@ namespace DoodleUp.Runtime
         [SerializeField] protected Du03BCInputEdgeLatch inputLatch;
         [SerializeField] protected Transform handMarker;
         [SerializeField] protected Camera targetCamera;
+        [SerializeField] private bool verboseMappingLogging;
 
         protected Vector3 planeOrigin;
         protected Vector3 planeNormal;
@@ -108,9 +109,9 @@ namespace DoodleUp.Runtime
             if (input.DrawPressed)
             {
                 planeOrigin = handMarker.position;
-                var yawNormal = Vector3.ProjectOnPlane(targetCamera.transform.forward, Vector3.up);
-                hasPlaneSnapshot = IsFinite(yawNormal) && yawNormal.sqrMagnitude >= Du03AStrokeProfile.PlaneEpsilon * Du03AStrokeProfile.PlaneEpsilon;
-                planeNormal = hasPlaneSnapshot ? yawNormal.normalized : default;
+                var gameplayNormal = Vector3.forward;
+                hasPlaneSnapshot = IsFinite(gameplayNormal) && gameplayNormal.sqrMagnitude >= Du03AStrokeProfile.PlaneEpsilon * Du03AStrokeProfile.PlaneEpsilon;
+                planeNormal = hasPlaneSnapshot ? gameplayNormal.normalized : default;
             }
 
             var receivesCandidate = input.DrawHeld || input.DrawPressed || input.DrawReleased;
@@ -125,7 +126,8 @@ namespace DoodleUp.Runtime
                 LastMappingEvidence = CreateInactiveEvidence(input);
             }
 
-            LogMapping(LastMappingEvidence);
+            if (verboseMappingLogging)
+                LogMapping(LastMappingEvidence);
             return new Du03ADrawIntent(
                 input.DrawPressed,
                 input.DrawReleased,

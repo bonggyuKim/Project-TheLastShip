@@ -170,27 +170,44 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void ConfirmCreatesGoldenCapsuleOnlyAfterPending()
+        public void ConfirmCreatesVisibleCapsuleOnlyAfterPending()
         {
             var root = new GameObject("test-root");
             var hand = new GameObject("test-hand");
             var cameraObject = new GameObject("test-camera");
             var camera = cameraObject.AddComponent<Camera>();
+            var previewObject = new GameObject("test-preview");
+            previewObject.transform.SetParent(root.transform, false);
+            var preview = previewObject.AddComponent<LineRenderer>();
+            preview.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
             var driver = root.AddComponent<Du03AStrokeDriver>();
-            driver.Configure(hand.transform, camera, null, "owner-a", Du03AStrokeMode.Trajectory, null, root.transform);
+            driver.Configure(hand.transform, camera, null, "owner-a", Du03AStrokeMode.Trajectory, preview, root.transform);
 
             driver.ProcessIntent(new Du03ADrawIntent(true, false, false, false, false, default));
+            driver.ProcessIntent(new Du03ADrawIntent(false, false, false, false, true, new Vector3(2f, 0f, 0f)));
+
+            var invalidPreview = root.GetComponentsInChildren<LineRenderer>(true)[1];
+            Assert.That(invalidPreview.enabled, Is.True);
+            Assert.That(invalidPreview.positionCount, Is.EqualTo(2));
+            Assert.That(invalidPreview.startColor.r, Is.EqualTo(1f).Within(0.0001f));
+
             driver.ProcessIntent(new Du03ADrawIntent(false, true, false, false, true, new Vector3(0.24f, 0f, 0f)));
 
             Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Pending));
             Assert.That(driver.CommittedColliderCount, Is.Zero);
             Assert.That(root.GetComponentsInChildren<Rigidbody>(true), Is.Empty);
+            Assert.That(preview.enabled, Is.True);
+            Assert.That(preview.widthMultiplier, Is.EqualTo(0.16f).Within(0.0001f));
+            Assert.That(preview.startColor.r, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(preview.startColor.g, Is.EqualTo(0.72f).Within(0.005f));
+            Assert.That(invalidPreview.enabled, Is.False);
 
             driver.ProcessIntent(new Du03ADrawIntent(false, false, true, false, false, default));
 
             Assert.That(driver.Session.LastTerminalState, Is.EqualTo(Du03AStrokeSessionState.Committed));
             Assert.That(driver.LastGeometryResult.SegmentCount, Is.EqualTo(1));
             Assert.That(driver.LastGeometryResult.ColliderCount, Is.EqualTo(1));
+            Assert.That(driver.LastGeometryResult.RendererCount, Is.EqualTo(1));
             Assert.That(driver.LastGeometryResult.DegenerateSkipped, Is.Zero);
             Assert.That(driver.LastGeometryResult.MaximumSharedEndpointGap, Is.Zero.Within(0.000001f));
             var capsule = root.GetComponentInChildren<CapsuleCollider>(true);
@@ -202,6 +219,14 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(Vector3.Distance(capsule.transform.position, new Vector3(0.12f, 0f, 0f)), Is.LessThanOrEqualTo(0.000001f));
             Assert.That(Vector3.Dot(capsule.transform.up, Vector3.right), Is.EqualTo(1f).Within(0.000001f));
             Assert.That(capsule.transform.localScale, Is.EqualTo(Vector3.one));
+            var renderer = capsule.GetComponentInChildren<MeshRenderer>(true);
+            Assert.That(renderer, Is.Not.Null);
+            Assert.That(renderer.GetComponent<Collider>(), Is.Null);
+            Assert.That(renderer.transform.localPosition, Is.EqualTo(Vector3.zero));
+            Assert.That(renderer.transform.localRotation, Is.EqualTo(Quaternion.identity));
+            Assert.That(renderer.transform.localScale.x, Is.EqualTo(0.28f).Within(0.0001f));
+            Assert.That(renderer.transform.localScale.y, Is.EqualTo(0.26f).Within(0.0001f));
+            Assert.That(renderer.transform.localScale.z, Is.EqualTo(0.28f).Within(0.0001f));
 
             Object.DestroyImmediate(cameraObject);
             Object.DestroyImmediate(hand);

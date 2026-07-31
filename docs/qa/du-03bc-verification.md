@@ -10,15 +10,16 @@
 4. EditMode에서 Aim ray-plane intersection과 Trajectory same-tick HandMarker mapping 오차 `<=1e-5u`
 5. PlayMode에서 latch→driver LateUpdate 1회 소비, Drawing frame candidate 1개, release `CANDIDATE>RELEASE`
 6. 에디터 Play에서 T1/T2/T3를 mode별 1회 통과 확인
-7. DU-03A 및 DU-02 EditMode 회귀 유지
+7. Drawing cyan preview, Pending amber preview, reach/ink invalid red 구간, Confirm 후 opaque cyan capsule visual과 동일 collider를 확인
+8. DU-03A 및 DU-02 EditMode 회귀 유지
 
 ## QA 로그
 
 | Tag | 확인 지점 |
 |---|---|
-| `[DU03BC_INPUT]` | LMB/E/RMB/Esc의 실제 Input System edge와 sequence |
-| `[DU03BC_SAMPLE]` | active mode, `phase=LATE_UPDATE`, `sampleIndex=1` |
-| `[DU03BC_MAPPING]` | source, candidate, independent expected, error |
+| `[DU03BC_INPUT]` | 증거 수집용 `verboseInputLogging`을 켰을 때 LMB/E/RMB/Esc의 실제 Input System edge와 sequence (기본 off) |
+| `[DU03BC_SAMPLE]` | 증거 수집용 `verboseMappingLogging`을 켰을 때 active mode, `phase=LATE_UPDATE`, `sampleIndex=1` (기본 off) |
+| `[DU03BC_MAPPING]` | 증거 수집용 `verboseMappingLogging`을 켰을 때 source, candidate, independent expected, error (기본 off) |
 | `[DU03BC_ROUTE]` | active adapter route |
 | `[DU03BC_PLAY_MODE]` | `Tab` 전환 route, `sessionReset=True` |
 | `[DU03BC_RESET]` | mode별 plane/edge reset |
@@ -34,8 +35,9 @@ Unity에서 `Assets/Scenes/DU02_SoloCourse.unity`를 열고 Play한다.
 - lane 선택: `1` / `2` / `3`
 - Draw: `LMB`, Confirm: `E`, Cancel: `RMB` / `Esc`, reset: `R`
 - adapter 전환: `Tab` (`Trajectory ↔ Aim`)
+- 비증거 에디터 pretest visual camera orbit: `LeftArrow` / `RightArrow` hold (`60°/s`, spawn 기준 `-30°~+30°`, Idle에서만; R/lane reset 시 `0°`)
 
-각 mode에서 lane `1`, `2`, `3`을 선택해 T1/T2/T3를 한 번씩 직접 통과한다. 전환 직후 Console에서 `[DU03BC_PLAY_MODE] ... sessionReset=True result=PASS`를 확인하고 그리기 중 `[DU03BC_MAPPING]`의 source가 Aim=`MOUSE_RAY`, Trajectory=`HAND_MARKER`인지 확인한다.
+각 mode에서 lane `1`, `2`, `3`을 선택해 T1/T2/T3를 한 번씩 직접 통과한다. Drawing 중 cyan 궤적, 사거리/잉크 초과 구간의 red 표시, LMB release 후 Pending amber 궤적, `E` Confirm 후 opaque cyan capsule chain이 남고 그 위에 올라갈 수 있는지 확인한다. Idle에서 Left/Right를 1초 누르면 visual yaw가 정확히 `±30°` clamp되고, Drawing/Pending 동안 freeze되며, R/lane reset 후 `0°`로 복원되는지 확인한다. Player/HandMarker와 gameplay `n0=(0,0,1)`은 변하지 않아야 한다. 전환 직후 Console에서 `[DU03BC_PLAY_MODE] ... sessionReset=True result=PASS`를 확인한다. mapping source의 상세 확인은 기본 off인 `verboseMappingLogging`을 증거 수집 때만 켜고 Aim=`MOUSE_RAY`, Trajectory=`HAND_MARKER`인지 확인한다.
 
 ## 자동 검증
 

@@ -60,7 +60,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void AimSnapshotsYawNormalWithoutPitch()
+        public void AimSnapshotsGameplayNormalIndependentOfVisualCameraYaw()
         {
             var adapter = root.AddComponent<Du03BCAimInputAdapter>();
             adapter.Configure(latch, hand.transform, camera);
@@ -69,9 +69,8 @@ namespace DoodleUp.Tests.EditMode
 
             adapter.ReadIntent();
 
-            var expected = Vector3.ProjectOnPlane(camera.transform.forward, Vector3.up).normalized;
             Assert.That(Vector3.Distance(adapter.LastMappingEvidence.PlaneOrigin, hand.transform.position), Is.LessThanOrEqualTo(0.00001f));
-            Assert.That(Vector3.Distance(adapter.LastMappingEvidence.PlaneNormal, expected), Is.LessThanOrEqualTo(0.00001f));
+            Assert.That(Vector3.Distance(adapter.LastMappingEvidence.PlaneNormal, Vector3.forward), Is.LessThanOrEqualTo(0.00001f));
             Assert.That(Mathf.Abs(adapter.LastMappingEvidence.PlaneNormal.y), Is.LessThanOrEqualTo(0.00001f));
         }
 
@@ -80,7 +79,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var adapter = root.AddComponent<Du03BCAimInputAdapter>();
             adapter.Configure(latch, hand.transform, camera);
-            var normal = Vector3.ProjectOnPlane(camera.transform.forward, Vector3.up).normalized;
+            var normal = Vector3.forward;
             var point = hand.transform.position
                 + Vector3.Cross(Vector3.up, normal).normalized * 0.2f
                 + Vector3.up * 0.1f;
@@ -99,7 +98,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var adapter = root.AddComponent<Du03BCAimInputAdapter>();
             adapter.Configure(latch, hand.transform, camera);
-            var normal = Vector3.ProjectOnPlane(camera.transform.forward, Vector3.up).normalized;
+            var normal = Vector3.forward;
             adapter.SetProbeRay(new Ray(hand.transform.position - normal, normal));
             latch.EnqueueProbeSnapshot(Input(1, true, false, true));
             adapter.ReadIntent();
@@ -120,7 +119,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var adapter = root.AddComponent<Du03BCAimInputAdapter>();
             adapter.Configure(latch, hand.transform, camera);
-            var normal = Vector3.ProjectOnPlane(camera.transform.forward, Vector3.up).normalized;
+            var normal = Vector3.forward;
             var parallel = Vector3.Cross(normal, Vector3.up).normalized;
             adapter.SetProbeRay(new Ray(hand.transform.position, parallel));
             latch.EnqueueProbeSnapshot(Input(1, true, false, true));

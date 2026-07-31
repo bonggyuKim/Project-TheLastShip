@@ -36,6 +36,8 @@ namespace DoodleUp.Input
     [DefaultExecutionOrder(-50)]
     public sealed class Du03BCInputEdgeLatch : MonoBehaviour
     {
+        [SerializeField] private bool verboseInputLogging;
+
         private InputAction drawAction;
         private InputAction confirmAction;
         private InputAction cancelMouseAction;
@@ -194,7 +196,8 @@ namespace DoodleUp.Input
         private void LogEdge(string control, string phase)
         {
             eventSequence++;
-            Debug.Log($"[DU03BC_INPUT] frame={Time.frameCount} seq={eventSequence} control={control} phase={phase} latched=True path=INPUT_SYSTEM");
+            if (verboseInputLogging)
+                Debug.Log($"[DU03BC_INPUT] frame={Time.frameCount} seq={eventSequence} control={control} phase={phase} latched=True path=INPUT_SYSTEM");
         }
 
         private void OnDeviceChange(InputDevice device, InputDeviceChange change)

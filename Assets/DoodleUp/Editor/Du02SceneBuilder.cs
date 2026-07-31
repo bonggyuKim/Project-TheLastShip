@@ -43,8 +43,12 @@ namespace DoodleUp.Editor
             previewObject.transform.SetParent(runtime.transform, false);
             var previewLine = previewObject.AddComponent<LineRenderer>();
             previewLine.useWorldSpace = true;
-            previewLine.widthMultiplier = 0.08f;
-            previewLine.sharedMaterial = CreateMaterial("DU03APendingGhostMaterial", new Color(0.20f, 0.85f, 1f, 0.45f));
+            previewLine.widthMultiplier = 0.12f;
+            previewLine.sharedMaterial = CreateMaterial("DU03AStrokePreviewMaterial", Color.white);
+            previewLine.startColor = new Color(0.15f, 0.95f, 1f, 1f);
+            previewLine.endColor = new Color(0.15f, 0.95f, 1f, 1f);
+            previewLine.numCapVertices = 6;
+            previewLine.numCornerVertices = 4;
             previewLine.positionCount = 0;
             previewLine.enabled = false;
 
@@ -71,6 +75,7 @@ namespace DoodleUp.Editor
                 previewLine,
                 committedStrokeRoot.transform);
             adapterRouter.SetStrokeDriver(strokeDriver);
+            cameraRig.ConfigurePretestOrbit(strokeDriver, inputEdgeLatch, true);
 
             var motor = player.GetComponent<Du02PlayerMotor>();
             var reset = runtime.AddComponent<Du02ResetCoordinator>();

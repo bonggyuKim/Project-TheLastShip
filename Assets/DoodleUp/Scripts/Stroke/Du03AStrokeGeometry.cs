@@ -15,6 +15,7 @@ namespace DoodleUp.Stroke
         public readonly GameObject Root;
         public readonly int SegmentCount;
         public readonly int ColliderCount;
+        public readonly int RendererCount;
         public readonly int DegenerateSkipped;
         public readonly float MaximumSharedEndpointGap;
         public readonly bool GeometryValid;
@@ -23,6 +24,7 @@ namespace DoodleUp.Stroke
             GameObject root,
             int segmentCount,
             int colliderCount,
+            int rendererCount,
             int degenerateSkipped,
             float maximumSharedEndpointGap,
             bool geometryValid)
@@ -30,6 +32,7 @@ namespace DoodleUp.Stroke
             Root = root;
             SegmentCount = segmentCount;
             ColliderCount = colliderCount;
+            RendererCount = rendererCount;
             DegenerateSkipped = degenerateSkipped;
             MaximumSharedEndpointGap = maximumSharedEndpointGap;
             GeometryValid = geometryValid;
@@ -38,6 +41,9 @@ namespace DoodleUp.Stroke
 
     public static class Du03AStrokeGeometry
     {
+        private static readonly Color CommittedColor = new(0.15f, 0.78f, 0.95f, 1f);
+        private static Material committedMaterial;
+
         public static Du03AStrokeGeometryResult Create(Du03AStrokeData stroke, Transform parent, int commitIndex)
         {
             if (stroke == null) throw new ArgumentNullException(nameof(stroke));
@@ -55,6 +61,7 @@ namespace DoodleUp.Stroke
 
                 var segmentCount = Math.Max(0, stroke.SimplifiedPoints.Count - 1);
                 var colliderCount = 0;
+                var rendererCount = 0;
                 var degenerateSkipped = 0;
                 var maximumGap = 0f;
                 var previousEnd = Vector3.zero;
@@ -87,6 +94,9 @@ namespace DoodleUp.Stroke
                     collider.isTrigger = false;
                     colliderCount++;
 
+                    CreateVisual(child.transform, index, length);
+                    rendererCount++;
+
                     if (hasPrevious)
                     {
                         var centerlineGap = Vector3.Distance(previousEnd, start);
@@ -97,9 +107,9 @@ namespace DoodleUp.Stroke
                     hasPrevious = true;
                 }
 
-                var valid = Validate(root.transform, segmentCount, colliderCount, degenerateSkipped, maximumGap);
+                var valid = Validate(root.transform, segmentCount, colliderCount, rendererCount, degenerateSkipped, maximumGap);
                 if (!valid) throw new InvalidOperationException("DU-03A capsule geometry validation failed.");
-                return new Du03AStrokeGeometryResult(root, segmentCount, colliderCount, degenerateSkipped, maximumGap, true);
+                return new Du03AStrokeGeometryResult(root, segmentCount, colliderCount, rendererCount, degenerateSkipped, maximumGap, true);
             }
             catch
             {
@@ -115,15 +125,46 @@ namespace DoodleUp.Stroke
             result.Root.SetActive(true);
         }
 
+        private static void CreateVisual(Transform segment, int index, float centerlineLength)
+        {
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            visual.name = $"Visual_{index:D3}";
+            visual.transform.SetParent(segment, false);
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localScale = new Vector3(
+                Du03AStrokeGeometryProfile.Diameter,
+                (centerlineLength + Du03AStrokeGeometryProfile.Diameter) * 0.5f,
+                Du03AStrokeGeometryProfile.Diameter);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = GetCommittedMaterial();
+        }
+
+        private static Material GetCommittedMaterial()
+        {
+            if (committedMaterial != null) return committedMaterial;
+            var shader = Shader.Find("Standard");
+            if (shader == null) throw new InvalidOperationException("DU-03A committed stroke shader is unavailable.");
+            committedMaterial = new Material(shader)
+            {
+                name = "DU03ACommittedStrokeMaterial",
+                color = CommittedColor
+            };
+            return committedMaterial;
+        }
+
         private static bool Validate(
             Transform root,
             int segmentCount,
             int colliderCount,
+            int rendererCount,
             int degenerateSkipped,
             float maximumGap)
         {
             if (root.localScale != Vector3.one || root.lossyScale != Vector3.one) return false;
             if (colliderCount + degenerateSkipped != segmentCount) return false;
+            if (rendererCount != colliderCount) return false;
+            if (root.GetComponentsInChildren<MeshRenderer>(true).Length != rendererCount) return false;
             if (maximumGap > 0.000001f) return false;
 
             foreach (var collider in root.GetComponentsInChildren<CapsuleCollider>(true))
@@ -139,7 +180,8 @@ namespace DoodleUp.Stroke
                     return false;
             }
 
-            return root.GetComponentsInChildren<Rigidbody>(true).Length == 0;
+            return root.GetComponentsInChildren<Rigidbody>(true).Length == 0
+                && root.GetComponentsInChildren<Collider>(true).Length == colliderCount;
         }
     }
 }

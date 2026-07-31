@@ -28,7 +28,14 @@ namespace DoodleUp.Runtime
             var courseLayer = LayerMask.NameToLayer("Course");
             var goalLayer = LayerMask.NameToLayer("Goal");
             var runtimeConfigurationValid = mainCamera && playerLayer == 8 && courseLayer == 9 && goalLayer == 10;
-            Debug.Log($"[DU02_PROVENANCE] buildId={buildId} unity={Application.unityVersion} inputSystem={InputSystem.version} devices={devices} fixedDeltaTime={Du02LogFormat.Float(Time.fixedDeltaTime)} scene={scene.name} sceneSha256={sceneHash} executableSha256={executableHash} runtimeAssemblySha256={runtimeAssemblyHash} course={Du02Profile.CourseId} profile={Du02Profile.ProfileId} mainCameraTag={mainCamera} playerLayer={playerLayer} courseLayer={courseLayer} goalLayer={goalLayer} runtimeConfigurationValid={runtimeConfigurationValid}");
+            var cameraRig = Camera.main != null ? Camera.main.GetComponent<Du02CameraRig>() : null;
+            var profileId = cameraRig != null ? cameraRig.ActiveProfileId : Du02Profile.ProfileId;
+            var visualYaw = cameraRig != null ? cameraRig.VisualYawOffset : 0f;
+            var gameplayNormal = cameraRig != null ? cameraRig.GameplayNormal : Vector3.forward;
+            var yawInputEnabled = cameraRig != null && cameraRig.PretestOrbitEnabled;
+            Debug.Log($"[DU02_PROVENANCE] buildId={buildId} unity={Application.unityVersion} inputSystem={InputSystem.version} devices={devices} fixedDeltaTime={Du02LogFormat.Float(Time.fixedDeltaTime)} scene={scene.name} sceneSha256={sceneHash} executableSha256={executableHash} runtimeAssemblySha256={runtimeAssemblyHash} course={Du02Profile.CourseId} profile={Du02Profile.ProfileId} profile_id={profileId} camera_visual_yaw={Du02LogFormat.Float(visualYaw)} gameplay_n0={Du02LogFormat.Vector(gameplayNormal)} yawInputEnabled={yawInputEnabled} mainCameraTag={mainCamera} playerLayer={playerLayer} courseLayer={courseLayer} goalLayer={goalLayer} runtimeConfigurationValid={runtimeConfigurationValid}");
+            if (yawInputEnabled || !Mathf.Approximately(visualYaw, 0f))
+                Debug.LogWarning($"[DU02_PROVENANCE_INVALID] reason=TECH_INVALID/CAMERA_YAW_INPUT_ENABLED profile_id={profileId} camera_visual_yaw={Du02LogFormat.Float(visualYaw)} gameplay_n0={Du02LogFormat.Vector(gameplayNormal)}");
             if (!runtimeConfigurationValid)
                 Debug.LogError($"[DU02_PROVENANCE_INVALID] mainCameraTag={mainCamera} playerLayer={playerLayer} courseLayer={courseLayer} goalLayer={goalLayer}");
 

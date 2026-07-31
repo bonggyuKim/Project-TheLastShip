@@ -9,7 +9,7 @@
 - `DoodleUp.Input`: Unity Input System을 읽어 프레임 입력 snapshot만 제공. gameplay state를 직접 변경하지 않음
 - `DoodleUp.Stroke`: DU-02 candidate sampling seam과 DU-03A 공통 `StrokeSession` backend 제공. 상세는 `docs/architecture/du-03a-stroke-session.md`
 - `DoodleUp.Physics`: Rigidbody player motor, depth constraint, grounded 판정
-- `DoodleUp.Runtime`: 코스·카메라·HandMarker·task state·reset orchestration·runtime evidence
+- `DoodleUp.Runtime`: 코스·카메라·HandMarker·task state·reset orchestration·runtime evidence. `Du02CameraRig`의 visual orbit은 `PRETEST_CAMERA_ORBIT_V1` 에디터 비증거 플레이에서만 활성화한다.
 - `DoodleUp.Editor`: 재현 scene 생성, Windows probe build, raw evidence 집계 보고서
 
 `Runtime`만 하위 경계를 조립한다. DU-02 단계에서는 `StrokeSession`을 구현하지 않았고, DU-03A에서 공통 backend, ghost preview, Confirm capsule chain과 deterministic LateUpdate probe source를 추가했다. Aim/Trajectory 완성 adapter와 traverse gameplay는 후속 단계 범위다.
@@ -20,7 +20,7 @@
 2. `Du02RuntimeController.Update`가 lane/R 경로를 호출하고 `Du02TaskState.Tick`을 진행한다. countdown 중 이동 입력은 0으로 잠긴다. Draw 구현 전이므로 Draw lock은 `IDu02TaskState.InputLocked` 계약으로 노출한다.
 3. `Du02PlayerMotor.FixedUpdate`가 world Y gravity와 world X 이동을 적용하고 world Z를 활성 lane spawn depth로 고정한다.
 4. `Du02CandidateSamplingSeam.LateUpdate`가 HandMarker와 drawing plane을 render frame당 1회 관찰한다. `Du02RuntimeFrameProbe.LateUpdate`가 같은 frame phase에서 독립 frame 수를 기록한다.
-5. `Du02ResetCoordinator.ResetToLane`이 fixed timestep, player transform/rotation/linear·angular velocity, HandMarker pose/scale, camera/FOV, task state, timer/countdown, goal/stroke/ink, sampling sequence를 한 호출에서 복원한다.
+5. `Du02ResetCoordinator.ResetToLane`이 fixed timestep, player transform/rotation/linear·angular velocity, HandMarker pose/scale, camera/FOV와 pretest visual yawOffset=0, task state, timer/countdown, goal/stroke/ink, sampling sequence를 한 호출에서 복원한다.
 6. `Du02RuntimeProbeRunner`는 standalone batchmode에서 30/60/144fps를 각각 실제 10초 관찰하고 T1/T2/T3의 R/lane-select reset을 교란 후 비교한다. Reset probe의 `before`는 non-identity rotation, non-zero angular velocity, probe-only `ProbePerturbed` phase를 가져야 하며 `after`는 identity/zero/`Idle`로 복원되어야 한다.
 7. `Du02Verification.RunFromRaw`는 27열 `DU02_Runtime_Raw.csv`만 파싱해 최종 보고서를 집계한다. 각 reset 행의 baseline/before/after hash와 rotation/angular velocity/phase 복원을 독립 확인하며 expectation helper는 runtime actual 산출에 사용하지 않는다.
 
@@ -47,6 +47,14 @@ Scene: `Assets/Scenes/DU02_SoloCourse.unity`
 - T3: 동일 높이, edge gap `0.95 u`, 양 contact band 폭 `0.12 u`
 - HandMarker canonical local transform: position `(0.35,0.80,0)`, rotation identity, scale `(1,1,1)`
 - Layers: Player `8`, Course `9`, Goal `10`; camera tag `MainCamera`
+
+## Pretest visual camera orbit
+
+- 에디터 비배치 Play의 `PRETEST_CAMERA_ORBIT_V1`에서만 Left/Right hold를 받으며 `60°/s`, spawn 기준 `-30°~+30°`, 무가속·무관성으로 visual camera를 orbit한다.
+- 입력은 `StrokeSession.Idle`에서만 허용된다. Drawing/Pending 동안 visual yaw는 freeze되고 R/lane reset에서 `yawOffset=0`으로 복원된다.
+- Player root, HandMarker, world-X locomotion, depth plane과 gameplay `n0=(0,0,1)`은 변하지 않는다. Aim은 orbit된 visual camera ray를 gameplay `n0` plane에 교차한다.
+- `[DU02_PROVENANCE]`과 최초 orbit event는 `profile_id`, `camera_visual_yaw`, `gameplay_n0`을 남긴다. pretest orbit이 활성인 실행은 `[DU02_PROVENANCE_INVALID] reason=TECH_INVALID/CAMERA_YAW_INPUT_ENABLED`로 Gate A 본 측정에서 제외한다.
+- standalone/배치 실행은 orbit 입력을 비활성화하고 기존 `DU02_PROFILE_V1` 고정 카메라를 유지한다.
 
 ## 중요 상태 전이
 

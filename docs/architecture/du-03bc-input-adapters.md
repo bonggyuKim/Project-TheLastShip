@@ -6,7 +6,7 @@
 ## 책임 경계
 
 - `DoodleUp.Input.Du03BCInputEdgeLatch`: Input System action을 소유하고 Draw/Confirm/Cancel/Reset edge를 수집한다. stroke edge는 `ConsumeStrokeEdges()`에서 한 번만 소비되며 R은 별도 `ConsumeResetPressed()`로만 소비된다.
-- `DoodleUp.Runtime.Du03BCAimInputAdapter`: Draw press에서 HandMarker 원점과 camera yaw-normal plane을 snapshot하고 현재 mouse screen ray와의 교차점을 candidate로 만든다.
+- `DoodleUp.Runtime.Du03BCAimInputAdapter`: Draw press에서 HandMarker 원점과 spawn gameplay `n0` plane을 snapshot하고 현재 visual camera mouse screen ray와의 교차점을 candidate로 만든다. `PRETEST_CAMERA_ORBIT_V1`의 visual yaw는 ray만 바꾸며 gameplay plane은 바꾸지 않는다.
 - `DoodleUp.Runtime.Du03BCTrajectoryInputAdapter`: driver `LateUpdate`가 호출한 tick의 `HandMarker.position`을 그대로 candidate로 만든다. cursor, remote point, 독립 steering, guide, prediction은 없다.
 - `DoodleUp.Runtime.Du03BCAdapterRouter`: `Du03AStrokeDriver`에 보이는 유일한 `IDu03ADrawIntentSource`다. 에디터 플레이에서는 Trajectory로 시작하고 `Tab`으로 Aim/Trajectory를 전환한다. 전환 시 진행 중 stroke를 reset하고 driver mode와 active adapter를 함께 바꾼다.
 - `DoodleUp.Runtime.Du03BCResetInputBridge`: R edge를 DU-02 canonical reset transaction으로 연결한다.
@@ -33,14 +33,14 @@ R           → canonical trial reset only
 
 ## Aim mapping
 
-Draw press 시 다음 plane을 고정한다.
+Draw press 시 다음 gameplay plane을 고정한다.
 
 ```csharp
 planeOrigin = handMarker.position;
-planeNormal = Vector3.ProjectOnPlane(camera.transform.forward, Vector3.up).normalized;
+planeNormal = gameplayN0; // current course: Vector3.forward
 ```
 
-Drawing 중에는 camera가 변해도 snapshot plane을 바꾸지 않는다. screen position은 `Camera.ScreenPointToRay`로 변환하고 ray-plane intersection을 candidate로 제공한다. 독립 교차 계산과의 오차 계약은 `<=1e-5u`다.
+Gate A 고정 카메라에서는 `gameplayN0`가 spawn camera yaw-normal과 같다. `PRETEST_CAMERA_ORBIT_V1`에서는 visual camera만 orbit하므로 screen position은 현재 visual camera의 `Camera.ScreenPointToRay`로 변환하되 ray는 고정 `gameplayN0` snapshot plane과 교차한다. Drawing 중에는 visual camera와 plane snapshot을 모두 freeze한다. 독립 교차 계산과의 오차 계약은 `<=1e-5u`다.
 
 - parallel ray: raw candidate 없음, `NO_PLANE_INTERSECTION`
 - non-finite ray/screen/intersection: raw candidate 없음, `NON_FINITE`
@@ -72,10 +72,10 @@ InputSystem callbacks
 
 주요 로그:
 
-- `[DU03BC_INPUT]`: control/phase/event sequence
+- `[DU03BC_INPUT]`: control/phase/event sequence. `verboseInputLogging`이 켜진 증거 수집 때만 출력하며 기본값은 off다. sequence 증가는 로그 설정과 무관하게 유지된다.
 - `[DU03BC_INPUT_CLEAR]`: focus/device/reset stale-edge clear
-- `[DU03BC_SAMPLE]`: mode/source/frame/sampleIndex/input sequence
-- `[DU03BC_MAPPING]`: candidate/independent expected/error/invalid reason
+- `[DU03BC_SAMPLE]`: mode/source/frame/sampleIndex/input sequence. `verboseMappingLogging`이 켜진 증거 수집 때만 출력하며 기본값은 off다.
+- `[DU03BC_MAPPING]`: candidate/independent expected/error/invalid reason. `verboseMappingLogging`이 켜진 증거 수집 때만 출력하며 기본값은 off다.
 - `[DU03BC_ROUTE]`: active source 변경
 - `[DU03BC_PLAY_MODE]`: `Tab` 전환, 선택 route와 session reset
 - `[DU03BC_RESET]`, `[DU03BC_INPUT_RESET]`: adapter 및 canonical R reset

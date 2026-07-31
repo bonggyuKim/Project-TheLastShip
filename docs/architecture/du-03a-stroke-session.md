@@ -6,7 +6,7 @@
 ## 책임 경계
 
 - `DoodleUp.Stroke.Du03AStrokeSession`: 상태머신, plane projection, reach, 거리 resampling, dedupe, ink 원자 판정, simplification, immutable `Du03AStrokeData`를 소유한다.
-- `DoodleUp.Stroke.Du03AStrokeDriver`: `LateUpdate`에서 adapter의 `Du03ADrawIntent`만 소비하고 backend 호출, ghost `LineRenderer`, Confirm geometry transaction, 상태·candidate 로그를 담당한다.
+- `DoodleUp.Stroke.Du03AStrokeDriver`: `LateUpdate`에서 adapter의 `Du03ADrawIntent`만 소비하고 backend 호출, ghost `LineRenderer`, Confirm geometry transaction, 상태 로그를 담당한다. 프레임별 candidate/LateUpdate 로그는 `verboseSamplingLogging`이 켜진 증거 수집 때만 출력하며 기본값은 off다. `LateUpdateProcessed` evidence 발행은 로그 설정과 무관하게 유지된다.
 - `DoodleUp.Stroke.Du03AStrokeGeometry`: Confirm 전에 비활성 root/child capsule chain을 준비·검증하고 session commit 성공 후 활성화한다. 생성 실패 시 Pending을 유지한다.
 - `IDu03ADrawIntentSource`: adapter 경계다. adapter는 candidate mapping과 input edge만 제공하고 물리·잉크·ownership을 알지 않는다.
 - `DoodleUp.Runtime.Du03ADeterministicIntentSource`: DU-03A standalone evidence 전용 deterministic source다.
@@ -27,9 +27,9 @@ Drawing|Pending --Cancel--> Cancelled --> Idle
 ```
 
 - `LastTerminalState`가 `Committed|Cancelled` 결과를 보존하고 안정 상태는 다시 `Idle`이다.
-- Pending은 `Du03AStrokeData`와 ghost preview만 가지며 collider/root/Rigidbody가 없다.
+- Pending은 `Du03AStrokeData`와 amber ghost preview만 가지며 collider/root/Rigidbody가 없다. Drawing preview는 opaque cyan, reach/ink invalid 구간은 red로 표시하며 Confirm 후 preview는 숨기고 committed capsule visual을 남긴다.
 - accepted Confirm은 simplified point pair별 capsule을 비활성 상태로 준비·검증한 뒤 session commit과 같은 transaction에서 활성화한다.
-- Capsule은 local Y 정렬, `direction=1`, `radius=0.14`, `height=segmentLength+0.28`, `center=0`, non-trigger, root/child scale one을 강제한다. `<=1e-6` segment는 skip telemetry를 남긴다.
+- Capsule은 local Y 정렬, `direction=1`, `radius=0.14`, `height=segmentLength+0.28`, `center=0`, non-trigger, root/child scale one을 강제한다. 각 collider segment에는 같은 중심·축·외형 치수를 가진 collider 없는 capsule visual child를 1개 둔다. 불투명 cyan material을 공유하며 Rigidbody나 추가 Collider를 만들지 않는다. `<=1e-6` segment는 collider와 visual 모두 생략하고 skip telemetry를 남긴다.
 - Pending 중 새 Draw는 backend `TryBegin`에서 거부한다.
 - out-of-state Confirm은 같은 frame의 candidate/release 처리를 삼키지 않는다. 실제 Pending commit 성공 시에만 frame 처리를 종료한다.
 
