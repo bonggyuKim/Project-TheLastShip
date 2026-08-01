@@ -1,3 +1,4 @@
+using DoodleUp.Core;
 using DoodleUp.Input;
 using DoodleUp.Runtime;
 using DoodleUp.Stroke;
@@ -22,7 +23,7 @@ namespace DoodleUp.Tests.EditMode
             player = new GameObject("Player");
             hand = new GameObject("HandMarker");
             hand.transform.SetParent(player.transform, false);
-            hand.transform.localPosition = new Vector3(0.35f, 0.8f, 0f);
+            hand.transform.localPosition = Du02Profile.HandLocalPosition;
             cameraObject = new GameObject("Camera");
             camera = cameraObject.AddComponent<Camera>();
             camera.transform.SetPositionAndRotation(new Vector3(0f, 2f, -6f), Quaternion.Euler(10f, 15f, 0f));

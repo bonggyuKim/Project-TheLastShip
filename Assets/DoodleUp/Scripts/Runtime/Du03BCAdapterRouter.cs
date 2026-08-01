@@ -19,7 +19,7 @@ namespace DoodleUp.Runtime
         [SerializeField] private Du03BCAimInputAdapter aimAdapter;
         [SerializeField] private Du03BCTrajectoryInputAdapter trajectoryAdapter;
         [SerializeField] private Du03AStrokeDriver strokeDriver;
-        [SerializeField] private Du03BCAdapterRoute activeRoute = Du03BCAdapterRoute.Trajectory;
+        [SerializeField] private Du03BCAdapterRoute activeRoute = Du03BCAdapterRoute.Aim;
 
         public Du03BCAdapterRoute ActiveRoute => activeRoute;
         public IDu03BCInputAdapter ActiveAdapter => activeRoute switch
@@ -71,6 +71,22 @@ namespace DoodleUp.Runtime
                 Du03BCAdapterRoute.Trajectory => trajectoryAdapter.ReadIntent(),
                 _ => default
             };
+        }
+
+        private void Start()
+        {
+            if (Application.isBatchMode)
+                return;
+
+            if (activeRoute != Du03BCAdapterRoute.Aim)
+            {
+                strokeDriver?.ResetSession();
+                SetRoute(Du03BCAdapterRoute.Aim);
+                strokeDriver?.SetModeForProbe(Du03AStrokeMode.Aim);
+            }
+            if (Application.isEditor && GetComponent<Du03BCPlayabilityVisuals>() == null)
+                gameObject.AddComponent<Du03BCPlayabilityVisuals>();
+            Debug.Log($"[DU03BC_PLAY_MODE] frame={Time.frameCount} control=SCENE_START route={activeRoute} sessionReset=True result=PASS");
         }
 
         private void Update()

@@ -6,10 +6,11 @@
 ## 책임 경계
 
 - `DoodleUp.Input.Du03BCInputEdgeLatch`: Input System action을 소유하고 Draw/Confirm/Cancel/Reset edge를 수집한다. stroke edge는 `ConsumeStrokeEdges()`에서 한 번만 소비되며 R은 별도 `ConsumeResetPressed()`로만 소비된다.
-- `DoodleUp.Runtime.Du03BCAimInputAdapter`: Draw press에서 HandMarker 원점과 spawn gameplay `n0` plane을 snapshot하고 현재 visual camera mouse screen ray와의 교차점을 candidate로 만든다. `PRETEST_CAMERA_ORBIT_V1`의 visual yaw는 ray만 바꾸며 gameplay plane은 바꾸지 않는다.
+- `DoodleUp.Runtime.Du03BCAimInputAdapter`: Draw press에서 HandMarker 원점과 spawn gameplay `n0` plane을 snapshot하고 현재 visual camera mouse screen ray와의 교차점을 candidate로 만든다. `PRETEST_FIRST_PERSON_V2`의 1인칭 위치와 visual yaw는 ray만 바꾸며 gameplay plane은 바꾸지 않는다.
 - `DoodleUp.Runtime.Du03BCTrajectoryInputAdapter`: driver `LateUpdate`가 호출한 tick의 `HandMarker.position`을 그대로 candidate로 만든다. cursor, remote point, 독립 steering, guide, prediction은 없다.
-- `DoodleUp.Runtime.Du03BCAdapterRouter`: `Du03AStrokeDriver`에 보이는 유일한 `IDu03ADrawIntentSource`다. 에디터 플레이에서는 Trajectory로 시작하고 `Tab`으로 Aim/Trajectory를 전환한다. 전환 시 진행 중 stroke를 reset하고 driver mode와 active adapter를 함께 바꾼다.
+- `DoodleUp.Runtime.Du03BCAdapterRouter`: `Du03AStrokeDriver`에 보이는 유일한 `IDu03ADrawIntentSource`다. 사람 플레이에서는 Aim으로 시작하고 `Tab`으로 Aim/Trajectory를 전환한다. 전환 시 진행 중 stroke를 reset하고 driver mode와 active adapter를 함께 바꾼다. Aim은 LMB drag로 원격 candidate가 움직이며, Trajectory는 LMB hold 중 A/D 이동·점프로 HandMarker가 움직여야 궤적이 생긴다.
 - `DoodleUp.Runtime.Du03BCResetInputBridge`: R edge를 DU-02 canonical reset transaction으로 연결한다.
+- `DoodleUp.Runtime.Du03BCPlayabilityVisuals`: `PRETEST_FIRST_PERSON_V2` 어깨너머 시점에서 물리 없는 파란 BodyVisual, 단일 authoritative HandMarker의 주황 HandVisual, Drawing 중 HandMarker 중심 `1.25u` reach circle을 표시한다. visual proxy는 없으며 HandMarker fixed-child transform과 판정 로직은 변경하지 않는다.
 - `DoodleUp.Runtime.Du03BCRuntimeProbeRunner`: 실제 router→driver `LateUpdate` 경로와 mapping evidence, release order, parity, reset을 raw CSV로 기록한다.
 - 기존 `Du03AStrokeSession`, `Du03AStrokeDriver`, `Du03AStrokeGeometry`는 변경하지 않는다. projection/reach/resampling/dedupe/ledger/Confirm geometry 책임은 계속 DU-03A backend에 있다.
 
@@ -40,7 +41,7 @@ planeOrigin = handMarker.position;
 planeNormal = gameplayN0; // current course: Vector3.forward
 ```
 
-Gate A 고정 카메라에서는 `gameplayN0`가 spawn camera yaw-normal과 같다. `PRETEST_CAMERA_ORBIT_V1`에서는 visual camera만 orbit하므로 screen position은 현재 visual camera의 `Camera.ScreenPointToRay`로 변환하되 ray는 고정 `gameplayN0` snapshot plane과 교차한다. Drawing 중에는 visual camera와 plane snapshot을 모두 freeze한다. 독립 교차 계산과의 오차 계약은 `<=1e-5u`다.
+Gate A 고정 카메라에서는 `gameplayN0`가 spawn camera yaw-normal과 같다. `PRETEST_FIRST_PERSON_V2`에서는 visual camera만 player eye 위치로 이동하고 yaw하므로 screen position은 현재 1인칭 visual camera의 `Camera.ScreenPointToRay`로 변환하되 ray는 고정 `gameplayN0` snapshot plane과 교차한다. Drawing 중에는 visual camera와 plane snapshot을 모두 freeze한다. 독립 교차 계산과의 오차 계약은 `<=1e-5u`다.
 
 - parallel ray: raw candidate 없음, `NO_PLANE_INTERSECTION`
 - non-finite ray/screen/intersection: raw candidate 없음, `NON_FINITE`
@@ -57,7 +58,7 @@ mouseInfluence=False
 remotePoint=False
 ```
 
-HandMarker는 player fixed child이며 canonical local pose는 `(0.35,0.80,0)`, identity rotation, unit scale다. reset은 DU-02 player/camera/task reset, DU-03A session reset, adapter plane/edge reset을 같은 transaction으로 복원한다.
+HandMarker는 player fixed child이며 canonical local pose는 `(0,+0.980,0)`, identity rotation, unit scale다. reset은 DU-02 player/camera/task reset, DU-03A session reset, adapter plane/edge reset을 같은 transaction으로 복원한다.
 
 ## 데이터 흐름과 QA 관찰점
 

@@ -88,6 +88,7 @@ namespace DoodleUp.Stroke
         public event Action<Du03ALateUpdateEvidence> LateUpdateProcessed;
 
         public Du03AStrokeSession Session { get; private set; }
+        public Transform HandMarker => handMarker;
         public long LateUpdateSequence { get; private set; }
         public Du03AStrokeGeometryResult LastGeometryResult { get; private set; }
         public int CommittedColliderCount

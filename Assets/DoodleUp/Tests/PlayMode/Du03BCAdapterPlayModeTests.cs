@@ -1,4 +1,5 @@
 using System.Collections;
+using DoodleUp.Core;
 using DoodleUp.Input;
 using DoodleUp.Runtime;
 using DoodleUp.Stroke;
@@ -119,7 +120,7 @@ namespace DoodleUp.Tests.PlayMode
             player.transform.SetParent(root.transform, false);
             var hand = new GameObject("HandMarker");
             hand.transform.SetParent(player.transform, false);
-            hand.transform.localPosition = new Vector3(0.35f, 0.8f, 0f);
+            hand.transform.localPosition = Du02Profile.HandLocalPosition;
             var cameraObject = new GameObject("Camera");
             cameraObject.transform.SetParent(root.transform, false);
             cameraObject.transform.position = new Vector3(0f, 2f, -6f);

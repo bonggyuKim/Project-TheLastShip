@@ -26,7 +26,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void HandMarkerUsesApprovedFixedPose()
         {
-            Assert.That(Du02Profile.HandLocalPosition, Is.EqualTo(new Vector3(0.35f, 0.80f, 0f)));
+            Assert.That(Du02Profile.HandLocalPosition, Is.EqualTo(new Vector3(0f, 0.980f, 0f)));
         }
 
         [Test]

@@ -26,6 +26,7 @@ namespace DoodleUp.Editor
             CreateCourse();
 
             var player = CreatePlayer();
+            CreatePlayerVisual(player.transform);
             var handMarker = CreateHandMarker(player.transform);
             var camera = CreateCamera();
             var runtime = new GameObject("DU02_Runtime");
@@ -60,7 +61,7 @@ namespace DoodleUp.Editor
             trajectoryAdapter.Configure(inputEdgeLatch, handMarker, camera);
             var adapterRouter = runtime.AddComponent<Du03BCAdapterRouter>();
             adapterRouter.Configure(deterministicIntentSource, aimAdapter, trajectoryAdapter);
-            adapterRouter.SetRoute(Du03BCAdapterRoute.Trajectory);
+            adapterRouter.SetRoute(Du03BCAdapterRoute.Aim);
             var committedStrokeRoot = new GameObject("DU03A_CommittedStrokes");
             committedStrokeRoot.transform.SetParent(runtime.transform, false);
             committedStrokeRoot.transform.localScale = Vector3.one;
@@ -71,11 +72,18 @@ namespace DoodleUp.Editor
                 camera,
                 adapterRouter,
                 "player-1",
-                Du03AStrokeMode.Trajectory,
+                Du03AStrokeMode.Aim,
                 previewLine,
                 committedStrokeRoot.transform);
             adapterRouter.SetStrokeDriver(strokeDriver);
             cameraRig.ConfigurePretestOrbit(strokeDriver, inputEdgeLatch, true);
+
+            var reachObject = new GameObject("DU03BC_ReachIndicator");
+            reachObject.transform.SetParent(runtime.transform, false);
+            var reachLine = reachObject.AddComponent<LineRenderer>();
+            reachLine.sharedMaterial = CreateMaterial("DU03BCReachMaterial", Color.white);
+            var playabilityVisuals = runtime.AddComponent<Du03BCPlayabilityVisuals>();
+            playabilityVisuals.Configure(handMarker, strokeDriver, reachLine);
 
             var motor = player.GetComponent<Du02PlayerMotor>();
             var reset = runtime.AddComponent<Du02ResetCoordinator>();
@@ -115,6 +123,18 @@ namespace DoodleUp.Editor
             return player;
         }
 
+        private static void CreatePlayerVisual(Transform player)
+        {
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "BodyVisual";
+            body.transform.SetParent(player, false);
+            body.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+            body.transform.localRotation = Quaternion.identity;
+            body.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+            body.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("PlayerBodyMaterial", new Color(0.30f, 0.42f, 0.95f));
+        }
+
         private static Transform CreateHandMarker(Transform player)
         {
             var marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -124,7 +144,17 @@ namespace DoodleUp.Editor
             marker.transform.localRotation = Quaternion.identity;
             marker.transform.localScale = Vector3.one;
             Object.DestroyImmediate(marker.GetComponent<Collider>());
-            marker.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("HandMarkerMaterial", new Color(1f, 0.75f, 0.1f));
+            marker.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("HandMarkerMaterial", new Color(1f, 0.55f, 0.05f));
+
+            var handCore = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            handCore.name = "HandVisual";
+            handCore.transform.SetParent(marker.transform, false);
+            handCore.transform.localPosition = Vector3.zero;
+            handCore.transform.localRotation = Quaternion.identity;
+            handCore.transform.localScale = Vector3.one * 0.22f;
+            Object.DestroyImmediate(handCore.GetComponent<Collider>());
+            handCore.GetComponent<MeshRenderer>().sharedMaterial = marker.GetComponent<MeshRenderer>().sharedMaterial;
+            marker.GetComponent<MeshRenderer>().enabled = false;
             return marker.transform;
         }
 

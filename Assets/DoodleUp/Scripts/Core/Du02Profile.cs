@@ -20,7 +20,9 @@ namespace DoodleUp.Core
         public const float CameraPitch = 10.00f;
         public const float CameraVerticalFov = 60.00f;
 
-        public static readonly Vector3 HandLocalPosition = new Vector3(0.35f, 0.80f, 0.00f);
+        public static readonly Vector3 PretestCameraLocalPosition = new(0f, 1.20f, -1.25f);
+        public const float PretestCameraPitch = -10f;
+        public static readonly Vector3 HandLocalPosition = new(0f, 0.980f, 0f);
 
         public const float T1Gap = 0.70f;
         public const float T2HorizontalOffset = 0.65f;

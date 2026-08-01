@@ -9,9 +9,10 @@ namespace DoodleUp.Runtime
     [DefaultExecutionOrder(50)]
     public sealed class Du02CameraRig : MonoBehaviour
     {
-        public const string PretestProfileId = "PRETEST_CAMERA_ORBIT_V1";
+        public const string PretestProfileId = "PRETEST_FIRST_PERSON_V2";
         public const float PretestYawSpeed = 60f;
         public const float PretestYawLimit = 30f;
+        public static Vector3 PretestEyeOffset => Du02Profile.PretestCameraLocalPosition;
 
         [SerializeField] private Camera targetCamera;
         [SerializeField] private Transform playerRoot;
@@ -70,7 +71,7 @@ namespace DoodleUp.Runtime
                 yawOffset + Mathf.Clamp(horizontal, -1f, 1f) * PretestYawSpeed * deltaTime,
                 -PretestYawLimit,
                 PretestYawLimit);
-            ApplyVisualPose();
+            ApplyVisualPose(!emitEvidence);
 
             if (emitEvidence && !yawInputLogged)
             {
@@ -110,12 +111,18 @@ namespace DoodleUp.Runtime
                 && (inputLatch == null || !inputLatch.DrawHeld);
         }
 
-        private void ApplyVisualPose()
+        private void ApplyVisualPose(bool forcePretest = false)
         {
-            var yaw = Quaternion.Euler(0f, yawOffset, 0f);
-            var offset = yaw * new Vector3(0f, Du02Profile.CameraHeight, -Du02Profile.CameraDistance);
-            var rotation = Quaternion.Euler(Du02Profile.CameraPitch, yawOffset, 0f);
-            transform.SetPositionAndRotation(orbitPivot + offset, rotation);
+            if (forcePretest || PretestOrbitEnabled)
+            {
+                var rotation = Quaternion.Euler(Du02Profile.PretestCameraPitch, yawOffset, 0f);
+                transform.SetPositionAndRotation(orbitPivot + PretestEyeOffset, rotation);
+                return;
+            }
+
+            var offset = new Vector3(0f, Du02Profile.CameraHeight, -Du02Profile.CameraDistance);
+            var fixedRotation = Quaternion.Euler(Du02Profile.CameraPitch, 0f, 0f);
+            transform.SetPositionAndRotation(orbitPivot + offset, fixedRotation);
         }
     }
 }

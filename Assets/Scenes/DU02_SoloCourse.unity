@@ -1760,7 +1760,7 @@ Transform:
   m_GameObject: {fileID: 732411199}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.35, y: 0.8, z: 0}
+  m_LocalPosition: {x: 0, y: 0.98, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2964,7 +2964,7 @@ MonoBehaviour:
   handMarker: {fileID: 732411200}
   targetCamera: {fileID: 1652176877}
   ownerId: player-1
-  mode: 1
+  mode: 0
   previewLine: {fileID: 1096584540}
   committedStrokeParent: {fileID: 1802661224}
   intentSourceBehaviour: {fileID: 1895407215}
@@ -2984,7 +2984,7 @@ MonoBehaviour:
   aimAdapter: {fileID: 1895407217}
   trajectoryAdapter: {fileID: 1895407216}
   strokeDriver: {fileID: 1895407214}
-  activeRoute: 2
+  activeRoute: 1
 --- !u!114 &1895407216
 MonoBehaviour:
   m_ObjectHideFlags: 0

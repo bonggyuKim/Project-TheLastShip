@@ -1,3 +1,4 @@
+using DoodleUp.Core;
 using DoodleUp.Input;
 using DoodleUp.Runtime;
 using DoodleUp.Stroke;
@@ -27,17 +28,28 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(rig.VisualYawOffset, Is.EqualTo(30f).Within(0.0001f));
             Assert.That(camera.transform.eulerAngles.y, Is.EqualTo(30f).Within(0.0001f));
+            Assert.That(camera.transform.position, Is.EqualTo(Du02Profile.PretestCameraLocalPosition));
+            Assert.That(NormalizeSignedAngle(camera.transform.eulerAngles.x), Is.EqualTo(Du02Profile.PretestCameraPitch).Within(0.0001f));
+            Assert.That(rig.ActiveProfileId, Is.EqualTo(Du02Profile.ProfileId));
+            Assert.That(Du02CameraRig.PretestProfileId, Is.EqualTo("PRETEST_FIRST_PERSON_V2"));
             Assert.That(player.transform.rotation, Is.EqualTo(Quaternion.identity));
             Assert.That(rig.GameplayNormal, Is.EqualTo(Vector3.forward));
 
             rig.ResetPose(new Vector3(2f, 0f, 0f));
+            rig.TickPretestOrbitForProbe(1f, 0f);
 
             Assert.That(rig.VisualYawOffset, Is.Zero.Within(0.0001f));
             Assert.That(camera.transform.eulerAngles.y, Is.Zero.Within(0.0001f));
+            Assert.That(camera.transform.position, Is.EqualTo(new Vector3(2f, 0f, 0f) + Du02Profile.PretestCameraLocalPosition));
 
             Object.DestroyImmediate(cameraObject);
             Object.DestroyImmediate(player);
             Object.DestroyImmediate(root);
+        }
+
+        private static float NormalizeSignedAngle(float angle)
+        {
+            return angle > 180f ? angle - 360f : angle;
         }
 
         [Test]
