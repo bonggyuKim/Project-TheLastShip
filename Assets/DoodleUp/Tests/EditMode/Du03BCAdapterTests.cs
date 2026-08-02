@@ -40,10 +40,13 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void InputManifestSeparatesResetFromCancel()
+        public void InputManifestUsesReleaseCommitAndSeparatesResetFromCancel()
         {
+            Assert.That(Du03BCInputEdgeLatch.BindingManifest, Does.Contain("Commit=<Mouse>/leftButton#release"));
+            Assert.That(Du03BCInputEdgeLatch.BindingManifest, Does.Not.Contain("Confirm=<Keyboard>/e;"));
             Assert.That(Du03BCInputEdgeLatch.BindingManifest, Does.Contain("Cancel=<Mouse>/rightButton|<Keyboard>/escape"));
             Assert.That(Du03BCInputEdgeLatch.BindingManifest, Does.Contain("Reset=<Keyboard>/r"));
+            Assert.That(Du03BCInputEdgeLatch.BindingManifest, Does.Contain("InkReset=<Keyboard>/q"));
         }
 
         [Test]
@@ -176,6 +179,135 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(Vector3.Distance(intent.Candidate, hand.transform.position), Is.LessThanOrEqualTo(0.00001f));
             Assert.That(adapter.LastMappingEvidence.MappingError, Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void ArmDirectUsesCurrentCameraBasisForSpatialCandidate()
+        {
+            hand.transform.localPosition = Du03BCArmDirectInputAdapter.NeutralHandLocalPosition;
+            camera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var adapter = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            adapter.Configure(latch, hand.transform, camera);
+            latch.EnqueueProbeSnapshot(Input(1, true, false, true));
+            adapter.ReadIntent();
+            camera.transform.rotation = Quaternion.Euler(30f, 40f, 0f);
+            var neutralTip = hand.transform.parent.TransformPoint(Du03BCArmDirectInputAdapter.NeutralHandLocalPosition);
+            adapter.SetProbeMouseDelta(new Vector2(40f, -20f));
+            latch.EnqueueProbeSnapshot(Input(2, false, false, true));
+
+            var intent = adapter.ReadIntent();
+            var expected = neutralTip
+                + camera.transform.right * 0.10f
+                + camera.transform.up * -0.05f;
+
+            Assert.That(Vector3.Distance(intent.Candidate, expected), Is.LessThanOrEqualTo(0.00001f));
+            Assert.That(Mathf.Abs(intent.Candidate.z - adapter.LastMappingEvidence.PlaneOrigin.z), Is.GreaterThan(0.0001f));
+            Assert.That(hand.transform.position, Is.EqualTo(intent.Candidate));
+            Assert.That(adapter.Mode, Is.EqualTo(Du03AStrokeMode.Spatial));
+            Assert.That(adapter.LastMappingEvidence.MappingSource, Is.EqualTo("CAMERA_LOOK_ARM_SPATIAL"));
+        }
+
+        [Test]
+        public void ArmDirectFollowsCurrentCameraBasisAfterPress()
+        {
+            hand.transform.localPosition = Du03BCArmDirectInputAdapter.NeutralHandLocalPosition;
+            camera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(15f, 30f, 0f));
+            var adapter = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            adapter.Configure(latch, hand.transform, camera);
+            latch.EnqueueProbeSnapshot(Input(1, true, false, true));
+            adapter.ReadIntent();
+            camera.transform.rotation = Quaternion.Euler(-20f, -45f, 0f);
+            var currentRight = camera.transform.right;
+            adapter.SetProbeMouseDelta(new Vector2(40f, 0f));
+            latch.EnqueueProbeSnapshot(Input(2, false, false, true));
+
+            var intent = adapter.ReadIntent();
+            var expected = hand.transform.parent.TransformPoint(Du03BCArmDirectInputAdapter.NeutralHandLocalPosition)
+                + currentRight * 0.10f;
+
+            Assert.That(Vector3.Distance(intent.Candidate, expected), Is.LessThanOrEqualTo(0.00001f));
+            Assert.That(Mathf.Abs(intent.Candidate.z - adapter.LastMappingEvidence.PlaneOrigin.z), Is.GreaterThan(0.0001f));
+        }
+
+        [Test]
+        public void ArmDirectCancelReturnsHandToNeutral()
+        {
+            hand.transform.localPosition = Du03BCArmDirectInputAdapter.NeutralHandLocalPosition;
+            camera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var adapter = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            adapter.Configure(latch, hand.transform, camera);
+            latch.EnqueueProbeSnapshot(Input(1, true, false, true));
+            adapter.ReadIntent();
+            adapter.SetProbeMouseDelta(new Vector2(100f, 0f));
+            latch.EnqueueProbeSnapshot(Input(2, false, false, true));
+            adapter.ReadIntent();
+            latch.EnqueueProbeSnapshot(new Du03BCInputSnapshot(3, false, false, false, false, true, "TEST"));
+
+            var intent = adapter.ReadIntent();
+
+            Assert.That(intent.CancelPressed, Is.True);
+            Assert.That(hand.transform.localPosition, Is.EqualTo(Du03BCArmDirectInputAdapter.NeutralHandLocalPosition));
+        }
+
+        [Test]
+        public void ArmDirectTracksDesiredTipBeyondLegacyReachRadius()
+        {
+            hand.transform.localPosition = Du03BCArmDirectInputAdapter.NeutralHandLocalPosition;
+            camera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var adapter = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            adapter.Configure(latch, hand.transform, camera);
+            latch.EnqueueProbeSnapshot(Input(1, true, false, true));
+            adapter.ReadIntent();
+
+            adapter.SetProbeMouseDelta(new Vector2(600f, 0f));
+            latch.EnqueueProbeSnapshot(Input(2, false, false, true));
+            var intent = adapter.ReadIntent();
+
+            Assert.That(Vector3.Distance(adapter.LastMappingEvidence.PlaneOrigin, intent.Candidate), Is.GreaterThan(Du03AStrokeProfile.ReachRadius));
+            Assert.That(hand.transform.position, Is.EqualTo(intent.Candidate));
+            Assert.That(adapter.LastValidHandPosition, Is.EqualTo(intent.Candidate));
+            Assert.That(adapter.DesiredTip, Is.EqualTo(intent.Candidate));
+        }
+
+        [Test]
+        public void ArmDirectReleaseReturnsHandToNeutral()
+        {
+            hand.transform.localPosition = Du03BCArmDirectInputAdapter.NeutralHandLocalPosition;
+            camera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var adapter = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            adapter.Configure(latch, hand.transform, camera);
+            latch.EnqueueProbeSnapshot(Input(1, true, false, true));
+            adapter.ReadIntent();
+            adapter.SetProbeMouseDelta(new Vector2(100f, 0f));
+            latch.EnqueueProbeSnapshot(Input(2, false, false, true));
+            adapter.ReadIntent();
+            adapter.SetProbeMouseDelta(new Vector2(50f, 0f));
+            latch.EnqueueProbeSnapshot(Input(3, false, true, false));
+
+            adapter.ReadIntent();
+
+            Assert.That(hand.transform.localPosition, Is.EqualTo(Du03BCArmDirectInputAdapter.NeutralHandLocalPosition));
+        }
+
+        [Test]
+        public void RouterAppliesConfiguredArmDirectPlayableStartRoute()
+        {
+            var deterministic = root.AddComponent<Du03ADeterministicIntentSource>();
+            var aim = root.AddComponent<Du03BCAimInputAdapter>();
+            aim.Configure(latch, hand.transform, camera);
+            var trajectory = root.AddComponent<Du03BCTrajectoryInputAdapter>();
+            trajectory.Configure(latch, hand.transform, camera);
+            var armDirect = root.AddComponent<Du03BCArmDirectInputAdapter>();
+            armDirect.Configure(latch, hand.transform, camera);
+            var router = root.AddComponent<Du03BCAdapterRouter>();
+            router.Configure(deterministic, aim, trajectory, armDirect: armDirect);
+            router.SetRoute(Du03BCAdapterRoute.Aim);
+            router.ConfigurePlayableStartRoute(Du03BCAdapterRoute.ArmDirect);
+
+            router.ApplyPlayableStartRouteForProbe();
+
+            Assert.That(router.ActiveRoute, Is.EqualTo(Du03BCAdapterRoute.ArmDirect));
+            Assert.That(router.ActiveAdapter, Is.SameAs(armDirect));
         }
 
         [Test]

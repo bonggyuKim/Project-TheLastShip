@@ -106,6 +106,11 @@ namespace DoodleUp.Runtime
                 throw new InvalidOperationException($"DU-03BC {Mode} adapter is not configured.");
 
             var input = inputLatch.ConsumeStrokeEdges();
+            if (input.CancelPressed)
+            {
+                hasPlaneSnapshot = false;
+                OnStrokeEnded();
+            }
             if (input.DrawPressed)
             {
                 planeOrigin = handMarker.position;
@@ -151,6 +156,10 @@ namespace DoodleUp.Runtime
             in Du03BCInputSnapshot input,
             out Vector3 candidate,
             out Du03BCMappingEvidence evidence);
+
+        protected virtual void OnStrokeEnded()
+        {
+        }
 
         protected virtual Du03BCMappingEvidence CreateInactiveEvidence(in Du03BCInputSnapshot input)
         {

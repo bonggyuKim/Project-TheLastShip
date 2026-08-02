@@ -37,6 +37,25 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
+        public void AllLaneSpawnsPlaceOffsetCapsuleBottomOnStartLedgeTop()
+        {
+            foreach (var taskId in new[]
+                     {
+                         Du02TaskId.T1Horizontal,
+                         Du02TaskId.T2Rising,
+                         Du02TaskId.T3Bridge
+                     })
+            {
+                var lane = Du02CourseDefinition.Get(taskId);
+                const float capsuleCenterY = 0.5f;
+                const float capsuleHalfHeight = 0.5f;
+                var capsuleBottom = lane.SpawnPosition.y + capsuleCenterY - capsuleHalfHeight;
+                var ledgeTop = lane.StartCenter.y + lane.StartSize.y * 0.5f;
+                Assert.That(capsuleBottom, Is.EqualTo(ledgeTop).Within(0.000001f), taskId.ToString());
+            }
+        }
+
+        [Test]
         public void LanesAreIndependentAlongDepth()
         {
             var t1 = Du02CourseDefinition.Get(Du02TaskId.T1Horizontal);

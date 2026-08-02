@@ -18,7 +18,7 @@
 
 1. `Du02InputReader.Update`가 A/D, Space, R, 1/2/3을 `Du02InputFrame`으로 latch한다.
 2. `Du02RuntimeController.Update`가 lane/R 경로를 호출하고 `Du02TaskState.Tick`을 진행한다. countdown 중 이동 입력은 0으로 잠긴다. Draw 구현 전이므로 Draw lock은 `IDu02TaskState.InputLocked` 계약으로 노출한다.
-3. `Du02PlayerMotor.FixedUpdate`가 world Y gravity와 world X 이동을 적용하고 world Z를 활성 lane spawn depth로 고정한다.
+3. `Du02PlayerMotor.FixedUpdate`가 offset capsule bounds 중심에서 아래로 ground probe한 뒤 world Y gravity와 world X 이동을 적용하고 world Z를 활성 lane spawn depth로 고정한다. Player capsule의 runtime frictionless material은 접촉 마찰이 매 tick 설정하는 목표 X 속도를 상쇄하지 않게 한다.
 4. `Du02CandidateSamplingSeam.LateUpdate`가 HandMarker와 drawing plane을 render frame당 1회 관찰한다. `Du02RuntimeFrameProbe.LateUpdate`가 같은 frame phase에서 독립 frame 수를 기록한다.
 5. `Du02ResetCoordinator.ResetToLane`이 fixed timestep, player transform/rotation/linear·angular velocity, HandMarker pose/scale, camera/FOV와 pretest visual yawOffset=0, task state, timer/countdown, goal/stroke/ink, sampling sequence를 한 호출에서 복원한다.
 6. `Du02RuntimeProbeRunner`는 standalone batchmode에서 30/60/144fps를 각각 실제 10초 관찰하고 T1/T2/T3의 R/lane-select reset을 교란 후 비교한다. Reset probe의 `before`는 non-identity rotation, non-zero angular velocity, probe-only `ProbePerturbed` phase를 가져야 하며 `after`는 identity/zero/`Idle`로 복원되어야 한다.
@@ -45,6 +45,7 @@ Scene: `Assets/Scenes/DU02_SoloCourse.unity`
 - T1: 동일 높이, edge gap `0.70 u`
 - T2: 목표 ledge center offset `(+0.65,+0.55) u`
 - T3: 동일 높이, edge gap `0.95 u`, 양 contact band 폭 `0.12 u`
+- Player root spawn Y는 `startCenter.y + LedgeSize.y/2 = 0.10u`다. Capsule `center.y=0.50`, `height=1.00`이므로 collider bottom과 start ledge top이 정확히 일치한다.
 - HandMarker canonical local transform: position `(0,+0.980,0)`, rotation identity, scale `(1,1,1)`
 - Layers: Player `8`, Course `9`, Goal `10`; camera tag `MainCamera`
 

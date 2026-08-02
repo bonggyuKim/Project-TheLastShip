@@ -18,6 +18,10 @@
 | `[DU02_RUNTIME_TASK_STATE]` | success seam probe | T1/T2 contact+hold 성공, T3 단일 band 실패/양 band 성공 |
 | `[DU02_RUNTIME_PROBE_COMPLETE]` | raw 파일 저장 완료 | result=PASS |
 | `[DU02_DEPTH_DRIFT]` | depth tolerance 초과 | clean probe에서 0건 |
+| `[DU02_GROUND]` | 초기 ground 판정 또는 grounded 상태 전이 | offset capsule bounds 중심·probe 거리와 상태 확인; 매 frame 출력 금지 |
+| `[DU_SANDBOX_RESET]` | 비증거 sandbox scene 시작 또는 R reset | active profile `PRETEST_DEPTH_LOCOMOTION_V1` 또는 `PRETEST_ARM_DIRECT_V1`, depth 0, ink 5.00, committed collider 0 |
+| `[DU_SANDBOX_STROKE_DEPTH]` | sandbox Idle→Drawing 전이 | root/hand depth snapshot과 `n0=(0,0,1)` |
+| `[DU_SANDBOX_INVALID]` | Drawing/Pending depth 오차 `>0.001u` | 정상 sandbox 플레이에서 0건; `TECH_INVALID/DRAW_DEPTH_DRIFT` 원인 확인 |
 
 ## 재현 명령
 
@@ -65,6 +69,19 @@ QA는 최종 report와 별개로 다음을 직접 확인한다.
 - T3 음성: start band만 + goal inside + 1초 tick → `goalReached=False`
 - T3 양성: start/goal band + goal inside + 1초 hold → `goalReached=True`
 - 모든 reset 직후 goal/stroke/ink/timer/countdown/phase는 canonical state로 복원돼야 한다.
+
+## 샌드박스 수동 확인
+
+자동 검증은 compile, adapter mapping, backend reach atomicity, depth-lock 회귀까지 담당한다. 실제 조작감은 사용자가 `DU_Sandbox.unity`에서 확인한다.
+
+1. `DU_Sandbox.unity` Play 시작 즉시 `ArmDirect`이며 camera root-local `(0,+1.20,0)`, hand `(0,+1.20,+1.25)`가 적용된다.
+2. Idle에서 mouse를 움직이면 camera yaw/pitch가 회전하고 pitch `±80°`에서 더 이상 뒤집히지 않는다. cursor는 Game View focus 동안 lock된다.
+3. WASD는 camera yaw 기준으로 이동하며 위/아래를 보더라도 이동 속도와 지면 방향에는 pitch가 섞이지 않는다.
+4. LMB press/hold 동안 camera orientation은 고정되고 mouse delta는 손의 frozen right/up 방향에만 적용되어 stroke preview가 생긴다.
+5. reach 경계 밖에서는 red invalid preview가 보이고 손은 마지막 유효 지점에 멈추며, 안으로 돌아오면 즉시 재개한다.
+6. LMB release 후 stroke가 commit되고 손이 neutral로 복귀하며 다음 mouse 움직임부터 camera look이 재개된다. RMB/Esc cancel도 같은 소유권 복구를 한다.
+7. Drawing 중 W/S는 잠기지만 A/D와 Space는 유지되고, release 후 W로 committed stroke depth에 접근할 수 있다.
+8. R reset은 depth `0`, ink `5.00`, committed collider `0`, active mode canonical hand pose와 camera yaw/pitch `0°`를 복원한다.
 
 ## 범위 제한
 

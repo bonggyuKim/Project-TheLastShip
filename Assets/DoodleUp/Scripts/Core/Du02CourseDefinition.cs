@@ -49,7 +49,7 @@ namespace DoodleUp.Core
     public static class Du02CourseDefinition
     {
         private static readonly Vector3 LedgeSize = new Vector3(1.00f, 0.20f, 2.00f);
-        private static readonly Vector3 SpawnOffset = new Vector3(-0.20f, 0.60f, 0.00f);
+        private static readonly Vector3 SpawnOffset = new Vector3(-0.20f, LedgeSize.y * 0.5f, 0.00f);
 
         public static Du02LaneDefinition Get(Du02TaskId id)
         {

@@ -1,7 +1,7 @@
 {
   "name": "DoodleUp.Tests.PlayMode",
   "rootNamespace": "DoodleUp.Tests.PlayMode",
-  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Runtime", "Unity.InputSystem"],
+  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Physics", "DoodleUp.Stroke", "DoodleUp.Runtime", "Unity.InputSystem"],
   "optionalUnityReferences": ["TestAssemblies"],
   "autoReferenced": false
 }
