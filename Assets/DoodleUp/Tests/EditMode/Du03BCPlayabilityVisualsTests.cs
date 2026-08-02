@@ -93,6 +93,12 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Drawing));
             Assert.That(visuals.VisualState, Is.EqualTo(Du03BCArmVisualState.Drawing));
             Assert.That(visuals.ReachVisible, Is.False);
+            var armRoot = pitchAnchor.transform.Find("ArmVisualRoot");
+            Assert.That(player.transform.Find("BodyVisual").GetComponent<MeshRenderer>().enabled, Is.False);
+            Assert.That(armRoot.Find("UpperArmVisual").GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(armRoot.Find("ForearmVisual").GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(hand.transform.Find("PalmVisual").GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(hand.transform.Find("FingerIndexVisual").GetComponent<MeshRenderer>().enabled, Is.True);
 
             Object.DestroyImmediate(cameraObject);
             Object.DestroyImmediate(player);

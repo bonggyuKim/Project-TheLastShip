@@ -18,6 +18,15 @@ namespace DoodleUp.Editor
 
             Require(all.Count(transform => transform.name == DuSandboxSceneBuilder.FloorName) == 1, "floor count must be 1");
             Require(all.Count(transform => transform.name == "Player") == 1, "player count must be 1");
+            var bridgeTask = all.Single(transform => transform.name == DuSandboxSceneBuilder.BridgeTaskName);
+            var rampTask = all.Single(transform => transform.name == DuSandboxSceneBuilder.RampTaskName);
+            var curvedRailTask = all.Single(transform => transform.name == DuSandboxSceneBuilder.CurvedRailTaskName);
+            VerifyTaskMarkers(bridgeTask);
+            VerifyTaskMarkers(rampTask);
+            VerifyTaskMarkers(curvedRailTask);
+            Require(bridgeTask.position.magnitude <= 6f, "bridge task must be near spawn");
+            Require(rampTask.position.magnitude <= 6f, "ramp task must be near spawn");
+            Require(curvedRailTask.position.magnitude <= 6f, "curved rail task must be near spawn");
             Require(all.All(transform => transform.name != "GoalZone"), "GoalZone must not exist");
             Require(all.All(transform => transform.name != "StartLedge"), "course ledges must not exist");
             Require(all.All(transform => transform.name != "GoalLedge"), "course ledges must not exist");
@@ -52,6 +61,10 @@ namespace DoodleUp.Editor
             Require(armVisualRoot.parent == armPitchAnchor, "ArmVisualRoot must be arm-pitch local");
             Require(upperArmVisual.parent == armVisualRoot, "UpperArmVisual must attach to ArmVisualRoot");
             Require(forearmVisual.parent == armVisualRoot, "ForearmVisual must attach to ArmVisualRoot");
+            Require(bodyVisual.GetComponent<MeshRenderer>().enabled == false, "Spatial body capsule must not appear in first-person view");
+            Require(upperArmVisual.GetComponent<MeshRenderer>().enabled, "Spatial upper arm must remain visible");
+            Require(forearmVisual.GetComponent<MeshRenderer>().enabled, "Spatial forearm must remain visible");
+            Require(handMarker.GetComponentsInChildren<MeshRenderer>(true).Any(renderer => renderer.enabled), "Spatial hand visual must remain visible");
             Require(armVisualRoot.GetComponentsInChildren<Collider>(true).Length == 0, "arm visuals must add no physics");
             Require(handMarker.GetComponentsInChildren<Collider>(true).Length == 0, "hand visuals must add no physics");
             var capsule = player.GetComponent<CapsuleCollider>();
@@ -63,8 +76,14 @@ namespace DoodleUp.Editor
             Debug.Log(
                 $"[DU_SANDBOX_VERIFY] scene={DuSandboxSceneBuilder.ScenePath} " +
                 $"profiles={DuSandboxController.ProfileId}|{Du03BCArmDirectInputAdapter.ProfileId} " +
-                $"floor=1 player=1 bodyYawAnchor=1 armPitchAnchor=1 armDirect=1 armVisual=upper+forearm+palm forbiddenStructures=0 evidenceRunners=0 " +
+                $"floor=1 player=1 funTasks=bridge+ramp+curvedRail bodyYawAnchor=1 armPitchAnchor=1 armDirect=1 visuals=hiddenBody+visibleArmHand forbiddenStructures=0 evidenceRunners=0 " +
                 $"spawnGroundGap={Mathf.Abs(capsuleBottom - floorTop):F6} result=PASS");
+        }
+
+        private static void VerifyTaskMarkers(Transform task)
+        {
+            Require(task.Find(DuSandboxSceneBuilder.StartMarkerName) != null, $"{task.name} start marker missing");
+            Require(task.Find(DuSandboxSceneBuilder.DestinationMarkerName) != null, $"{task.name} destination marker missing");
         }
 
         private static void Require(bool condition, string message)

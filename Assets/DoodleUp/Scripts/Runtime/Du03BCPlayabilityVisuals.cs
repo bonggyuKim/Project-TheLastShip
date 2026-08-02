@@ -32,6 +32,7 @@ namespace DoodleUp.Runtime
         [SerializeField] private Du03AStrokeDriver strokeDriver;
         [SerializeField] private LineRenderer reachLine;
 
+        private Transform bodyVisual;
         private Transform armVisualRoot;
         private Transform upperArmVisual;
         private Transform forearmVisual;
@@ -54,6 +55,7 @@ namespace DoodleUp.Runtime
             ConfigureReachLine();
             RefreshArmPose();
             RefreshVisualState();
+            RefreshArmVisibility();
             RefreshReachCircle();
             RefreshReachVisibility();
         }
@@ -66,6 +68,7 @@ namespace DoodleUp.Runtime
             ConfigureReachLine();
             RefreshArmPose();
             RefreshVisualState();
+            RefreshArmVisibility();
         }
 
         private void LateUpdate()
@@ -77,6 +80,7 @@ namespace DoodleUp.Runtime
             if (handMarker == null || reachLine == null) return;
             RefreshArmPose();
             RefreshVisualState();
+            RefreshArmVisibility();
             RefreshReachCircle();
             RefreshReachVisibility();
         }
@@ -88,6 +92,29 @@ namespace DoodleUp.Runtime
                 && strokeDriver.Session != null
                 && strokeDriver.Session.State == Du03AStrokeSessionState.Drawing
                 && strokeDriver.Mode != Du03AStrokeMode.Spatial;
+        }
+
+        private void RefreshArmVisibility()
+        {
+            var spatialFirstPerson = strokeDriver != null
+                && strokeDriver.Mode == Du03AStrokeMode.Spatial;
+            SetRendererEnabled(bodyVisual, !spatialFirstPerson);
+            SetRendererEnabled(upperArmVisual, true);
+            SetRendererEnabled(forearmVisual, true);
+            if (handRenderers == null) return;
+            foreach (var renderer in handRenderers) renderer.enabled = true;
+
+            var markerRenderer = handMarker != null
+                ? handMarker.GetComponent<MeshRenderer>()
+                : null;
+            if (markerRenderer != null) markerRenderer.enabled = false;
+        }
+
+        private static void SetRendererEnabled(Transform visual, bool enabled)
+        {
+            if (visual == null) return;
+            var renderer = visual.GetComponent<MeshRenderer>();
+            if (renderer != null) renderer.enabled = enabled;
         }
 
         private void ResolveReferences()
@@ -106,7 +133,8 @@ namespace DoodleUp.Runtime
             var bodyAnchor = pitchAnchor != null && pitchAnchor.parent != null
                 ? pitchAnchor.parent
                 : handMarker.parent;
-            if (bodyAnchor.Find("BodyVisual") == null)
+            bodyVisual = bodyAnchor.Find("BodyVisual");
+            if (bodyVisual == null)
             {
                 var body = CreatePrimitiveVisual(
                     PrimitiveType.Capsule,
@@ -117,6 +145,7 @@ namespace DoodleUp.Runtime
                     new Vector3(0.5f, 0.5f, 0.5f));
                 body.GetComponent<MeshRenderer>().sharedMaterial =
                     GetMaterial(ref bodyMaterial, "DU02PlayerBodyMaterial", BodyColor);
+                bodyVisual = body.transform;
             }
 
             var armAnchor = pitchAnchor != null ? pitchAnchor : bodyAnchor;
