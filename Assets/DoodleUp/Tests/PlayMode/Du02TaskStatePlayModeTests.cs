@@ -1,5 +1,6 @@
 using System.Collections;
 using DoodleUp.Core;
+using DoodleUp.Physics;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEngine;
@@ -28,6 +29,135 @@ namespace DoodleUp.Tests.PlayMode
 
             Object.Destroy(gameObject);
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator AllLaneSpawnsAreGroundedOnFirstPhysicsStep()
+        {
+            foreach (var taskId in new[]
+                     {
+                         Du02TaskId.T1Horizontal,
+                         Du02TaskId.T2Rising,
+                         Du02TaskId.T3Bridge
+                     })
+            {
+                var lane = Du02CourseDefinition.Get(taskId);
+                var ledge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                ledge.name = $"GroundProbeLedge-{taskId}";
+                ledge.transform.position = lane.StartCenter;
+                ledge.transform.localScale = lane.StartSize;
+                var player = new GameObject($"GroundProbePlayer-{taskId}");
+                player.transform.position = lane.SpawnPosition;
+                var body = player.AddComponent<Rigidbody>();
+                body.useGravity = true;
+                var capsule = player.AddComponent<CapsuleCollider>();
+                capsule.radius = 0.25f;
+                capsule.height = 1f;
+                capsule.center = new Vector3(0f, 0.5f, 0f);
+                var motor = player.AddComponent<Du02PlayerMotor>();
+                UnityEngine.Physics.SyncTransforms();
+                var bounds = capsule.bounds;
+                Assert.That(
+                    UnityEngine.Physics.Raycast(
+                        bounds.center,
+                        Vector3.down,
+                        bounds.extents.y + 0.06f,
+                        ~0,
+                        QueryTriggerInteraction.Ignore),
+                    Is.True,
+                    taskId.ToString());
+
+                for (var i = 0; i < 3 && !motor.IsGrounded; i++)
+                    yield return new WaitForFixedUpdate();
+
+                Assert.That(motor.IsGrounded, Is.True, taskId.ToString());
+                Assert.That(body.position.y, Is.EqualTo(lane.SpawnPosition.y).Within(0.001f), taskId.ToString());
+                Object.Destroy(player);
+                Object.Destroy(ledge);
+                yield return null;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OffsetCapsuleGroundingEnablesMovementAndJump()
+        {
+            var ledge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ledge.name = "GroundProbeLedge";
+            ledge.transform.position = Vector3.zero;
+            ledge.transform.localScale = new Vector3(4f, 0.2f, 2f);
+            var player = new GameObject("GroundProbePlayer");
+            player.transform.position = new Vector3(0f, 0.1f, 0f);
+            var body = player.AddComponent<Rigidbody>();
+            body.useGravity = true;
+            var capsule = player.AddComponent<CapsuleCollider>();
+            capsule.radius = 0.25f;
+            capsule.height = 1f;
+            capsule.center = new Vector3(0f, 0.5f, 0f);
+            var motor = player.AddComponent<Du02PlayerMotor>();
+
+            for (var i = 0; i < 30 && !motor.IsGrounded; i++)
+                yield return new WaitForFixedUpdate();
+
+            Assert.That(motor.IsGrounded, Is.True);
+            var beforeMove = body.position.x;
+            motor.SetInput(1f, false);
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.position.x, Is.GreaterThan(beforeMove));
+            Assert.That(body.linearVelocity.x, Is.EqualTo(Du02Profile.GroundSpeed).Within(0.0001f));
+
+            var afterMove = body.position.x;
+            motor.SetInput(-1f, false);
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.position.x, Is.LessThan(afterMove));
+            Assert.That(body.linearVelocity.x, Is.EqualTo(-Du02Profile.GroundSpeed).Within(0.0001f));
+
+            motor.SetInput(0f, true);
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.GreaterThan(0f));
+            yield return new WaitForFixedUpdate();
+            Assert.That(motor.IsGrounded, Is.False);
+
+            Object.Destroy(player);
+            Object.Destroy(ledge);
+        }
+
+        [UnityTest]
+        public IEnumerator DepthLocomotionClampsDiagonalAndCanBeLocked()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "DepthLocomotionFloor";
+            floor.transform.localScale = new Vector3(8f, 0.2f, 8f);
+            var player = new GameObject("DepthLocomotionPlayer");
+            player.transform.position = new Vector3(0f, 0.1f, 0f);
+            var body = player.AddComponent<Rigidbody>();
+            body.useGravity = true;
+            var capsule = player.AddComponent<CapsuleCollider>();
+            capsule.radius = 0.25f;
+            capsule.height = 1f;
+            capsule.center = new Vector3(0f, 0.5f, 0f);
+            var motor = player.AddComponent<Du02PlayerMotor>();
+
+            for (var i = 0; i < 30 && !motor.IsGrounded; i++)
+                yield return new WaitForFixedUpdate();
+
+            motor.SetInput(1f, 1f, false, true);
+            yield return new WaitForFixedUpdate();
+            var horizontalSpeed = new Vector2(body.linearVelocity.x, body.linearVelocity.z).magnitude;
+            Assert.That(horizontalSpeed, Is.EqualTo(Du02Profile.GroundSpeed).Within(0.0001f));
+            Assert.That(body.linearVelocity.x, Is.GreaterThan(0f));
+            Assert.That(body.linearVelocity.z, Is.GreaterThan(0f));
+
+            var lockedDepth = body.position.z;
+            motor.SetDepthLocomotionAllowed(false);
+            Assert.That(body.constraints & RigidbodyConstraints.FreezePositionZ, Is.Not.Zero);
+            motor.SetInput(1f, 1f, false, false);
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.x, Is.EqualTo(Du02Profile.GroundSpeed).Within(0.0001f));
+            Assert.That(body.linearVelocity.z, Is.Zero.Within(0.0001f));
+            Assert.That(body.position.z, Is.EqualTo(lockedDepth).Within(0.0001f));
+
+            Object.Destroy(player);
+            Object.Destroy(floor);
         }
 
         [UnityTest]

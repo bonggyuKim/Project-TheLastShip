@@ -83,6 +83,21 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
+        public void SpatialCandidateIgnoresLegacyReachLimit()
+        {
+            var session = new Du03AStrokeSession();
+            Assert.That(session.TryBegin(Vector3.zero, Vector3.forward, "owner-a", Du03AStrokeMode.Spatial), Is.True);
+
+            var result = session.SubmitCandidate(new Vector3(2f, 0f, 0f));
+
+            Assert.That(result.CandidateValid, Is.True);
+            Assert.That(result.AcceptedAppended, Is.True);
+            Assert.That(result.Reason, Is.EqualTo(Du03ACandidateReason.Appended));
+            Assert.That(result.ProjectedCandidate, Is.EqualTo(new Vector3(2f, 0f, 0f)));
+            Assert.That(session.AcceptedPoints[^1], Is.EqualTo(new Vector3(2f, 0f, 0f)));
+        }
+
+        [Test]
         public void InkRejectWithMultipleProspectivePointsIsAllOrNothing()
         {
             var session = new Du03AStrokeSession(0.15f);
@@ -193,16 +208,12 @@ namespace DoodleUp.Tests.EditMode
 
             driver.ProcessIntent(new Du03ADrawIntent(false, true, false, false, true, new Vector3(0.24f, 0f, 0f)));
 
-            Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Pending));
-            Assert.That(driver.CommittedColliderCount, Is.Zero);
+            Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Idle));
+            Assert.That(driver.Session.LastTerminalState, Is.EqualTo(Du03AStrokeSessionState.Committed));
+            Assert.That(driver.CommittedColliderCount, Is.EqualTo(1));
             Assert.That(root.GetComponentsInChildren<Rigidbody>(true), Is.Empty);
-            Assert.That(preview.enabled, Is.True);
-            Assert.That(preview.widthMultiplier, Is.EqualTo(0.16f).Within(0.0001f));
-            Assert.That(preview.startColor.r, Is.EqualTo(1f).Within(0.0001f));
-            Assert.That(preview.startColor.g, Is.EqualTo(0.72f).Within(0.005f));
+            Assert.That(preview.enabled, Is.False);
             Assert.That(invalidPreview.enabled, Is.False);
-
-            driver.ProcessIntent(new Du03ADrawIntent(false, false, true, false, false, default));
 
             Assert.That(driver.Session.LastTerminalState, Is.EqualTo(Du03AStrokeSessionState.Committed));
             Assert.That(driver.LastGeometryResult.SegmentCount, Is.EqualTo(1));
@@ -248,9 +259,11 @@ namespace DoodleUp.Tests.EditMode
             var result = driver.ProcessIntent(new Du03ADrawIntent(false, true, true, false, true, new Vector3(0.24f, 0f, 0f)));
 
             Assert.That(result.AcceptedAppended, Is.True);
-            Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Pending));
-            Assert.That(driver.Session.PendingReservedLength, Is.EqualTo(0.24f).Within(0.0001f));
-            Assert.That(driver.Session.LiveCommittedCount, Is.Zero);
+            Assert.That(driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Idle));
+            Assert.That(driver.Session.LastTerminalState, Is.EqualTo(Du03AStrokeSessionState.Committed));
+            Assert.That(driver.Session.PendingReservedLength, Is.Zero.Within(0.0001f));
+            Assert.That(driver.Session.LiveCommittedCount, Is.EqualTo(1));
+            Assert.That(driver.CommittedColliderCount, Is.EqualTo(1));
 
             Object.DestroyImmediate(cameraObject);
             Object.DestroyImmediate(hand);

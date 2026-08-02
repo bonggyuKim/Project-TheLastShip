@@ -39,10 +39,10 @@ namespace DoodleUp.Input
         [SerializeField] private bool verboseInputLogging;
 
         private InputAction drawAction;
-        private InputAction confirmAction;
         private InputAction cancelMouseAction;
         private InputAction cancelEscapeAction;
         private InputAction resetAction;
+        private InputAction inkResetAction;
 
         private bool drawPressed;
         private bool drawReleased;
@@ -50,6 +50,7 @@ namespace DoodleUp.Input
         private bool confirmPressed;
         private bool cancelPressed;
         private bool resetPressed;
+        private bool inkResetPressed;
         private long eventSequence;
         private bool hasProbeSnapshot;
         private Du03BCInputSnapshot probeSnapshot;
@@ -58,7 +59,7 @@ namespace DoodleUp.Input
         public bool DrawHeld => drawHeld;
 
         public static string BindingManifest =>
-            "Draw=<Mouse>/leftButton;Confirm=<Keyboard>/e;Cancel=<Mouse>/rightButton|<Keyboard>/escape;Reset=<Keyboard>/r";
+            "Draw=<Mouse>/leftButton;Commit=<Mouse>/leftButton#release;Cancel=<Mouse>/rightButton|<Keyboard>/escape;Reset=<Keyboard>/r;InkReset=<Keyboard>/q";
 
         public Du03BCInputSnapshot ConsumeStrokeEdges()
         {
@@ -91,6 +92,18 @@ namespace DoodleUp.Input
             return consumed;
         }
 
+        public bool ConsumeInkResetPressed()
+        {
+            var consumed = inkResetPressed;
+            inkResetPressed = false;
+            return consumed;
+        }
+
+        public void EnqueueInkResetForProbe()
+        {
+            inkResetPressed = true;
+        }
+
         public void EnqueueProbeSnapshot(in Du03BCInputSnapshot snapshot)
         {
             probeSnapshot = snapshot;
@@ -106,6 +119,7 @@ namespace DoodleUp.Input
             confirmPressed = false;
             cancelPressed = false;
             resetPressed = false;
+            inkResetPressed = false;
             hasProbeSnapshot = false;
             Debug.Log($"[DU03BC_INPUT_CLEAR] frame={Time.frameCount} reason={reason}");
         }
@@ -119,10 +133,10 @@ namespace DoodleUp.Input
         {
             InitializeActions();
             drawAction.Enable();
-            confirmAction.Enable();
             cancelMouseAction.Enable();
             cancelEscapeAction.Enable();
             resetAction.Enable();
+            inkResetAction.Enable();
             InputSystem.onDeviceChange += OnDeviceChange;
         }
 
@@ -130,20 +144,20 @@ namespace DoodleUp.Input
         {
             InputSystem.onDeviceChange -= OnDeviceChange;
             drawAction?.Disable();
-            confirmAction?.Disable();
             cancelMouseAction?.Disable();
             cancelEscapeAction?.Disable();
             resetAction?.Disable();
+            inkResetAction?.Disable();
             ClearLatchedEdges("DISABLE");
         }
 
         private void OnDestroy()
         {
             drawAction?.Dispose();
-            confirmAction?.Dispose();
             cancelMouseAction?.Dispose();
             cancelEscapeAction?.Dispose();
             resetAction?.Dispose();
+            inkResetAction?.Dispose();
         }
 
         private void OnApplicationFocus(bool hasFocus)
@@ -156,10 +170,10 @@ namespace DoodleUp.Input
             if (drawAction != null) return;
 
             drawAction = new InputAction("DU03BC_Draw", InputActionType.Button, "<Mouse>/leftButton");
-            confirmAction = new InputAction("DU03BC_Confirm", InputActionType.Button, "<Keyboard>/e");
             cancelMouseAction = new InputAction("DU03BC_CancelMouse", InputActionType.Button, "<Mouse>/rightButton");
             cancelEscapeAction = new InputAction("DU03BC_CancelEscape", InputActionType.Button, "<Keyboard>/escape");
             resetAction = new InputAction("DU03BC_Reset", InputActionType.Button, "<Keyboard>/r");
+            inkResetAction = new InputAction("DU03BC_InkReset", InputActionType.Button, "<Keyboard>/q");
 
             drawAction.started += _ =>
             {
@@ -173,11 +187,6 @@ namespace DoodleUp.Input
                 drawReleased = true;
                 LogEdge("LMB", "RELEASED");
             };
-            confirmAction.performed += _ =>
-            {
-                confirmPressed = true;
-                LogEdge("E", "PRESSED");
-            };
             cancelMouseAction.performed += _ => LatchCancel("RMB");
             cancelEscapeAction.performed += _ => LatchCancel("ESC");
             resetAction.performed += _ =>
@@ -185,11 +194,17 @@ namespace DoodleUp.Input
                 resetPressed = true;
                 LogEdge("R", "PRESSED");
             };
+            inkResetAction.performed += _ =>
+            {
+                inkResetPressed = true;
+                LogEdge("Q", "PRESSED");
+            };
         }
 
         private void LatchCancel(string control)
         {
             cancelPressed = true;
+            drawHeld = false;
             LogEdge(control, "PRESSED");
         }
 

@@ -129,24 +129,27 @@ availableInk
 
 ## 4. 공통 StrokeSession 계약
 
+> **2026-08-01 플레이 UX 변경:** M+K의 별도 `E` Confirm을 폐기하고 LMB release가 commit을 완료한다. backend의 `Drawing → Pending → Committed` transaction과 ledger 불변식은 유지하지만, Pending은 같은 release 처리 안의 순간 상태이며 사용자 입력을 기다리지 않는다. 아래 이전 명시적 Confirm 문구와 §9.3 Confirm latency gate는 다음 Gate A schema 개정 전까지 deprecated이며, 이 변경 문단이 우선한다.
+
 두 adapter는 아래 상태와 판정을 공유한다.
 
 ```text
 Idle
   └─ Draw press → Drawing
-       ├─ Draw release + length < 0.20 → Cancelled → Idle
-       └─ Draw release + length ≥ 0.20 → Pending
-            ├─ Confirm → Committed → Idle
-            └─ Cancel → Cancelled → Idle
+       ├─ LMB release + length < 0.20 → Cancelled → Idle
+       └─ LMB release + length ≥ 0.20
+            → internal Pending
+            → geometry transaction
+            → Committed → Idle
 ```
 
 1. `Draw press`를 소비하는 `LateUpdate` tick에서 `HandMarker.position`과 camera yaw-normal `n`을 drawing plane으로 snapshot하고 hand origin을 첫 accepted point로 넣는다.
 2. 두 adapter는 같은 60 fps `LateUpdate`에서 frame당 정확히 1회 candidate sample을 제출한다. 제출 순서와 script execution order는 profile/manifest에 고정한다.
 3. backend가 plane, reach, spacing, dedupe, 남은 ink를 판정하고 raw candidate와 accepted 결과를 typed telemetry로 남긴다.
-4. `Draw release`는 **확정이 아니다.** §4.2 규칙으로 취소하거나 반투명 `Pending` ghost로 전이한다.
-5. `Pending`에는 collider·Rigidbody·물리 접촉이 없다. 명시적 `Confirm`만 reserve를 committed ledger로 이전하고 capsule chain을 생성한다.
-6. `Cancel`은 `Drawing`과 `Pending` 모두에서 가능하며 ghost를 제거하고 해당 reserve 전액을 환급한다.
-7. 한 번에 pending stroke는 1개만 허용한다. Pending 중 새 Draw 입력은 무시한다.
+4. release frame도 candidate를 먼저 처리하며 event order는 `CANDIDATE>RELEASE>AUTO_COMMIT`이다.
+5. internal Pending에는 collider·Rigidbody·물리 접촉이 없다. capsule chain을 비활성으로 준비·검증한 뒤 같은 release transaction에서 reserve를 committed ledger로 이전하고 geometry를 활성화한다.
+6. `Cancel`은 Drawing에서 가능하며 ghost를 제거하고 drawing reserve 전액을 환급한다. backend 직접 호출에서 관찰되는 Pending cancel/refund 계약은 유지한다.
+7. 실제 입력 UX는 stable Pending에 머무르지 않으며 `E` Confirm binding이 없다.
 
 ### 4.1 HandMarker·candidate sample phase
 
@@ -168,8 +171,8 @@ Idle
 - Raw candidate 하나의 backend 판정은 원자적이다. finite/plane/reach 검증 후 그 candidate가 생성할 prospective resampled points `0..N`과 `requiredInk`를 먼저 계산한다. `requiredInk > availableInk`이면 red `INK_INVALID`로 표시한다. `requiredInk > availableInk`이면 `CANDIDATE_SAMPLE`은 `candidate_valid=false`, `candidate_invalid_reason=INK_INVALID`, `accepted_appended=false`이며 `ACCEPTED_POINT`를 0개 생성하고 reserve를 변경하지 않는다. 검증을 모두 통과하면 prospective points 전부를 순서대로 append한다. 따라서 `candidate_valid=false AND accepted_appended=true` 조합은 금지한다. `SPACING_NOT_REACHED` 또는 `DEDUPE`만 `candidate_valid=true AND accepted_appended=false`다.
 - Release tick의 현재 candidate가 invalid이면 그 candidate는 폐기한다. 마지막 accepted point까지의 **simplification 전 resampled length**로만 판정한다.
 - Release 시 accepted length `<0.20 u`면 `Drawing → Cancelled → Idle`, ghost 제거, `drawingReservedLength` 전액 환급, charged length `0`이다.
-- Release 시 accepted length `≥0.20 u`면 release 순간 candidate의 invalid 여부와 무관하게 `Drawing → Pending`이며 `drawingReservedLength` 전액을 `pendingReservedLength`로 이전한다.
-- Release 자체는 commit, charged-length 변경, collider 생성을 하지 않는다.
+- Release 시 accepted length `≥0.20 u`면 release 순간 candidate의 invalid 여부와 무관하게 `Drawing → Pending`으로 reserve를 이전한 뒤, 같은 driver transaction에서 capsule을 준비·검증하고 `Pending → Committed → Idle`을 완료한다.
+- Geometry 준비나 검증이 실패하면 부분 collider를 노출하지 않고 transaction 실패로 처리한다. 정상 release는 stable Pending이나 별도 Confirm 입력을 남기지 않는다.
 
 ### 4.3 M+K 공통 조작
 
@@ -179,7 +182,7 @@ Idle
 | depth 입력 | `W/S` | unbound; `n` 이동 금지 | 동일 |
 | 점프 | `Space` | 동일 | 동일 |
 | Draw | `LMB` hold | `LateUpdate` mouse ray와 snapshot plane 교점을 candidate로 제출 | 같은 `LateUpdate`의 고정 `HandMarker.position`을 candidate로 제출 |
-| Confirm | `E` | Pending 확정 | Pending 확정 |
+| Commit | `LMB` release | release-frame candidate 처리 후 즉시 확정 | 동일 |
 | Cancel | `RMB` 또는 `Esc` | Drawing/Pending 취소 | Drawing/Pending 취소 |
 | Delete | `X` | 가장 최근의 자기 committed stroke 삭제 | 동일 |
 | Trial reset | `R` | 현재 trial 실패 처리 후 정본 상태 복원 | 동일 |
@@ -194,7 +197,7 @@ Gate B에서는 social smoke를 위해 `<Gamepad>/buttonNorth`가 hand에서 `0.
 
 ### 4.5 Committed capsule chain geometry
 
-Confirm된 simplified polyline의 연속된 각 point pair마다 child `CapsuleCollider` 1개를 생성한다.
+Commit된 simplified polyline의 연속된 각 point pair마다 child `CapsuleCollider` 1개를 생성한다.
 
 - Child Transform의 world position을 segment midpoint에 두고 local `Y`축을 segment 방향에 정렬한다. `CapsuleCollider.center=(0,0,0)`이다.
 - `CapsuleCollider.direction = 1` (`Y-axis`)로 명시 설정하며 prefab/default 값에 의존하지 않는다.
@@ -204,7 +207,7 @@ Confirm된 simplified polyline의 연속된 각 point pair마다 child `CapsuleC
 - Stroke root와 모든 child의 runtime local/world scale은 `(1,1,1)`이다. Non-uniform·negative scale을 금지한다.
 - Segment length가 `≤1e-6 u`인 degenerate segment는 collider를 만들지 않고 telemetry에 기록한다.
 - Shared endpoint의 cap overlap으로 collider 사이에 gap이 없어야 한다.
-- Pending에는 capsule root·child collider·Rigidbody가 존재하지 않는다. Capsule chain 생성은 accepted Confirm의 `Pending → Committed` transition과 같은 transaction에서만 수행한다.
+- internal Pending에는 capsule root·child collider·Rigidbody가 존재하지 않는다. Capsule chain 생성은 accepted LMB release의 `Pending → Committed` transition과 같은 transaction에서만 수행한다.
 
 ## 5. Aim/Trajectory 공정 비교 규칙
 
@@ -227,7 +230,7 @@ Confirm된 simplified polyline의 연속된 각 point pair마다 child `CapsuleC
 
 ### 5.3 금지 assist
 
-두 mode 모두 snap, auto-anchor, edge magnet, target attraction, reach clamp, path prediction, 자동 직선화, 자동 Confirm, mode별 smoothing/tolerance, mode별 이동속도, mode별 잉크 할인, course별 hidden correction을 금지한다.
+두 mode 모두 snap, auto-anchor, edge magnet, target attraction, reach clamp, path prediction, 자동 직선화, mode별 smoothing/tolerance, mode별 이동속도, mode별 잉크 할인, course별 hidden correction을 금지한다. LMB release commit은 두 mode에 동일한 명시 입력 계약이며 assist로 간주하지 않는다.
 
 공정성은 두 mode를 비슷한 성공률로 보정하는 것이 아니다. **같은 목표·자원·피드백에서 mapping의 구조적 장단점을 그대로 측정하는 것**이다.
 
@@ -392,7 +395,15 @@ gamepad_devices[], artifact_checksums_sha256{}
 - Scene/course/profile/input-actions는 canonical bytes의 SHA-256을 사용한다. Hash 입력 직렬화 방식과 schema version도 manifest에 기록한다.
 - 필수 필드 누락, 선언 checksum 불일치, CSV의 build/session과 manifest 불일치는 `EVIDENCE_INVALID`다.
 
-### 9.3 Confirm latency 산식
+### 9.3 Release commit latency 산식 (2026-08-01 개정)
+
+별도 Confirm 입력이 제거되었으므로 이전 `pending_enter_us → E Confirm` 사용성 지표는 폐기한다. 같은 stroke의 LMB release event부터 `Pending → Committed` geometry transaction 완료까지를 측정한다.
+
+```text
+release_commit_latency_ms = (commit_us - release_us) / 1000
+```
+
+동일 release 처리 안에서 완료되어야 하며 event order는 `CANDIDATE>RELEASE>AUTO_COMMIT`이다. 다음의 예전 명시적 Confirm 산식은 과거 Gate A schema 호환 설명이며 신규 evidence에는 적용하지 않는다.
 
 Confirm latency는 **같은 stroke**에서 backend가 `Drawing → Pending`으로 전이한 `pending_enter_us`부터, 최초로 accepted된 명시적 Confirm이 `Pending → Committed`를 만든 `commit_us`까지다.
 

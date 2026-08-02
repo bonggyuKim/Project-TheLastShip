@@ -27,7 +27,8 @@ namespace DoodleUp.Stroke
     public enum Du03AStrokeMode
     {
         Aim,
-        Trajectory
+        Trajectory,
+        Spatial
     }
 
     public enum Du03ACandidateReason
@@ -60,7 +61,7 @@ namespace DoodleUp.Stroke
             bool acceptedAppended,
             Du03ACandidateReason reason,
             Vector3 rawCandidate,
-            Vector3 projectedCandidate,
+            Vector3 resolvedCandidateCandidate,
             int appendedPointCount,
             float requiredInk,
             float lengthBefore,
@@ -72,7 +73,7 @@ namespace DoodleUp.Stroke
             AcceptedAppended = acceptedAppended;
             Reason = reason;
             RawCandidate = rawCandidate;
-            ProjectedCandidate = projectedCandidate;
+            ProjectedCandidate = resolvedCandidateCandidate;
             AppendedPointCount = appendedPointCount;
             RequiredInk = requiredInk;
             LengthBefore = lengthBefore;
@@ -193,30 +194,35 @@ namespace DoodleUp.Stroke
             if (!IsFinite(rawCandidate))
                 return Result(false, false, Du03ACandidateReason.NonFinite, rawCandidate, default, 0, 0f, lengthBefore, inkBefore);
 
-            var projected = rawCandidate - Vector3.Dot(rawCandidate - planeOrigin, planeNormal) * planeNormal;
-            if (!IsFinite(projected))
+            var resolvedCandidate = mode == Du03AStrokeMode.Spatial
+                ? rawCandidate
+                : rawCandidate - Vector3.Dot(rawCandidate - planeOrigin, planeNormal) * planeNormal;
+            if (!IsFinite(resolvedCandidate))
                 return Result(false, false, Du03ACandidateReason.NonFinite, rawCandidate, default, 0, 0f, lengthBefore, inkBefore);
-            if (Vector3.Distance(planeOrigin, projected) > Du03AStrokeProfile.ReachRadius)
-                return Result(false, false, Du03ACandidateReason.ReachInvalid, rawCandidate, projected, 0, 0f, lengthBefore, inkBefore);
-            if (Vector3.Distance(acceptedPoints[^1], projected) < Du03AStrokeProfile.DedupeThreshold)
-                return Result(true, false, Du03ACandidateReason.Dedupe, rawCandidate, projected, 0, 0f, lengthBefore, inkBefore);
+            if (mode != Du03AStrokeMode.Spatial
+                && Vector3.Distance(planeOrigin, resolvedCandidate) > Du03AStrokeProfile.ReachRadius)
+            {
+                return Result(false, false, Du03ACandidateReason.ReachInvalid, rawCandidate, resolvedCandidate, 0, 0f, lengthBefore, inkBefore);
+            }
+            if (Vector3.Distance(acceptedPoints[^1], resolvedCandidate) < Du03AStrokeProfile.DedupeThreshold)
+                return Result(true, false, Du03ACandidateReason.Dedupe, rawCandidate, resolvedCandidate, 0, 0f, lengthBefore, inkBefore);
 
-            var prospective = BuildProspectivePoints(acceptedPoints[^1], projected);
+            var prospective = BuildProspectivePoints(acceptedPoints[^1], resolvedCandidate);
             if (prospective.Count == 0)
             {
-                return Result(true, false, Du03ACandidateReason.SpacingNotReached, rawCandidate, projected, 0, 0f, lengthBefore, inkBefore);
+                return Result(true, false, Du03ACandidateReason.SpacingNotReached, rawCandidate, resolvedCandidate, 0, 0f, lengthBefore, inkBefore);
             }
 
             var requiredInk = prospective.Count * Du03AStrokeProfile.SampleSpacing;
             if (requiredInk > AvailableInk + 0.000001f)
-                return Result(false, false, Du03ACandidateReason.InkInvalid, rawCandidate, projected, 0, requiredInk, lengthBefore, inkBefore);
+                return Result(false, false, Du03ACandidateReason.InkInvalid, rawCandidate, resolvedCandidate, 0, requiredInk, lengthBefore, inkBefore);
 
             foreach (var point in prospective) acceptedPoints.Add(point);
             AcceptedLength += requiredInk;
             DrawingReservedLength += requiredInk;
             AvailableInk -= requiredInk;
             ValidateLedger();
-            return Result(true, true, Du03ACandidateReason.Appended, rawCandidate, projected, prospective.Count, requiredInk, lengthBefore, inkBefore);
+            return Result(true, true, Du03ACandidateReason.Appended, rawCandidate, resolvedCandidate, prospective.Count, requiredInk, lengthBefore, inkBefore);
         }
 
         public bool Release()
@@ -333,7 +339,7 @@ namespace DoodleUp.Stroke
             bool appended,
             Du03ACandidateReason reason,
             Vector3 raw,
-            Vector3 projected,
+            Vector3 resolvedCandidate,
             int appendedCount,
             float requiredInk,
             float lengthBefore,
@@ -344,7 +350,7 @@ namespace DoodleUp.Stroke
                 appended,
                 reason,
                 raw,
-                projected,
+                resolvedCandidate,
                 appendedCount,
                 requiredInk,
                 lengthBefore,

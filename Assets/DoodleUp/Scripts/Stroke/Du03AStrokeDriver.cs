@@ -89,6 +89,7 @@ namespace DoodleUp.Stroke
 
         public Du03AStrokeSession Session { get; private set; }
         public Transform HandMarker => handMarker;
+        public Du03AStrokeMode Mode => mode;
         public long LateUpdateSequence { get; private set; }
         public Du03AStrokeGeometryResult LastGeometryResult { get; private set; }
         public int CommittedColliderCount
@@ -228,8 +229,20 @@ namespace DoodleUp.Stroke
                 Session.Release();
                 DisableInvalidPreview();
                 eventOrder?.Add("RELEASE");
+                if (Session.State == Du03AStrokeSessionState.Pending)
+                {
+                    var committed = TryConfirmWithGeometry();
+                    if (committed == null)
+                        throw new InvalidOperationException("DU-03A release auto-commit failed after entering Pending.");
+                    eventOrder?.Add("AUTO_COMMIT");
+                    LogTransition(before, Session.State, "DRAW_RELEASE_COMMIT");
+                    Debug.Log($"[DU03A_COMMIT] owner={committed.OwnerId} mode={committed.Mode} trigger=LMB_RELEASE chargedLength={committed.ChargedLength:F6} simplifiedPoints={committed.SimplifiedPoints.Count} segments={LastGeometryResult.SegmentCount} colliders={LastGeometryResult.ColliderCount} renderers={LastGeometryResult.RendererCount} degenerateSkipped={LastGeometryResult.DegenerateSkipped} maxSharedEndpointGap={LastGeometryResult.MaximumSharedEndpointGap:F9}");
+                }
+                else
+                {
+                    LogTransition(before, Session.State, "DRAW_RELEASE_CANCELLED");
+                }
                 RefreshPreview();
-                LogTransition(before, Session.State, Session.State == Du03AStrokeSessionState.Pending ? "DRAW_RELEASE_PENDING" : "DRAW_RELEASE_CANCELLED");
             }
 
             return result;
