@@ -50,11 +50,18 @@ namespace DoodleUp.Runtime
             if (sandbox == null) sandbox = FindFirstObjectByType<LastShiftSandboxController>();
             if (networkManager != null)
             {
-                if (transport != null) networkManager.NetworkConfig.NetworkTransport = transport;
+                // 씬 빌더가 편집 모드에서 컴포넌트를 붙일 때 NetworkManager 내부 설정은 아직
+                // 초기화 중이다. 그 시점에 NetworkConfig 를 만지면 Configure() 의 후속 접근이
+                // NullReferenceException 으로 실패한다. 런타임에만 직렬화 참조를 config 로 복원한다.
+                if (Application.isPlaying)
+                {
+                    if (transport != null) networkManager.NetworkConfig.NetworkTransport = transport;
+                    if (playerPrefab != null) networkManager.NetworkConfig.PlayerPrefab = playerPrefab.gameObject;
+                }
                 networkManager.ConnectionApprovalCallback = ApproveConnection;
                 networkManager.OnClientDisconnectCallback -= OnClientDisconnected;
                 networkManager.OnClientDisconnectCallback += OnClientDisconnected;
-                RestrictSceneSynchronizationToNetworkScene();
+                if (Application.isPlaying) RestrictSceneSynchronizationToNetworkScene();
             }
         }
 
