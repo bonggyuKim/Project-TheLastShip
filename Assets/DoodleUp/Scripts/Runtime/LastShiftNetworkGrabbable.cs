@@ -24,6 +24,8 @@ namespace DoodleUp.Runtime
         [SerializeField] private LastShiftGrabbable grabbable;
         private LastShiftNetworkPlayer holder;
         private float nextHolderResolveTime;
+        private float enforceRecoveryPoseUntil;
+        private LastShiftOwnerNetworkTransform ownerNetworkTransform;
 
         public ulong HolderClientId => holderClientId.Value;
         public bool IsClaimed => holderClientId.Value != NoHolder;
@@ -120,6 +122,84 @@ namespace DoodleUp.Runtime
         {
             if (!IsServer) return;
             ReleaseFromServer(Vector3.zero);
+        }
+
+        /// <summary>
+        /// 서버 권위 월드 경계 복구. held 상태라도 player reference → holder id → ownership →
+        /// grabbable physics 순으로 정리한 뒤 nominal 위치로 돌린다. 중간 상태가 client 에
+        /// 복제되어도 stale holder가 다시 item을 잡은 것으로 해석되지 않게 한다.
+        /// </summary>
+        public bool RecoverFromServer(string reason)
+        {
+            if (!IsServer || !IsSpawned || string.IsNullOrWhiteSpace(reason)) return false;
+
+            var previousPosition = transform.position;
+            var previousHolder = holderClientId.Value;
+            var wasSecured = secured.Value || grabbable.Secured;
+            var wasSecuredByCrew = securedByCrew.Value || grabbable.SecuredByCrew;
+            if (holder != null) holder.SetHeldItemFromServer(null);
+            holder = null;
+            holderClientId.Value = NoHolder;
+            NetworkObject.RemoveOwnership();
+            grabbable.RecoverToNominal(wasSecured, wasSecuredByCrew);
+            secured.Value = wasSecured;
+            securedByCrew.Value = wasSecuredByCrew;
+
+            enforceRecoveryPoseUntil = Time.unscaledTime + 0.75f;
+            CommitRecoveryPose();
+
+            NotifyRecoveryRpc(grabbable.Role, previousPosition, grabbable.NominalPosition, previousHolder, reason);
+            return true;
+        }
+
+        /// <summary>
+        /// preset reset 에서도 network pose 를 명시적으로 리셋한다. 단순 ResetItem 은 로컬
+        /// Transform/Rigidbody 만 바꾸므로 owner-authoritative NetworkTransform 의 stale pose 가
+        /// 뒤늦게 nominal 을 덮어쓸 수 있다.
+        /// </summary>
+        public void SyncResetPoseFromServer()
+        {
+            if (!IsServer || !IsSpawned) return;
+            enforceRecoveryPoseUntil = Time.unscaledTime + 0.75f;
+            CommitRecoveryPose();
+        }
+
+        /// <summary>
+        /// LastShiftNetworkSandbox 의 0.25초 tick 에서만 호출해 network spam 없이 stale owner
+        /// pose 창을 덮는다. 복구 로그는 최초 RecoverFromServer 에서 한 번만 남는다.
+        /// </summary>
+        public void EnforcePendingRecoveryPose()
+        {
+            if (!IsServer || !IsSpawned || holderClientId.Value != NoHolder ||
+                Time.unscaledTime >= enforceRecoveryPoseUntil)
+                return;
+            grabbable.RecoverToNominal(secured.Value, securedByCrew.Value);
+            CommitRecoveryPose();
+        }
+
+        private void CommitRecoveryPose()
+        {
+            if (ownerNetworkTransform == null) ownerNetworkTransform = GetComponent<LastShiftOwnerNetworkTransform>();
+            if (ownerNetworkTransform == null) return;
+            ownerNetworkTransform.SetState(
+                grabbable.NominalPosition,
+                transform.rotation,
+                transform.localScale,
+                teleportDisabled: false);
+        }
+
+        [Rpc(SendTo.Everyone, RequireOwnership = false)]
+        private void NotifyRecoveryRpc(
+            LastShiftItemRole role,
+            Vector3 previousPosition,
+            Vector3 recoveryPosition,
+            ulong previousHolder,
+            string reason)
+        {
+            // 상태 NetworkVariable 과 RPC 는 서로 다른 전송 스트림이라 이 메시지가 먼저 도착할 수 있다.
+            // 복제 전 현재값(IsClaimed/IsSecured)을 출력하면 성공 이벤트에 stale claimed=true 가 보여
+            // 오진을 만든다. 서버가 원자적으로 확정한 결과를 명시한다.
+            Debug.Log($"[LAST_SHIFT_ITEM_RECOVERY] observer={NetworkManager.LocalClientId} role={role} reason={reason} previous={previousPosition:F2} recovery={recoveryPosition:F2} previousHolder={(previousHolder == NoHolder ? "none" : previousHolder.ToString())} resultHolder=none resultOwner=server resultVelocity=zero result=PASS");
         }
 
         public void SyncSecuredFromServer()

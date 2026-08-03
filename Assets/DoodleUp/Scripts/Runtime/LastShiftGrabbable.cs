@@ -149,9 +149,19 @@ namespace DoodleUp.Runtime
 
         public void ResetItem()
         {
+            RecoverToNominal(spawnSecured, false);
+        }
+
+        /// <summary>
+        /// 월드 경계 이탈과 preset reset 이 공유하는 원자적 복구 경계. parent/pose/secured/held와
+        /// Rigidbody 선·각속도를 한 번에 정리해 "위치는 돌아왔지만 계속 날아감" 또는
+        /// "holder는 없는데 IsHeld=true" 같은 반쪽 상태를 남기지 않는다.
+        /// </summary>
+        public void RecoverToNominal(bool recoveredSecured, bool byCrew)
+        {
             IsHeld = false;
-            secured = spawnSecured;
-            SecuredByCrew = false;
+            secured = recoveredSecured;
+            SecuredByCrew = recoveredSecured && byCrew;
             transform.SetParent(originalParent, false);
             transform.SetPositionAndRotation(nominalPosition, nominalRotation);
             body.linearVelocity = Vector3.zero;

@@ -14,6 +14,12 @@ namespace DoodleUp.Runtime
         [SerializeField] private LastShiftSandboxController sandbox;
         private float nextSnapshotTime;
 
+        // Graybox 선체는 x≈±6.15, z≈±2.45, y=0..3 범위다. 충돌 틈이나 열린 앞/천장으로
+        // 튀어도 즉시 복구하지 않고 웃긴 궤적을 볼 여유를 주되, 도보 회수가 불가능한 범위는 막는다.
+        public static readonly Bounds ItemSafetyBounds = new(
+            new Vector3(0f, 2.5f, 0f),
+            new Vector3(16f, 11f, 12f));
+
         public LastShiftNetworkSnapshot Snapshot => snapshot.Value;
 
         public override void OnNetworkSpawn()
@@ -38,7 +44,31 @@ namespace DoodleUp.Runtime
         {
             if (!IsServer || Time.unscaledTime < nextSnapshotTime) return;
             nextSnapshotTime = Time.unscaledTime + 0.25f;
+            RecoverItemsOutsideSafetyBounds();
             PublishSnapshot();
+        }
+
+        /// <summary>
+        /// loose/held/ownership 전환 중 어느 상태라도 world safety bounds 밖이면 서버에서 복구한다.
+        /// secured item 은 nominal 에 있어야 하므로 예외 없이 같은 경계를 적용한다.
+        /// </summary>
+        public int RecoverItemsOutsideSafetyBounds()
+        {
+            if (!IsServer) return 0;
+            var recovered = 0;
+            foreach (var item in FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None))
+            {
+                if (item == null || !item.IsSpawned) continue;
+                item.EnforcePendingRecoveryPose();
+                if (ItemSafetyBounds.Contains(item.transform.position)) continue;
+                var reason = item.transform.position.y < ItemSafetyBounds.min.y
+                    ? "below-world"
+                    : item.transform.position.y > ItemSafetyBounds.max.y
+                        ? "above-world"
+                        : "outside-hull-range";
+                if (item.RecoverFromServer(reason)) recovered++;
+            }
+            return recovered;
         }
 
         public void Configure(LastShiftSandboxController controller)
@@ -96,6 +126,8 @@ namespace DoodleUp.Runtime
         {
             if (!IsServer || sandbox == null) return;
             sandbox.ResetPreset(preset);
+            foreach (var item in FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None))
+                item.SyncResetPoseFromServer();
             FindFirstObjectByType<LastShiftNetworkSession>()?.ResetRegisteredPlayerPositions();
             PublishSnapshot();
         }
