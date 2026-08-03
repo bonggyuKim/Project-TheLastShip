@@ -124,7 +124,13 @@ namespace DoodleUp.Runtime
             {
                 if (client.Value.PlayerObject == null || !slotAllocator.TryGet(client.Key, out var slot)) continue;
                 var player = client.Value.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
-                if (player != null) player.ResetToSlotRpc(SpawnForSlot(slot), RotationForSlot(slot));
+                if (player == null) continue;
+                var slotPosition = SpawnForSlot(slot);
+                var slotRotation = RotationForSlot(slot);
+                // 실제 이동은 소유 클라이언트가 수행한다. 서버는 조준 캐시만 리셋 자세로 맞춰
+                // owner 보고가 도착하기 전 stale 조준으로 grab 이 판정되는 것을 막는다.
+                player.ResetServerAimCache(slotPosition, slotRotation);
+                player.ResetToSlotRpc(slotPosition, slotRotation);
             }
         }
 
