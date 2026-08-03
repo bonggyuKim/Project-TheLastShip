@@ -1,6 +1,6 @@
 {
   "name": "DoodleUp.Runtime",
   "rootNamespace": "DoodleUp.Runtime",
-  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Physics", "Unity.InputSystem"],
+  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Physics", "Unity.InputSystem", "Unity.Netcode.Runtime", "Unity.Networking.Transport"],
   "autoReferenced": true
 }

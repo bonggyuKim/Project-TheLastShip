@@ -36,3 +36,26 @@ sysinfo.txt
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Player build output accidentally emitted to the repo root
+UnityPlayer.dll
+UnityCrashHandler64.exe
+WinPixEventRuntime.dll
+dstorage.dll
+dstoragecore.dll
+D3D12/
+MonoBleedingEdge/
+*_Data/
+*_BurstDebugInformation_DoNotShip/
+
+# Agent verification artifacts (logs, NUnit results, screenshots)
+LastShift*.log
+LastShift*.xml
+LastShift*.png
+
+# Agent/tool local state
+.claude/
+probe.cs
+
+# Player executable emitted to the repo root
+LastShiftNetworkFinal.exe
