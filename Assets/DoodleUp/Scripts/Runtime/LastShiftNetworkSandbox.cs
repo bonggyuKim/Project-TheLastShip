@@ -103,8 +103,11 @@ namespace DoodleUp.Runtime
         [Rpc(SendTo.Server, RequireOwnership = false)]
         public void RequestPresetResetRpc(LastShiftPreset preset, RpcParams rpcParams = default)
         {
-            if (!IsConnectedSender(rpcParams.Receive.SenderClientId)) return;
+            var sender = rpcParams.Receive.SenderClientId;
+            if (!IsConnectedSender(sender)) return;
+            var generationBefore = sandbox != null ? sandbox.ResetGeneration : -1;
             ResetPresetFromServer(preset);
+            Debug.Log($"[LAST_SHIFT_PRESET_REQUEST] client={sender} requested={preset} applied={sandbox?.CurrentPreset} generation={generationBefore}->{sandbox?.ResetGeneration} result={(sandbox != null && sandbox.CurrentPreset == preset && sandbox.ResetGeneration > generationBefore ? "PASS" : "FAIL")}");
         }
 
         [Rpc(SendTo.Server, RequireOwnership = false)]
