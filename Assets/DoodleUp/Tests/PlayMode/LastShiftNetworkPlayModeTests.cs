@@ -13,6 +13,7 @@ namespace DoodleUp.Tests.PlayMode
     public sealed class LastShiftNetworkPlayModeTests
     {
         private const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity";
+        private const ushort KeyboardTestPort = 7981;
         private Keyboard testKeyboard;
         private LastShiftPlayerController activeController;
         private InputSettings.UpdateMode previousUpdateMode;
@@ -27,12 +28,24 @@ namespace DoodleUp.Tests.PlayMode
             InputSystem.settings.updateMode = InputSettings.UpdateMode.ProcessEventsManually;
         }
 
-        [TearDown]
-        public void RemoveTestKeyboard()
+        /// <summary>
+        /// Shutdown 요청 후 UDP 소켓이 실제로 풀리기까지 몇 프레임이 걸린다. 동기 TearDown 으로
+        /// 끝내면 다음 테스트의 StartHost 가 같은 포트에 bind 하려다
+        /// "address is already in use" 로 실패한다. 그래서 해제를 프레임 단위로 기다린다.
+        /// </summary>
+        [UnityTearDown]
+        public IEnumerator RemoveTestKeyboard()
         {
             activeController = null;
             var manager = Object.FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
-            if (manager != null && manager.IsListening) manager.Shutdown();
+            if (manager != null && manager.IsListening)
+            {
+                manager.Shutdown();
+                var deadline = Time.realtimeSinceStartup + 5f;
+                while (manager != null && manager.IsListening && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+                yield return null;
+            }
             InputSystem.settings.updateMode = previousUpdateMode;
             if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
         }
@@ -132,19 +145,51 @@ namespace DoodleUp.Tests.PlayMode
         {
             var load = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
             while (!load.isDone) yield return null;
-            yield return null;
+            // 앞 테스트의 NetworkManager 가 완전히 파괴되고 새 씬 인스턴스가 Awake 를 마칠 시간을 준다.
+            // 한 프레임만 기다리면 두 번째 StartHost 에서 씬 내 NetworkObject 가 하나도 spawn 되지 않는다.
+            for (var frame = 0; frame < 5; frame++) yield return null;
 
             var session = Object.FindFirstObjectByType<LastShiftNetworkSession>(FindObjectsInactive.Include);
             var sandbox = Object.FindFirstObjectByType<LastShiftSandboxController>(FindObjectsInactive.Include);
             var networkSandbox = Object.FindFirstObjectByType<LastShiftNetworkSandbox>(FindObjectsInactive.Include);
+            // 앞 테스트가 쓴 포트의 UDP 소켓이 아직 살아 있을 수 있어 다른 포트로 띄운다.
+            session.OverridePort(KeyboardTestPort);
             Assert.That(session.StartHost(), Is.True);
-            yield return null;
+            // 씬 내 NetworkObject 는 host 시작 직후 한 프레임에 모두 spawn 되지 않는다.
+            yield return WaitFor(
+                () => session.NetworkManager.IsListening && session.NetworkManager.LocalClient?.PlayerObject != null,
+                "host-player-spawned",
+                15f);
 
             var player = session.NetworkManager.LocalClient.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
             var controller = player.GetComponent<LastShiftPlayerController>();
             activeController = controller;
-            var cooling = Object.FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
-                .Single(item => item.Grabbable.Role == LastShiftItemRole.CoolingCanister);
+            // 앞 테스트가 Shutdown 한 직후에는 아이템 NetworkObject 가 아직 재spawn 되지 않았고,
+            // 이전 씬의 파괴 예정 인스턴스가 조회에 걸릴 수도 있다. spawn 된 인스턴스를 다시 찾는다.
+            LastShiftNetworkGrabbable cooling = null;
+            yield return WaitFor(
+                () =>
+                {
+                    cooling = Object.FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                        .FirstOrDefault(item =>
+                            item.Grabbable != null &&
+                            item.Grabbable.Role == LastShiftItemRole.CoolingCanister &&
+                            item.NetworkObject != null &&
+                            item.NetworkObject.IsSpawned);
+                    return cooling != null;
+                },
+                "cooling-spawned",
+                15f,
+                () =>
+                {
+                    var all = Object.FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None);
+                    return $"items={all.Length} spawned={all.Count(i => i.NetworkObject != null && i.NetworkObject.IsSpawned)} " +
+                           $"roles={string.Join(",", all.Select(i => $"{i.Grabbable?.Role}:{(i.NetworkObject != null && i.NetworkObject.IsSpawned ? 1 : 0)}"))} scenes={SceneManager.sceneCount}";
+                });
+            // Tether 가 시작 사거리 안에 놓이면서 spawn 조준에는 Tether 가 먼저 걸린다.
+            // 이 테스트가 보려는 것은 "멀리 있는 대상은 접근이 필요하다"는 안내이므로,
+            // 다른 loose 아이템이 조준 후보로 끼어들지 않는 자리에서 CoolingCanister 만 조준한다.
+            StandOffFacingOnly(player, controller, cooling);
             AimAtItem(controller, cooling);
             Assert.That(controller.InteractionPrompt, Does.Contain("접근 필요"));
 
@@ -152,37 +197,40 @@ namespace DoodleUp.Tests.PlayMode
 
             PositionForKeyboardInteraction(player, controller, cooling);
             Assert.That(controller.InteractionPrompt, Does.Contain("[E]").And.Contain("CoolingCanister"));
+            Debug.Log($"[LAST_SHIFT_TEST] phase=pre-grab prompt={controller.InteractionPrompt} coolSpawned={cooling.NetworkObject != null && cooling.NetworkObject.IsSpawned} secured={cooling.IsSecured} claimed={cooling.IsClaimed} coolPos={cooling.transform.position} aimOrigin={controller.AimOrigin}");
             yield return PressAndRelease(Key.E);
-            yield return WaitFor(() => player.HeldItem == cooling);
+            yield return WaitFor(() => player.HeldItem == cooling, "grab-cooling");
             Assert.That(player.HeldItem, Is.SameAs(cooling));
 
             yield return PressAndRelease(Key.E);
-            yield return WaitFor(() => player.HeldItem == null);
+            yield return WaitFor(() => player.HeldItem == null, "drop-cooling");
             Assert.That(player.HeldItem, Is.Null);
 
             var resetBefore = sandbox.ResetGeneration;
             yield return PressAndRelease(Key.Digit2);
-            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.PowerOverloadLooseBattery);
+            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.PowerOverloadLooseBattery, "preset-2");
             Assert.That(sandbox.ResetGeneration, Is.EqualTo(resetBefore + 1));
             var battery = Object.FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
                 .Single(item => item.Grabbable.Role == LastShiftItemRole.Battery);
+            // 프리셋 리셋 직후에는 아이템 spawn 상태와 secured 복제가 아직 정착되지 않는다.
+            yield return WaitFor(() => battery.NetworkObject != null && battery.NetworkObject.IsSpawned && !battery.IsSecured, "battery-spawned-loose");
             PositionForKeyboardInteraction(player, controller, battery);
             yield return PressAndRelease(Key.E);
-            yield return WaitFor(() => player.HeldItem == battery);
+            yield return WaitFor(() => player.HeldItem == battery, "grab-battery");
             player.transform.position += battery.Grabbable.NominalPosition - player.HoldSocket.position;
             UnityEngine.Physics.SyncTransforms();
             yield return null;
             yield return PressAndRelease(Key.F);
-            yield return WaitFor(() => player.HeldItem == null && battery.IsSecured);
+            yield return WaitFor(() => player.HeldItem == null && battery.IsSecured, "secure-battery");
             Assert.That(battery.IsSecured, Is.True);
 
             yield return PressAndRelease(Key.Digit1);
-            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.HighHeatHighThrust);
+            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.HighHeatHighThrust, "preset-1");
             yield return PressAndRelease(Key.Digit3);
-            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.BadAttitudeHighOxygen);
+            yield return WaitFor(() => networkSandbox.Snapshot.Preset == LastShiftPreset.BadAttitudeHighOxygen, "preset-3");
             resetBefore = sandbox.ResetGeneration;
             yield return PressAndRelease(Key.R);
-            yield return WaitFor(() => sandbox.ResetGeneration == resetBefore + 1);
+            yield return WaitFor(() => sandbox.ResetGeneration == resetBefore + 1, "reset-r");
             Assert.That(networkSandbox.Snapshot.Preset, Is.EqualTo(LastShiftPreset.BadAttitudeHighOxygen));
             session.StopSession();
         }
@@ -231,11 +279,17 @@ namespace DoodleUp.Tests.PlayMode
             activeController?.ProcessKeyboardInput(testKeyboard, 1f / 60f);
         }
 
-        private static IEnumerator WaitFor(System.Func<bool> predicate)
+        private static IEnumerator WaitFor(
+            System.Func<bool> predicate,
+            string phase = null,
+            float timeoutSeconds = 5f,
+            System.Func<string> diagnostics = null)
         {
-            var deadline = Time.realtimeSinceStartup + 5f;
+            var deadline = Time.realtimeSinceStartup + timeoutSeconds;
             while (!predicate() && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(predicate(), Is.True);
+            if (!predicate() && diagnostics != null)
+                Debug.Log($"[LAST_SHIFT_TEST] phase={phase} timeout diagnostics={diagnostics()}");
+            Assert.That(predicate(), Is.True, phase != null ? $"timed out waiting for {phase}" : null);
         }
 
         private static void AimAtItem(LastShiftPlayerController controller, LastShiftNetworkGrabbable item)
@@ -243,6 +297,54 @@ namespace DoodleUp.Tests.PlayMode
             var target = item.GetComponentInChildren<Collider>().bounds.center;
             var cameraTransform = controller.TargetCamera.transform;
             cameraTransform.rotation = Quaternion.LookRotation((target - cameraTransform.position).normalized, Vector3.up);
+            UnityEngine.Physics.SyncTransforms();
+        }
+
+        /// <summary>
+        /// 대상 아이템은 사거리 밖에 두고, 다른 loose 아이템은 조준 후보로 끼어들지 않을 만큼
+        /// 떨어진 자리로 옮긴다. "접근 필요" 안내를 대상 아이템 기준으로 확인하기 위한 준비다.
+        /// </summary>
+        /// <summary>
+        /// 대상 아이템만 조준 후보가 되는 자리에 선다. 대상은 사거리 밖에 두어 "접근 필요" 안내를
+        /// 확인할 수 있게 하고, 다른 loose 아이템이 조준 원뿔(dot 0.7)에 들어오지 않는 방향을 고른다.
+        /// 아이템의 collider 나 Rigidbody 를 건드리면 loose 물체가 낙하하거나 nominal 이 흔들려
+        /// 이후 grab·secure 단계가 깨지므로, 플레이어 배치만으로 격리한다.
+        /// </summary>
+        private static void StandOffFacingOnly(
+            LastShiftNetworkPlayer player,
+            LastShiftPlayerController controller,
+            LastShiftNetworkGrabbable item)
+        {
+            var target = item.GetComponentInChildren<Collider>().bounds.center;
+            var others = Object.FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                .Where(candidate => candidate != item && !candidate.Grabbable.Secured)
+                .ToArray();
+            var cameraHeight = controller.TargetCamera.transform.localPosition.y;
+            var standoff = LastShiftPlayerController.GrabDistance + 1.6f;
+
+            var bestPosition = target - Vector3.forward * standoff - Vector3.up * cameraHeight;
+            var bestPenalty = float.PositiveInfinity;
+            for (var degrees = 0; degrees < 360; degrees += 10)
+            {
+                var direction = Quaternion.Euler(0f, degrees, 0f) * Vector3.forward;
+                var candidatePosition = target - direction * standoff - Vector3.up * cameraHeight;
+                var aimOrigin = candidatePosition + Vector3.up * cameraHeight;
+                var aim = (target - aimOrigin).normalized;
+                var penalty = 0f;
+                foreach (var other in others)
+                {
+                    var offset = other.transform.position - aimOrigin;
+                    if (offset.magnitude > LastShiftPlayerController.AwarenessDistance) continue;
+                    penalty += Mathf.Max(0f, Vector3.Dot(aim, offset.normalized));
+                }
+                if (penalty >= bestPenalty) continue;
+                bestPenalty = penalty;
+                bestPosition = candidatePosition;
+                if (penalty <= 0f) break;
+            }
+
+            var forward = (target - (bestPosition + Vector3.up * cameraHeight)).normalized;
+            controller.ResetPlayer(bestPosition, Quaternion.LookRotation(Vector3.ProjectOnPlane(forward, Vector3.up).normalized));
             UnityEngine.Physics.SyncTransforms();
         }
 
