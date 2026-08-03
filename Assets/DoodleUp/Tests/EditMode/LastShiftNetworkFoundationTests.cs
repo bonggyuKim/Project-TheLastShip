@@ -60,5 +60,22 @@ namespace DoodleUp.Tests.EditMode
         {
             Assert.That(LastShiftNetworkGrabbable.NoHolder, Is.EqualTo(ulong.MaxValue));
         }
+
+        [Test]
+        public void ItemSafetyBoundsContainEveryCanonicalNominalPosition()
+        {
+            var canonicalPositions = new[]
+            {
+                new Vector3(0.6f, 0.38f, 0.8f),
+                new Vector3(0f, 0.55f, -1.3f),
+                new Vector3(4.5f, 0.65f, -1.6f),
+                new Vector3(-2.62f, 1.325f, -1.28f)
+            };
+
+            Assert.That(canonicalPositions, Is.All.Matches<Vector3>(LastShiftNetworkSandbox.ItemSafetyBounds.Contains));
+            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(0f, -10f, 0f)), Is.False);
+            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(20f, 1f, 0f)), Is.False);
+            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(0f, 20f, 0f)), Is.False);
+        }
     }
 }

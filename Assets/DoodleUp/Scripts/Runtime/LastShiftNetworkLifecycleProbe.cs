@@ -55,6 +55,11 @@ namespace DoodleUp.Runtime
                 yield return RunKeyboardLifecycleProbe(manager, player, controller, networkSandbox);
                 yield break;
             }
+            if (HasArgument("-lastShiftSp04RecoveryProbe"))
+            {
+                yield return RunClientRecoveryProbe(manager, player, controller, networkSandbox);
+                yield break;
+            }
             if (HasArgument("-lastShiftPresetSyncProbe"))
             {
                 yield return RunClientPresetSyncProbe(manager, player, controller, networkSandbox);
@@ -315,6 +320,162 @@ namespace DoodleUp.Runtime
             if (manager.IsListening) manager.Shutdown();
             yield return null;
             Application.Quit(pass ? 0 : 1);
+        }
+
+        /// <summary>
+        /// SP-04 원격 클라이언트 복구 검증. held/drop/secure/bounds 상태에서 R 또는 자동 복구 후
+        /// holder·ownership·physics·position 이 함께 원상복구되고 다시 E/F 가능한지 확인한다.
+        /// </summary>
+        private IEnumerator RunClientRecoveryProbe(
+            NetworkManager manager,
+            LastShiftNetworkPlayer player,
+            LastShiftPlayerController controller,
+            LastShiftNetworkSandbox networkSandbox)
+        {
+            if (manager.IsServer)
+            {
+                Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=skipped reason=host-side result=PASS");
+                yield break;
+            }
+
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            keyboard.MakeCurrent();
+            var previousUpdateMode = InputSystem.settings.updateMode;
+            InputSystem.settings.updateMode = InputSettings.UpdateMode.ProcessEventsManually;
+            var cooling = FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                .FirstOrDefault(item => item.Grabbable?.Role == LastShiftItemRole.CoolingCanister);
+            if (cooling == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=find-item result=FAIL");
+                yield return QuitProbe(manager);
+                yield break;
+            }
+
+            var pass = true;
+
+            // grab 중 R
+            yield return PositionAimAndPress(controller, player, cooling, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp04-held-grab");
+            var generation = networkSandbox.Snapshot.ResetGeneration;
+            yield return PressAndRelease(controller, keyboard, Key.R);
+            yield return WaitFor(() => networkSandbox.Snapshot.ResetGeneration > generation && IsRecoveredLoose(cooling, player), "sp04-reset-held");
+            var heldReset = IsRecoveredLoose(cooling, player);
+            pass &= heldReset;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=reset-held {DescribeRecoveryState(cooling, player)} result={(heldReset ? "PASS" : "FAIL")}");
+
+            // drop 직후 R
+            yield return PositionAimAndPress(controller, player, cooling, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp04-drop-grab");
+            yield return PressAndRelease(controller, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == null && !cooling.IsClaimed, "sp04-drop");
+            generation = networkSandbox.Snapshot.ResetGeneration;
+            yield return PressAndRelease(controller, keyboard, Key.R);
+            yield return WaitFor(() => networkSandbox.Snapshot.ResetGeneration > generation && IsRecoveredLoose(cooling, player), "sp04-reset-after-drop");
+            var dropReset = IsRecoveredLoose(cooling, player);
+            pass &= dropReset;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=reset-after-drop claimed={cooling.IsClaimed} owner={cooling.NetworkObject.OwnerClientId} velocity={cooling.Grabbable.Body.linearVelocity:F2} result={(dropReset ? "PASS" : "FAIL")}");
+
+            // secure 후 R → HighHeat preset 의 주범인 CoolingCanister 는 다시 loose 이어야 한다.
+            yield return PositionAimAndPress(controller, player, cooling, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp04-secure-grab");
+            player.transform.position += cooling.Grabbable.NominalPosition - player.HoldSocket.position;
+            UnityEngine.Physics.SyncTransforms();
+            yield return null;
+            yield return PressAndRelease(controller, keyboard, Key.F);
+            yield return WaitFor(() => player.HeldItem == null && cooling.IsSecured, "sp04-secure");
+            generation = networkSandbox.Snapshot.ResetGeneration;
+            yield return PressAndRelease(controller, keyboard, Key.R);
+            yield return WaitFor(() => networkSandbox.Snapshot.ResetGeneration > generation && IsRecoveredLoose(cooling, player), "sp04-reset-after-secure");
+            var secureReset = IsRecoveredLoose(cooling, player);
+            pass &= secureReset;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=reset-after-secure secured={cooling.IsSecured} claimed={cooling.IsClaimed} owner={cooling.NetworkObject.OwnerClientId} result={(secureReset ? "PASS" : "FAIL")}");
+
+            // held item 을 실제 소실 경로로 보낸다. item transform 만 바꾸면 LateUpdate 가 즉시 holder
+            // socket 으로 덮으므로, owner player 를 경계 밖으로 이동시켜 held item 이 따라가게 한다.
+            yield return PositionAimAndPress(controller, player, cooling, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp04-boundary-grab");
+            var outsidePosition = new Vector3(
+                LastShiftNetworkSandbox.ItemSafetyBounds.max.x + 5f,
+                LastShiftSandboxController.PlayerSpawn.y,
+                0f);
+            controller.ResetPlayer(outsidePosition, Quaternion.identity);
+            yield return new WaitForSecondsRealtime(0.8f);
+            UnityEngine.Physics.SyncTransforms();
+            yield return WaitFor(() => IsRecoveredLoose(cooling, player), "sp04-boundary-recovery");
+            var boundaryReset = IsRecoveredLoose(cooling, player);
+            pass &= boundaryReset;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=boundary-recovery position={cooling.transform.position:F2} claimed={cooling.IsClaimed} owner={cooling.NetworkObject.OwnerClientId} velocity={cooling.Grabbable.Body.linearVelocity:F2} result={(boundaryReset ? "PASS" : "FAIL")}");
+
+            yield return PositionAimAndPress(controller, player, cooling, keyboard, Key.E);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp04-regrab-after-recovery");
+            var regrab = player.HeldItem == cooling && cooling.HolderClientId == manager.LocalClientId;
+            pass &= regrab;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=regrab-after-recovery holderClient={cooling.HolderClientId} result={(regrab ? "PASS" : "FAIL")}");
+
+            // 전달 후와 동일한 client ownership 상태에서 R. holder/ownership 이 server 로 돌아가야 한다.
+            generation = networkSandbox.Snapshot.ResetGeneration;
+            yield return PressAndRelease(controller, keyboard, Key.R);
+            yield return WaitFor(() => networkSandbox.Snapshot.ResetGeneration > generation && IsRecoveredLoose(cooling, player), "sp04-reset-after-handoff");
+            var handoffReset = IsRecoveredLoose(cooling, player);
+            pass &= handoffReset;
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=reset-after-handoff {DescribeRecoveryState(cooling, player)} result={(handoffReset ? "PASS" : "FAIL")}");
+            Debug.Log($"[LAST_SHIFT_SP04_PROBE] client={manager.LocalClientId} phase=summary heldR={heldReset} dropR={dropReset} secureR={secureReset} handoffR={handoffReset} boundary={boundaryReset} regrab={regrab} result={(pass ? "PASS" : "FAIL")}");
+
+            InputSystem.settings.updateMode = previousUpdateMode;
+            if (keyboard.added) InputSystem.RemoveDevice(keyboard);
+            if (manager.IsListening) manager.Shutdown();
+            yield return null;
+            Application.Quit(pass ? 0 : 1);
+        }
+
+        private static bool IsRecoveredLoose(LastShiftNetworkGrabbable item, LastShiftNetworkPlayer player)
+        {
+            return player.HeldItem == null &&
+                   !item.IsClaimed &&
+                   !item.IsSecured &&
+                   !item.Grabbable.IsHeld &&
+                   item.NetworkObject.OwnerClientId == NetworkManager.ServerClientId &&
+                   Vector3.Distance(item.transform.position, item.Grabbable.NominalPosition) < 0.15f &&
+                   item.Grabbable.Body.linearVelocity.sqrMagnitude < 0.25f &&
+                   item.Grabbable.Body.angularVelocity.sqrMagnitude < 0.25f;
+        }
+
+        private static string DescribeRecoveryState(LastShiftNetworkGrabbable item, LastShiftNetworkPlayer player)
+        {
+            return $"playerHeld={(player.HeldItem != null ? player.HeldItem.Grabbable.Role.ToString() : "none")} " +
+                   $"claimed={item.IsClaimed} secured={item.IsSecured} localIsHeld={item.Grabbable.IsHeld} " +
+                   $"owner={item.NetworkObject.OwnerClientId} distance={Vector3.Distance(item.transform.position, item.Grabbable.NominalPosition):F3} " +
+                   $"velocity={item.Grabbable.Body.linearVelocity:F2} angular={item.Grabbable.Body.angularVelocity:F2}";
+        }
+
+        private static IEnumerator PositionAimAndPress(
+            LastShiftPlayerController controller,
+            LastShiftNetworkPlayer player,
+            LastShiftNetworkGrabbable item,
+            Keyboard keyboard,
+            Key key)
+        {
+            // loose Rigidbody 가 계속 움직일 수 있어 한 번 배치한 뒤 target collider 중심을 다시 읽어
+            // 재배치·재조준한다. 실제 E 입력 직전에 client target acquisition 까지 확인한다.
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                PositionPlayerForInteraction(player, controller, item, 0.15f);
+                controller.ResetPlayer(player.transform.position, player.transform.rotation);
+                AimAtItem(controller, item);
+                UnityEngine.Physics.SyncTransforms();
+                // owner-authoritative player pose 가 server 에 도착할 시간을 준다. client raycast 만
+                // 맞고 server capsule 은 이전 위치면 no-target-in-range 로 거부된다.
+                yield return new WaitForSecondsRealtime(0.5f);
+                AimAtItem(controller, item);
+                UnityEngine.Physics.SyncTransforms();
+                if (LastShiftPlayerController.TryResolveGrabTarget(
+                        controller.AimOrigin,
+                        controller.AimDirection,
+                        out var aimed,
+                        out _) && aimed == item)
+                    break;
+            }
+            yield return PressAndRelease(controller, keyboard, key);
         }
 
         /// <summary>
