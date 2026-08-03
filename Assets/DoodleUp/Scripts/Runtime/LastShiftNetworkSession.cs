@@ -34,6 +34,9 @@ namespace DoodleUp.Runtime
         {
             networkManager = manager;
             transport = networkTransport;
+            // EditMode scene rebuild를 반복하면 AddComponent<NetworkManager>() 직후 한 프레임 동안
+            // NetworkConfig가 아직 null일 수 있다. builder가 즉시 Configure를 호출해도 안전하게 한다.
+            networkManager.NetworkConfig ??= new NetworkConfig();
             networkManager.NetworkConfig.NetworkTransport = transport;
             playerPrefab = networkPlayerPrefab;
             sandbox = sandboxController;

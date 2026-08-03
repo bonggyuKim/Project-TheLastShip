@@ -114,7 +114,10 @@ namespace DoodleUp.Runtime
 
         private void LateUpdate()
         {
-            if (!IsOwner) return;
+            // Shutdown 과 scene teardown 사이 프레임에는 object 가 아직 살아 있지만 RPC 전송기는
+            // 이미 멈춰 있다. 이 구간에서 매 프레임 RPC 를 호출하면 오류 로그가 폭주하고
+            // Editor pipeline 까지 응답 불능이 된다.
+            if (!IsSpawned || !IsOwner || NetworkManager == null || !NetworkManager.IsListening) return;
             // 서버 프롬프트·거부 사유가 최신 조준을 반영하도록 pose 와 함께 조준도 계속 올린다.
             // grab 요청 시점의 정확한 값은 RequestGrabRpc 가 별도로 함께 전달한다.
             if (!IsServer) ReportAimRpc(AimOriginForOwner, AimDirectionForOwner);
