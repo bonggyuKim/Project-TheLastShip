@@ -112,12 +112,17 @@ namespace DoodleUp.Editor
             return prefab.GetComponent<LastShiftNetworkPlayer>();
         }
 
+        /// <summary>
+        /// network scene 을 enabled 목록의 첫 항목으로 유지한다. Player 는 첫 씬으로 부팅되므로
+        /// 다른 씬이 앞에 있으면 client 가 network scene 이 아닌 곳에서 시작한다. 동시에
+        /// Netcode 는 씬 인덱스 기반 해시를 대조하므로 host(에디터)와 Player 가 같은 순서의
+        /// 같은 목록을 써야 client 동기화가 성립한다.
+        /// </summary>
         private static void EnsureSceneInBuildSettings()
         {
             var scenes = EditorBuildSettings.scenes.ToList();
-            var existing = scenes.FirstOrDefault(scene => scene.path == ScenePath);
-            if (existing != null) existing.enabled = true;
-            else scenes.Add(new EditorBuildSettingsScene(ScenePath, true));
+            scenes.RemoveAll(scene => scene.path == ScenePath);
+            scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
             EditorBuildSettings.scenes = scenes.ToArray();
         }
     }
