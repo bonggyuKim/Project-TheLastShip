@@ -321,7 +321,10 @@ namespace DoodleUp.Runtime
             {
                 if (candidate == null || candidate.Grabbable == null) continue;
                 var collider = candidate.GetComponentInChildren<Collider>();
-                var target = collider != null ? collider.bounds.center : candidate.transform.position;
+                // collider 가 없거나 꺼진 아이템은 raycast 로도 절대 잡히지 않는다.
+                // 그런 대상을 안내하면 "저기 있다"고 표시하면서 잡을 수 없는 상태가 된다.
+                if (collider == null || !collider.enabled) continue;
+                var target = collider.bounds.center;
                 var offset = target - AimOrigin;
                 var candidateDistance = offset.magnitude;
                 if (candidateDistance > AwarenessDistance || candidateDistance >= distance) continue;
@@ -343,6 +346,8 @@ namespace DoodleUp.Runtime
                     return $"서버 거부: {serverRejectionReason}";
                 serverRejectionReason = null;
             }
+            if (networkPlayer.HeldItem != null && networkPlayer.HeldItem.Grabbable == null)
+                return "[E] 놓기";
             if (networkPlayer.HeldItem != null)
             {
                 var distanceToNominal = Vector3.Distance(
@@ -355,7 +360,7 @@ namespace DoodleUp.Runtime
             if (!TryGetNetworkTarget(out var item, out var distance))
             {
                 var awarenessItem = FindAwarenessItem(out var awarenessDistance);
-                if (awarenessItem == null)
+                if (awarenessItem == null || awarenessItem.Grabbable == null)
                     return $"+   E 잡기: 대상을 조준하세요 (사거리 {GrabDistance:F1}m)";
                 if (awarenessItem.IsSecured)
                     return $"{awarenessItem.Grabbable.Role}: {DescribeSecured(awarenessItem)}";
@@ -364,6 +369,10 @@ namespace DoodleUp.Runtime
                     ? $"{awarenessItem.Grabbable.Role}: {awarenessDistance:F1}m / 접근 필요 {approachNeeded:F1}m"
                     : $"{awarenessItem.Grabbable.Role}: {awarenessDistance:F1}m / 조준을 물체 중앙으로";
             }
+            // 아직 spawn 되지 않은 아이템은 역할을 신뢰할 수 없다. OnGUI 는 매 프레임 돌기 때문에
+            // 여기서 예외가 나면 화면이 아니라 로그가 먼저 무너진다.
+            if (item.Grabbable == null)
+                return $"+   E 잡기: 대상 확인 중  {distance:F1}m";
             if (item.IsSecured)
                 return $"{item.Grabbable.Role}: {DescribeSecured(item)}";
             if (item.IsClaimed)

@@ -30,7 +30,15 @@ namespace DoodleUp.Runtime
         public bool IsSecured => secured.Value;
         public bool IsSecuredByCrew => secured.Value && securedByCrew.Value;
         public bool HasResolvedHolder => holder != null;
-        public LastShiftGrabbable Grabbable => grabbable;
+        /// <summary>
+        /// spawn 전에도 유효해야 한다. 이전에는 OnNetworkSpawn 에서만 채워서, 아직 spawn 되지 않은
+        /// 아이템을 조준하면 프롬프트 생성(BuildInteractionPrompt)이 null 을 참조해 OnGUI 에서
+        /// 매 프레임 NullReferenceException 을 던졌다. RequireComponent 로 컴포넌트는 항상 있으므로
+        /// 여기서 지연 해석한다.
+        /// </summary>
+        public LastShiftGrabbable Grabbable => grabbable != null
+            ? grabbable
+            : grabbable = GetComponent<LastShiftGrabbable>();
 
         public override void OnNetworkSpawn()
         {

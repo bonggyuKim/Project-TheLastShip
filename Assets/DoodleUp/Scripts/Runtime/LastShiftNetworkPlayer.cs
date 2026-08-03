@@ -125,6 +125,14 @@ namespace DoodleUp.Runtime
         public void RequestGrab(LastShiftNetworkGrabbable item)
         {
             if (!IsOwner || item == null || HeldItem != null) return;
+            // 아직 spawn 되지 않았거나 이미 despawn 된 아이템으로 참조를 만들면
+            // NetworkObjectReference 생성 자체가 예외를 던진다. 프리셋 리셋 직후처럼
+            // 재spawn 사이 프레임에 E 가 눌리면 실제로 발생한다.
+            if (item.NetworkObject == null || !item.NetworkObject.IsSpawned)
+            {
+                Debug.Log($"[LAST_SHIFT_INTERACTION] client={OwnerClientId} action=grab result=FAIL reason=item-not-spawned");
+                return;
+            }
             // grab 요청과 같은 프레임의 조준을 함께 보낸다. LateUpdate 의 주기적 pose 갱신만 믿으면
             // 유실이나 한 프레임 지연으로 서버가 stale 조준을 검증해 유효한 grab 을 거부한다.
             RequestGrabRpc(item.NetworkObject, AimOriginForOwner, AimDirectionForOwner);
