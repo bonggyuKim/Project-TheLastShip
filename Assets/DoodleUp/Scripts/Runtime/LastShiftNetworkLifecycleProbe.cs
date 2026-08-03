@@ -55,6 +55,18 @@ namespace DoodleUp.Runtime
                 yield return RunKeyboardLifecycleProbe(manager, player, controller, networkSandbox);
                 yield break;
             }
+            if (HasArgument("-lastShiftContentionOnlyProbe"))
+            {
+                // 경합·전달만 본다. 앞 단계의 R 리셋이 host 점유를 해제해 경합 상황을 무너뜨리므로
+                // 이 시나리오에서는 aim/reset 단계를 실행하지 않는다.
+                yield return RunContentionAndHandoffProbe(manager, player, controller);
+                yield break;
+            }
+            if (HasArgument("-lastShiftClientAimResetProbe"))
+            {
+                yield return RunClientAimAndResetProbe(manager, player, controller, networkSandbox);
+                yield break;
+            }
             var verifiesInitialGeneration = !HasArgument("-lastShiftObserverOnlyProbe");
             var startupGenerationPass = networkSandbox != null && (!verifiesInitialGeneration || networkSandbox.Snapshot.ResetGeneration == 1);
             var visualDeadline = Time.realtimeSinceStartup + 12f;
@@ -295,6 +307,152 @@ namespace DoodleUp.Runtime
             var pass = initialPromptPass && approachPromptPass && grabPass && dropPass && differentGrabPass &&
                        securePass && resetPass && regrabPass;
             Debug.Log($"[LAST_SHIFT_KEYBOARD_PROBE] client={manager.LocalClientId} initialPrompt={initialPromptPass} approachPrompt={approachPromptPass} grab={grabPass} drop={dropPass} differentGrab={differentGrabPass} secure={securePass} keys123R={resetPass} regrab={regrabPass} result={(pass ? "PASS" : "FAIL")}");
+            if (manager.IsListening) manager.Shutdown();
+            yield return null;
+            Application.Quit(pass ? 0 : 1);
+        }
+
+        /// <summary>
+        /// SP-02 원격 클라이언트 검증. host 단독으로는 재현되지 않는 두 결함만 좁혀서 본다.
+        /// 1) 아래를 조준한 grab 이 서버에서 수락되는지 (조준 origin/direction 복제)
+        /// 2) R 리셋 위치가 owner-authoritative transform 때문에 되돌아오지 않는지
+        /// </summary>
+        private IEnumerator RunClientAimAndResetProbe(
+            NetworkManager manager,
+            LastShiftNetworkPlayer player,
+            LastShiftPlayerController controller,
+            LastShiftNetworkSandbox networkSandbox)
+        {
+            if (manager.IsServer)
+            {
+                Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=skipped reason=host-side result=PASS");
+                yield break;
+            }
+
+            var cooling = FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                .FirstOrDefault(candidate => candidate.Grabbable.Role == LastShiftItemRole.CoolingCanister);
+            if (cooling == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=find-item result=FAIL");
+                yield return QuitProbe(manager);
+                yield break;
+            }
+
+            // 아이템보다 높은 지점에 서서 확실히 아래로 내려다보게 만든다.
+            PositionPlayerForInteraction(player, controller, cooling, -0.55f);
+            AimAtItem(controller, cooling);
+            yield return new WaitForSecondsRealtime(0.9f);
+            AimAtItem(controller, cooling);
+            UnityEngine.Physics.SyncTransforms();
+            yield return new WaitForSecondsRealtime(0.4f);
+
+            var verticalAim = Vector3.Dot(controller.AimDirection, Vector3.up);
+            var aimsDownward = verticalAim <= -0.2f;
+            player.RequestGrab(cooling);
+            yield return WaitFor(() => player.HeldItem == cooling, "sp02-downward-grab");
+            var downwardGrabPass = player.HeldItem == cooling;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=downward-aim-grab verticalAim={verticalAim:F3} aimsDownward={aimsDownward} held={(player.HeldItem != null ? player.HeldItem.Grabbable.Role.ToString() : "none")} result={(aimsDownward && downwardGrabPass ? "PASS" : "FAIL")}");
+
+            player.RequestDrop(Vector3.zero);
+            yield return WaitFor(() => player.HeldItem == null, "sp02-drop");
+
+            // 리셋 위치 복원. 슬롯 위치에서 멀리 떨어진 뒤 R 로 리셋하고, 되돌아오지 않는지 유지 확인한다.
+            var slotPosition = LastShiftNetworkSession.SpawnForSlot(1);
+            var displaced = slotPosition + new Vector3(2.4f, 0f, 1.1f);
+            player.transform.position = displaced;
+            UnityEngine.Physics.SyncTransforms();
+            yield return new WaitForSecondsRealtime(0.6f);
+            var displacedDistance = Vector3.Distance(player.transform.position, slotPosition);
+
+            var generationBefore = networkSandbox != null ? networkSandbox.Snapshot.ResetGeneration : 0;
+            player.RequestCurrentPresetReset();
+            yield return WaitFor(
+                () => networkSandbox != null && networkSandbox.Snapshot.ResetGeneration > generationBefore,
+                "sp02-reset-generation");
+            yield return WaitFor(() => Vector3.Distance(player.transform.position, slotPosition) < 0.6f, "sp02-reset-position");
+            var resetApplied = Vector3.Distance(player.transform.position, slotPosition) < 0.6f;
+
+            // owner 가 이전 위치를 계속 송신해 리셋이 되돌아가는지 확인하기 위해 유지 여부를 본다.
+            yield return new WaitForSecondsRealtime(1.5f);
+            var resetHeld = Vector3.Distance(player.transform.position, slotPosition) < 0.6f;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=reset-position displacedDistance={displacedDistance:F2} resetApplied={resetApplied} resetHeldAfterDelay={resetHeld} finalDistance={Vector3.Distance(player.transform.position, slotPosition):F2} result={(resetApplied && resetHeld ? "PASS" : "FAIL")}");
+
+            var pass = aimsDownward && downwardGrabPass && resetApplied && resetHeld;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=summary downwardGrab={downwardGrabPass} resetPosition={(resetApplied && resetHeld)} result={(pass ? "PASS" : "FAIL")}");
+            if (HasArgument("-lastShiftContentionProbe"))
+            {
+                yield return RunContentionAndHandoffProbe(manager, player, controller);
+                yield break;
+            }
+            if (manager.IsListening) manager.Shutdown();
+            yield return null;
+            Application.Quit(pass ? 0 : 1);
+        }
+
+        /// <summary>
+        /// 같은 물건 동시 잡기 경합과 전달. host 가 먼저 점유한 물건을 client 가 노려 거부되고,
+        /// host 가 놓은 뒤에는 같은 물건의 소유권이 client 로 넘어가는지 확인한다.
+        /// </summary>
+        private IEnumerator RunContentionAndHandoffProbe(
+            NetworkManager manager,
+            LastShiftNetworkPlayer player,
+            LastShiftPlayerController controller)
+        {
+            var tether = FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                .FirstOrDefault(candidate => candidate.Grabbable.Role == LastShiftItemRole.Tether);
+            if (tether == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=contention-find-item result=FAIL");
+                yield return QuitProbe(manager);
+                yield break;
+            }
+
+            // host 가 Tether 를 먼저 잡을 시간을 준 뒤 같은 물건을 요청한다.
+            var claimDeadline = Time.realtimeSinceStartup + 12f;
+            while (manager.IsConnectedClient && !tether.IsClaimed && Time.realtimeSinceStartup < claimDeadline)
+                yield return null;
+            var hostClaimed = tether.IsClaimed;
+
+            // host 가 들고 있는 동안은 물건이 host 손 위치로 따라다닌다. 그 실제 위치를 조준해
+            // 사거리·조준 판정을 통과시킨 뒤 서버가 점유 사유로 거부하는지 본다.
+            PositionPlayerForInteraction(player, controller, tether);
+            AimAtItem(controller, tether);
+            yield return new WaitForSecondsRealtime(0.7f);
+            PositionPlayerForInteraction(player, controller, tether);
+            AimAtItem(controller, tether);
+            UnityEngine.Physics.SyncTransforms();
+            yield return new WaitForSecondsRealtime(0.3f);
+            var aimedAtHeldItem = LastShiftPlayerController.TryResolveGrabTarget(
+                controller.AimOrigin,
+                controller.AimDirection,
+                out var contendedTarget,
+                out _) && contendedTarget == tether;
+            player.RequestGrab(tether);
+            yield return new WaitForSecondsRealtime(1.2f);
+            var contentionRejected = hostClaimed && aimedAtHeldItem && player.HeldItem != tether;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=contention hostClaimed={hostClaimed} aimedAtHeldItem={aimedAtHeldItem} clientHeld={(player.HeldItem != null ? player.HeldItem.Grabbable.Role.ToString() : "none")} rejection={controller.InteractionPrompt} result={(contentionRejected ? "PASS" : "FAIL")}");
+
+            // host 가 놓으면 같은 물건을 client 가 잡을 수 있어야 한다.
+            var releaseDeadline = Time.realtimeSinceStartup + 15f;
+            while (manager.IsConnectedClient && tether.IsClaimed && Time.realtimeSinceStartup < releaseDeadline)
+                yield return null;
+            var hostReleased = !tether.IsClaimed;
+            // 놓인 물건은 낙하·복제 지연으로 위치가 계속 변한다. 안정될 시간을 준 뒤 재배치·재조준한다.
+            yield return new WaitForSecondsRealtime(1.2f);
+            PositionPlayerForInteraction(player, controller, tether);
+            AimAtItem(controller, tether);
+            yield return new WaitForSecondsRealtime(0.5f);
+            PositionPlayerForInteraction(player, controller, tether);
+            AimAtItem(controller, tether);
+            UnityEngine.Physics.SyncTransforms();
+            yield return new WaitForSecondsRealtime(0.3f);
+            player.RequestGrab(tether);
+            yield return WaitFor(() => player.HeldItem == tether, "sp02-handoff");
+            var handoffPass = hostReleased && player.HeldItem == tether && tether.HolderClientId == manager.LocalClientId;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=handoff hostReleased={hostReleased} clientHeld={player.HeldItem == tether} holderClient={tether.HolderClientId} result={(handoffPass ? "PASS" : "FAIL")}");
+
+            var pass = contentionRejected && handoffPass;
+            Debug.Log($"[LAST_SHIFT_SP02_PROBE] client={manager.LocalClientId} phase=contention-summary contention={contentionRejected} handoff={handoffPass} result={(pass ? "PASS" : "FAIL")}");
             if (manager.IsListening) manager.Shutdown();
             yield return null;
             Application.Quit(pass ? 0 : 1);
