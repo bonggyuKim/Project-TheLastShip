@@ -2,6 +2,7 @@ using System;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DoodleUp.Runtime
 {
@@ -9,6 +10,7 @@ namespace DoodleUp.Runtime
     {
         public const ushort DefaultPort = 7979;
         public const int MaxPlayers = 4;
+        public const string NetworkSceneName = "LAST_SHIFT_SP02A_NETWORK";
 
         [SerializeField] private NetworkManager networkManager;
         [SerializeField] private UnityTransport transport;
@@ -52,7 +54,45 @@ namespace DoodleUp.Runtime
                 networkManager.ConnectionApprovalCallback = ApproveConnection;
                 networkManager.OnClientDisconnectCallback -= OnClientDisconnected;
                 networkManager.OnClientDisconnectCallback += OnClientDisconnected;
+                RestrictSceneSynchronizationToNetworkScene();
             }
+        }
+
+        /// <summary>
+        /// build settings 에 등록된 다른 씬이 additive 로 함께 로드되지 않게 막는다.
+        /// Netcode 씬 관리는 등록된 씬 전부를 동기화 대상으로 보므로, network scene 외의 씬이
+        /// 함께 열리면 LastShiftSandboxController 가 씬마다 하나씩 생겨 두 개가 공존한다.
+        /// 그러면 server 가 실제로 갱신하는 sandbox 와 화면·조회가 잡는 sandbox 가 달라져
+        /// 프리셋 전환이 반영되지 않은 것처럼 보인다.
+        /// </summary>
+        private void RestrictSceneSynchronizationToNetworkScene()
+        {
+            // NetworkManager.SceneManager 는 세션이 시작된 뒤에 만들어진다. 씬 빌더가 컴포넌트를
+            // 붙이는 편집 시점에 건드리면 초기화 전 상태를 만져 NullReferenceException 이 난다.
+            networkManager.OnServerStarted -= ApplySceneVerification;
+            networkManager.OnServerStarted += ApplySceneVerification;
+            networkManager.OnClientStarted -= ApplySceneVerification;
+            networkManager.OnClientStarted += ApplySceneVerification;
+        }
+
+        private void ApplySceneVerification()
+        {
+            var sceneManager = networkManager != null ? networkManager.SceneManager : null;
+            if (sceneManager == null) return;
+            // 서버에서만 필터를 건다. client 는 서버가 지시한 씬을 그대로 받아야 하고,
+            // 여기서 client 측 검증을 덮으면 서버 씬 동기화가 통째로 막힌다.
+            if (!networkManager.IsServer) return;
+            sceneManager.VerifySceneBeforeLoading = IsNetworkScene;
+        }
+
+        private static bool IsNetworkScene(int sceneIndex, string sceneName, LoadSceneMode loadSceneMode)
+        {
+            // 동기화 대상은 network scene 으로 한정하되, 이미 열려 있는 씬을 다시 확인하는 호출도
+            // 통과시켜야 한다. 여기서 network scene 을 거부하면 client 가 서버 씬을 못 받는다.
+            var allowed = sceneName == NetworkSceneName;
+            if (!allowed)
+                Debug.Log($"[LAST_SHIFT_SCENE_FILTER] scene={sceneName} mode={loadSceneMode} result=skipped");
+            return allowed;
         }
 
         private void Start()
@@ -94,6 +134,15 @@ namespace DoodleUp.Runtime
         {
             ConfigureTransport();
             return networkManager != null && networkManager.StartClient();
+        }
+
+        /// <summary>
+        /// 테스트가 포트를 갈라 쓰게 한다. 같은 포트를 연속으로 재사용하면 앞 테스트의 UDP 소켓이
+        /// 아직 풀리지 않아 "address is already in use" 로 bind 가 실패한다.
+        /// </summary>
+        public void OverridePort(ushort value)
+        {
+            port = value;
         }
 
         public void StopSession()

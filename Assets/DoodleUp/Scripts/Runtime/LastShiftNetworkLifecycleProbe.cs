@@ -55,6 +55,11 @@ namespace DoodleUp.Runtime
                 yield return RunKeyboardLifecycleProbe(manager, player, controller, networkSandbox);
                 yield break;
             }
+            if (HasArgument("-lastShiftPresetSyncProbe"))
+            {
+                yield return RunClientPresetSyncProbe(manager, player, controller, networkSandbox);
+                yield break;
+            }
             if (HasArgument("-lastShiftContentionOnlyProbe"))
             {
                 // 경합·전달만 본다. 앞 단계의 R 리셋이 host 점유를 해제해 경합 상황을 무너뜨리므로
@@ -307,6 +312,67 @@ namespace DoodleUp.Runtime
             var pass = initialPromptPass && approachPromptPass && grabPass && dropPass && differentGrabPass &&
                        securePass && resetPass && regrabPass;
             Debug.Log($"[LAST_SHIFT_KEYBOARD_PROBE] client={manager.LocalClientId} initialPrompt={initialPromptPass} approachPrompt={approachPromptPass} grab={grabPass} drop={dropPass} differentGrab={differentGrabPass} secure={securePass} keys123R={resetPass} regrab={regrabPass} result={(pass ? "PASS" : "FAIL")}");
+            if (manager.IsListening) manager.Shutdown();
+            yield return null;
+            Application.Quit(pass ? 0 : 1);
+        }
+
+        /// <summary>
+        /// SP-03 원격 클라이언트 입력 검증. 1/2/3/R 실제 Keyboard 경로가 서버 권위 reset 을
+        /// 거쳐 host 에도 같은 preset/generation 으로 보이는지 client 쪽에서 확인한다.
+        /// </summary>
+        private IEnumerator RunClientPresetSyncProbe(
+            NetworkManager manager,
+            LastShiftNetworkPlayer player,
+            LastShiftPlayerController controller,
+            LastShiftNetworkSandbox networkSandbox)
+        {
+            if (manager.IsServer)
+            {
+                Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} phase=skipped reason=host-side result=PASS");
+                yield break;
+            }
+
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            keyboard.MakeCurrent();
+            var previousUpdateMode = InputSystem.settings.updateMode;
+            InputSystem.settings.updateMode = InputSettings.UpdateMode.ProcessEventsManually;
+
+            var pass = true;
+            var expected = new[]
+            {
+                (Key.Digit2, LastShiftPreset.PowerOverloadLooseBattery, "2"),
+                (Key.Digit3, LastShiftPreset.BadAttitudeHighOxygen, "3"),
+                (Key.Digit1, LastShiftPreset.HighHeatHighThrust, "1")
+            };
+            foreach (var step in expected)
+            {
+                var generationBefore = networkSandbox.Snapshot.ResetGeneration;
+                yield return PressAndRelease(controller, keyboard, step.Item1);
+                yield return WaitFor(
+                    () => networkSandbox.Snapshot.Preset == step.Item2 &&
+                          networkSandbox.Snapshot.ResetGeneration > generationBefore,
+                    $"sp03-preset-{step.Item3}");
+                var stepPass = networkSandbox.Snapshot.Preset == step.Item2 &&
+                               networkSandbox.Snapshot.ResetGeneration > generationBefore;
+                pass &= stepPass;
+                Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} key={step.Item3} preset={networkSandbox.Snapshot.Preset} generation={networkSandbox.Snapshot.ResetGeneration} result={(stepPass ? "PASS" : "FAIL")}");
+            }
+
+            var resetGeneration = networkSandbox.Snapshot.ResetGeneration;
+            var resetPreset = networkSandbox.Snapshot.Preset;
+            yield return PressAndRelease(controller, keyboard, Key.R);
+            yield return WaitFor(
+                () => networkSandbox.Snapshot.ResetGeneration > resetGeneration,
+                "sp03-preset-r");
+            var resetPass = networkSandbox.Snapshot.Preset == resetPreset &&
+                            networkSandbox.Snapshot.ResetGeneration > resetGeneration;
+            pass &= resetPass;
+            Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} key=R preset={networkSandbox.Snapshot.Preset} generation={networkSandbox.Snapshot.ResetGeneration} preservedPreset={resetPreset} result={(resetPass ? "PASS" : "FAIL")}");
+            Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} phase=summary serverAuthoritativePresetSync={pass} result={(pass ? "PASS" : "FAIL")}");
+
+            InputSystem.settings.updateMode = previousUpdateMode;
+            if (keyboard.added) InputSystem.RemoveDevice(keyboard);
             if (manager.IsListening) manager.Shutdown();
             yield return null;
             Application.Quit(pass ? 0 : 1);
