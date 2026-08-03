@@ -369,7 +369,31 @@ namespace DoodleUp.Runtime
                             networkSandbox.Snapshot.ResetGeneration > resetGeneration;
             pass &= resetPass;
             Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} key=R preset={networkSandbox.Snapshot.Preset} generation={networkSandbox.Snapshot.ResetGeneration} preservedPreset={resetPreset} result={(resetPass ? "PASS" : "FAIL")}");
-            Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} phase=summary serverAuthoritativePresetSync={pass} result={(pass ? "PASS" : "FAIL")}");
+
+            // R 리셋 직후에도 실제 Keyboard E 경로로 다시 잡을 수 있어야 한다. HighHeat 의 주범인
+            // CoolingCanister 를 접근 가능한 위치에서 조준해 입력을 주입하고 서버 수락까지 기다린다.
+            var cooling = FindObjectsByType<LastShiftNetworkGrabbable>(FindObjectsSortMode.None)
+                .FirstOrDefault(candidate =>
+                    candidate.Grabbable != null &&
+                    candidate.Grabbable.Role == LastShiftItemRole.CoolingCanister &&
+                    candidate.NetworkObject != null &&
+                    candidate.NetworkObject.IsSpawned);
+            var regrabPass = false;
+            if (cooling != null && !cooling.IsSecured)
+            {
+                PositionPlayerForInteraction(player, controller, cooling);
+                controller.ResetPlayer(player.transform.position, player.transform.rotation);
+                AimAtItem(controller, cooling);
+                yield return new WaitForSecondsRealtime(0.35f);
+                AimAtItem(controller, cooling);
+                UnityEngine.Physics.SyncTransforms();
+                yield return PressAndRelease(controller, keyboard, Key.E);
+                yield return WaitFor(() => player.HeldItem == cooling, "sp03-regrab-after-r");
+                regrabPass = player.HeldItem == cooling;
+            }
+            pass &= regrabPass;
+            Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} phase=regrab-after-R role=CoolingCanister held={(player.HeldItem != null ? player.HeldItem.Grabbable.Role.ToString() : "none")} holderClient={(cooling != null ? cooling.HolderClientId.ToString() : "missing")} result={(regrabPass ? "PASS" : "FAIL")}");
+            Debug.Log($"[LAST_SHIFT_SP03_PROBE] client={manager.LocalClientId} phase=summary serverAuthoritativePresetSync={pass} regrabAfterR={regrabPass} result={(pass ? "PASS" : "FAIL")}");
 
             InputSystem.settings.updateMode = previousUpdateMode;
             if (keyboard.added) InputSystem.RemoveDevice(keyboard);
