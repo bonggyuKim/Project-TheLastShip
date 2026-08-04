@@ -157,6 +157,13 @@ namespace DoodleUp.Runtime
             if (networkSandbox != null) networkSandbox.RequestSecureHeldItemRpc();
         }
 
+        public void RequestRepair(LastShiftRepairMode mode)
+        {
+            if (!IsOwner) return;
+            var networkSandbox = FindFirstObjectByType<LastShiftNetworkSandbox>();
+            if (networkSandbox != null) networkSandbox.RequestRepairRpc(mode);
+        }
+
         public void RequestPresetReset(LastShiftPreset preset)
         {
             if (!IsOwner) return;

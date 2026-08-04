@@ -17,6 +17,12 @@ namespace DoodleUp.Runtime
         public int ImpactApplicationCount;
         public byte SecuredItemMask;
         public bool HasAppliedImpact;
+        public LastShiftVerdict Verdict;
+        public byte SacrificedSystemMask;
+        public float ThrustCeiling;
+        public bool HeatProtectionEngaged;
+        public bool SteeringDelayed;
+        public bool OxygenPumpRunning;
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
@@ -38,6 +44,12 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref ImpactApplicationCount);
             serializer.SerializeValue(ref SecuredItemMask);
             serializer.SerializeValue(ref HasAppliedImpact);
+            serializer.SerializeValue(ref Verdict);
+            serializer.SerializeValue(ref SacrificedSystemMask);
+            serializer.SerializeValue(ref ThrustCeiling);
+            serializer.SerializeValue(ref HeatProtectionEngaged);
+            serializer.SerializeValue(ref SteeringDelayed);
+            serializer.SerializeValue(ref OxygenPumpRunning);
         }
 
         public bool Equals(LastShiftNetworkSnapshot other)
@@ -59,7 +71,13 @@ namespace DoodleUp.Runtime
                    ResetGeneration == other.ResetGeneration &&
                    ImpactApplicationCount == other.ImpactApplicationCount &&
                    SecuredItemMask == other.SecuredItemMask &&
-                   HasAppliedImpact == other.HasAppliedImpact;
+                   HasAppliedImpact == other.HasAppliedImpact &&
+                   Verdict == other.Verdict &&
+                   SacrificedSystemMask == other.SacrificedSystemMask &&
+                   ThrustCeiling.Equals(other.ThrustCeiling) &&
+                   HeatProtectionEngaged == other.HeatProtectionEngaged &&
+                   SteeringDelayed == other.SteeringDelayed &&
+                   OxygenPumpRunning == other.OxygenPumpRunning;
         }
     }
 }

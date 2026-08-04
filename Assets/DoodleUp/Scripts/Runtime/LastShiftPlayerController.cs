@@ -34,6 +34,9 @@ namespace DoodleUp.Runtime
         private Vector3 cameraShakeOffset;
         private bool grabPressed;
         private bool securePressed;
+        private bool safeRestorePressed;
+        private bool quickBypassPressed;
+        private bool sacrificePressed;
         private bool presetOnePressed;
         private bool presetTwoPressed;
         private bool presetThreePressed;
@@ -131,6 +134,10 @@ namespace DoodleUp.Runtime
             var jump = keyboard.spaceKey.wasPressedThisFrame;
             var grab = ConsumePress(keyboard.eKey.isPressed, ref grabPressed);
             var secure = ConsumePress(keyboard.fKey.isPressed, ref securePressed);
+            // 제자리에 놓기(F)와 계통에 연결하기(C·V·G)는 다른 행동이다. E·F 는 이미 쓰고 있다.
+            var safeRestore = ConsumePress(keyboard.cKey.isPressed, ref safeRestorePressed);
+            var quickBypass = ConsumePress(keyboard.vKey.isPressed, ref quickBypassPressed);
+            var sacrifice = ConsumePress(keyboard.gKey.isPressed, ref sacrificePressed);
             var presetOne = ConsumePress(keyboard.digit1Key.isPressed, ref presetOnePressed);
             var presetTwo = ConsumePress(keyboard.digit2Key.isPressed, ref presetTwoPressed);
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
@@ -141,6 +148,9 @@ namespace DoodleUp.Runtime
             if (grab) ToggleGrab();
             if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
             if (networkPlayer == null || !networkPlayer.IsSpawned) return;
+            if (safeRestore) networkPlayer.RequestRepair(LastShiftRepairMode.SafeRestore);
+            else if (quickBypass) networkPlayer.RequestRepair(LastShiftRepairMode.QuickBypass);
+            else if (sacrifice) networkPlayer.RequestRepair(LastShiftRepairMode.PerformanceSacrifice);
             if (presetOne) networkPlayer.RequestPresetReset(LastShiftPreset.HighHeatHighThrust);
             else if (presetTwo) networkPlayer.RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
             else if (presetThree) networkPlayer.RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
@@ -199,7 +209,8 @@ namespace DoodleUp.Runtime
 
         public bool OwnsInputKey(Key key)
         {
-            return key is Key.W or Key.A or Key.S or Key.D or Key.Space or Key.E or Key.F;
+            return key is Key.W or Key.A or Key.S or Key.D or Key.Space or Key.E or Key.F
+                or Key.C or Key.V or Key.G;
         }
 
         public void ResetPlayer(Vector3 position)

@@ -138,7 +138,13 @@ namespace DoodleUp.Runtime
                 ResetGeneration = sandbox.ResetGeneration,
                 ImpactApplicationCount = sandbox.ImpactApplicationCount,
                 SecuredItemMask = securedMask,
-                HasAppliedImpact = sandbox.HasAppliedImpact
+                HasAppliedImpact = sandbox.HasAppliedImpact,
+                Verdict = sandbox.Verdict,
+                SacrificedSystemMask = sandbox.Repairs.SacrificeMask,
+                ThrustCeiling = sandbox.ThrustCeiling,
+                HeatProtectionEngaged = sandbox.HeatProtectionEngaged,
+                SteeringDelayed = sandbox.SteeringDelayed,
+                OxygenPumpRunning = sandbox.OxygenPumpRunning
             };
         }
 
@@ -182,6 +188,24 @@ namespace DoodleUp.Runtime
                 sandbox.RefreshResultAfterImpact();
                 PublishSnapshot();
             }
+        }
+
+        /// <summary>
+        /// R1 수리 동사의 네트워크 경로. 어느 계통을 되돌릴지는 서버가 요청자의 소지품과 위치로만
+        /// 판정한다. 클라이언트가 계통을 직접 지정하면 들고 있지 않은 부품으로 복구할 수 있다.
+        /// </summary>
+        [Rpc(SendTo.Server, RequireOwnership = false)]
+        public void RequestRepairRpc(LastShiftRepairMode mode, RpcParams rpcParams = default)
+        {
+            var sender = rpcParams.Receive.SenderClientId;
+            if (!IsConnectedSender(sender) || sandbox == null) return;
+            if (!NetworkManager.ConnectedClients.TryGetValue(sender, out var client)) return;
+            var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
+            if (player == null || player.OwnerClientId != sender) return;
+
+            var held = player.HeldItem != null ? player.HeldItem.Grabbable : null;
+            if (!sandbox.TryBeginRepair(mode, held, player.transform.position)) return;
+            PublishSnapshot();
         }
 
         private void OnSnapshotChanged(LastShiftNetworkSnapshot previous, LastShiftNetworkSnapshot current)
