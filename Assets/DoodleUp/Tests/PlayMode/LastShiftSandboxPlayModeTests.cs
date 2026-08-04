@@ -151,9 +151,19 @@ namespace DoodleUp.Tests.PlayMode
             sandbox.AdvanceMission(0.01f);
             Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.SuccessNominalDocking));
 
+            // CT-05 N2: 질식 실패는 이제 선체 압력이 아니라 전원의 개인 예비 산소가 바닥나야 난다.
+            // 고정 시간으로 재면 안 된다 — 진공 도달은 프리셋 누출률에서 나오는 파생 시점이라
+            // 튜닝이 바뀌면 "압력 0 이지만 예비는 남은" 창을 통째로 지나쳐 버린다. 실제 도달
+            // 시점까지 민 뒤 그 자리에서 확인한다.
             sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
-            sandbox.AdvanceMission(200f);
+            for (var i = 0; i < 2000 && sandbox.CurrentState.OxygenPressure > LastShiftRecoveryTuning.VacuumOxygenPressure; i++)
+                sandbox.AdvanceMission(1f);
+            Assert.That(sandbox.CurrentState.OxygenPressure, Is.EqualTo(0f).Within(0.0001f),
+                "누출이 계속되면 선체 압력은 진공까지 내려가야 한다.");
+            Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.Pending),
+                "압력이 0 이어도 예비 산소가 남아 있는 동안은 실패가 아니다.");
+            sandbox.AdvanceMission(LastShiftRecoveryTuning.SuitOxygenInitial / LastShiftRecoveryTuning.SuitOxygenDrainPerSecond + 1f);
             Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.FailureAsphyxiation));
 
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);

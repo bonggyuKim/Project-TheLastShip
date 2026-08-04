@@ -29,6 +29,7 @@ namespace DoodleUp.Runtime
         private readonly LastShiftRepairLedger repairLedger = new();
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
+        private GUIStyle sirenStyle;
         private float dockingSecondsRemaining;
         private LastShiftMeteorStimulus appliedMeteor;
         private LastShiftImpactFeedback impactFeedback;
@@ -40,6 +41,8 @@ namespace DoodleUp.Runtime
         private bool hasPendingControl;
         private bool wasCrewAtDockingTrigger;
         private int damagedSystemMask;
+        private bool sirenActive;
+        private AudioSource sirenAudio;
 
         public LastShiftPreset CurrentPreset => currentPreset;
         public LastShiftShipState CurrentState => currentState;
@@ -63,6 +66,66 @@ namespace DoodleUp.Runtime
         public int SacrificeCount => repairLedger.SacrificeCount;
         public int BypassLapseCount => repairLedger.BypassLapseCount;
 
+        /// <summary>S-O3 전선 사이렌(N9). 모든 구역에서 들리는 P0 유일의 국소 정보 예외다.</summary>
+        public bool SirenActive => sirenActive;
+
+        /// <summary>
+        /// 살아 있는 승무원이 한 명이라도 있는가. 실패 판정(N2)과 도킹 성립 조건이 모두 이 값을 읽는다.
+        /// 승무원 목록 자체가 없는 구성(EditMode 최소 조립 등)에서는 시뮬레이션을 승무원 부재로
+        /// 끝내면 안 되므로 살아 있는 것으로 본다.
+        /// </summary>
+        public bool AnyCrewAlive
+        {
+            get
+            {
+                var living = 0;
+                var counted = 0;
+                if (players != null)
+                {
+                    foreach (var targetPlayer in players)
+                    {
+                        if (targetPlayer == null) continue;
+                        counted++;
+                        var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                        if (crew == null || !crew.IsDead) living++;
+                    }
+                }
+                return counted == 0 || living > 0;
+            }
+        }
+
+        public int LivingCrewCount
+        {
+            get
+            {
+                var living = 0;
+                if (players == null) return 0;
+                foreach (var targetPlayer in players)
+                {
+                    if (targetPlayer == null) continue;
+                    var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                    if (crew == null || !crew.IsDead) living++;
+                }
+                return living;
+            }
+        }
+
+        /// <summary>승무원 개인 예비 산소 조회. 컴포넌트가 아직 없으면 만들어 붙인다.</summary>
+        public LastShiftCrewOxygen CrewOxygenOf(LastShiftPlayerController targetPlayer)
+        {
+            return LastShiftCrewOxygen.Ensure(targetPlayer);
+        }
+
+        /// <summary>
+        /// 테스트가 특정 상태를 직접 조립하기 위한 경계. 실제 진행 경로로 그 상태에 도달하려면
+        /// 수백 초를 밀어야 하는 조합(회복된 압력, 도킹 성공선 등)을 몇 tick 으로 만든다.
+        /// 게임 코드에서는 호출하지 않는다 — 상태 변화의 정본은 언제나 Tick 이다.
+        /// </summary>
+        public void OverrideStateForProbe(in LastShiftShipState state)
+        {
+            currentState = state;
+        }
+
         public void ApplyNetworkSnapshot(in LastShiftNetworkSnapshot value)
         {
             // 클라이언트는 ApplyMeteorImpact 를 돌리지 않으므로 충격 연출 트리거가 없다.
@@ -85,6 +148,14 @@ namespace DoodleUp.Runtime
                 SteeringDelayed = value.SteeringDelayed,
                 OxygenPumpRunning = value.OxygenPumpRunning
             };
+            // 클라이언트는 AdvanceMission 을 돌리지 않으므로 사이렌도 스냅샷으로만 켜진다.
+            if (sirenActive != value.SirenActive)
+            {
+                sirenActive = value.SirenActive;
+                if (sirenActive) EnsureSirenAudioPlaying();
+                else StopSirenAudio();
+            }
+            else if (sirenActive) EnsureSirenAudioPlaying();
             FirstResult = new LastShiftResolverResult(value.FirstProblem, 0f, 0f, 0f, "server snapshot");
             LastResult = new LastShiftResolverResult(value.CurrentProblem, value.CoolingScore, value.BatteryScore, value.LeakScore, "server snapshot");
             if (impactAdvanced) PlayImpactFeedback(Meteor);
@@ -205,10 +276,13 @@ namespace DoodleUp.Runtime
 
             dockingSecondsRemaining = Mathf.Max(0f, dockingSecondsRemaining - deltaTime);
 
-            var continuous = LastShiftVerdictResolver.EvaluateContinuous(currentState);
+            UpdateSiren();
+            AdvanceCrewOxygen(deltaTime);
+
+            var continuous = LastShiftVerdictResolver.EvaluateContinuous(currentState, AnyCrewAlive);
             if (continuous != LastShiftVerdict.Pending)
             {
-                SettleVerdict(continuous, "oxygen-depleted");
+                SettleVerdict(continuous, "all-crew-suit-oxygen-depleted");
                 return;
             }
 
@@ -219,7 +293,7 @@ namespace DoodleUp.Runtime
             wasCrewAtDockingTrigger = atTrigger;
             if (entered)
             {
-                var docking = LastShiftVerdictResolver.EvaluateDocking(currentState, repairLedger.SacrificeUsed);
+                var docking = LastShiftVerdictResolver.EvaluateDocking(currentState, repairLedger.SacrificeUsed, AnyCrewAlive);
                 if (docking != LastShiftVerdict.Pending)
                 {
                     SettleVerdict(docking, "docking-trigger");
@@ -250,9 +324,102 @@ namespace DoodleUp.Runtime
             var activePlayers = players?.Where(targetPlayer => targetPlayer != null).ToArray();
             if (activePlayers == null || activePlayers.Length == 0) return false;
             foreach (var targetPlayer in activePlayers)
+            {
+                // 사망한 승무원의 시신은 도킹을 성립시키지 못한다. 이걸 빼면 죽은 자리가
+                // 조종석 안이었다는 이유만으로 성공이 나서 "남은 1명으로 도킹" 이 검증되지 않는다.
+                var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                if (crew != null && crew.IsDead) continue;
                 if (Vector3.Distance(targetPlayer.transform.position, DockingTriggerPosition) <= DockingTriggerRadius)
                     return true;
+            }
             return false;
+        }
+
+        /// <summary>
+        /// N1 개인 예비 산소 tick. 진공 구역에 있는 승무원만 소모한다. 승무원이 어느 구역에
+        /// 있는지는 <see cref="LastShiftImpactFeedback.ResolveDamagedZone"/> 과 같은 x 경계로 판정해서
+        /// 손상 표시와 진공 판정이 어긋나지 않게 한다.
+        /// </summary>
+        private void AdvanceCrewOxygen(float deltaTime)
+        {
+            if (players == null) return;
+            foreach (var targetPlayer in players)
+            {
+                if (targetPlayer == null) continue;
+                var crew = LastShiftCrewOxygen.Ensure(targetPlayer);
+                if (crew == null) continue;
+                var wasAlive = !crew.IsDead;
+                crew.Tick(IsZoneVacuum(targetPlayer.transform.position), deltaTime);
+                if (wasAlive && crew.IsDead)
+                    Debug.Log($"[LAST_SHIFT_CREW_DEATH] generation={ResetGeneration} crew={targetPlayer.PlayerSlot} " +
+                              $"livingCrew={LivingCrewCount} O2={currentState.OxygenPressure:F2} T-{dockingSecondsRemaining:F0}s");
+            }
+        }
+
+        /// <summary>
+        /// 이 위치가 진공인가. 선체 압력이 0.00 이면 전 구역이 진공이고, 산소 계통을 성능 포기로
+        /// 밀폐했다면 밀폐한 구역(생명유지 구역)만 압력과 무관하게 진공이다.
+        /// </summary>
+        public bool IsZoneVacuum(Vector3 position)
+        {
+            var sealedOff = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen) &&
+                            LastShiftImpactFeedback.ResolveDamagedZone(position) == SealedZoneName;
+            return LastShiftVerdictResolver.IsZoneVacuum(currentState, sealedOff);
+        }
+
+        /// <summary>
+        /// 산소 계통을 포기했을 때 밀폐되는 구역. 파공 부품(PatchPlate, x≈4.5)이 있는 생명유지
+        /// 구역이며, 이 값은 씬 빌더의 아이템 배치와 함께 움직인다.
+        /// </summary>
+        private static string SealedZoneName => LastShiftSceneZones.LifeSupportZoneName;
+
+        /// <summary>
+        /// N9 S-O3 전선 사이렌. 발동 0.15 / 해제 0.20 이라 경계에서 떨리지 않는다.
+        /// 예비 산소 소모(압력 0.00)와는 절대 겹치지 않는다 — 겹치면 사이렌이 곧 사망 예고가 되어
+        /// 24초 대응 창이 사라진다.
+        /// </summary>
+        private void UpdateSiren()
+        {
+            var next = LastShiftVerdictResolver.EvaluateSiren(currentState, sirenActive);
+            if (next == sirenActive)
+            {
+                if (next) EnsureSirenAudioPlaying();
+                return;
+            }
+
+            sirenActive = next;
+            if (next)
+            {
+                EnsureSirenAudioPlaying();
+                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=ON O2={currentState.OxygenPressure:F2} scope=all-zones");
+            }
+            else
+            {
+                StopSirenAudio();
+                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=OFF O2={currentState.OxygenPressure:F2}");
+            }
+        }
+
+        private void EnsureSirenAudioPlaying()
+        {
+            if (!Application.isPlaying) return;
+            if (sirenAudio == null)
+            {
+                sirenAudio = gameObject.AddComponent<AudioSource>();
+                sirenAudio.playOnAwake = false;
+                sirenAudio.loop = true;
+                // spatialBlend 0 이 곧 "모든 구역에서 들린다" 이다. 3D 로 두면 조종석에서
+                // 감쇠되어 N9 가 존재하지 않는 것과 같아진다.
+                sirenAudio.spatialBlend = 0f;
+                sirenAudio.volume = 0.45f;
+                sirenAudio.clip = LastShiftProceduralAudio.CreateSirenLoop();
+            }
+            if (!sirenAudio.isPlaying) sirenAudio.Play();
+        }
+
+        private void StopSirenAudio()
+        {
+            if (sirenAudio != null && sirenAudio.isPlaying) sirenAudio.Stop();
         }
 
         private LastShiftContainment BuildContainment()
@@ -351,7 +518,12 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool TryBeginRepair(LastShiftRepairMode mode)
         {
-            var holder = players?.FirstOrDefault(targetPlayer => targetPlayer != null && targetPlayer.HeldItem != null);
+            var holder = players?.FirstOrDefault(targetPlayer =>
+            {
+                if (targetPlayer == null || targetPlayer.HeldItem == null) return false;
+                var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                return crew == null || !crew.IsDead;
+            });
             return TryBeginRepair(mode, holder != null ? holder.HeldItem : null, CrewPosition);
         }
 
@@ -497,6 +669,18 @@ namespace DoodleUp.Runtime
             lastTick = LastShiftTickReport.Idle;
             steeringInputDelayRemaining = 0f;
             hasPendingControl = false;
+            sirenActive = false;
+            StopSirenAudio();
+            // 예비 산소는 항해 1회 예산이라 미션 중에는 절대 회복되지 않는다. 리셋만이
+            // 새 항해이므로, 여기서 되돌리지 않으면 두 번째 프리셋이 이미 죽은 승무원으로 시작한다.
+            if (players != null)
+            {
+                foreach (var targetPlayer in players)
+                {
+                    var crew = LastShiftCrewOxygen.Ensure(targetPlayer);
+                    if (crew != null) crew.ResetCrewOxygen();
+                }
+            }
             if (players != null && (networkSandbox == null || !networkSandbox.IsSpawned))
             {
                 foreach (var targetPlayer in players)
@@ -656,7 +840,16 @@ namespace DoodleUp.Runtime
         {
             get
             {
-                var activePlayers = players?.Where(targetPlayer => targetPlayer != null).ToArray();
+                // 사망한 승무원은 평균에서 뺀다. 시신 위치가 남으면 살아 있는 승무원이 실제로
+                // 도달하지 않은 계통까지 성능 포기 사거리 안으로 들어온다.
+                var activePlayers = players?
+                    .Where(targetPlayer => targetPlayer != null)
+                    .Where(targetPlayer =>
+                    {
+                        var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                        return crew == null || !crew.IsDead;
+                    })
+                    .ToArray();
                 if (activePlayers == null || activePlayers.Length == 0) return Vector3.zero;
                 var total = Vector3.zero;
                 foreach (var targetPlayer in activePlayers) total += targetPlayer.transform.position;
@@ -718,14 +911,52 @@ namespace DoodleUp.Runtime
                 $"WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M one-shot meteor | 화살표 조종 (8초)\n" +
                 $"Docking T-{dockingSecondsRemaining:F0}s | Hold {controlHold.RemainingSeconds:F1}s | " +
                 $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}", bodyStyle);
-            GUI.Label(new Rect(28f, 106f, 650f, 48f),
-                $"INPUT state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} O2={currentState.OxygenPressure:F2} " +
-                $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}", bodyStyle);
+            DrawShipStateLine();
             GUI.Label(new Rect(28f, 157f, 650f, 52f),
                 HasAppliedImpact
                     ? $"FIRST DOMINANT: {FirstResult.Problem}\nCURRENT DOMINANT: {LastResult.Problem}"
                     : "FIRST DOMINANT PROBLEM: pending meteor", headingStyle);
             GUI.Label(new Rect(28f, 215f, 650f, 84f), HasAppliedImpact ? LastResult.CauseChain : "Preset only configures pre-impact state. Press M to apply the canonical meteor once.", bodyStyle);
+            DrawSuitOxygenGauges();
         }
+
+        /// <summary>
+        /// 산소 칸만 따로 그린다. N9 사이렌 동안 이 칸이 적색 점멸해야 하는데, 한 줄에 묶어
+        /// 그리면 다른 수치까지 함께 붉어져 "무엇이 위험한가" 가 사라진다.
+        /// </summary>
+        private void DrawShipStateLine()
+        {
+            sirenStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
+            GUI.Label(new Rect(28f, 106f, 650f, 24f),
+                $"INPUT state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
+                $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}", bodyStyle);
+
+            sirenStyle.normal.textColor = sirenActive
+                ? Color.Lerp(new Color(0.88f, 0.94f, 1f), new Color(1f, 0.25f, 0.18f), BlinkPhase)
+                : new Color(0.88f, 0.94f, 1f);
+            var sirenSuffix = sirenActive ? "  ⚠ 전선 경보: 산소 위험 (전 구역)" : string.Empty;
+            GUI.Label(new Rect(28f, 130f, 650f, 24f), $"O2 {currentState.OxygenPressure:F2}{sirenSuffix}", sirenStyle);
+        }
+
+        /// <summary>
+        /// N8 조건부 개인 예비 산소 막대. 소모가 시작된 승무원에게만 나타난다. 사이렌 시점에
+        /// 이 막대를 띄우지 않는 것이 의도다 — 겹치면 사이렌이 곧 사망 예고가 된다.
+        /// </summary>
+        private void DrawSuitOxygenGauges()
+        {
+            if (players == null) return;
+            var row = 0;
+            foreach (var targetPlayer in players)
+            {
+                if (targetPlayer == null) continue;
+                var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
+                if (crew == null || !crew.ShowsSuitGauge) continue;
+                LastShiftCrewOxygen.DrawGauge(crew, targetPlayer.PlayerSlot.ToString(), row, ref sirenStyle);
+                row++;
+            }
+        }
+
+        /// <summary>적색 점멸 위상. 사이렌 칸과 예비 막대가 같은 박자로 뛰어야 같은 사건으로 읽힌다.</summary>
+        private static float BlinkPhase => LastShiftCrewOxygen.BlinkPhase;
     }
 }

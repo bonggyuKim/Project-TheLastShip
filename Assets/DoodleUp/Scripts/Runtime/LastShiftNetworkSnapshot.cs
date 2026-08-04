@@ -24,6 +24,9 @@ namespace DoodleUp.Runtime
         public bool SteeringDelayed;
         public bool OxygenPumpRunning;
 
+        /// <summary>S-O3 전선 사이렌(N9). 모든 클라이언트가 같은 시점에 울려야 국소 정보 예외가 성립한다.</summary>
+        public bool SirenActive;
+
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref Preset);
@@ -50,6 +53,7 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref HeatProtectionEngaged);
             serializer.SerializeValue(ref SteeringDelayed);
             serializer.SerializeValue(ref OxygenPumpRunning);
+            serializer.SerializeValue(ref SirenActive);
         }
 
         public bool Equals(LastShiftNetworkSnapshot other)
@@ -77,7 +81,8 @@ namespace DoodleUp.Runtime
                    ThrustCeiling.Equals(other.ThrustCeiling) &&
                    HeatProtectionEngaged == other.HeatProtectionEngaged &&
                    SteeringDelayed == other.SteeringDelayed &&
-                   OxygenPumpRunning == other.OxygenPumpRunning;
+                   OxygenPumpRunning == other.OxygenPumpRunning &&
+                   SirenActive == other.SirenActive;
         }
     }
 }

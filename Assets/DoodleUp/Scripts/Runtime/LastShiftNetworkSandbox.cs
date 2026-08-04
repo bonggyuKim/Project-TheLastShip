@@ -144,7 +144,8 @@ namespace DoodleUp.Runtime
                 ThrustCeiling = sandbox.ThrustCeiling,
                 HeatProtectionEngaged = sandbox.HeatProtectionEngaged,
                 SteeringDelayed = sandbox.SteeringDelayed,
-                OxygenPumpRunning = sandbox.OxygenPumpRunning
+                OxygenPumpRunning = sandbox.OxygenPumpRunning,
+                SirenActive = sandbox.SirenActive
             };
         }
 

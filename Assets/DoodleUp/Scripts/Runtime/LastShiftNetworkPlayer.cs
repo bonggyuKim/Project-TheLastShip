@@ -34,6 +34,24 @@ namespace DoodleUp.Runtime
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
 
+        /// <summary>
+        /// 개인 예비 산소(N1). 소모 계산은 서버의 <see cref="LastShiftSandboxController"/> 만 하고
+        /// 클라이언트는 값만 받는다. 자기 막대뿐 아니라 동료의 사망도 알아야 하므로 전원 공개다.
+        /// </summary>
+        private readonly NetworkVariable<float> suitOxygen = new(
+            LastShiftRecoveryTuning.SuitOxygenInitial,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+        private readonly NetworkVariable<bool> crewDead = new(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+        private readonly NetworkVariable<bool> crewDraining = new(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+        private GUIStyle suitGaugeStyle;
+
         [SerializeField] private LastShiftPlayerController playerController;
         [SerializeField] private Camera playerCamera;
         [SerializeField] private Renderer bodyRenderer;
@@ -82,6 +100,9 @@ namespace DoodleUp.Runtime
                 if (body != null) bodyRenderer = body.GetComponent<Renderer>();
             }
             heldItemReference.OnValueChanged += OnHeldItemReferenceChanged;
+            // 서버는 sandbox 가 Ensure 하지만, 클라이언트는 sandbox 가 꺼져 있어 아무도 붙이지 않는다.
+            // 복제값을 받을 그릇이 먼저 있어야 하므로 여기서 직접 붙인다.
+            if (playerController != null) LastShiftCrewOxygen.Ensure(playerController);
             ApplyLocalPresentation(IsOwner);
             if (!IsServer)
             {
@@ -112,8 +133,40 @@ namespace DoodleUp.Runtime
             bodyRenderer = visualRenderer;
         }
 
+        /// <summary>
+        /// 개인 예비 산소를 서버에서 내리고 클라이언트에서 받는다(N1/N8 의 네트워크 경로).
+        /// 사망은 조작 차단까지 동반하므로 owner 여부와 무관하게 모든 클라이언트가 적용해야 한다 —
+        /// 그래서 <see cref="LateUpdate"/> 의 owner 가드보다 앞에 둔다.
+        /// </summary>
+        private void SyncCrewOxygen()
+        {
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            if (crew == null) return;
+            if (IsServer)
+            {
+                if (!Mathf.Approximately(suitOxygen.Value, crew.SuitOxygen)) suitOxygen.Value = crew.SuitOxygen;
+                if (crewDead.Value != crew.IsDead) crewDead.Value = crew.IsDead;
+                if (crewDraining.Value != crew.IsDraining) crewDraining.Value = crew.IsDraining;
+                return;
+            }
+            crew.ApplyReplicated(suitOxygen.Value, crewDead.Value, crewDraining.Value);
+        }
+
+        /// <summary>
+        /// 클라이언트에서는 sandbox 가 <c>enabled = IsServer</c> 로 꺼져 있어 OnGUI 가 돌지 않는다.
+        /// 그래서 owner 가 자기 예비 산소 막대만 직접 그린다. 서버(호스트)에서는 sandbox 가
+        /// 전원 분을 이미 그리므로 여기서는 그리지 않는다 — 그렸다면 호스트만 막대가 겹친다.
+        /// </summary>
+        private void OnGUI()
+        {
+            if (!IsSpawned || !IsOwner || IsServer) return;
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            LastShiftCrewOxygen.DrawGauge(crew, playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0, ref suitGaugeStyle);
+        }
+
         private void LateUpdate()
         {
+            if (IsSpawned) SyncCrewOxygen();
             // Shutdown 과 scene teardown 사이 프레임에는 object 가 아직 살아 있지만 RPC 전송기는
             // 이미 멈춰 있다. 이 구간에서 매 프레임 RPC 를 호출하면 오류 로그가 폭주하고
             // Editor pipeline 까지 응답 불능이 된다.

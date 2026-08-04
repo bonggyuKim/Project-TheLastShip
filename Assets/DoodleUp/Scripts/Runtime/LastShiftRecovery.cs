@@ -72,6 +72,30 @@ namespace DoodleUp.Runtime
         /// <summary>봉합 완료 + bus 연결 상태에서만 도는 산소 펌프 회복률.</summary>
         public const float OxygenPumpRecoveryPerSecond = 0.004f;
 
+        // ── 개인 예비 산소 (CT-05 N1) ─────────────────────────────────────
+        /// <summary>승무원 각자의 항해 1회 예산. 보충 지점은 0개다 — 한 번 쓰면 돌아오지 않는다.</summary>
+        public const float SuitOxygenInitial = 1.00f;
+
+        /// <summary>진공 구역에 있을 때만 도는 소모율. 1.00 에서 0.00 까지 정확히 80초다.</summary>
+        public const float SuitOxygenDrainPerSecond = 0.0125f;
+
+        /// <summary>이 값 이하의 구역 압력이 진공이다. 사이렌선(0.15)과 겹치지 않아야 한다.</summary>
+        public const float VacuumOxygenPressure = 0.00f;
+
+        /// <summary>막대 적색 점멸 + 호흡음 증폭 구간. 남은 20초를 시각으로 알린다.</summary>
+        public const float SuitOxygenCriticalThreshold = 0.25f;
+
+        // ── S-O3 전선 사이렌 (CT-05 N9) ───────────────────────────────────
+        /// <summary>
+        /// 사이렌 발동선. CT-01 §3.3 국소 정보 규칙의 유일한 명시적 예외로, 모든 구역에서 들린다.
+        /// 예비 산소 소모 개시선(<see cref="VacuumOxygenPressure"/>)과 절대 겹치지 않아야 한다 —
+        /// 겹치면 사이렌이 곧 사망 예고가 되어 24초 대응 창이 사라진다.
+        /// </summary>
+        public const float OxygenSirenTrigger = 0.15f;
+
+        /// <summary>해제선. 발동선보다 위라서 경계에서 사이렌이 떨리지 않는다.</summary>
+        public const float OxygenSirenRelease = 0.20f;
+
         // ── R2 전력 시계 ──────────────────────────────────────────────────
         public const float UnpoweredBusCeiling = 0.40f;
         public const float BusDropPerSecond = 0.050f;
@@ -83,7 +107,12 @@ namespace DoodleUp.Runtime
         public const float DockingTimerSeconds = 300f;
         public const float DockingSuccessThrust = 0.30f;
         public const float DockingSuccessOxygen = 0.20f;
-        public const float AsphyxiationOxygenThreshold = 0.00f;
+
+        /// <summary>
+        /// 질식 실패선. CT-05 N2 로 판정 주체가 선체 압력에서 개인 예비 산소로 옮겨졌으므로
+        /// 이 값은 <see cref="LastShiftCrewOxygen.SuitOxygen"/> 에 걸린다.
+        /// </summary>
+        public const float AsphyxiationSuitOxygenThreshold = 0.00f;
 
         public static float DurationFor(LastShiftRepairMode mode)
         {
@@ -418,28 +447,51 @@ namespace DoodleUp.Runtime
         public static bool IsSuccess(LastShiftVerdict verdict) =>
             verdict is LastShiftVerdict.SuccessNominalDocking or LastShiftVerdict.SuccessCompromised;
 
-        /// <summary>매 tick 검사. 산소 고갈만 시간 안에서 결과를 확정한다.</summary>
-        public static LastShiftVerdict EvaluateContinuous(in LastShiftShipState state)
+        /// <summary>
+        /// 매 tick 검사. 산소 고갈만 시간 안에서 결과를 확정한다.
+        ///
+        /// CT-05 N2 로 판정 주체가 선체 압력에서 개인 예비 산소로 옮겨졌다. 압력 0.00 은
+        /// 이제 실패가 아니라 개인 예비 산소 소모의 시작 조건이고, 그 사이에 80초 완충이 있다.
+        /// 승무원 한 명이 죽어도 항해는 계속되며 <b>전원 사망일 때만</b> 실패다.
+        /// </summary>
+        public static LastShiftVerdict EvaluateContinuous(in LastShiftShipState state, bool anyCrewAlive)
         {
-            return state.OxygenPressure <= LastShiftRecoveryTuning.AsphyxiationOxygenThreshold
-                ? LastShiftVerdict.FailureAsphyxiation
-                : LastShiftVerdict.Pending;
+            return anyCrewAlive ? LastShiftVerdict.Pending : LastShiftVerdict.FailureAsphyxiation;
         }
 
         /// <summary>
         /// 도킹 조건 충족 여부. 미달이면 도킹이 성립하지 않을 뿐이고 실패가 아니다 —
         /// 플레이어는 남은 시간 안에 조건을 갖춰 다시 시도할 수 있다.
+        /// 승무원이 한 명도 살아 있지 않으면 도킹시킬 주체가 없으므로 성공선에 포함한다(N2).
         /// </summary>
-        public static bool MeetsDockingConditions(in LastShiftShipState state)
+        public static bool MeetsDockingConditions(in LastShiftShipState state, bool anyCrewAlive)
         {
-            return state.ThrustDemand >= LastShiftRecoveryTuning.DockingSuccessThrust &&
+            return anyCrewAlive &&
+                   state.ThrustDemand >= LastShiftRecoveryTuning.DockingSuccessThrust &&
                    state.OxygenPressure >= LastShiftRecoveryTuning.DockingSuccessOxygen;
         }
 
-        public static LastShiftVerdict EvaluateDocking(in LastShiftShipState state, bool sacrificeUsed)
+        public static LastShiftVerdict EvaluateDocking(in LastShiftShipState state, bool sacrificeUsed, bool anyCrewAlive)
         {
-            if (!MeetsDockingConditions(state)) return LastShiftVerdict.Pending;
+            if (!MeetsDockingConditions(state, anyCrewAlive)) return LastShiftVerdict.Pending;
             return sacrificeUsed ? LastShiftVerdict.SuccessCompromised : LastShiftVerdict.SuccessNominalDocking;
+        }
+
+        /// <summary>
+        /// 구역이 진공인가. 개인 예비 산소 소모의 유일한 조건이다(N1).
+        /// 구역 차단(산소 계통 성능 포기)으로 밀폐된 구역은 선체 압력과 무관하게 진공으로 본다 —
+        /// 밀폐가 곧 그 구역의 공기를 버린 것이기 때문이다.
+        /// </summary>
+        public static bool IsZoneVacuum(in LastShiftShipState state, bool zoneSealedOff)
+        {
+            return zoneSealedOff || state.OxygenPressure <= LastShiftRecoveryTuning.VacuumOxygenPressure;
+        }
+
+        /// <summary>S-O3 사이렌 상태. 발동선과 해제선이 달라 경계에서 떨리지 않는다(N9).</summary>
+        public static bool EvaluateSiren(in LastShiftShipState state, bool sirenActive)
+        {
+            if (state.OxygenPressure <= LastShiftRecoveryTuning.OxygenSirenTrigger) return true;
+            return sirenActive && state.OxygenPressure < LastShiftRecoveryTuning.OxygenSirenRelease;
         }
 
         /// <summary>타이머 0. 추력이 성공선 아래면 추력 부족, 그 외에는 표류다.</summary>
