@@ -34,7 +34,18 @@ namespace DoodleUp.Runtime
             nominalPosition = transform.position;
             nominalRotation = transform.rotation;
             spawnSecured = secured;
+            LastShiftShipPhysics.ConfigureItemBody(body);
             ApplyPhysicsState();
+        }
+
+        /// <summary>
+        /// 선내 저중력을 직접 적용한다. useGravity 를 끈 대신 여기서 가속을 준다.
+        /// FixedUpdate 이므로 물리 스텝과 정확히 1:1 이고, 프레임률에 따라 낙하가 달라지지 않는다.
+        /// secured/held 는 kinematic 이라 ApplyShipGravity 가 스스로 걸러낸다.
+        /// </summary>
+        private void FixedUpdate()
+        {
+            LastShiftShipPhysics.ApplyShipGravity(body, Time.fixedDeltaTime);
         }
 
         public void Configure(LastShiftItemRole itemRole, bool startsSecured)
@@ -46,6 +57,7 @@ namespace DoodleUp.Runtime
             nominalPosition = transform.position;
             nominalRotation = transform.rotation;
             spawnSecured = startsSecured;
+            LastShiftShipPhysics.ConfigureItemBody(body);
             ApplyPhysicsState();
         }
 

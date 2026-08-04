@@ -31,6 +31,7 @@ namespace DoodleUp.Runtime
         private float verticalSpeed;
         private float yaw;
         private float pitch;
+        private Vector3 cameraShakeOffset;
         private bool grabPressed;
         private bool securePressed;
         private bool presetOnePressed;
@@ -49,7 +50,16 @@ namespace DoodleUp.Runtime
         public string InputLabel => "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / 1·2·3 프리셋 / R 리셋";
         public string InteractionPrompt => BuildInteractionPrompt();
         public Vector3 AimOrigin => targetCamera != null ? targetCamera.transform.position : transform.position;
-        public Vector3 AimDirection => targetCamera != null ? targetCamera.transform.forward : transform.forward;
+
+        /// <summary>
+        /// 조준 방향은 카메라 transform.forward 가 아니라 조준 상태(yaw/pitch)에서 직접 만든다.
+        /// 카메라에는 충격 흔들림 오프셋이 합성돼 있으므로 transform 을 읽으면 흔들리는 동안
+        /// 조준선이 함께 흔들리고, 그 값이 서버 grab 검증(AuthoritativeAim*)까지 전달된다.
+        /// 화면은 흔들려도 판정은 흔들리지 않아야 한다.
+        /// </summary>
+        public Vector3 AimDirection => targetCamera != null
+            ? transform.rotation * Quaternion.Euler(-pitch, 0f, 0f) * Vector3.forward
+            : transform.forward;
 
         public void Configure(Camera camera, Transform socket)
         {
@@ -150,6 +160,33 @@ namespace DoodleUp.Runtime
             DropHeldItem();
         }
 
+        /// <summary>
+        /// 조준각을 직접 설정한다. 조준은 카메라 transform 이 아니라 pitch 상태에서 나오므로
+        /// (충격 흔들림이 판정에 섞이지 않게 하려는 의도), 카메라 localRotation 을 밖에서
+        /// 써도 조준은 움직이지 않는다. 검증 코드가 조준을 세울 때는 이 경로를 쓴다.
+        /// </summary>
+        public void SetAimPitchForProbe(float pitchDegrees)
+        {
+            pitch = Mathf.Clamp(pitchDegrees, -80f, 80f);
+            ApplyCameraRotation();
+        }
+
+        /// <summary>
+        /// 조준을 특정 방향으로 세운다. 몸통 yaw 와 카메라 pitch 로 분해해서 넣으므로
+        /// 이후 <see cref="ApplyLook"/> 이 돌아도 조준이 되돌아가지 않는다. 카메라
+        /// world rotation 을 직접 쓰면 조준 상태가 갱신되지 않아 무효가 된다.
+        /// </summary>
+        public void SetAimDirectionForProbe(Vector3 direction)
+        {
+            if (direction.sqrMagnitude < 1e-6f) return;
+            direction.Normalize();
+            var flat = new Vector3(direction.x, 0f, direction.z);
+            if (flat.sqrMagnitude > 1e-6f) yaw = Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y;
+            pitch = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(direction.y, -1f, 1f)) * Mathf.Rad2Deg, -80f, 80f);
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            ApplyCameraRotation();
+        }
+
         public void MoveForProbe(Vector2 move, float deltaTime)
         {
             ApplyMovement(Vector2.ClampMagnitude(move, 1f), false, deltaTime);
@@ -206,21 +243,44 @@ namespace DoodleUp.Runtime
             yaw += look.x;
             pitch = Mathf.Clamp(pitch + look.y, -80f, 80f);
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-            targetCamera.transform.localRotation = Quaternion.Euler(-pitch, 0f, 0f);
+            ApplyCameraRotation();
+        }
+
+        /// <summary>
+        /// 조준각과 충격 흔들림을 한 곳에서 합성한다. 흔들림을 카메라 localRotation 에 직접
+        /// 쓰면 다음 조준 갱신이 그대로 덮어써서 흔들림이 사라지고, 반대로 흔들림이 나중에
+        /// 쓰면 조준이 밀린다. 조준 상태(pitch)는 유지하고 표시 회전만 더한다.
+        /// </summary>
+        private void ApplyCameraRotation()
+        {
+            if (targetCamera == null) return;
+            targetCamera.transform.localRotation = Quaternion.Euler(-pitch + cameraShakeOffset.x, cameraShakeOffset.y, cameraShakeOffset.z);
+        }
+
+        /// <summary>
+        /// 충격 연출이 프레임마다 넘기는 흔들림 각(도). 조준 캐시는 건드리지 않으므로
+        /// 서버 grab 검증(AuthoritativeAim*)이 흔들림 때문에 흔들리지 않는다.
+        /// </summary>
+        public void SetCameraShakeOffset(Vector3 eulerOffset)
+        {
+            cameraShakeOffset = eulerOffset;
+            ApplyCameraRotation();
         }
 
         private void ApplyMovement(Vector2 move, bool jump, float deltaTime)
         {
             if (characterController == null) characterController = GetComponent<CharacterController>();
             var worldMove = transform.right * move.x + transform.forward * move.y;
+            // 선내 저중력은 LastShiftShipPhysics 정본을 쓴다. 전역 Physics.gravity 를 읽으면
+            // ProjectSettings 를 바꿔야 하고, 그러면 지구 중력을 전제한 DU02/DU03BC 검증이 깨진다.
             if (characterController.isGrounded)
             {
-                verticalSpeed = -1f;
-                if (jump) verticalSpeed = 4.8f;
+                verticalSpeed = LastShiftShipPhysics.GroundedSettleSpeed;
+                if (jump) verticalSpeed = LastShiftShipPhysics.JumpSpeed;
             }
             else
             {
-                verticalSpeed += UnityEngine.Physics.gravity.y * deltaTime;
+                verticalSpeed += LastShiftShipPhysics.GravityY * deltaTime;
             }
 
             characterController.Move((worldMove * MoveSpeed + Vector3.up * verticalSpeed) * deltaTime);

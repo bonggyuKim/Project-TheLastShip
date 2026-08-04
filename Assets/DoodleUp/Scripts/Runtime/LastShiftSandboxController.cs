@@ -20,6 +20,7 @@ namespace DoodleUp.Runtime
         private GUIStyle bodyStyle;
         private float dockingSecondsRemaining;
         private LastShiftMeteorStimulus appliedMeteor;
+        private LastShiftImpactFeedback impactFeedback;
 
         public LastShiftPreset CurrentPreset => currentPreset;
         public LastShiftShipState CurrentState => currentState;
@@ -36,6 +37,11 @@ namespace DoodleUp.Runtime
 
         public void ApplyNetworkSnapshot(in LastShiftNetworkSnapshot value)
         {
+            // 클라이언트는 ApplyMeteorImpact 를 돌리지 않으므로 충격 연출 트리거가 없다.
+            // 스냅샷의 ImpactApplicationCount 증가가 곧 "서버에서 충격이 터졌다" 이므로
+            // 그 변화를 연출 트리거로 쓴다. 리셋으로 카운트가 유지되는 동안은 재생하지 않는다.
+            var impactAdvanced = value.HasAppliedImpact && value.ImpactApplicationCount > ImpactApplicationCount;
+
             currentPreset = value.Preset;
             currentState = value.ShipState;
             dockingSecondsRemaining = value.DockingSecondsRemaining;
@@ -44,6 +50,7 @@ namespace DoodleUp.Runtime
             HasAppliedImpact = value.HasAppliedImpact;
             FirstResult = new LastShiftResolverResult(value.FirstProblem, 0f, 0f, 0f, "server snapshot");
             LastResult = new LastShiftResolverResult(value.CurrentProblem, value.CoolingScore, value.BatteryScore, value.LeakScore, "server snapshot");
+            if (impactAdvanced) PlayImpactFeedback(Meteor);
         }
 
         public void RegisterPlayer(LastShiftPlayerController player)
@@ -161,6 +168,11 @@ namespace DoodleUp.Runtime
                     if (item != null) item.ResetItem();
             }
             ApplyPresetItemState(preset);
+            // 리셋은 pre-impact 로 되돌리는 것이므로 손상 구역 표시도 함께 걷어낸다.
+            // 남겨두면 아무 일도 없는 상태에서 구역이 계속 점멸한다.
+            if (impactFeedback == null) impactFeedback = GetComponent<LastShiftImpactFeedback>();
+            if (impactFeedback == null) impactFeedback = FindFirstObjectByType<LastShiftImpactFeedback>();
+            if (impactFeedback != null) impactFeedback.ClearDamageMarkers();
             controlHold.Reset(currentState.ThrustDemand, currentState.ShipAttitudeDegrees);
             Debug.Log($"[LAST_SHIFT_RESET] generation={ResetGeneration} preset={preset} phase=pre-impact");
         }
@@ -181,7 +193,21 @@ namespace DoodleUp.Runtime
             FirstResult = ResolveCurrentState(appliedMeteor);
             LastResult = FirstResult;
             Debug.Log($"[LAST_SHIFT_IMPACT] application={ImpactApplicationCount} point={meteor.ImpactPoint} vector={meteor.ImpactVector} E={meteor.Energy:F1} firstResult={FirstResult.Problem}");
+            PlayImpactFeedback(meteor);
             return true;
+        }
+
+        /// <summary>
+        /// 관측 채널(흔들림·소리·손상 구역 표시)을 재생한다. 시드는 ImpactApplicationCount 라서
+        /// 서버와 클라이언트가 같은 흔들림 궤적을 만든다. 채널이 없으면(연출 컴포넌트 미부착)
+        /// 시뮬레이션은 그대로 진행되어야 하므로 조용히 통과시킨다.
+        /// </summary>
+        private void PlayImpactFeedback(in LastShiftMeteorStimulus meteor)
+        {
+            if (impactFeedback == null) impactFeedback = GetComponent<LastShiftImpactFeedback>();
+            if (impactFeedback == null) impactFeedback = FindFirstObjectByType<LastShiftImpactFeedback>();
+            if (impactFeedback == null) return;
+            impactFeedback.PlayImpact(meteor.ImpactPoint, LastShiftMeteorApplication.CalculateSeverity(meteor), ImpactApplicationCount);
         }
 
         public bool TrySecureHeldItem()
