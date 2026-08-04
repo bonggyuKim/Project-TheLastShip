@@ -157,10 +157,19 @@ namespace DoodleUp.Tests.PlayMode
             // 시점까지 민 뒤 그 자리에서 확인한다.
             sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
-            for (var i = 0; i < 2000 && sandbox.CurrentState.OxygenPressure > LastShiftRecoveryTuning.VacuumOxygenPressure; i++)
+            // N0 이후 압력은 구역별이다. 파공은 산소실이고 승무원 스폰은 조종석이라, 승무원을
+            // 옮기지 않으면 질식 경로가 성립하지 않는다. 조종석까지 진공이 되기를 기다리는 것은
+            // 답이 아니다 — 전체 공기(2.86)가 파공 하나로만 빠지므로 최소 394초가 필요하고,
+            // 300초 타이머가 먼저 끝난다. 평준화는 공기를 옮길 뿐 없애지 않아 이 하한은 못 내린다.
+            // 그리고 그 구역을 격리한다(§2.2.2). 문이 열려 있으면 평준화가 나머지 두 구역의
+            // 공기를 계속 밀어 넣어 배 전체가 함께 내려갈 뿐, 300초 안에 어느 구역도 진공에
+            // 닿지 않는다. 문을 닫아야 파공 구역이 자기 공기만으로 빠져 129초에 진공이 된다.
+            player.ResetPlayer(new Vector3(4.5f, 0.1f, -1.6f));
+            sandbox.SetDoorOpen(1, false);
+            for (var i = 0; i < 2000 && sandbox.PressureOf(sandbox.BreachZone) > LastShiftRecoveryTuning.VacuumOxygenPressure; i++)
                 sandbox.AdvanceMission(1f);
-            Assert.That(sandbox.CurrentState.OxygenPressure, Is.EqualTo(0f).Within(0.0001f),
-                "누출이 계속되면 선체 압력은 진공까지 내려가야 한다.");
+            Assert.That(sandbox.PressureOf(sandbox.BreachZone), Is.EqualTo(0f).Within(0.0001f),
+                "누출이 계속되면 파공 구역 압력은 진공까지 내려가야 한다.");
             Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.Pending),
                 "압력이 0 이어도 예비 산소가 남아 있는 동안은 실패가 아니다.");
             sandbox.AdvanceMission(LastShiftRecoveryTuning.SuitOxygenInitial / LastShiftRecoveryTuning.SuitOxygenDrainPerSecond + 1f);

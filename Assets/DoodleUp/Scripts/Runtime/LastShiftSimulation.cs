@@ -174,9 +174,27 @@ namespace DoodleUp.Runtime
 
     public static class LastShiftMeteorApplication
     {
+        /// <summary>
+        /// 구역별 압력이 없는 호출 경로를 위한 호환 진입점. 세 구역이 모두 같은 압력이다.
+        /// </summary>
         public static LastShiftShipState Apply(
             in LastShiftMeteorStimulus meteor,
             in LastShiftShipState preImpactState,
+            LastShiftGrabbable[] items)
+        {
+            var pressures = LastShiftZonePressures.Uniform(preImpactState.OxygenPressure);
+            return Apply(meteor, preImpactState, ref pressures, LastShiftZone.LifeSupport, items);
+        }
+
+        /// <summary>
+        /// 충격이 뚫은 압력 손실은 <b>파공 구역 하나</b>에만 들어간다(기획 v0.3 §2.2).
+        /// 나머지 구역으로는 평준화를 통해서만 번지며, 그 전파를 끊는 것이 격리다.
+        /// </summary>
+        public static LastShiftShipState Apply(
+            in LastShiftMeteorStimulus meteor,
+            in LastShiftShipState preImpactState,
+            ref LastShiftZonePressures pressures,
+            LastShiftZone breachZone,
             LastShiftGrabbable[] items)
         {
             var state = preImpactState;
@@ -194,7 +212,8 @@ namespace DoodleUp.Runtime
             state.ExistingDamage = Mathf.Clamp01(state.ExistingDamage + severity * 0.08f);
             state.EngineHeat = Mathf.Clamp01(state.EngineHeat + severity * state.ThrustDemand * 0.045f);
             state.BusPower = Mathf.Clamp01(state.BusPower - severity * 0.015f - batteryTravel * 0.16f);
-            state.OxygenPressure = Mathf.Clamp01(state.OxygenPressure - severity * (1f - state.HullIntegrity) * 0.035f - patchTravel * 0.04f);
+            pressures[breachZone] -= severity * (1f - state.HullIntegrity) * 0.035f + patchTravel * 0.04f;
+            state.OxygenPressure = pressures[LastShiftZone.Cockpit];
             return state;
         }
 

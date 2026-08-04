@@ -27,6 +27,7 @@ namespace DoodleUp.Runtime
 
         private readonly LastShiftControlHold controlHold = new();
         private readonly LastShiftRepairLedger repairLedger = new();
+        private LastShiftZonePressures zonePressures = LastShiftZonePressures.Uniform(1f);
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
         private GUIStyle sirenStyle;
@@ -43,6 +44,7 @@ namespace DoodleUp.Runtime
         private int damagedSystemMask;
         private bool sirenActive;
         private AudioSource sirenAudio;
+        private LastShiftDoorState doorState = LastShiftDoorState.AllOpen;
 
         public LastShiftPreset CurrentPreset => currentPreset;
         public LastShiftShipState CurrentState => currentState;
@@ -68,6 +70,47 @@ namespace DoodleUp.Runtime
 
         /// <summary>S-O3 전선 사이렌(N9). 모든 구역에서 들리는 P0 유일의 국소 정보 예외다.</summary>
         public bool SirenActive => sirenActive;
+
+        /// <summary>
+        /// N0 구역별 산소 압력. <see cref="CurrentState"/>.OxygenPressure 는 이 중 조종석 값의
+        /// 파생이다 — 도킹 성공 판정이 세 구역 평균이 아니라 조종석 하나이기 때문이다(기획 §2.2).
+        /// </summary>
+        public LastShiftZonePressures ZonePressures => zonePressures;
+
+        public float PressureOf(LastShiftZone zone) => zonePressures[zone];
+
+        /// <summary>구역 문 개폐 상태. 닫힌 경계는 압력 교환이 0 이 된다(기획 §2.2.1).</summary>
+        public LastShiftDoorState Doors => doorState;
+
+        public bool IsDoorOpen(int boundary) => doorState[boundary];
+
+        /// <summary>
+        /// 문 개폐 결과를 시뮬레이션에 반영한다. 개폐 애니메이션과 0.8초 소요는 문 쪽
+        /// (<see cref="LastShiftZoneDoor"/>)이 갖고, 여기는 "지금 열려 있는가" 만 받는다.
+        /// 평준화가 이 값을 매 tick 읽으므로 문이 닫히는 순간 전파가 그 자리에서 멈춘다.
+        /// </summary>
+        public void SetDoorOpen(int boundary, bool open)
+        {
+            if (doorState[boundary] == open) return;
+            doorState[boundary] = open;
+            Debug.Log($"[LAST_SHIFT_DOOR] generation={ResetGeneration} boundary={boundary} " +
+                      $"({LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.LowZoneOf(boundary))}↔{LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.HighZoneOf(boundary))}) " +
+                      $"state={(open ? "OPEN" : "CLOSED")} pressures[{zonePressures}]");
+        }
+
+        /// <summary>
+        /// 파공이 난 구역. 봉합 부품(PatchPlate)의 제자리가 곧 파공 지점이므로 그 구역이
+        /// 새는 구역이고, 산소 계통을 성능 포기로 밀폐할 때 버려지는 구역도 같다.
+        /// 부품이 없는 최소 조립에서는 씬 배치대로 생명유지 구역으로 본다.
+        /// </summary>
+        public LastShiftZone BreachZone
+        {
+            get
+            {
+                var patch = FindItem(LastShiftItemRole.PatchPlate);
+                return patch != null ? LastShiftZoneAtlas.Resolve(patch.NominalPosition) : LastShiftZone.LifeSupport;
+            }
+        }
 
         /// <summary>
         /// 살아 있는 승무원이 한 명이라도 있는가. 실패 판정(N2)과 도킹 성립 조건이 모두 이 값을 읽는다.
@@ -123,7 +166,19 @@ namespace DoodleUp.Runtime
         /// </summary>
         public void OverrideStateForProbe(in LastShiftShipState state)
         {
+            // OxygenPressure 는 조종석 압력의 파생값이므로, 이 경계로 압력을 써 넣는 것은
+            // "조종석을 이 압력으로 만든다" 는 뜻이다. 구역 값을 함께 옮기지 않으면 다음 tick 이
+            // 예전 구역 압력에서 파생값을 다시 계산해 방금 쓴 값을 지운다.
+            var pressureChanged = !Mathf.Approximately(state.OxygenPressure, currentState.OxygenPressure);
             currentState = state;
+            if (pressureChanged) OverrideZonePressuresForProbe(LastShiftZonePressures.Uniform(state.OxygenPressure));
+        }
+
+        /// <summary>구역별 압력을 직접 조립하는 테스트 경계. 게임 코드에서는 호출하지 않는다.</summary>
+        public void OverrideZonePressuresForProbe(in LastShiftZonePressures pressures)
+        {
+            zonePressures = pressures;
+            currentState.OxygenPressure = zonePressures[LastShiftZone.Cockpit];
         }
 
         public void ApplyNetworkSnapshot(in LastShiftNetworkSnapshot value)
@@ -135,6 +190,14 @@ namespace DoodleUp.Runtime
 
             currentPreset = value.Preset;
             currentState = value.ShipState;
+            // 조종석 압력은 ShipState.OxygenPressure 가 나른다. 나머지 둘만 스냅샷에서 받는다.
+            zonePressures = new LastShiftZonePressures(
+                value.ShipState.OxygenPressure, value.UtilityPressure, value.LifeSupportPressure);
+            doorState = new LastShiftDoorState
+            {
+                CockpitUtilityOpen = value.CockpitUtilityDoorOpen,
+                UtilityLifeSupportOpen = value.UtilityLifeSupportDoorOpen
+            };
             dockingSecondsRemaining = value.DockingSecondsRemaining;
             ResetGeneration = value.ResetGeneration;
             ImpactApplicationCount = value.ImpactApplicationCount;
@@ -271,7 +334,8 @@ namespace DoodleUp.Runtime
             LapseExpiredBypasses(deltaTime);
             AdvanceRepairChannels(deltaTime);
 
-            lastTick = LastShiftDeterioration.Tick(ref currentState, BuildContainment(), deltaTime);
+            lastTick = LastShiftDeterioration.Tick(
+                ref currentState, ref zonePressures, BuildContainment(), BreachZone, doorState, deltaTime);
             RefreshResultAfterImpact();
 
             dockingSecondsRemaining = Mathf.Max(0f, dockingSecondsRemaining - deltaTime);
@@ -357,21 +421,25 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 이 위치가 진공인가. 선체 압력이 0.00 이면 전 구역이 진공이고, 산소 계통을 성능 포기로
-        /// 밀폐했다면 밀폐한 구역(생명유지 구역)만 압력과 무관하게 진공이다.
+        /// 이 위치가 진공인가. N0 이후 판정 대상은 <b>그 위치가 속한 구역의</b> 압력이다.
+        /// 산소 계통을 성능 포기로 밀폐했다면 밀폐한 구역만 압력과 무관하게 진공이다.
         /// </summary>
         public bool IsZoneVacuum(Vector3 position)
         {
-            var sealedOff = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen) &&
-                            LastShiftImpactFeedback.ResolveDamagedZone(position) == SealedZoneName;
-            return LastShiftVerdictResolver.IsZoneVacuum(currentState, sealedOff);
+            return IsZoneVacuum(LastShiftZoneAtlas.Resolve(position));
+        }
+
+        public bool IsZoneVacuum(LastShiftZone zone)
+        {
+            var sealedOff = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen) && zone == SealedZone;
+            return LastShiftVerdictResolver.IsZoneVacuum(zonePressures[zone], sealedOff);
         }
 
         /// <summary>
-        /// 산소 계통을 포기했을 때 밀폐되는 구역. 파공 부품(PatchPlate, x≈4.5)이 있는 생명유지
-        /// 구역이며, 이 값은 씬 빌더의 아이템 배치와 함께 움직인다.
+        /// 산소 계통을 포기했을 때 밀폐되는 구역. 파공 지점이 있는 구역이며, 씬 빌더의
+        /// PatchPlate 배치(x≈4.5, 생명유지 구역)와 함께 움직인다.
         /// </summary>
-        private static string SealedZoneName => LastShiftSceneZones.LifeSupportZoneName;
+        private LastShiftZone SealedZone => BreachZone;
 
         /// <summary>
         /// N9 S-O3 전선 사이렌. 발동 0.15 / 해제 0.20 이라 경계에서 떨리지 않는다.
@@ -380,7 +448,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void UpdateSiren()
         {
-            var next = LastShiftVerdictResolver.EvaluateSiren(currentState, sirenActive);
+            var next = LastShiftVerdictResolver.EvaluateSiren(zonePressures, sirenActive);
             if (next == sirenActive)
             {
                 if (next) EnsureSirenAudioPlaying();
@@ -391,12 +459,13 @@ namespace DoodleUp.Runtime
             if (next)
             {
                 EnsureSirenAudioPlaying();
-                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=ON O2={currentState.OxygenPressure:F2} scope=all-zones");
+                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=ON lowest={zonePressures.Lowest:F2} " +
+                          $"zones[{zonePressures}] scope=all-zones");
             }
             else
             {
                 StopSirenAudio();
-                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=OFF O2={currentState.OxygenPressure:F2}");
+                Debug.Log($"[LAST_SHIFT_SIREN] generation={ResetGeneration} state=OFF lowest={zonePressures.Lowest:F2}");
             }
         }
 
@@ -657,6 +726,10 @@ namespace DoodleUp.Runtime
 
             currentPreset = preset;
             currentState = LastShiftPresetFactory.Create(preset);
+            // 프리셋 초기 압력은 세 구역 동일이다(기획 §2.2 A-2 초기값). 문도 전부 열린 상태로
+            // 시작한다 — 격리는 플레이어가 내리는 판단이지 시작 조건이 아니다(§2.7 자동 격리 금지).
+            zonePressures = LastShiftZonePressures.Uniform(currentState.OxygenPressure);
+            doorState = LastShiftDoorState.AllOpen;
             dockingSecondsRemaining = LastShiftRecoveryTuning.DockingTimerSeconds;
             ResetGeneration++;
             HasAppliedImpact = false;
@@ -712,7 +785,7 @@ namespace DoodleUp.Runtime
         {
             if (HasAppliedImpact) return false;
 
-            currentState = LastShiftMeteorApplication.Apply(meteor, currentState, items);
+            currentState = LastShiftMeteorApplication.Apply(meteor, currentState, ref zonePressures, BreachZone, items);
             appliedMeteor = meteor;
             HasAppliedImpact = true;
             ImpactApplicationCount++;
@@ -721,7 +794,8 @@ namespace DoodleUp.Runtime
             CaptureDamagedSystems();
             // 운석 직후 상태로 상한을 즉시 반영한다. 여기서 계산하지 않으면 첫 tick 까지
             // ThrustCeiling 이 1.0 으로 보이고, 열이 이미 한계인 프리셋에서 잠금이 한 프레임 늦는다.
-            lastTick = LastShiftDeterioration.Tick(ref currentState, BuildContainment(), 0f);
+            lastTick = LastShiftDeterioration.Tick(
+                ref currentState, ref zonePressures, BuildContainment(), BreachZone, doorState, 0f);
             Debug.Log($"[LAST_SHIFT_IMPACT] application={ImpactApplicationCount} point={meteor.ImpactPoint} vector={meteor.ImpactVector} E={meteor.Energy:F1} firstResult={FirstResult.Problem}");
             PlayImpactFeedback(meteor);
             return true;
@@ -905,18 +979,19 @@ namespace DoodleUp.Runtime
         {
             headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
-            GUI.Box(new Rect(16f, 16f, 680f, 300f), GUIContent.none);
+            // 구역 3칸 + 사이렌 줄이 한 줄 더 차지하므로 박스와 아래 항목을 그만큼 내린다.
+            GUI.Box(new Rect(16f, 16f, 680f, 322f), GUIContent.none);
             GUI.Label(new Rect(28f, 24f, 650f, 28f), $"LAST SHIFT SP-01 SOLO | Preset {(char)('A' + (int)currentPreset)}: {currentPreset}", headingStyle);
             GUI.Label(new Rect(28f, 56f, 650f, 48f),
                 $"WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M one-shot meteor | 화살표 조종 (8초)\n" +
                 $"Docking T-{dockingSecondsRemaining:F0}s | Hold {controlHold.RemainingSeconds:F1}s | " +
                 $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}", bodyStyle);
             DrawShipStateLine();
-            GUI.Label(new Rect(28f, 157f, 650f, 52f),
+            GUI.Label(new Rect(28f, 179f, 650f, 52f),
                 HasAppliedImpact
                     ? $"FIRST DOMINANT: {FirstResult.Problem}\nCURRENT DOMINANT: {LastResult.Problem}"
                     : "FIRST DOMINANT PROBLEM: pending meteor", headingStyle);
-            GUI.Label(new Rect(28f, 215f, 650f, 84f), HasAppliedImpact ? LastResult.CauseChain : "Preset only configures pre-impact state. Press M to apply the canonical meteor once.", bodyStyle);
+            GUI.Label(new Rect(28f, 237f, 650f, 84f), HasAppliedImpact ? LastResult.CauseChain : "Preset only configures pre-impact state. Press M to apply the canonical meteor once.", bodyStyle);
             DrawSuitOxygenGauges();
         }
 
@@ -931,11 +1006,51 @@ namespace DoodleUp.Runtime
                 $"INPUT state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
                 $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}", bodyStyle);
 
+            DrawZonePressureCells();
+        }
+
+        /// <summary>
+        /// N10 구역 3칸 압력 표시. 격리(문 닫기)의 즉시 가시성이 여기에 걸려 있다 —
+        /// 이 칸이 없으면 플레이어는 문을 닫고도 그것이 효과가 있었는지 알 수 없다(기획 §2.2.1).
+        ///
+        /// 칸 사이에 문 상태를 그린다. 세 칸을 그냥 나열하면 "왜 이 칸만 안 떨어지는가" 가
+        /// 안 읽히고, 그 답이 곧 문이기 때문이다.
+        /// </summary>
+        private void DrawZonePressureCells()
+        {
             sirenStyle.normal.textColor = sirenActive
                 ? Color.Lerp(new Color(0.88f, 0.94f, 1f), new Color(1f, 0.25f, 0.18f), BlinkPhase)
                 : new Color(0.88f, 0.94f, 1f);
-            var sirenSuffix = sirenActive ? "  ⚠ 전선 경보: 산소 위험 (전 구역)" : string.Empty;
-            GUI.Label(new Rect(28f, 130f, 650f, 24f), $"O2 {currentState.OxygenPressure:F2}{sirenSuffix}", sirenStyle);
+
+            const float cellWidth = 132f;
+            const float doorWidth = 52f;
+            var x = 28f;
+            GUI.Label(new Rect(x, 130f, 34f, 24f), "O2", sirenStyle);
+            x += 34f;
+
+            for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+            {
+                var zone = (LastShiftZone)index;
+                if (index > 0)
+                {
+                    // 경계 index-1 이 이 두 칸을 잇는 문이다.
+                    var open = doorState[index - 1];
+                    GUI.Label(new Rect(x, 130f, doorWidth, 24f), open ? "─┤├─" : "─┫┣─", bodyStyle);
+                    x += doorWidth;
+                }
+
+                var pressure = zonePressures[zone];
+                var vacuum = IsZoneVacuum(zone);
+                var alarming = vacuum || pressure <= LastShiftRecoveryTuning.OxygenSirenTrigger;
+                var style = alarming ? sirenStyle : bodyStyle;
+                var suffix = vacuum ? " 진공" : string.Empty;
+                GUI.Label(new Rect(x, 130f, cellWidth, 24f),
+                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {pressure:F2}{suffix}", style);
+                x += cellWidth;
+            }
+
+            if (sirenActive)
+                GUI.Label(new Rect(28f, 152f, 650f, 20f), "⚠ 전선 경보: 산소 위험 (전 구역)", sirenStyle);
         }
 
         /// <summary>

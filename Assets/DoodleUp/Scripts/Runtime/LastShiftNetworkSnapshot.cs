@@ -27,6 +27,18 @@ namespace DoodleUp.Runtime
         /// <summary>S-O3 전선 사이렌(N9). 모든 클라이언트가 같은 시점에 울려야 국소 정보 예외가 성립한다.</summary>
         public bool SirenActive;
 
+        /// <summary>
+        /// N0 구역 압력 중 엔진실·산소실. 조종석 압력은 <see cref="ShipState"/>.OxygenPressure 가
+        /// 이미 나르므로(그 필드가 조종석 파생값이다) 여기서 다시 보내지 않는다.
+        /// 클라이언트 HUD 3칸(N10)과 클라이언트 쪽 진공 판정이 이 둘을 읽는다.
+        /// </summary>
+        public float UtilityPressure;
+        public float LifeSupportPressure;
+
+        /// <summary>N0b 구역 문. 닫힌 경계는 압력 교환이 0 이므로 클라이언트도 같은 상태를 봐야 한다.</summary>
+        public bool CockpitUtilityDoorOpen;
+        public bool UtilityLifeSupportDoorOpen;
+
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref Preset);
@@ -54,6 +66,10 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref SteeringDelayed);
             serializer.SerializeValue(ref OxygenPumpRunning);
             serializer.SerializeValue(ref SirenActive);
+            serializer.SerializeValue(ref UtilityPressure);
+            serializer.SerializeValue(ref LifeSupportPressure);
+            serializer.SerializeValue(ref CockpitUtilityDoorOpen);
+            serializer.SerializeValue(ref UtilityLifeSupportDoorOpen);
         }
 
         public bool Equals(LastShiftNetworkSnapshot other)
@@ -82,7 +98,11 @@ namespace DoodleUp.Runtime
                    HeatProtectionEngaged == other.HeatProtectionEngaged &&
                    SteeringDelayed == other.SteeringDelayed &&
                    OxygenPumpRunning == other.OxygenPumpRunning &&
-                   SirenActive == other.SirenActive;
+                   SirenActive == other.SirenActive &&
+                   UtilityPressure.Equals(other.UtilityPressure) &&
+                   LifeSupportPressure.Equals(other.LifeSupportPressure) &&
+                   CockpitUtilityDoorOpen == other.CockpitUtilityDoorOpen &&
+                   UtilityLifeSupportDoorOpen == other.UtilityLifeSupportDoorOpen;
         }
     }
 }

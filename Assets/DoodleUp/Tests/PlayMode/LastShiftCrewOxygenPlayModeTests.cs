@@ -50,7 +50,7 @@ namespace DoodleUp.Tests.PlayMode
             AdvanceUntilPressureAtOrBelow(LastShiftRecoveryTuning.OxygenSirenTrigger);
 
             Assert.That(sandbox.SirenActive, Is.True, "압력 0.15 이하에서 전선 사이렌이 켜져야 한다.");
-            Assert.That(sandbox.CurrentState.OxygenPressure, Is.GreaterThan(LastShiftRecoveryTuning.VacuumOxygenPressure),
+            Assert.That(sandbox.PressureOf(sandbox.BreachZone), Is.GreaterThan(LastShiftRecoveryTuning.VacuumOxygenPressure),
                 "사이렌 시점은 아직 진공이 아니어야 한다 — 두 임계가 겹치면 대응 창이 사라진다.");
             Assert.That(crew.SuitOxygen, Is.EqualTo(LastShiftRecoveryTuning.SuitOxygenInitial).Within(0.0001f),
                 "사이렌만으로는 예비 산소가 줄지 않아야 한다.");
@@ -105,9 +105,9 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(drained, Is.LessThan(LastShiftRecoveryTuning.SuitOxygenInitial));
 
             // 압력만 0.00 위로 되돌린다. 여기서 검증하려는 것은 "소모 정지" 하나다.
-            var restored = sandbox.CurrentState;
-            restored.OxygenPressure = 0.30f;
-            sandbox.OverrideStateForProbe(restored);
+            // 승무원이 선 곳은 파공 구역이므로 되돌릴 대상도 그 구역 압력이다. 세 구역을 함께
+            // 올려 두어야 다음 tick 의 평준화가 도로 0 으로 끌어내리지 않는다.
+            sandbox.OverrideZonePressuresForProbe(LastShiftZonePressures.Uniform(0.30f));
             sandbox.AdvanceMission(SuitOxygenLifetime * 0.25f);
 
             Assert.That(crew.IsDraining, Is.False, "압력이 0.00 위면 소모가 멈춰야 한다.");
@@ -128,9 +128,11 @@ namespace DoodleUp.Tests.PlayMode
             var first = ArmLeakPreset();
             var second = sandbox.CrewOxygenOf(secondPlayer);
 
+            // 두 승무원을 같은 파공 구역에 세운다. N0 이후 진공은 구역별이므로 "같은 진공을
+            // 공유한다" 는 전제가 자동으로 성립하지 않는다 — 같은 구역에 있어야 성립한다.
+            secondPlayer.ResetPlayer(BreachZoneStandingPosition);
             AdvanceUntilPressureAtOrBelow(LastShiftRecoveryTuning.VacuumOxygenPressure);
-            // 압력은 선체 전체 값이라 두 승무원이 같은 진공을 공유한다. 먼저 전원 사망 경로를
-            // 확인하고(수용 기준 5), 1명만 죽은 상태는 아래에서 따로 조립한다.
+            // 먼저 전원 사망 경로를 확인하고(수용 기준 5), 1명만 죽은 상태는 아래에서 따로 조립한다.
             sandbox.AdvanceMission(SuitOxygenLifetime + 1f);
             Assert.That(first.IsDead, Is.True);
             Assert.That(second.IsDead, Is.True, "같은 진공에 있었다면 두 승무원 모두 죽는다.");
@@ -201,27 +203,71 @@ namespace DoodleUp.Tests.PlayMode
             yield break;
         }
 
-        /// <summary>운석까지 적용해 산소가 실제로 새기 시작하는 상태를 만든다.</summary>
+        /// <summary>
+        /// 운석까지 적용해 산소가 실제로 새기 시작하는 상태를 만들고, 승무원을 <b>파공 구역 안</b>에
+        /// 세운다.
+        ///
+        /// N0 이전에는 압력이 배 전체 단일 값이라 승무원이 어디에 서 있든 같은 진공을 겪었고,
+        /// 스폰 지점(조종석)에 둔 채로 검증할 수 있었다. 구역이 분리된 뒤로는 그 전제가 사라진다 —
+        /// 파공은 산소실이고 조종석은 두 경계 건너편이라, 조종석 승무원을 죽이려면 배 전체가
+        /// 진공이 될 때까지 기다려야 한다. 그건 공기 보존상 300초 타이머 안에 일어나지 않는다
+        /// (전체 공기 2.86 / 누출 0.00726 = 394초. 평준화를 아무리 올려도 공기를 옮길 뿐 없애지
+        /// 못하므로 이 하한은 내려가지 않는다).
+        ///
+        /// 그래서 승무원을 파공 구역에 세운다. 검증 기준을 낮춘 것이 아니라 <b>판정 대상을
+        /// 구역으로 옮긴 것</b>이다. 기획 §2.2 A-2 의 사망 규칙 자체가 "구역 0.00 도달 시
+        /// <b>그 구역에 있는</b> 승무원의 예비 산소 소모 시작" 이므로, 파공 구역에 선 승무원이
+        /// 정확히 그 규칙의 대상이다.
+        /// </summary>
         private LastShiftCrewOxygen ArmLeakPreset()
         {
             sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
+            player.ResetPlayer(BreachZoneStandingPosition);
+            Assert.That(LastShiftZoneAtlas.Resolve(player.transform.position), Is.EqualTo(sandbox.BreachZone),
+                "승무원이 파공 구역 안에 서 있어야 이 묶음의 사망 경로가 성립한다.");
+            IsolateBreachZone();
             var crew = sandbox.CrewOxygenOf(player);
             Assert.That(crew, Is.Not.Null);
             Assert.That(crew.SuitOxygen, Is.EqualTo(LastShiftRecoveryTuning.SuitOxygenInitial).Within(0.0001f));
             return crew;
         }
 
+        /// <summary>파공 구역(산소실) 안의 서 있을 자리. PatchPlate 정위치와 같은 구역이다.</summary>
+        private static Vector3 BreachZoneStandingPosition => new(4.5f, 0.1f, -1.6f);
+
+        /// <summary>
+        /// 파공 구역을 격리한다(엔진실↔산소실 문을 닫는다). 이게 있어야 진공이 도달 가능해진다.
+        ///
+        /// 문이 열린 채로는 평준화가 나머지 두 구역의 공기를 파공 구역으로 계속 밀어 넣어,
+        /// 배 전체가 함께 천천히 내려갈 뿐 어느 구역도 300초 안에 0.00 에 닿지 않는다
+        /// (타이머 만료 시점 파공 구역 0.13). 문을 닫으면 파공 구역이 자기 공기만으로
+        /// 빠지므로 129초에 진공, 사망은 209초 — 타이머 안이다.
+        ///
+        /// 이것은 검증을 쉽게 하려는 우회가 아니라 기획 §2.2.2 의 격리 그 자체다. 격리의
+        /// 대가가 "그 안의 승무원 고립" 이므로, 파공 구역에 갇힌 승무원이 예비 산소를 태우다
+        /// 죽는 경로는 격리를 켰을 때 성립하는 정규 경로다.
+        /// </summary>
+        private void IsolateBreachZone()
+        {
+            sandbox.SetDoorOpen(1, false);
+            Assert.That(sandbox.IsDoorOpen(1), Is.False, "산소실 격리가 걸려야 진공이 도달 가능하다.");
+        }
+
         /// <summary>
         /// 목표 압력까지 1초씩 민다. 한 번에 크게 밀면 사이렌선과 진공선을 같은 tick 에 지나쳐
         /// "사이렌만 울리는 구간" 자체를 관측할 수 없다.
+        ///
+        /// 보는 값은 <b>파공 구역</b> 압력이다. 조종석 파생값(<c>CurrentState.OxygenPressure</c>)을
+        /// 보면 위 <see cref="ArmLeakPreset"/> 주석의 394초 하한에 걸려 타이머가 먼저 끝난다.
+        /// 임계값(0.15 / 0.00)은 그대로다 — 기준이 아니라 대상만 구역으로 옮겼다.
         /// </summary>
         private void AdvanceUntilPressureAtOrBelow(float pressure)
         {
-            for (var i = 0; i < 2000 && sandbox.CurrentState.OxygenPressure > pressure; i++)
+            for (var i = 0; i < 2000 && sandbox.PressureOf(sandbox.BreachZone) > pressure; i++)
                 sandbox.AdvanceMission(1f);
-            Assert.That(sandbox.CurrentState.OxygenPressure, Is.LessThanOrEqualTo(pressure + 0.0001f),
-                $"압력이 {pressure:F2} 까지 내려가지 않았다.");
+            Assert.That(sandbox.PressureOf(sandbox.BreachZone), Is.LessThanOrEqualTo(pressure + 0.0001f),
+                $"파공 구역 압력이 {pressure:F2} 까지 내려가지 않았다.");
         }
 
         /// <summary>

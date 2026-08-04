@@ -15,9 +15,12 @@ namespace DoodleUp.Runtime
     /// </summary>
     public sealed class LastShiftImpactFeedback : MonoBehaviour
     {
-        /// <summary>구역 판정 기준 x 경계. 씬의 Zone_* 배치(-4 / 0 / +4, 폭 4)와 일치한다.</summary>
-        public const float CockpitZoneMaxX = -2f;
-        public const float LifeSupportZoneMinX = 2f;
+        /// <summary>
+        /// 구역 판정 기준 x 경계. 정본은 <see cref="LastShiftZoneAtlas"/> 이며 여기서는 재노출만 한다 —
+        /// 매핑이 두 벌이 되면 손상 표시와 압력·진공 판정이 서로 다른 구역을 가리킨다.
+        /// </summary>
+        public const float CockpitZoneMaxX = LastShiftZoneAtlas.CockpitMaxX;
+        public const float LifeSupportZoneMinX = LastShiftZoneAtlas.LifeSupportMinX;
 
         public const float ShakeDurationSeconds = 0.9f;
         public const float ShakeMaxAngleDegrees = 3.2f;
@@ -50,9 +53,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string ResolveDamagedZone(Vector3 impactPoint)
         {
-            if (impactPoint.x <= CockpitZoneMaxX) return LastShiftSceneZones.CockpitZoneName;
-            if (impactPoint.x >= LifeSupportZoneMinX) return LastShiftSceneZones.LifeSupportZoneName;
-            return LastShiftSceneZones.UtilityZoneName;
+            return LastShiftZoneAtlas.NameOf(LastShiftZoneAtlas.Resolve(impactPoint));
         }
 
         private void Awake()

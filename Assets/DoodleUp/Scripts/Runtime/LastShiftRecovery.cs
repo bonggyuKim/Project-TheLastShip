@@ -72,6 +72,17 @@ namespace DoodleUp.Runtime
         /// <summary>봉합 완료 + bus 연결 상태에서만 도는 산소 펌프 회복률.</summary>
         public const float OxygenPumpRecoveryPerSecond = 0.004f;
 
+        // ── 구역 격리 (CT-05 N0 / 기획 v0.3 §2.2.1) ───────────────────────
+        /// <summary>
+        /// 문이 열린 두 구역의 압력 평준화율. 매초 두 구역의 <b>차이</b>가 이 비율만큼 줄고,
+        /// 각 구역은 그 절반씩 움직인다. 차 0.5 인 두 구역이 같아지는 데 약 28초다 —
+        /// 문을 열어둔 채로도 즉사하지 않을 만큼 느리고, 방치하면 확실히 전파될 만큼 빠르다.
+        /// </summary>
+        public const float ZoneEqualizeRatePerSecond = 0.08f;
+
+        /// <summary>문 열기·닫기 소요. 임시 수리(QuickBypass)와 같은 값이다.</summary>
+        public const float ZoneDoorTransitionSeconds = 0.8f;
+
         // ── 개인 예비 산소 (CT-05 N1) ─────────────────────────────────────
         /// <summary>승무원 각자의 항해 1회 예산. 보충 지점은 0개다 — 한 번 쓰면 돌아오지 않는다.</summary>
         public const float SuitOxygenInitial = 1.00f;
@@ -81,6 +92,14 @@ namespace DoodleUp.Runtime
 
         /// <summary>이 값 이하의 구역 압력이 진공이다. 사이렌선(0.15)과 겹치지 않아야 한다.</summary>
         public const float VacuumOxygenPressure = 0.00f;
+
+        /// <summary>
+        /// 이 값 미만의 구역 압력은 0.00 으로 스냅한다. 평준화(§2.2.1)는 지수 접근이라
+        /// 파공 구역이 0 에 고정돼도 이웃 구역은 정확히 0 에 닿지 않는다. 스냅이 없으면
+        /// 진공선(0.00)이 사실상 도달 불가가 되어 RG-1 의 "80초 보장" 구간 자체가 시작되지 않는다.
+        /// 0.005 는 압력 0.5% 로, 관측·판정 어디에도 의미를 갖지 않는 크기다.
+        /// </summary>
+        public const float ZonePressureVacuumSnap = 0.005f;
 
         /// <summary>막대 적색 점멸 + 호흡음 증폭 구간. 남은 20초를 시각으로 알린다.</summary>
         public const float SuitOxygenCriticalThreshold = 0.25f;
@@ -351,13 +370,38 @@ namespace DoodleUp.Runtime
     /// </summary>
     public static class LastShiftDeterioration
     {
+        /// <summary>
+        /// 구역별 압력이 없는 호출 경로(EditMode 최소 조립 등)를 위한 호환 진입점.
+        /// 세 구역이 모두 같은 압력이고 문이 전부 열려 있는 것과 같다.
+        /// </summary>
         public static LastShiftTickReport Tick(
             ref LastShiftShipState state,
             in LastShiftContainment containment,
             float deltaTime)
         {
+            var pressures = LastShiftZonePressures.Uniform(state.OxygenPressure);
+            return Tick(ref state, ref pressures, containment, LastShiftZone.LifeSupport, LastShiftDoorState.AllOpen, deltaTime);
+        }
+
+        /// <summary>
+        /// 산소 시계는 구역별로 돈다(기획 v0.3 §2.2). 파공이 있는 구역에서만 새고, 문이 열린
+        /// 구역끼리는 평준화로 끌려간다. <paramref name="breachZone"/> 은 봉합 지점(PatchPlate
+        /// nominal)이 있는 구역이며, 그 구역을 격리하면 나머지 구역의 하강이 그 자리에서 멈춘다.
+        /// </summary>
+        public static LastShiftTickReport Tick(
+            ref LastShiftShipState state,
+            ref LastShiftZonePressures pressures,
+            in LastShiftContainment containment,
+            LastShiftZone breachZone,
+            in LastShiftDoorState doors,
+            float deltaTime)
+        {
             var report = LastShiftTickReport.Idle;
-            if (deltaTime <= 0f) return ReportOnly(ref state, containment);
+            if (deltaTime <= 0f)
+            {
+                state.OxygenPressure = pressures[LastShiftZone.Cockpit];
+                return ReportOnly(ref state, containment);
+            }
 
             // ── 전력 시계 ── bus 미연결이면 0.40 을 넘지 못한다. 다른 두 복구의 속도를 뺏는 자리.
             // 구역을 포기하면 하강이 멈춘다(회복은 없다). 열·산소와 같은 규칙이어야 세 계통에서
@@ -384,19 +428,35 @@ namespace DoodleUp.Runtime
                 state.EngineHeat = Mathf.Clamp01(state.EngineHeat - LastShiftRecoveryTuning.HeatRecoveryPerSecond * deltaTime);
             }
 
-            // ── 산소 시계 ── 파공 미봉합이면 선체 손상에 비례해 샌다. 봉합 + 전력이 둘 다 있어야 펌프가 돈다.
+            // ── 산소 시계 ── 이제 구역별로 돈다(기획 v0.3 §2.2).
+            // 새는 것은 파공이 있는 구역 하나뿐이고, 나머지 구역은 문이 열려 있는 동안 평준화로
+            // 끌려 내려간다. 문을 닫으면 그 전파가 그 자리에서 멈추는 것이 격리의 즉시 효과다.
             if (!containment.OxygenContained)
             {
                 var leak = LastShiftRecoveryTuning.OxygenLeakPerSecond *
                            (1f - state.HullIntegrity) / LastShiftRecoveryTuning.OxygenLeakHullReference;
-                state.OxygenPressure = Mathf.Clamp01(state.OxygenPressure - leak * deltaTime);
+                pressures[breachZone] -= leak * deltaTime;
             }
             else if (containment.OxygenRestored && containment.PowerRestored)
             {
-                state.OxygenPressure = Mathf.Clamp01(
-                    state.OxygenPressure + LastShiftRecoveryTuning.OxygenPumpRecoveryPerSecond * deltaTime);
+                // 펌프는 재가압한다. 다만 "격리된 구역은 재가압되지 않는다"(§2.2.2 대가) 이므로
+                // 조종석에서 열린 문으로 이어지는 구역만 공기를 받는다. 버린 구역은 버린 채 남는다.
+                var recovery = LastShiftRecoveryTuning.OxygenPumpRecoveryPerSecond * deltaTime;
+                for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+                {
+                    var zone = (LastShiftZone)index;
+                    if (!IsConnectedToCockpit(zone, doors)) continue;
+                    pressures[zone] += recovery;
+                }
                 report.OxygenPumpRunning = true;
             }
+
+            pressures.Equalize(doors, deltaTime);
+            SnapNearVacuum(ref pressures);
+
+            // OxygenPressure 는 조종석 압력의 파생값이다. 도킹 성공 판정·leak 점수·네트워크
+            // 스냅샷이 모두 이 필드를 읽고 있고, 판정 기준은 세 구역 평균이 아니라 조종석 하나다.
+            state.OxygenPressure = pressures[LastShiftZone.Cockpit];
 
             var ceiling = ResolveThrustCeiling(state, containment);
             if (state.ThrustDemand > ceiling) state.ThrustDemand = ceiling;
@@ -405,6 +465,34 @@ namespace DoodleUp.Runtime
             report.HeatProtectionEngaged = state.EngineHeat >= LastShiftRecoveryTuning.HeatProtectionTrigger;
             report.SteeringDelayed = !containment.PowerRestored;
             return report;
+        }
+
+        /// <summary>
+        /// 조종석에서 열린 문만 따라가 이 구역에 닿을 수 있는가. 구역이 일렬로 셋이므로
+        /// 조종석↔엔진실 문 하나, 그리고 그 다음 엔진실↔산소실 문 하나를 차례로 본다.
+        /// 재가압 대상 판정에 쓴다 — 격리한 구역은 재가압되지 않는 것이 격리의 대가다.
+        /// </summary>
+        public static bool IsConnectedToCockpit(LastShiftZone zone, in LastShiftDoorState doors)
+        {
+            return zone switch
+            {
+                LastShiftZone.Cockpit => true,
+                LastShiftZone.Utility => doors[0],
+                _ => doors[0] && doors[1]
+            };
+        }
+
+        /// <summary>
+        /// 평준화는 지수 접근이라 이웃 구역이 0 에 정확히 닿지 않는다. 진공선(0.00)이 도달
+        /// 불가가 되면 RG-1 의 80초 보장 구간 자체가 시작되지 않으므로 아주 작은 잔압은 버린다.
+        /// </summary>
+        private static void SnapNearVacuum(ref LastShiftZonePressures pressures)
+        {
+            for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+            {
+                var zone = (LastShiftZone)index;
+                if (pressures[zone] < LastShiftRecoveryTuning.ZonePressureVacuumSnap) pressures[zone] = 0f;
+            }
         }
 
         /// <summary>
@@ -479,19 +567,25 @@ namespace DoodleUp.Runtime
 
         /// <summary>
         /// 구역이 진공인가. 개인 예비 산소 소모의 유일한 조건이다(N1).
-        /// 구역 차단(산소 계통 성능 포기)으로 밀폐된 구역은 선체 압력과 무관하게 진공으로 본다 —
-        /// 밀폐가 곧 그 구역의 공기를 버린 것이기 때문이다.
+        /// 판정 대상은 <b>그 구역의</b> 압력이다 — N0 이전에는 선체 단일 압력이었고, 그때는
+        /// 진공이 언제나 배 전체였다. 구역 차단(산소 계통 성능 포기)으로 밀폐된 구역은
+        /// 압력과 무관하게 진공으로 본다 — 밀폐가 곧 그 구역의 공기를 버린 것이기 때문이다.
         /// </summary>
-        public static bool IsZoneVacuum(in LastShiftShipState state, bool zoneSealedOff)
+        public static bool IsZoneVacuum(float zonePressure, bool zoneSealedOff)
         {
-            return zoneSealedOff || state.OxygenPressure <= LastShiftRecoveryTuning.VacuumOxygenPressure;
+            return zoneSealedOff || zonePressure <= LastShiftRecoveryTuning.VacuumOxygenPressure;
         }
 
-        /// <summary>S-O3 사이렌 상태. 발동선과 해제선이 달라 경계에서 떨리지 않는다(N9).</summary>
-        public static bool EvaluateSiren(in LastShiftShipState state, bool sirenActive)
+        /// <summary>
+        /// S-O3 사이렌 상태. 발동선과 해제선이 달라 경계에서 떨리지 않는다(N9).
+        /// <b>어느 구역이든</b> 0.15 이하면 울리므로 최저 구역 압력을 본다(기획 §2.2 A-2 연쇄).
+        /// 사이렌은 배 전체 하나이며, 국소 정보 규칙의 유일한 명시적 예외다.
+        /// </summary>
+        public static bool EvaluateSiren(in LastShiftZonePressures pressures, bool sirenActive)
         {
-            if (state.OxygenPressure <= LastShiftRecoveryTuning.OxygenSirenTrigger) return true;
-            return sirenActive && state.OxygenPressure < LastShiftRecoveryTuning.OxygenSirenRelease;
+            var lowest = pressures.Lowest;
+            if (lowest <= LastShiftRecoveryTuning.OxygenSirenTrigger) return true;
+            return sirenActive && lowest < LastShiftRecoveryTuning.OxygenSirenRelease;
         }
 
         /// <summary>타이머 0. 추력이 성공선 아래면 추력 부족, 그 외에는 표류다.</summary>

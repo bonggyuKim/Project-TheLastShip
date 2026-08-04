@@ -145,7 +145,11 @@ namespace DoodleUp.Runtime
                 HeatProtectionEngaged = sandbox.HeatProtectionEngaged,
                 SteeringDelayed = sandbox.SteeringDelayed,
                 OxygenPumpRunning = sandbox.OxygenPumpRunning,
-                SirenActive = sandbox.SirenActive
+                SirenActive = sandbox.SirenActive,
+                UtilityPressure = sandbox.PressureOf(LastShiftZone.Utility),
+                LifeSupportPressure = sandbox.PressureOf(LastShiftZone.LifeSupport),
+                CockpitUtilityDoorOpen = sandbox.IsDoorOpen(0),
+                UtilityLifeSupportDoorOpen = sandbox.IsDoorOpen(1)
             };
         }
 
