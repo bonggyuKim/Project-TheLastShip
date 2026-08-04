@@ -210,7 +210,9 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
             Assert.That(sandbox.LastResult.Problem, Is.EqualTo(LastShiftDominantProblem.BatteryDisplacedBusDisconnected));
             Assert.That(Vector3.Distance(player.transform.position, LastShiftSandboxController.PlayerSpawn), Is.LessThan(0.0001f));
-            Assert.That(sandbox.DockingSecondsRemaining, Is.EqualTo(360f));
+            // CT-03: 즉사 없는 대신 타이머 360s -> 300s. 값은 LastShiftRecoveryTuning 에서 온다.
+            Assert.That(sandbox.DockingSecondsRemaining, Is.EqualTo(LastShiftRecoveryTuning.DockingTimerSeconds));
+            Assert.That(LastShiftRecoveryTuning.DockingTimerSeconds, Is.EqualTo(300f));
 
             sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(sandbox.LastResult.Problem, Is.EqualTo(LastShiftDominantProblem.None));
