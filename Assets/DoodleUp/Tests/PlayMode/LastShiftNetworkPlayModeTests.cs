@@ -92,7 +92,10 @@ namespace DoodleUp.Tests.PlayMode
             player.transform.position = originalPosition;
             Assert.That(player.TryGrabFromServer(player.OwnerClientId + 1, item), Is.False);
 
-            controller.TargetCamera.transform.localRotation = Quaternion.Euler(-25f, 0f, 0f);
+            // 조준은 카메라 transform 이 아니라 조준 상태(pitch)에서 나온다. 충격 흔들림이
+            // 서버 grab 판정에 섞이지 않게 하려는 설계라, 카메라 회전을 직접 써도 조준은
+            // 움직이지 않는다. 조준을 세울 때는 SetAimPitchForProbe 를 쓴다.
+            controller.SetAimPitchForProbe(25f);
             item.transform.position = controller.TargetCamera.transform.position + controller.TargetCamera.transform.forward;
             UnityEngine.Physics.SyncTransforms();
             Assert.That(Vector3.Dot(player.AuthoritativeAimDirection, Vector3.up), Is.GreaterThan(0.35f));
@@ -295,8 +298,9 @@ namespace DoodleUp.Tests.PlayMode
         private static void AimAtItem(LastShiftPlayerController controller, LastShiftNetworkGrabbable item)
         {
             var target = item.GetComponentInChildren<Collider>().bounds.center;
-            var cameraTransform = controller.TargetCamera.transform;
-            cameraTransform.rotation = Quaternion.LookRotation((target - cameraTransform.position).normalized, Vector3.up);
+            // 조준은 카메라 transform 이 아니라 조준 상태(yaw/pitch)에서 나온다. 카메라
+            // world rotation 을 직접 쓰면 조준이 갱신되지 않으므로 정식 경로를 쓴다.
+            controller.SetAimDirectionForProbe(target - controller.AimOrigin);
             UnityEngine.Physics.SyncTransforms();
         }
 

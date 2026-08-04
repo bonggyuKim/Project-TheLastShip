@@ -53,6 +53,7 @@ namespace DoodleUp.Runtime
             if (sandbox == null) sandbox = FindFirstObjectByType<LastShiftSandboxController>();
             if (networkManager != null)
             {
+                if (Application.isPlaying) DiscardStaleNetworkManagerSingleton();
                 // 씬 빌더가 편집 모드에서 컴포넌트를 붙일 때 NetworkManager 내부 설정은 아직
                 // 초기화 중이다. 그 시점에 NetworkConfig 를 만지면 Configure() 의 후속 접근이
                 // NullReferenceException 으로 실패한다. 런타임에만 직렬화 참조를 config 로 복원한다.
@@ -66,6 +67,36 @@ namespace DoodleUp.Runtime
                 networkManager.OnClientDisconnectCallback += OnClientDisconnected;
                 if (Application.isPlaying) RestrictSceneSynchronizationToNetworkScene();
             }
+        }
+
+        /// <summary>
+        /// 앞선 세션의 NetworkManager 가 DDOL 에 남아 있으면 새 씬 인스턴스가 Singleton 을
+        /// 잡지 못한다. NetworkManager.OnEnable 은 <c>Singleton == null</c> 일 때만
+        /// SetSingleton() 을 부르고(NetworkManager.cs), 스스로는 DontDestroyOnLoad 로 살아남기
+        /// 때문이다. 그 결과 새 씬의 아이템 NetworkObject 는 NetworkManagerOwner 가 비어
+        /// NetworkObject.NetworkManager => NetworkManager.Singleton 으로 죽은 옛 매니저를
+        /// 가리키고, ServerSpawnSceneObjectsOnStartSweep 의
+        /// <c>networkObject.NetworkManager != NetworkManager</c> 검사에서 전부 걸러진다.
+        /// 즉 host 는 떠도 씬 안의 물건이 하나도 spawn 되지 않는다(spawned=0).
+        ///
+        /// 그래서 네트워크 씬이 다시 열릴 때 남은 매니저를 걷어내고 이 씬의 매니저를
+        /// Singleton 으로 세운다. 테스트 전용 우회가 아니라, 씬을 재로드하는 모든 경로
+        /// (로비 복귀, 재시작)가 같은 함정을 밟기 때문에 런타임에서 막는다.
+        /// </summary>
+        private void DiscardStaleNetworkManagerSingleton()
+        {
+            var singleton = NetworkManager.Singleton;
+            if (singleton == networkManager) return;
+            if (singleton != null)
+            {
+                if (singleton.IsListening) singleton.Shutdown();
+                Debug.Log($"[LAST_SHIFT_NETWORK_SINGLETON] stale={singleton.gameObject.scene.name}/{singleton.name} action=destroyed replacement={name}");
+                Destroy(singleton.gameObject);
+            }
+
+            // Destroy 는 프레임 끝에 반영되므로 OnDestroy 가 Singleton 을 null 로 되돌리는
+            // 시점을 기다릴 수 없다. 이 씬의 매니저를 즉시 Singleton 으로 지정한다.
+            networkManager.SetSingleton();
         }
 
         /// <summary>
