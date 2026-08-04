@@ -37,6 +37,7 @@ namespace DoodleUp.Runtime
         private bool safeRestorePressed;
         private bool quickBypassPressed;
         private bool sacrificePressed;
+        private bool doorPressed;
         private bool presetOnePressed;
         private bool presetTwoPressed;
         private bool presetThreePressed;
@@ -50,7 +51,7 @@ namespace DoodleUp.Runtime
         public Camera TargetCamera => targetCamera;
         public Transform HoldSocket => holdSocket;
         public bool UsesMouseLook => true;
-        public string InputLabel => "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / 1·2·3 프리셋 / R 리셋";
+        public string InputLabel => "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / Q 문 / 1·2·3 프리셋 / R 리셋";
         public string InteractionPrompt => BuildInteractionPrompt();
         public Vector3 AimOrigin => targetCamera != null ? targetCamera.transform.position : transform.position;
 
@@ -138,6 +139,9 @@ namespace DoodleUp.Runtime
             var safeRestore = ConsumePress(keyboard.cKey.isPressed, ref safeRestorePressed);
             var quickBypass = ConsumePress(keyboard.vKey.isPressed, ref quickBypassPressed);
             var sacrifice = ConsumePress(keyboard.gKey.isPressed, ref sacrificePressed);
+            // 문 개폐(Q). 잡기(E)·고정(F)·수리(C·V·G)와 다른 키여야 한다 — 문 앞에서 부품을
+            // 들고 있는 상황이 흔하고, 키를 겹치면 "문을 열려다 부품을 놓는" 사고가 난다.
+            var door = ConsumePress(keyboard.qKey.isPressed, ref doorPressed);
             var presetOne = ConsumePress(keyboard.digit1Key.isPressed, ref presetOnePressed);
             var presetTwo = ConsumePress(keyboard.digit2Key.isPressed, ref presetTwoPressed);
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
@@ -147,7 +151,9 @@ namespace DoodleUp.Runtime
             ApplyMovement(move, jump, deltaTime);
             if (grab) ToggleGrab();
             if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
+            if (door && (networkPlayer == null || !networkPlayer.IsSpawned)) TryOperateNearestDoor();
             if (networkPlayer == null || !networkPlayer.IsSpawned) return;
+            if (door) networkPlayer.RequestDoorToggle();
             if (safeRestore) networkPlayer.RequestRepair(LastShiftRepairMode.SafeRestore);
             else if (quickBypass) networkPlayer.RequestRepair(LastShiftRepairMode.QuickBypass);
             else if (sacrifice) networkPlayer.RequestRepair(LastShiftRepairMode.PerformanceSacrifice);
@@ -210,7 +216,18 @@ namespace DoodleUp.Runtime
         public bool OwnsInputKey(Key key)
         {
             return key is Key.W or Key.A or Key.S or Key.D or Key.Space or Key.E or Key.F
-                or Key.C or Key.V or Key.G;
+                or Key.C or Key.V or Key.G or Key.Q;
+        }
+
+        /// <summary>
+        /// 문 앞에 서 있으면 그 문을 조작한다. 솔로 경로 전용이며, 네트워크에서는 서버가
+        /// 같은 판정을 다시 한다(<see cref="LastShiftNetworkSandbox.RequestDoorToggleRpc"/>).
+        /// 살아 있는 승무원인지는 <see cref="LastShiftZoneDoor.TryOperate"/> 가 본다.
+        /// </summary>
+        public bool TryOperateNearestDoor()
+        {
+            var door = LastShiftZoneDoor.FindOperable(transform.position);
+            return door != null && door.TryOperate(this);
         }
 
         public void ResetPlayer(Vector3 position)
@@ -409,6 +426,10 @@ namespace DoodleUp.Runtime
 
         private string BuildInteractionPrompt()
         {
+            // 문 프롬프트가 아이템 프롬프트보다 먼저다. 문 앞에서만 뜨는 안내이고, 그 자리에서
+            // 아이템을 조준하고 있을 확률보다 문을 조작하려 할 확률이 높다.
+            var doorPrompt = BuildDoorPrompt();
+            if (doorPrompt != null) return doorPrompt;
             if (networkPlayer == null || !networkPlayer.IsSpawned)
                 return heldItem != null ? "[E] 놓기" : "+";
             if (serverRejectionReason != null)
@@ -449,6 +470,22 @@ namespace DoodleUp.Runtime
             if (item.IsClaimed)
                 return $"{item.Grabbable.Role}: 다른 플레이어가 잡는 중";
             return $"[E] {item.Grabbable.Role} 잡기  {distance:F1}m";
+        }
+
+        /// <summary>
+        /// 문 앞 안내. 사거리 밖이면 null 이라 아이템 프롬프트가 그대로 나온다.
+        /// 사망한 승무원에게는 "조작 불가" 를 보여 준다 — 눌러도 아무 일이 없는 것보다
+        /// 왜 안 되는지가 보여야 한다.
+        /// </summary>
+        private string BuildDoorPrompt()
+        {
+            var door = LastShiftZoneDoor.FindOperable(transform.position);
+            if (door == null) return null;
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead) return $"{door.BoundaryLabel} 문: 조작 불가";
+            return door.IsOpen
+                ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
+                : $"[Q] {door.BoundaryLabel} 문 열기";
         }
 
         /// <summary>

@@ -196,6 +196,25 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 문 개폐의 네트워크 경로(N0b). 대상 문은 서버가 요청자 위치로 고르고, 살아 있는
+        /// 승무원인지도 서버가 <see cref="LastShiftZoneDoor.TryOperate"/> 안에서 확인한다.
+        /// 클라이언트 쪽 판정은 프롬프트용이고 권위는 이쪽 하나다.
+        /// </summary>
+        [Rpc(SendTo.Server, RequireOwnership = false)]
+        public void RequestDoorToggleRpc(RpcParams rpcParams = default)
+        {
+            var sender = rpcParams.Receive.SenderClientId;
+            if (!IsConnectedSender(sender) || sandbox == null) return;
+            if (!NetworkManager.ConnectedClients.TryGetValue(sender, out var client)) return;
+            var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
+            if (player == null || player.OwnerClientId != sender) return;
+
+            var door = LastShiftZoneDoor.FindOperable(player.transform.position);
+            if (door == null || !door.TryOperate(player.GetComponent<LastShiftPlayerController>())) return;
+            PublishSnapshot();
+        }
+
+        /// <summary>
         /// R1 수리 동사의 네트워크 경로. 어느 계통을 되돌릴지는 서버가 요청자의 소지품과 위치로만
         /// 판정한다. 클라이언트가 계통을 직접 지정하면 들고 있지 않은 부품으로 복구할 수 있다.
         /// </summary>

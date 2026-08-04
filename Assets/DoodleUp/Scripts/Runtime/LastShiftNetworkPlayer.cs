@@ -210,6 +210,17 @@ namespace DoodleUp.Runtime
             if (networkSandbox != null) networkSandbox.RequestSecureHeldItemRpc();
         }
 
+        /// <summary>
+        /// 문 개폐 요청. 어느 문인지는 클라이언트가 지정하지 않는다 — 서버가 요청자 위치로만
+        /// 고른다. 클라이언트가 경계 번호를 보내면 배 반대편에서 남의 구역을 격리할 수 있다.
+        /// </summary>
+        public void RequestDoorToggle()
+        {
+            if (!IsOwner) return;
+            var networkSandbox = FindFirstObjectByType<LastShiftNetworkSandbox>();
+            if (networkSandbox != null) networkSandbox.RequestDoorToggleRpc();
+        }
+
         public void RequestRepair(LastShiftRepairMode mode)
         {
             if (!IsOwner) return;

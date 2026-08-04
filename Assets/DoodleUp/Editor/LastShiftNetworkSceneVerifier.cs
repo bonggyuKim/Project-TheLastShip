@@ -63,7 +63,14 @@ namespace DoodleUp.Editor
             Require(items.All(item => item.GetComponent<NetworkObject>().DontDestroyWithOwner), "canonical items must survive holder disconnect");
             Require(items.All(item => item.GetComponent<LastShiftOwnerNetworkTransform>() != null), "item owner-authoritative transform missing");
             Require(items.All(item => item.GetComponent<LastShiftNetworkGrabbable>() != null), "item ownership guard missing");
-            Debug.Log($"[LAST_SHIFT_NETWORK_VERIFY] scene={scene.path} stack=NGO+UTP connectionApproval=enabled playerPrefab=owner-gated-camera items=4 itemDisconnectSurvival=enabled hostAuthoritySeam=present result=PASS");
+
+            // N0b-3. 네트워크 씬은 SP-01 씬을 열어 개조하므로 문도 함께 넘어와야 한다.
+            // 여기서 확인하지 않으면 솔로에만 문이 있고 네트워크에는 없는 상태가 조용히 지나간다.
+            var doors = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftZoneDoor>(true)).ToArray();
+            Require(doors.Length == LastShiftZoneAtlas.BoundaryCount, "network scene zone door count must equal boundary count");
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                Require(doors.Count(door => door.Boundary == boundary) == 1, $"network boundary {boundary} must have exactly one door");
+            Debug.Log($"[LAST_SHIFT_NETWORK_VERIFY] scene={scene.path} stack=NGO+UTP connectionApproval=enabled playerPrefab=owner-gated-camera items=4 doors={doors.Length} itemDisconnectSurvival=enabled hostAuthoritySeam=present result=PASS");
         }
 
         private static void VerifyPlayerPrefab(GameObject playerPrefab)

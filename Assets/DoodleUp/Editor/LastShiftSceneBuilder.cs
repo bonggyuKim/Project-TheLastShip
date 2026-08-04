@@ -112,8 +112,8 @@ namespace DoodleUp.Editor
             CreateCube("OuterHull_Right", ship.transform, new Vector3(6.15f, CeilingInnerHeight * 0.5f, 0f), new Vector3(0.2f, CeilingInnerHeight, 5f), hullMaterial);
             CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, 2.45f), new Vector3(12.5f, CeilingInnerHeight, 0.2f), hullMaterial);
             CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(12.5f, WindowSillHeight, 0.2f), hullMaterial);
-            CreateCube("Bulkhead_Left", ship.transform, new Vector3(-2f, CeilingInnerHeight * 0.5f, 0f), new Vector3(0.15f, CeilingInnerHeight, 3.2f), hullMaterial);
-            CreateCube("Bulkhead_Right", ship.transform, new Vector3(2f, CeilingInnerHeight * 0.5f, 0f), new Vector3(0.15f, CeilingInnerHeight, 3.2f), hullMaterial);
+            CreateBulkheadWithDoor("Left", ship.transform, 0);
+            CreateBulkheadWithDoor("Right", ship.transform, 1);
             CreateShipCeiling(ship.transform);
             CreateForwardWindows(ship.transform);
             CreateInstrumentPanels(ship.transform);
@@ -125,6 +125,89 @@ namespace DoodleUp.Editor
             CreateZoneLabel("COCKPIT", new Vector3(-4f, 2.25f, 2.25f), cockpitMaterial.color);
             CreateZoneLabel("UTILITY / BUS", new Vector3(0f, 2.25f, 2.25f), utilityMaterial.color);
             CreateZoneLabel("LIFE SUPPORT", new Vector3(4f, 2.25f, 2.25f), lifeSupportMaterial.color);
+        }
+
+        /// <summary>
+        /// 벌크헤드 한 장 + 그 가운데 문 하나(N0b). 예전에는 벌크헤드 폭이 3.2 라 좌우로
+        /// 0.75 씩 뚫려 있었고, 그 틈으로 걸어서 구역을 넘나들 수 있었다. 그 상태에서는 문을
+        /// 닫아도 승무원은 그냥 옆으로 지나가므로 격리(§2.2.2)가 "압력만 끊고 사람은 안 막는"
+        /// 반쪽이 된다. 선체 안쪽 폭(4.7)을 덮도록 4.9 로 늘리고, 통과는 문으로만 시킨다.
+        ///
+        /// 문 구멍 규격은 <see cref="LastShiftZoneDoor"/> 의 상수를 그대로 쓴다. 씬과 런타임이
+        /// 각자 숫자를 들고 있으면 "그림상 열려 있는데 못 지나가는" 문이 생긴다.
+        /// </summary>
+        private static void CreateBulkheadWithDoor(string side, Transform ship, int boundary)
+        {
+            const float fullWidth = 4.9f;
+            const float thickness = LastShiftZoneDoor.PanelThickness;
+            const float opening = LastShiftZoneDoor.OpeningWidth;
+            const float openingHeight = LastShiftZoneDoor.OpeningHeight;
+            var x = LastShiftZoneAtlas.BoundaryX(boundary);
+
+            // 구멍 좌우를 메우는 벽 두 짝. 폭은 (전체 - 구멍) / 2 이고, 중심은 구멍 가장자리에서
+            // 자기 폭의 절반만큼 바깥이다.
+            var sideWidth = (fullWidth - opening) * 0.5f;
+            var sideCenter = (opening + sideWidth) * 0.5f;
+            foreach (var sign in new[] { -1f, 1f })
+            {
+                var label = sign < 0f ? "Fore" : "Aft";
+                CreateCube($"Bulkhead_{side}_{label}", ship,
+                    new Vector3(x, CeilingInnerHeight * 0.5f, sign * sideCenter),
+                    new Vector3(thickness, CeilingInnerHeight, sideWidth), hullMaterial);
+            }
+
+            // 문 위 인방. 구멍 높이(2.2)에서 천장 내면(3.2)까지를 메운다. 이게 없으면 문을 닫아도
+            // 머리 위 1m 가 그대로 뚫려 있어 압력 차단이 그림과 어긋난다.
+            CreateCube($"Bulkhead_{side}_Lintel", ship,
+                new Vector3(x, (CeilingInnerHeight + openingHeight) * 0.5f, 0f),
+                new Vector3(thickness, CeilingInnerHeight - openingHeight, opening), hullMaterial);
+
+            CreateZoneDoor($"ZoneDoor_{side}", ship, boundary, x);
+        }
+
+        /// <summary>
+        /// 미닫이 문 하나. 판 두 짝이 가운데에서 만나 닫히고, 열리면 각각 옆벽 뒤로 물러난다.
+        /// 판에는 콜라이더를 두지 않고 별도 차단 콜라이더 하나로 통행을 막는다 — 움직이는
+        /// 콜라이더로 막으면 CharacterController 가 판에 끼거나 밀려나서, 확인하려는 것
+        /// ("닫힌 문은 못 지나간다")이 아니라 밀림 현상이 먼저 보인다.
+        /// </summary>
+        private static void CreateZoneDoor(string name, Transform ship, int boundary, float x)
+        {
+            const float thickness = LastShiftZoneDoor.PanelThickness;
+            const float opening = LastShiftZoneDoor.OpeningWidth;
+            const float openingHeight = LastShiftZoneDoor.OpeningHeight;
+            var doorMaterial = CreateMaterial($"LS_Door_{boundary}", new Color(0.46f, 0.44f, 0.30f));
+
+            var door = new GameObject(name);
+            door.transform.SetParent(ship, false);
+            door.transform.localPosition = new Vector3(x, 0f, 0f);
+
+            // 판은 구멍 절반씩 덮는다. 위치는 LastShiftZoneDoor 가 매 프레임 다시 쓰므로
+            // 여기서는 크기와 재질만 정해 두면 된다.
+            var panelScale = new Vector3(thickness * 1.1f, openingHeight, opening * 0.5f);
+            var fore = CreateCube($"{name}_PanelFore", door.transform, Vector3.zero, panelScale, doorMaterial);
+            var aft = CreateCube($"{name}_PanelAft", door.transform, Vector3.zero, panelScale, doorMaterial);
+            Object.DestroyImmediate(fore.GetComponent<Collider>());
+            Object.DestroyImmediate(aft.GetComponent<Collider>());
+
+            // 문틀. 판이 물러난 자리를 감싸 "여기가 문" 이라는 것이 닫혀 있지 않을 때도 읽히게 한다.
+            panelMaterial ??= CreateMaterial("LS_Panel", new Color(0.14f, 0.16f, 0.19f));
+            foreach (var sign in new[] { -1f, 1f })
+            {
+                var jamb = CreateCube($"{name}_Jamb_{(sign < 0f ? "Fore" : "Aft")}", door.transform,
+                    new Vector3(0f, openingHeight * 0.5f, sign * (opening * 0.5f + 0.06f)),
+                    new Vector3(thickness * 1.4f, openingHeight, 0.12f), panelMaterial);
+                Object.DestroyImmediate(jamb.GetComponent<Collider>());
+            }
+
+            var blockerObject = new GameObject($"{name}_Blocker");
+            blockerObject.transform.SetParent(door.transform, false);
+            blockerObject.transform.localPosition = new Vector3(0f, openingHeight * 0.5f, 0f);
+            var blocker = blockerObject.AddComponent<BoxCollider>();
+            blocker.size = new Vector3(thickness, openingHeight, opening);
+            blocker.enabled = false;
+
+            door.AddComponent<LastShiftZoneDoor>().Configure(boundary, fore.transform, aft.transform, blocker);
         }
 
         /// <summary>

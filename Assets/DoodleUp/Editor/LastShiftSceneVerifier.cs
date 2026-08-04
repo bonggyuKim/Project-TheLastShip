@@ -85,7 +85,40 @@ namespace DoodleUp.Editor
             Require(sandboxes[0].Players[0] == player, "sandbox player reference mismatch");
             Require(sandboxes[0].Items.All(item => items.Contains(item)), "sandbox item references must match scene grabbables");
             Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 drawingDependency=0 result=PASS");
+            VerifyZoneDoors(roots);
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 result=PASS");
+        }
+
+        /// <summary>
+        /// N0b 문 배치. 여기서 확인하는 것은 두 가지다: 경계마다 문이 정확히 하나 있는가,
+        /// 그리고 벌크헤드가 문 밖 통과 경로를 남기지 않았는가. 두 번째가 빠지면 예전처럼
+        /// 벌크헤드 옆으로 걸어서 지나갈 수 있고, 그러면 격리가 압력만 끊는 반쪽이 된다.
+        /// </summary>
+        private static void VerifyZoneDoors(GameObject[] roots)
+        {
+            var doors = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftZoneDoor>(true)).ToArray();
+            Require(doors.Length == LastShiftZoneAtlas.BoundaryCount, "zone door count must equal boundary count");
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+            {
+                var matching = doors.Where(door => door.Boundary == boundary).ToArray();
+                Require(matching.Length == 1, $"boundary {boundary} must have exactly one door");
+                var door = matching[0];
+                Require(Mathf.Abs(door.transform.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f,
+                    $"boundary {boundary} door must sit on the boundary plane");
+
+                // 문 옆 통과 경로 검사. 벌크헤드 조각의 z 범위 합이 선체 안쪽 폭(4.7)에서
+                // 문 구멍을 뺀 만큼을 덮어야 한다.
+                var panels = roots
+                    .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                    .Where(x => x.name.StartsWith("Bulkhead_") &&
+                                Mathf.Abs(x.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f &&
+                                !x.name.EndsWith("_Lintel"))
+                    .ToArray();
+                Require(panels.Length == 2, $"boundary {boundary} must have two side panels beside the opening");
+                var covered = panels.Sum(panel => panel.localScale.z);
+                Require(covered >= 4.7f - LastShiftZoneDoor.OpeningWidth - 0.0001f,
+                    $"boundary {boundary} bulkhead must leave no walkable gap beside the door");
+            }
         }
 
         private static void Require(bool condition, string message)
