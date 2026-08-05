@@ -22,13 +22,14 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float OutOfBoundsGraceSeconds = 1.5f;
 
-        // 선체 내부는 x≈±6.15, z≈±2.45, y=0..3.2(천장 내면) 범위다. CT-02 에서 천장과
-        // 벽을 CeilingInnerHeight 까지 닫았으므로 위로 새는 경로는 사라졌고, 남는 이탈
-        // 경로는 콜라이더 틈뿐이다. 그래도 bounds 는 선체보다 넉넉히 두어, 틈으로 튄
-        // 물건이 되돌아올 여유를 주고 도보 회수가 불가능한 범위만 막는다.
-        public static readonly Bounds ItemSafetyBounds = new(
-            new Vector3(0f, 2.5f, 0f),
-            new Vector3(16f, 11f, 12f));
+        // 선체 치수는 LastShiftShipDimensions 가 정본이다. CT-02 에서 천장과 벽을
+        // CeilingInnerHeight 까지 닫았으므로 위로 새는 경로는 사라졌고, 남는 이탈 경로는
+        // 콜라이더 틈뿐이다. 그래도 bounds 는 선체보다 넉넉히 두어, 틈으로 튄 물건이
+        // 되돌아올 여유를 주고 도보 회수가 불가능한 범위만 막는다.
+        //
+        // 선체가 커지면 이 값도 따라와야 한다 — 고정 16m 를 남겨 두면 36m 배에서는
+        // 산소실 물건이 전부 "경계 밖" 으로 판정돼 매 tick 제자리로 튕겨 돌아온다.
+        public static readonly Bounds ItemSafetyBounds = LastShiftShipDimensions.ItemSafetyBounds;
 
         public LastShiftNetworkSnapshot Snapshot => snapshot.Value;
 

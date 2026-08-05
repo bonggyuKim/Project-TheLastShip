@@ -19,8 +19,12 @@ namespace DoodleUp.Runtime
     /// 구역을 가리키게 되므로 <see cref="LastShiftImpactFeedback.ResolveDamagedZone"/> 도
     /// 여기를 거친다.
     ///
-    /// 구역 경계는 씬의 벌크헤드 x=±2 와 같다. 경계는 둘이고(조종석↔엔진실, 엔진실↔산소실)
+    /// 구역 경계는 씬의 벌크헤드 위치와 같다. 경계는 둘이고(조종석↔엔진실, 엔진실↔산소실)
     /// 각 경계에 문이 하나씩 붙는다.
+    ///
+    /// 통로가 한 구역에 통째로 붙지 않는 것이 여기서 나온다 — 판정 기준 x 가 문이 놓인 경계
+    /// 평면과 <b>같은 값</b>이므로 문 앞 공간은 자동으로 양쪽에 반씩 갈린다. 부피 불균형이
+    /// 생기지 않으므로 평준화율을 부피 가중으로 바꿀 필요가 없다.
     /// </summary>
     public static class LastShiftZoneAtlas
     {
@@ -29,9 +33,9 @@ namespace DoodleUp.Runtime
         /// <summary>인접 구역 쌍의 수. 구역이 일렬로 셋이므로 경계는 둘이다.</summary>
         public const int BoundaryCount = 2;
 
-        /// <summary>구역 판정 기준 x 경계. 씬의 Zone_* 배치(-4 / 0 / +4, 폭 4)와 일치한다.</summary>
-        public const float CockpitMaxX = -2f;
-        public const float LifeSupportMinX = 2f;
+        /// <summary>구역 판정 기준 x 경계. 치수 정본(<see cref="LastShiftShipDimensions"/>)에서 파생한다.</summary>
+        public const float CockpitMaxX = -LastShiftShipDimensions.ZoneBoundaryX;
+        public const float LifeSupportMinX = LastShiftShipDimensions.ZoneBoundaryX;
 
         public static LastShiftZone Resolve(Vector3 position)
         {

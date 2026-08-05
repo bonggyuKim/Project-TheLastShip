@@ -37,7 +37,7 @@ namespace DoodleUp.Runtime
 
         public static LastShiftMeteorStimulus Canonical => new()
         {
-            ImpactPoint = new Vector3(-4.8f, 1.1f, 0f),
+            ImpactPoint = LastShiftShipDimensions.MeteorImpactPoint,
             ImpactVector = new Vector3(1f, -0.12f, 0.18f).normalized,
             Mass = 42f,
             Speed = 8f
@@ -247,7 +247,7 @@ namespace DoodleUp.Runtime
             var direction = input.Meteor.ImpactVector.sqrMagnitude > 0.0001f
                 ? input.Meteor.ImpactVector.normalized
                 : Vector3.zero;
-            var crewImpactProximity = Proximity(input.CrewPosition, input.Meteor.ImpactPoint, 5f);
+            var crewImpactProximity = Proximity(input.CrewPosition, input.Meteor.ImpactPoint, LastShiftShipDimensions.CrewProximityRange);
             var batteryTravel = input.BatterySecured ? 0f : NormalizedTravel(input.BatteryPosition, input.BatteryNominalPosition);
             var coolingTravel = input.CoolingSecured ? 0f : NormalizedTravel(input.CoolingPosition, input.CoolingNominalPosition);
             var patchUnavailable = input.PatchSecured ? 0f : NormalizedTravel(input.PatchPosition, input.PatchNominalPosition);
@@ -306,7 +306,7 @@ namespace DoodleUp.Runtime
 
         private static float NormalizedTravel(Vector3 position, Vector3 nominalPosition)
         {
-            return Mathf.Clamp01(Vector3.Distance(position, nominalPosition) / 4f);
+            return Mathf.Clamp01(Vector3.Distance(position, nominalPosition) / LastShiftShipDimensions.DisplacementFullScale);
         }
 
         private static float Proximity(Vector3 point, Vector3 impactPoint, float range)
@@ -316,7 +316,7 @@ namespace DoodleUp.Runtime
 
         private static float Exposure(Vector3 impactPoint, Vector3 nominalPosition, Vector3 direction, Vector3 vulnerableAxis)
         {
-            var proximity = Proximity(nominalPosition, impactPoint, 6f);
+            var proximity = Proximity(nominalPosition, impactPoint, LastShiftShipDimensions.ItemExposureRange);
             var directional = Mathf.Clamp01(Vector3.Dot(direction, vulnerableAxis.normalized) * 0.5f + 0.5f);
             return Mathf.Clamp01(proximity * 0.55f + directional * 0.45f);
         }

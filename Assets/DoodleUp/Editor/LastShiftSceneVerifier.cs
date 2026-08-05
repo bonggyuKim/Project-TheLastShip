@@ -106,8 +106,9 @@ namespace DoodleUp.Editor
                 Require(Mathf.Abs(door.transform.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f,
                     $"boundary {boundary} door must sit on the boundary plane");
 
-                // 문 옆 통과 경로 검사. 벌크헤드 조각의 z 범위 합이 선체 안쪽 폭(4.7)에서
-                // 문 구멍을 뺀 만큼을 덮어야 한다.
+                // 문 옆 통과 경로 검사. 벌크헤드 조각의 z 범위 합이 선체 안쪽 폭에서
+                // 문 구멍을 뺀 만큼을 덮어야 한다. 기준 폭은 치수 정본에서 가져온다 —
+                // 리터럴로 두면 배 폭을 넓힐 때 이 검사만 옛 폭을 계속 통과시킨다.
                 var panels = roots
                     .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
                     .Where(x => x.name.StartsWith("Bulkhead_") &&
@@ -116,7 +117,7 @@ namespace DoodleUp.Editor
                     .ToArray();
                 Require(panels.Length == 2, $"boundary {boundary} must have two side panels beside the opening");
                 var covered = panels.Sum(panel => panel.localScale.z);
-                Require(covered >= 4.7f - LastShiftZoneDoor.OpeningWidth - 0.0001f,
+                Require(covered >= LastShiftShipDimensions.InteriorWidth - LastShiftZoneDoor.OpeningWidth - 0.0001f,
                     $"boundary {boundary} bulkhead must leave no walkable gap beside the door");
             }
         }

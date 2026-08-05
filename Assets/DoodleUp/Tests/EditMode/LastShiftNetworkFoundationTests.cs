@@ -45,13 +45,22 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void SpawnSlotsFaceTheInitialLooseCoolingCanister()
         {
-            var target = new Vector3(0f, LastShiftSandboxController.PlayerSpawn.y, -1.3f);
+            var target = new Vector3(
+                LastShiftShipDimensions.CoolingNominal.x,
+                LastShiftSandboxController.PlayerSpawn.y,
+                LastShiftShipDimensions.CoolingNominal.z);
             for (var slot = 0; slot < LastShiftNetworkSession.MaxPlayers; slot++)
             {
-                var direction = (target - LastShiftNetworkSession.SpawnForSlot(slot)).normalized;
+                var spawn = LastShiftNetworkSession.SpawnForSlot(slot);
+                var direction = (target - spawn).normalized;
                 var forward = LastShiftNetworkSession.RotationForSlot(slot) * Vector3.forward;
                 Assert.That(Vector3.Dot(forward, direction), Is.GreaterThan(0.999f));
-                Assert.That(Vector3.Distance(LastShiftNetworkSession.SpawnForSlot(slot), target), Is.LessThan(LastShiftPlayerController.AwarenessDistance));
+                // 36m 선체에서는 냉각통이 다른 구역에 있어 인지 거리(8m) 안에 들어오지 않는다.
+                // 그래서 "보인다" 가 아니라 "배 안쪽을 향한다" 만 검증한다 — 스폰 시선이 조종석
+                // 끝벽을 향하면 첫 프레임에 갈 방향이 읽히지 않는다.
+                Assert.That(forward.x, Is.GreaterThan(0f), "스폰 시선은 선미(엔진실) 쪽이어야 한다.");
+                Assert.That(spawn.x, Is.LessThan(LastShiftShipDimensions.ZoneMaxX(LastShiftZone.Cockpit)),
+                    "스폰은 조종석 안이어야 한다.");
             }
         }
 
@@ -66,16 +75,20 @@ namespace DoodleUp.Tests.EditMode
         {
             var canonicalPositions = new[]
             {
-                new Vector3(0.6f, 0.38f, 0.8f),
-                new Vector3(0f, 0.55f, -1.3f),
-                new Vector3(4.5f, 0.65f, -1.6f),
-                new Vector3(-2.62f, 1.325f, -1.28f)
+                LastShiftShipDimensions.BatteryNominal,
+                LastShiftShipDimensions.CoolingNominal,
+                LastShiftShipDimensions.PatchPlateNominal,
+                LastShiftShipDimensions.TetherNominal
             };
 
             Assert.That(canonicalPositions, Is.All.Matches<Vector3>(LastShiftNetworkSandbox.ItemSafetyBounds.Contains));
-            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(0f, -10f, 0f)), Is.False);
-            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(20f, 1f, 0f)), Is.False);
-            Assert.That(LastShiftNetworkSandbox.ItemSafetyBounds.Contains(new Vector3(0f, 20f, 0f)), Is.False);
+            // 경계 밖 표본도 선체 치수에서 파생시킨다. 20m 같은 리터럴은 12.5m 배에서만
+            // 밖이었고 36m 배에서는 안쪽이라, 그대로 두면 이 검사가 조용히 무력해진다.
+            var bounds = LastShiftNetworkSandbox.ItemSafetyBounds;
+            Assert.That(bounds.Contains(new Vector3(0f, bounds.min.y - 4f, 0f)), Is.False);
+            Assert.That(bounds.Contains(new Vector3(bounds.max.x + 4f, 1f, 0f)), Is.False);
+            Assert.That(bounds.Contains(new Vector3(0f, bounds.max.y + 4f, 0f)), Is.False);
+            Assert.That(bounds.Contains(new Vector3(0f, 1f, bounds.max.z + 4f)), Is.False);
         }
     }
 }

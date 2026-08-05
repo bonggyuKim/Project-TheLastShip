@@ -164,7 +164,7 @@ namespace DoodleUp.Tests.PlayMode
             // 그리고 그 구역을 격리한다(§2.2.2). 문이 열려 있으면 평준화가 나머지 두 구역의
             // 공기를 계속 밀어 넣어 배 전체가 함께 내려갈 뿐, 300초 안에 어느 구역도 진공에
             // 닿지 않는다. 문을 닫아야 파공 구역이 자기 공기만으로 빠져 129초에 진공이 된다.
-            player.ResetPlayer(new Vector3(4.5f, 0.1f, -1.6f));
+            player.ResetPlayer(new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 0.1f, -1.6f));
             sandbox.SetDoorOpen(1, false);
             for (var i = 0; i < 2000 && sandbox.PressureOf(sandbox.BreachZone) > LastShiftRecoveryTuning.VacuumOxygenPressure; i++)
                 sandbox.AdvanceMission(1f);

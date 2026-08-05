@@ -52,9 +52,9 @@ namespace DoodleUp.Tests.EditMode
         public void MeteorImpactIsOneShotAndUsesActualItemDisplacement()
         {
             var player = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(player, new[] { battery, cooling, patch });
@@ -82,10 +82,10 @@ namespace DoodleUp.Tests.EditMode
         public void RecoveryKeepsFirstProblemAndReevaluatesWithAppliedMeteor()
         {
             var player = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
-            var tether = CreateItem(LastShiftItemRole.Tether, new Vector3(-3.1f, 0.25f, 1.55f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
+            var tether = CreateItem(LastShiftItemRole.Tether, LastShiftShipDimensions.TetherNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(player, new[] { battery, cooling, patch, tether });
@@ -108,9 +108,9 @@ namespace DoodleUp.Tests.EditMode
         public void PresetResetRestoresDamagedStateAndItemsThenAllowsNextOneShot()
         {
             var player = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(player, new[] { battery, cooling, patch });
@@ -138,9 +138,9 @@ namespace DoodleUp.Tests.EditMode
         public void NearbyLooseItemCanBeSecuredAndDominantProblemChanges()
         {
             var player = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(-3.1f, 0.38f, 0f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(player, new[] { battery, cooling, patch });
@@ -168,8 +168,8 @@ namespace DoodleUp.Tests.EditMode
         {
             var firstPlayer = CreatePlayer();
             var secondPlayer = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(new[] { firstPlayer, secondPlayer }, new[] { battery, cooling });
@@ -197,10 +197,10 @@ namespace DoodleUp.Tests.EditMode
         public void PresetResetRestoresSoloPlayerAndDistinctPostImpactOutcome()
         {
             var player = CreatePlayer();
-            var battery = CreateItem(LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f));
-            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f));
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
-            var tether = CreateItem(LastShiftItemRole.Tether, new Vector3(-3.1f, 0.25f, 1.55f));
+            var battery = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var cooling = CreateItem(LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal);
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
+            var tether = CreateItem(LastShiftItemRole.Tether, LastShiftShipDimensions.TetherNominal);
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(player, new[] { battery, cooling, patch, tether });

@@ -230,10 +230,18 @@ namespace DoodleUp.Runtime
             return LastShiftSandboxController.PlayerSpawn + new Vector3(0f, 0f, (slot - 1.5f) * 0.85f);
         }
 
+        /// <summary>
+        /// 스폰 시선. 조종석에서 배 안쪽(엔진실의 냉각통 자리)을 바라본다. 36m 선체에서는
+        /// 그 지점이 인지 거리 밖이라 물건 자체는 보이지 않지만, 시작 시선이 끝벽이 아니라
+        /// 배 진행 방향을 향해야 어디로 가야 하는지가 첫 프레임에 읽힌다.
+        /// </summary>
         public static Quaternion RotationForSlot(int slot)
         {
             var position = SpawnForSlot(slot);
-            var target = new Vector3(0f, position.y, -1.3f);
+            var target = new Vector3(
+                LastShiftShipDimensions.CoolingNominal.x,
+                position.y,
+                LastShiftShipDimensions.CoolingNominal.z);
             return Quaternion.LookRotation((target - position).normalized, Vector3.up);
         }
 

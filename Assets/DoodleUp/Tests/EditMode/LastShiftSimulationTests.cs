@@ -7,10 +7,13 @@ namespace DoodleUp.Tests.EditMode
 {
     public sealed class LastShiftSimulationTests
     {
-        private static readonly Vector3 BatteryNominal = new(0.6f, 0.38f, 0.8f);
-        private static readonly Vector3 CoolingNominal = new(0f, 0.55f, -1.3f);
-        private static readonly Vector3 PatchNominal = new(4.5f, 0.65f, -1.6f);
-        private static readonly Vector3 TetherNominal = new(-3.1f, 0.25f, 1.55f);
+        // 정위치는 치수 정본에서 가져온다. 리터럴로 두면 배 크기가 바뀔 때 이 테스트만
+        // 옛 배의 좌표로 계속 통과하고, 정작 검증하려던 "정위치 대비 이탈" 이 무의미해진다.
+        private static readonly Vector3 BatteryNominal = LastShiftShipDimensions.BatteryNominal;
+        private static readonly Vector3 CoolingNominal = LastShiftShipDimensions.CoolingNominal;
+        private static readonly Vector3 PatchNominal = LastShiftShipDimensions.PatchPlateNominal;
+        private static readonly Vector3 TetherNominal = LastShiftShipDimensions.TetherNominal;
+        private static readonly Vector3 CrewPosition = LastShiftShipDimensions.SpawnPoint;
 
         [Test]
         public void SameMeteorProducesDifferentDominantProblemForEachStateAndPlacement()
@@ -143,7 +146,7 @@ namespace DoodleUp.Tests.EditMode
             return LastShiftDamageResolver.Resolve(new LastShiftResolverInput(
                 meteor,
                 state,
-                new Vector3(-3.5f, 0.1f, 0f),
+                CrewPosition,
                 BatteryNominal,
                 BatteryNominal,
                 batterySecured,
@@ -168,7 +171,7 @@ namespace DoodleUp.Tests.EditMode
             return LastShiftDamageResolver.Resolve(new LastShiftResolverInput(
                 meteor,
                 state,
-                new Vector3(-3.5f, 0.1f, 0f),
+                CrewPosition,
                 batteryPosition,
                 batteryNominal,
                 batterySecured,
@@ -192,7 +195,7 @@ namespace DoodleUp.Tests.EditMode
             return LastShiftDamageResolver.Resolve(new LastShiftResolverInput(
                 meteor,
                 state,
-                new Vector3(-3.5f, 0.1f, 0f),
+                CrewPosition,
                 BatteryNominal,
                 BatteryNominal,
                 true,

@@ -196,9 +196,10 @@ namespace DoodleUp.Tests.PlayMode
             sandbox.AdvanceMission(LastShiftRecoveryTuning.PerformanceSacrificeSeconds + 0.01f);
             Assert.That(sandbox.Repairs.IsSacrificed(LastShiftShipSystem.Oxygen), Is.True);
 
-            // 밀폐한 생명유지 구역(x >= 2)만 진공이고, 조종석(x <= -2)은 아니다.
-            Assert.That(sandbox.IsZoneVacuum(new Vector3(4.5f, 0.6f, -1.6f)), Is.True);
-            Assert.That(sandbox.IsZoneVacuum(new Vector3(-4f, 0.6f, 0f)), Is.False);
+            // 밀폐한 생명유지 구역만 진공이고, 조종석은 아니다. 좌표는 구역 중심에서 뽑는다 —
+            // 리터럴을 두면 경계가 옮겨갈 때 두 표본이 같은 구역으로 무너져 검사가 사라진다.
+            Assert.That(sandbox.IsZoneVacuum(new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 0.6f, -1.6f)), Is.True);
+            Assert.That(sandbox.IsZoneVacuum(new Vector3(LastShiftShipDimensions.CockpitCenterX, 0.6f, 0f)), Is.False);
 
             yield break;
         }
@@ -234,7 +235,8 @@ namespace DoodleUp.Tests.PlayMode
         }
 
         /// <summary>파공 구역(산소실) 안의 서 있을 자리. PatchPlate 정위치와 같은 구역이다.</summary>
-        private static Vector3 BreachZoneStandingPosition => new(4.5f, 0.1f, -1.6f);
+        private static Vector3 BreachZoneStandingPosition =>
+            new(LastShiftShipDimensions.LifeSupportCenterX, 0.1f, -1.6f);
 
         /// <summary>
         /// 파공 구역을 격리한다(엔진실↔산소실 문을 닫는다). 이게 있어야 진공이 도달 가능해진다.

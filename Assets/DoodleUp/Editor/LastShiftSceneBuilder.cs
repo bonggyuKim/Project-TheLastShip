@@ -34,8 +34,23 @@ namespace DoodleUp.Editor
         /// </summary>
         private const float CeilingInnerHeight = LastShiftShipPhysics.CeilingInnerHeight;
 
-        private const float CeilingThickness = 0.2f;
-        private const float HullFrontZ = -2.45f;
+        // 선체 치수 정본은 Runtime 의 LastShiftShipDimensions 다. 여기서는 짧은 별칭만 둔다 —
+        // 이 파일에 치수 리터럴이 다시 쌓이면 다음 스케일 조정 때 또 35곳을 뒤져야 한다.
+        private const float Length = LastShiftShipDimensions.InteriorLength;
+        private const float Width = LastShiftShipDimensions.InteriorWidth;
+        private const float HalfLength = LastShiftShipDimensions.HalfLength;
+        private const float HalfWidth = LastShiftShipDimensions.HalfWidth;
+        private const float EndWallX = LastShiftShipDimensions.EndWallX;
+        private const float SideWallZ = LastShiftShipDimensions.SideWallZ;
+
+        private const float CeilingThickness = LastShiftShipDimensions.HullThickness;
+
+        /// <summary>창이 달린 선체 앞면(z-). 좌우 긴 벽 중 앞쪽이다.</summary>
+        private const float HullFrontZ = -SideWallZ;
+
+        /// <summary>뒤쪽 긴 벽(z+).</summary>
+        private const float HullBackZ = SideWallZ;
+
         private const float WindowSillHeight = 0.6f;
 
         [MenuItem("Last Shift/SP-01/Rebuild Sandbox")]
@@ -103,42 +118,51 @@ namespace DoodleUp.Editor
         private static void CreateShipGraybox()
         {
             var ship = new GameObject("ShipGraybox");
-            CreateZone(CockpitZoneName, ship.transform, new Vector3(-4f, 0f, 0f), cockpitMaterial ??= CreateMaterial("LS_Cockpit", new Color(0.24f, 0.38f, 0.50f)));
-            CreateZone(UtilityZoneName, ship.transform, Vector3.zero, utilityMaterial ??= CreateMaterial("LS_Utility", new Color(0.42f, 0.38f, 0.28f)));
-            CreateZone(LifeSupportZoneName, ship.transform, new Vector3(4f, 0f, 0f), lifeSupportMaterial ??= CreateMaterial("LS_LifeSupport", new Color(0.26f, 0.48f, 0.36f)));
+            CreateZone(CockpitZoneName, ship.transform, LastShiftZone.Cockpit, cockpitMaterial ??= CreateMaterial("LS_Cockpit", new Color(0.24f, 0.38f, 0.50f)));
+            CreateZone(UtilityZoneName, ship.transform, LastShiftZone.Utility, utilityMaterial ??= CreateMaterial("LS_Utility", new Color(0.42f, 0.38f, 0.28f)));
+            CreateZone(LifeSupportZoneName, ship.transform, LastShiftZone.LifeSupport, lifeSupportMaterial ??= CreateMaterial("LS_LifeSupport", new Color(0.26f, 0.48f, 0.36f)));
             // 벽 높이는 천장 내면(CeilingInnerHeight)까지 올린다. 예전 3.0 을 유지하면
             // 벽과 천장 사이에 0.2m 띠 구멍이 남아 저중력에서 뜬 물건이 그 틈으로 빠진다.
-            CreateCube("OuterHull_Left", ship.transform, new Vector3(-6.15f, CeilingInnerHeight * 0.5f, 0f), new Vector3(0.2f, CeilingInnerHeight, 5f), hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f)));
-            CreateCube("OuterHull_Right", ship.transform, new Vector3(6.15f, CeilingInnerHeight * 0.5f, 0f), new Vector3(0.2f, CeilingInnerHeight, 5f), hullMaterial);
-            CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, 2.45f), new Vector3(12.5f, CeilingInnerHeight, 0.2f), hullMaterial);
-            CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(12.5f, WindowSillHeight, 0.2f), hullMaterial);
+            //
+            // Left/Right 는 전장 축(x)의 두 끝벽이고 Back/Front 는 전폭 축(z)의 긴 벽이다.
+            // 이름은 예전 배치에서 굳은 것이라 그대로 두되, 좌표는 전부 치수 정본에서 파생한다.
+            CreateCube("OuterHull_Left", ship.transform, new Vector3(-EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f)));
+            CreateCube("OuterHull_Right", ship.transform, new Vector3(EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial);
+            CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, HullBackZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
+            CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, WindowSillHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreateBulkheadWithDoor("Left", ship.transform, 0);
             CreateBulkheadWithDoor("Right", ship.transform, 1);
             CreateShipCeiling(ship.transform);
             CreateForwardWindows(ship.transform);
             CreateInstrumentPanels(ship.transform);
             CreateDucts(ship.transform);
-            CreateCube("CockpitConsole", ship.transform, new Vector3(-5.1f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
+            CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
-            CreateCube("BusCabinet", ship.transform, new Vector3(0f, 0.65f, 1.8f), new Vector3(1.6f, 1.3f, 0.5f), utilityMaterial);
-            CreateCube("LifeSupportRack", ship.transform, new Vector3(5.1f, 0.75f, 1.6f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
-            CreateZoneLabel("COCKPIT", new Vector3(-4f, 2.25f, 2.25f), cockpitMaterial.color);
-            CreateZoneLabel("UTILITY / BUS", new Vector3(0f, 2.25f, 2.25f), utilityMaterial.color);
-            CreateZoneLabel("LIFE SUPPORT", new Vector3(4f, 2.25f, 2.25f), lifeSupportMaterial.color);
+            CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.UtilityCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), utilityMaterial);
+            CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, BackWallInnerZ - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
+            CreateZoneLabel("COCKPIT", new Vector3(LastShiftShipDimensions.CockpitCenterX, 2.25f, BackWallInnerZ - 0.13f), cockpitMaterial.color);
+            CreateZoneLabel("UTILITY / BUS", new Vector3(LastShiftShipDimensions.UtilityCenterX, 2.25f, BackWallInnerZ - 0.13f), utilityMaterial.color);
+            CreateZoneLabel("LIFE SUPPORT", new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 2.25f, BackWallInnerZ - 0.13f), lifeSupportMaterial.color);
         }
+
+        /// <summary>뒤쪽 긴 벽의 안쪽 면. 벽에 붙이는 것들이 전부 이 면을 기준으로 놓인다.</summary>
+        private const float BackWallInnerZ = HalfWidth;
+
+        /// <summary>끝벽의 안쪽 면(선미 쪽). 부호를 바꾸면 선수 쪽이다.</summary>
+        private const float EndWallInnerX = HalfLength;
 
         /// <summary>
         /// 벌크헤드 한 장 + 그 가운데 문 하나(N0b). 예전에는 벌크헤드 폭이 3.2 라 좌우로
         /// 0.75 씩 뚫려 있었고, 그 틈으로 걸어서 구역을 넘나들 수 있었다. 그 상태에서는 문을
         /// 닫아도 승무원은 그냥 옆으로 지나가므로 격리(§2.2.2)가 "압력만 끊고 사람은 안 막는"
-        /// 반쪽이 된다. 선체 안쪽 폭(4.7)을 덮도록 4.9 로 늘리고, 통과는 문으로만 시킨다.
+        /// 반쪽이 된다. 좌우 벽 바깥면까지 덮고, 통과는 문으로만 시킨다.
         ///
         /// 문 구멍 규격은 <see cref="LastShiftZoneDoor"/> 의 상수를 그대로 쓴다. 씬과 런타임이
         /// 각자 숫자를 들고 있으면 "그림상 열려 있는데 못 지나가는" 문이 생긴다.
         /// </summary>
         private static void CreateBulkheadWithDoor(string side, Transform ship, int boundary)
         {
-            const float fullWidth = 4.9f;
+            const float fullWidth = LastShiftShipDimensions.EndWallSpan;
             const float thickness = LastShiftZoneDoor.PanelThickness;
             const float opening = LastShiftZoneDoor.OpeningWidth;
             const float openingHeight = LastShiftZoneDoor.OpeningHeight;
@@ -218,12 +242,17 @@ namespace DoodleUp.Editor
         private static void CreateShipCeiling(Transform ship)
         {
             ceilingMaterial ??= CreateMaterial("LS_Ceiling", new Color(0.21f, 0.23f, 0.26f));
-            CreateCube("Ceiling", ship, new Vector3(0f, CeilingInnerHeight + CeilingThickness * 0.5f, 0f), new Vector3(12.5f, CeilingThickness, 5f), ceilingMaterial);
+            CreateCube("Ceiling", ship, new Vector3(0f, CeilingInnerHeight + CeilingThickness * 0.5f, 0f), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingThickness, LastShiftShipDimensions.EndWallSpan), ceilingMaterial);
             // 천장 리브. 평평한 판만 있으면 실내가 아니라 뚜껑처럼 보인다.
-            for (var index = 0; index < 7; index++)
+            // 개수를 고정하지 않고 간격을 고정한다 — 전장이 바뀌었을 때 개수를 고정해 두면
+            // 리브 간격이 늘어나 같은 배가 아니라 더 큰 배의 사진처럼 보인다.
+            const float ribSpacing = 1.8f;
+            var ribCount = Mathf.FloorToInt((Length - ribSpacing) / ribSpacing);
+            var ribStart = -(ribCount - 1) * ribSpacing * 0.5f;
+            for (var index = 0; index < ribCount; index++)
             {
-                var x = -5.4f + index * 1.8f;
-                CreateDecorCube($"CeilingRib_{index}", ship, new Vector3(x, CeilingInnerHeight - 0.06f, 0f), new Vector3(0.18f, 0.12f, 4.9f), hullMaterial);
+                var x = ribStart + index * ribSpacing;
+                CreateDecorCube($"CeilingRib_{index}", ship, new Vector3(x, CeilingInnerHeight - 0.06f, 0f), new Vector3(0.18f, 0.12f, Width), hullMaterial);
             }
         }
 
@@ -242,19 +271,31 @@ namespace DoodleUp.Editor
 
             // 창 위 상부 선체(창 높이만큼 비운 자리를 메운다)
             const float windowTop = 2.1f;
-            CreateCube("OuterHull_FrontUpper", ship, new Vector3(0f, (CeilingInnerHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(12.5f, CeilingInnerHeight - windowTop, 0.2f), hullMaterial);
-            // 창 사이 기둥
-            foreach (var x in new[] { -4f, 0f, 4f })
-                CreateCube($"WindowMullion_{x:F0}", ship, new Vector3(x, (WindowSillHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(0.35f, windowTop - WindowSillHeight, 0.22f), panelMaterial);
+            CreateCube("OuterHull_FrontUpper", ship, new Vector3(0f, (CeilingInnerHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight - windowTop, LastShiftShipDimensions.HullThickness), hullMaterial);
+            // 창 사이 기둥. 간격을 고정해 두어야 전장이 바뀌어도 창 한 짝의 크기가 유지된다.
+            // 기둥이 세 개로 고정돼 있으면 36m 에서는 창 하나가 12m 짜리 통유리가 된다.
+            const float mullionSpacing = 3.2f;
+            var mullionCount = Mathf.FloorToInt((Length - mullionSpacing) / mullionSpacing);
+            var mullionStart = -(mullionCount - 1) * mullionSpacing * 0.5f;
+            for (var index = 0; index < mullionCount; index++)
+            {
+                var x = mullionStart + index * mullionSpacing;
+                CreateCube($"WindowMullion_{index}", ship, new Vector3(x, (WindowSillHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(0.35f, windowTop - WindowSillHeight, 0.22f), panelMaterial);
+            }
 
             // 창 밖 우주. 창보다 크게 두어 창틀 사이로 선체 밖 회색이 보이지 않게 한다.
-            CreateDecorCube("SpaceVoid", ship, new Vector3(0f, 1.6f, HullFrontZ - 6f), new Vector3(34f, 18f, 0.2f), voidMaterial);
+            var voidWidth = Length + 12f;
+            CreateDecorCube("SpaceVoid", ship, new Vector3(0f, 1.6f, HullFrontZ - 6f), new Vector3(voidWidth, 18f, 0.2f), voidMaterial);
             var starRandom = new System.Random(20260804);
             var stars = new GameObject("StarField");
             stars.transform.SetParent(ship, false);
-            for (var index = 0; index < 90; index++)
+            // 별 개수는 창 면적을 따라간다. 90개로 고정하면 36m 창에서 밀도가 1/3 로 떨어져
+            // 밖이 우주가 아니라 검은 벽으로 읽힌다.
+            var starCount = Mathf.RoundToInt(90f * Length / 12.5f);
+            var starSpreadX = voidWidth * 0.44f;
+            for (var index = 0; index < starCount; index++)
             {
-                var x = (float)(starRandom.NextDouble() * 30.0 - 15.0);
+                var x = (float)(starRandom.NextDouble() * (starSpreadX * 2.0) - starSpreadX);
                 var y = (float)(starRandom.NextDouble() * 14.0 - 4.0);
                 var z = HullFrontZ - 3.2f - (float)(starRandom.NextDouble() * 2.4);
                 // 창까지 거리가 3~6m 라 0.05 짜리는 화면에서 1~2픽셀로 사라진다. 0.10~0.24 로 키운다.
@@ -270,11 +311,15 @@ namespace DoodleUp.Editor
         private static void CreateInstrumentPanels(Transform ship)
         {
             panelMaterial ??= CreateMaterial("LS_Panel", new Color(0.14f, 0.16f, 0.19f));
-            CreateWallPanel("Panel_Cockpit", ship, new Vector3(-4f, 1.55f, 2.32f), new Vector3(3.2f, 1.1f, 0.12f), cockpitMaterial.color);
-            CreateWallPanel("Panel_Utility", ship, new Vector3(0f, 1.55f, 2.32f), new Vector3(3.2f, 1.1f, 0.12f), utilityMaterial.color);
-            CreateWallPanel("Panel_LifeSupport", ship, new Vector3(4f, 1.55f, 2.32f), new Vector3(3.2f, 1.1f, 0.12f), lifeSupportMaterial.color);
-            CreateWallPanel("Panel_PortWall", ship, new Vector3(-6.02f, 1.7f, -0.9f), new Vector3(0.12f, 1.0f, 2.2f), cockpitMaterial.color);
-            CreateWallPanel("Panel_StarboardWall", ship, new Vector3(6.02f, 1.7f, -0.9f), new Vector3(0.12f, 1.0f, 2.2f), lifeSupportMaterial.color);
+            const float panelZ = BackWallInnerZ - 0.06f;
+            const float endPanelX = EndWallInnerX - 0.06f;
+            // 구역마다 뒷벽 패널 한 짝. 구역 중심에 두므로 전장이 바뀌면 따라 벌어진다.
+            CreateWallPanel("Panel_Cockpit", ship, new Vector3(LastShiftShipDimensions.CockpitCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), cockpitMaterial.color);
+            CreateWallPanel("Panel_Utility", ship, new Vector3(LastShiftShipDimensions.UtilityCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), utilityMaterial.color);
+            CreateWallPanel("Panel_LifeSupport", ship, new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), lifeSupportMaterial.color);
+            // 양 끝벽 패널. 배가 길어지면 이 둘 사이가 36m 가 되므로 각 구역 안에서만 보인다.
+            CreateWallPanel("Panel_PortWall", ship, new Vector3(-endPanelX, 1.7f, -0.9f), new Vector3(0.12f, 1.0f, 2.2f), cockpitMaterial.color);
+            CreateWallPanel("Panel_StarboardWall", ship, new Vector3(endPanelX, 1.7f, -0.9f), new Vector3(0.12f, 1.0f, 2.2f), lifeSupportMaterial.color);
         }
 
         private static void CreateWallPanel(string name, Transform ship, Vector3 position, Vector3 scale, Color readoutColor)
@@ -300,14 +345,20 @@ namespace DoodleUp.Editor
         private static void CreateDucts(Transform ship)
         {
             ductMaterial ??= CreateMaterial("LS_Duct", new Color(0.34f, 0.33f, 0.30f));
-            // 좌우로 길게 지나는 주 배관 두 줄
-            CreatePipe("Duct_Main_Fore", ship, new Vector3(0f, CeilingInnerHeight - 0.42f, -1.55f), new Vector3(0f, 0f, 90f), 0.16f, 5.9f);
-            CreatePipe("Duct_Main_Aft", ship, new Vector3(0f, CeilingInnerHeight - 0.42f, 1.62f), new Vector3(0f, 0f, 90f), 0.13f, 5.9f);
-            // 벽으로 내려가는 수직 지관. x 는 패널 사이 빈 구간(패널 폭 3.2 가 x=-4/0/4 에
-            // 놓이므로 경계는 ±2.0, ±5.6)에 둔다. 패널 위에 겹치면 발광 계기 띠를 가려
-            // 정면에서 관이 계기판을 관통한 것처럼 보인다.
-            foreach (var x in new[] { -5.85f, -2.05f, 2.05f, 5.85f })
-                CreatePipe($"Duct_Riser_{x:F1}", ship, new Vector3(x, 1.5f, 2.24f), Vector3.zero, 0.11f, 1.5f);
+            // 전장을 따라 길게 지나는 주 배관 두 줄. 캡슐 y 스케일이 반길이이므로 배 안쪽
+            // 길이의 절반을 쓴다. 이 값이 고정이면 36m 배에서 배관이 조종석 근처에서 끊긴다.
+            var mainHalfLength = HalfLength - 0.3f;
+            CreatePipe("Duct_Main_Fore", ship, new Vector3(0f, CeilingInnerHeight - 0.42f, -HalfWidth * 0.62f), new Vector3(0f, 0f, 90f), 0.16f, mainHalfLength);
+            CreatePipe("Duct_Main_Aft", ship, new Vector3(0f, CeilingInnerHeight - 0.42f, HalfWidth * 0.65f), new Vector3(0f, 0f, 90f), 0.13f, mainHalfLength);
+            // 벽으로 내려가는 수직 지관. 뒷벽 패널(폭 3.2, 구역 중심) 사이 빈 구간에 둔다.
+            // 패널 위에 겹치면 발광 계기 띠를 가려 정면에서 관이 계기판을 관통한 것처럼 보인다.
+            var riserZ = BackWallInnerZ - 0.22f;
+            foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
+            {
+                var center = LastShiftShipDimensions.ZoneCenterX(zone);
+                foreach (var sign in new[] { -1f, 1f })
+                    CreatePipe($"Duct_Riser_{zone}_{(sign < 0f ? "Fore" : "Aft")}", ship, new Vector3(center + sign * 2.05f, 1.5f, riserZ), Vector3.zero, 0.11f, 1.5f);
+            }
         }
 
         private static void CreatePipe(string name, Transform ship, Vector3 position, Vector3 eulerAngles, float radius, float halfLength)
@@ -331,13 +382,23 @@ namespace DoodleUp.Editor
             return cube;
         }
 
-        private static void CreateZone(string name, Transform parent, Vector3 position, Material material)
+        /// <summary>
+        /// 구역 하나. 바닥은 그 구역이 실제로 차지하는 x 범위를 정확히 덮는다 — 예전처럼 폭을
+        /// 4 로 고정해 두면 구역 판정(경계 ±7)과 바닥이 어긋나 구역 사이에 바닥 없는 틈이 생기고
+        /// 승무원이 그리로 떨어진다.
+        /// </summary>
+        private static void CreateZone(string name, Transform parent, LastShiftZone zoneId, Material material)
         {
             var zone = new GameObject(name);
             zone.transform.SetParent(parent, false);
-            zone.transform.position = position;
-            CreateCube("Floor", zone.transform, new Vector3(0f, -0.1f, 0f), new Vector3(4f, 0.2f, 5f), floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.30f, 0.32f, 0.35f)));
-            var strip = CreateCube("ZoneStrip", zone.transform, new Vector3(0f, 0.015f, 2.2f), new Vector3(3.7f, 0.03f, 0.25f), material);
+            zone.transform.position = new Vector3(LastShiftShipDimensions.ZoneCenterX(zoneId), 0f, 0f);
+            var zoneLength = LastShiftShipDimensions.ZoneLength(zoneId);
+            CreateCube("Floor", zone.transform, new Vector3(0f, -LastShiftShipDimensions.HullThickness * 0.5f, 0f),
+                new Vector3(zoneLength, LastShiftShipDimensions.HullThickness, LastShiftShipDimensions.EndWallSpan),
+                floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.30f, 0.32f, 0.35f)));
+            // 구역 색 띠. 뒷벽 앞 바닥에 깔아 어느 구역에 서 있는지가 발밑에서 읽힌다.
+            var strip = CreateCube("ZoneStrip", zone.transform, new Vector3(0f, 0.015f, BackWallInnerZ - 0.8f),
+                new Vector3(zoneLength - 0.3f, 0.03f, 0.25f), material);
             Object.DestroyImmediate(strip.GetComponent<Collider>());
         }
 
@@ -386,19 +447,19 @@ namespace DoodleUp.Editor
         /// 당길수록 화면 밖으로 내려가 조준 자체가 불가능하다. 그래서 받침대(TetherRack) 위에 올린다.
         /// loose 상태의 Rigidbody 는 kinematic 이 아니므로 공중 배치는 낙하한다.
         /// </summary>
-        public static readonly Vector3 TetherRackPosition = new(-2.62f, 0.60f, -1.28f);
+        public static Vector3 TetherRackPosition => LastShiftShipDimensions.TetherRackPosition;
 
-        public static readonly Vector3 TetherRackScale = new(0.5f, 1.2f, 0.9f);
+        public static Vector3 TetherRackScale => LastShiftShipDimensions.TetherRackScale;
 
-        public static readonly Vector3 TetherSpawnPosition = new(-2.62f, 1.325f, -1.28f);
+        public static Vector3 TetherSpawnPosition => LastShiftShipDimensions.TetherNominal;
 
         private static LastShiftGrabbable[] CreateItems()
         {
             return new[]
             {
-                CreateItem("Battery", LastShiftItemRole.Battery, new Vector3(0.6f, 0.38f, 0.8f), new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f), true),
-                CreateItem("CoolingCanister", LastShiftItemRole.CoolingCanister, new Vector3(0f, 0.55f, -1.3f), new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f), true),
-                CreateItem("PatchPlate", LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f), new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f), true),
+                CreateItem("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f), true),
+                CreateItem("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f), true),
+                CreateItem("PatchPlate", LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal, new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f), true),
                 CreateItem("Tether", LastShiftItemRole.Tether, TetherSpawnPosition, new Vector3(0.25f, 0.25f, 1.2f), new Color(0.95f, 0.30f, 0.22f), true)
             };
         }
@@ -477,9 +538,24 @@ namespace DoodleUp.Editor
             light.color = new Color(0.72f, 0.78f, 0.95f);
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
 
-            CreateZoneLight("Light_Cockpit", new Vector3(-4f, CeilingInnerHeight - 0.35f, 0f), new Color(0.62f, 0.78f, 1f), 2.5f);
-            CreateZoneLight("Light_Utility", new Vector3(0f, CeilingInnerHeight - 0.35f, 0f), new Color(1f, 0.86f, 0.62f), 2.3f);
-            CreateZoneLight("Light_LifeSupport", new Vector3(4f, CeilingInnerHeight - 0.35f, 0f), new Color(0.66f, 1f, 0.80f), 2.3f);
+            CreateZoneLights("Cockpit", LastShiftZone.Cockpit, new Color(0.62f, 0.78f, 1f), 2.5f);
+            CreateZoneLights("Utility", LastShiftZone.Utility, new Color(1f, 0.86f, 0.62f), 2.3f);
+            CreateZoneLights("LifeSupport", LastShiftZone.LifeSupport, new Color(0.66f, 1f, 0.80f), 2.3f);
+        }
+
+        /// <summary>
+        /// 구역 조명. 구역 하나에 등 하나로 두면 11~14m 구역에서 가운데만 밝고 양 끝이 캄캄해진다
+        /// (점광원 range 7 은 반경이다). 등 사이 간격을 고정하고 개수를 구역 길이에서 뽑는다.
+        /// </summary>
+        private static void CreateZoneLights(string name, LastShiftZone zone, Color color, float intensity)
+        {
+            const float lightSpacing = 5.5f;
+            var length = LastShiftShipDimensions.ZoneLength(zone);
+            var center = LastShiftShipDimensions.ZoneCenterX(zone);
+            var count = Mathf.Max(1, Mathf.RoundToInt(length / lightSpacing));
+            var start = center - (count - 1) * lightSpacing * 0.5f;
+            for (var index = 0; index < count; index++)
+                CreateZoneLight($"Light_{name}_{index}", new Vector3(start + index * lightSpacing, CeilingInnerHeight - 0.35f, 0f), color, intensity);
         }
 
         private static void CreateZoneLight(string name, Vector3 position, Color color, float intensity)
@@ -490,7 +566,7 @@ namespace DoodleUp.Editor
             light.type = LightType.Point;
             light.color = color;
             light.intensity = intensity;
-            // 구역 폭 4m + 깊이 5m 를 덮되 옆 구역까지 흘러 구분이 사라지지 않는 반경.
+            // 등 간격(5.5)보다 넉넉해 사이가 어둡지 않고, 옆 구역까지 흘러 구분이 사라지지는 않는 반경.
             light.range = 7f;
             light.shadows = LightShadows.Soft;
         }

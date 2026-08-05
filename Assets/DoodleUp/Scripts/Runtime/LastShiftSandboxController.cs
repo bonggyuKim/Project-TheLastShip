@@ -8,7 +8,7 @@ namespace DoodleUp.Runtime
     {
         public const string ProfileId = "LAST_SHIFT_SP01";
         public const float SecureDistance = 0.9f;
-        public static readonly Vector3 PlayerSpawn = new(-3.5f, 0.1f, 0f);
+        public static readonly Vector3 PlayerSpawn = LastShiftShipDimensions.SpawnPoint;
 
         /// <summary>
         /// 성능 포기는 물건을 들고 오지 않아도 손상 지점에서 결정할 수 있다. 대신 그 지점에
@@ -16,8 +16,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float SacrificeReachDistance = 1.8f;
 
-        /// <summary>도킹 확정 트리거. 조종석 콘솔(CockpitConsole, x≈-5.1) 앞이다.</summary>
-        public static readonly Vector3 DockingTriggerPosition = new(-4.6f, 0.9f, 0f);
+        /// <summary>도킹 확정 트리거. 조종석 끝벽(선수) 앞이다.</summary>
+        public static readonly Vector3 DockingTriggerPosition = LastShiftShipDimensions.DockingPoint;
         public const float DockingTriggerRadius = 1.6f;
 
         [SerializeField] private LastShiftPlayerController[] players;

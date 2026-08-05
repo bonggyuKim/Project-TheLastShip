@@ -123,7 +123,7 @@ namespace DoodleUp.Tests.EditMode
         public void ClosingDoorIsolatesBreachZoneInsideTheMissionTimer()
         {
             var setup = CreateDoorSetup(boundary: 1);
-            var patch = CreateItem(LastShiftItemRole.PatchPlate, new Vector3(4.5f, 0.65f, -1.6f));
+            var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
             setup.sandbox.Configure(setup.player, new[] { patch });
             setup.sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(setup.sandbox.ApplyMeteorImpact(), Is.True);
