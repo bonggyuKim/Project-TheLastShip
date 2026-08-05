@@ -134,29 +134,61 @@ namespace DoodleUp.Tests.EditMode
         public void SightlineBaffleBlocksEveryStraightLineThroughAPassage()
         {
             // 배플이 A3 를 성립시키는 근거를 식으로 고정한다. 두 개구부를 모두 지나는 직선은
-            // 통로 중앙(t=0.5)에서 반드시 두 개구부 구간의 중점 구간 안에 있다. 그 구간을
-            // 막으면 관통 직선이 표본이 아니라 전부 사라진다.
+            // 배플이 선 x 평면(t = BaffleOffsetT)에서 반드시 두 개구부 구간을 같은 비율로
+            // 보간한 구간 안에 있다. 그 구간을 막으면 관통 직선이 표본이 아니라 전부 사라진다.
+            var t = LastShiftShipDimensions.BaffleOffsetT;
             for (var passage = 0; passage < 2; passage++)
             {
                 var near = LastShiftShipDimensions.BaffleNearOpening(passage);
                 var far = LastShiftShipDimensions.BaffleFarOpening(passage);
-                var midMin = (LastShiftShipDimensions.OpeningMinZ(near) + LastShiftShipDimensions.OpeningMinZ(far)) * 0.5f;
-                var midMax = (LastShiftShipDimensions.OpeningMaxZ(near) + LastShiftShipDimensions.OpeningMaxZ(far)) * 0.5f;
+                var cutMin = Mathf.LerpUnclamped(
+                    LastShiftShipDimensions.OpeningMinZ(near), LastShiftShipDimensions.OpeningMinZ(far), t);
+                var cutMax = Mathf.LerpUnclamped(
+                    LastShiftShipDimensions.OpeningMaxZ(near), LastShiftShipDimensions.OpeningMaxZ(far), t);
 
-                Assert.That(LastShiftShipDimensions.BaffleMinZ(passage), Is.LessThanOrEqualTo(midMin + 0.0001f),
+                Assert.That(LastShiftShipDimensions.BaffleMinZ(passage), Is.LessThanOrEqualTo(cutMin + 0.0001f),
                     $"통로 {passage} 배플이 관통 직선 구간의 하단을 덮지 않는다.");
-                Assert.That(LastShiftShipDimensions.BaffleMaxZ(passage), Is.GreaterThanOrEqualTo(midMax - 0.0001f),
+                Assert.That(LastShiftShipDimensions.BaffleMaxZ(passage), Is.GreaterThanOrEqualTo(cutMax - 0.0001f),
                     $"통로 {passage} 배플이 관통 직선 구간의 상단을 덮지 않는다.");
                 Assert.That(LastShiftShipDimensions.BaffleMinZ(passage),
                     Is.GreaterThanOrEqualTo(LastShiftShipDimensions.PassageMinZ(passage) - 0.0001f));
                 Assert.That(LastShiftShipDimensions.BaffleMaxZ(passage),
                     Is.LessThanOrEqualTo(LastShiftShipDimensions.PassageMaxZ(passage) + 0.0001f));
+
+                // 배플 판(두께 0.4m)이 개구부 평면을 물면 문·벌크헤드와 겹친다. 통로 안에 있어야 한다.
+                var half = LastShiftShipDimensions.BaffleThickness * 0.5f;
+                Assert.That(LastShiftShipDimensions.BaffleCenterX(passage) - half,
+                    Is.GreaterThan(LastShiftShipDimensions.PassageMinX(passage)),
+                    $"통로 {passage} 배플이 -x 쪽 개구부 평면을 넘어간다.");
+                Assert.That(LastShiftShipDimensions.BaffleCenterX(passage) + half,
+                    Is.LessThan(LastShiftShipDimensions.PassageMaxX(passage)),
+                    $"통로 {passage} 배플이 +x 쪽 개구부 평면을 넘어간다.");
+
+                // 통행 차선은 문 쪽 개구부의 z 구간과 같은 자리여야 한다. 어긋나면 판을 든
+                // 승무원이 문 앞 1m 안에서 z 를 바꿔야 하고, 그 자리는 문이 닫혀 있을 수 있다.
+                Assert.That(LastShiftShipDimensions.BaffleFreeStripCenterZ(passage),
+                    Is.EqualTo(LastShiftShipDimensions.OpeningCenterZ(far)).Within(0.0001f));
+                var lane = LastShiftShipDimensions.BaffleMinZ(passage) - LastShiftShipDimensions.PassageMinZ(passage)
+                           > LastShiftShipDimensions.PassageMaxZ(passage) - LastShiftShipDimensions.BaffleMaxZ(passage)
+                    ? (LastShiftShipDimensions.PassageMinZ(passage), LastShiftShipDimensions.BaffleMinZ(passage))
+                    : (LastShiftShipDimensions.BaffleMaxZ(passage), LastShiftShipDimensions.PassageMaxZ(passage));
+                Assert.That(lane.Item2 - lane.Item1,
+                    Is.EqualTo(LastShiftShipDimensions.BaffleFreeStrip).Within(0.0001f),
+                    $"통로 {passage} 넓은 쪽 통행 폭이 BaffleFreeStrip 과 다르다.");
+                Assert.That(lane.Item1,
+                    Is.EqualTo(LastShiftShipDimensions.OpeningMinZ(far)).Within(0.0001f),
+                    $"통로 {passage} 통행 차선이 문 쪽 개구부와 z 가 어긋난다.");
             }
 
-            // 그리고 사람은 지나갈 수 있어야 한다. 배플이 통행까지 막으면 격리가 아니라 폐쇄다.
-            // CharacterController 지름 0.56m 에 여유를 둔다.
-            Assert.That(LastShiftShipDimensions.BaffleFreeStrip, Is.GreaterThan(0.56f),
-                "배플 옆 통행 폭이 승무원 지름보다 좁으면 통로가 막힌다.");
+            // 그리고 <b>물건을 든</b> 사람이 지나갈 수 있어야 한다. 배플이 통행까지 막으면 격리가
+            // 아니라 폐쇄다. 기준은 승무원 지름 0.56m 이 아니라 개구부 폭이다 — 통로는 그것이
+            // 잇는 개구부보다 좁아질 수 없고, 개구부 1.6m 를 고정한 이유가 판을 들고 통과다.
+            Assert.That(LastShiftShipDimensions.BaffleFreeStrip,
+                Is.GreaterThanOrEqualTo(LastShiftShipDimensions.OpeningWidth - 0.0001f),
+                "배플 옆 통행 폭이 개구부보다 좁으면 판을 든 승무원이 통로에서 막힌다.");
+            Assert.That(LastShiftShipDimensions.BaffleFreeStrip + LastShiftShipDimensions.BaffleDeadStrip,
+                Is.EqualTo(LastShiftShipDimensions.PassageWidth - LastShiftShipDimensions.BaffleWidth).Within(0.0001f),
+                "차선 + 죽은 틈이 통로에서 배플을 뺀 폭과 맞지 않는다.");
         }
 
         [Test]

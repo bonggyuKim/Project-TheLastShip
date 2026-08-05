@@ -245,18 +245,49 @@ namespace DoodleUp.Runtime
         // 자체가 우현 z [1.4, 3.0] 이라 그 띠를 바닥부터 천장까지 막으면 통로 입구가 함께
         // 막힌다(남는 폭 0.10m, 승무원 지름 0.56m). 그래서 차단은 통로 안에서 한다.
         //
-        // 통로 한가운데(t = 0.5)에 세우는 이유는 계산에서 나온다. 두 개구부를 모두 지나는
-        // 직선은 통로 중앙에서 반드시
-        //     z ∈ [ (개구부A 하한 + 개구부B 하한)/2 , (개구부A 상한 + 개구부B 상한)/2 ]
-        // 안에 있다. 폭은 개구부 폭과 같은 1.6m 다(선형 보간이라 구간 길이가 보존된다).
-        // 그 구간만 막으면 <b>통과 가능한 직선이 하나도 남지 않는다</b> — 유한 개 표본이 아니라
-        // 구간 전체다. 반면 걸어서 지나가는 사람은 직선이 아니어도 되므로 양옆 1.0m 씩 남는
-        // 자리로 돌아간다. t = 0.5 가 그 남는 폭(양쪽 1.0m)을 최대로 만든다 — 한쪽으로 밀면
-        // 좁은 쪽이 0.5m 까지 줄어 승무원이 못 지나간다.
+        // 어느 x 에 세워도 차단은 성립한다. 두 개구부를 모두 지나는 직선은 통로 안 임의의 x
+        // 평면에서 두 개구부 z 구간을 그 비율로 보간한 구간 안에 있고, 선형 보간이라 구간
+        // 길이는 어디서나 개구부 폭 그대로 1.6m 다. 그 구간을 바닥부터 천장까지 막으면
+        // <b>통과 가능한 직선이 하나도 남지 않는다</b> — 유한 개 표본이 아니라 구간 전체다.
+        // 그래서 x 를 정하는 것은 차단이 아니라 <b>통행</b>이다.
+        //
+        // 양옆에 남는 폭의 합은 PassageWidth - BaffleWidth = 2.0m 로 고정이고 배분만 자유롭다.
+        // 통로 한가운데(t = 0.5)는 1.0 / 1.0 이라 <b>양쪽 다 PatchPlate 가 못 지나간다</b> —
+        // 소켓이 로컬 identity 라 판의 1.15m 변이 진행 방향을 가로지르는데(빌더 스케일
+        // (1.15, 1.15, 0.18)) 1.0 < 1.15 다. 개구부를 1.2m 로 좁히는 안을 "판을 들고 못 지나간다"
+        // 로 기각해 놓고, 같은 제약이 통로에서 1.0m 로 다시 생겨 있었다. 구속이 의도한 자리
+        // (개구부 1.6m)에서 우발적인 자리(통로 1.0m)로 옮겨간 것이다.
+        //
+        // 그래서 한쪽으로 민다. t 는 고른 값이 아니라 <b>남는 차선이 문 쪽 개구부의 연장선과
+        // 정확히 겹치는</b> 값이다 — |배플 중심 z - 문 쪽 개구부 중심 z| = 개구부 폭.
+        //     t = GAP_Z / (개구부 폭 + GAP_Z) = 0.4 / 2.0 = 0.2
+        // 결과는 통행 차선 1.6m(문 쪽 개구부와 z 구간이 같다) + 죽은 틈 0.4m 다. 판을 든
+        // 승무원은 배플을 지난 뒤 문까지 z 를 바꾸지 않고 직진한다.
+        //
+        // A1 판독이 같이 살아난 것은 <b>고른 이유가 아니라 따라온 결과다.</b> t 는 통행만 보고
+        // 정했는데, 차선이 문 쪽 개구부와 z 구간을 공유하므로 차선에서 그 개구부를 보는 광선이
+        // 배플 AABB 를 아예 지나지 않는다. 설 수 있는 띠가 t = 0.5 의 0.14m 에서 차선 전체
+        // 1.04m 가 됐다(PM 재산출). <b>같은 성질에 기대는 검사는 이 상수를 근거로 삼지 말 것</b> —
+        // 통행 조건이 바뀌어 t 가 움직이면 판독 띠는 예고 없이 따라 움직인다. 판독은 T5 가
+        // 선분 대 AABB 로 직접 재야 하고, 여기서 보장하는 것은 통행 폭뿐이다.
+        //
+        // 반대쪽(t = 0.8)도 폭 배분은 같지만 z 를 바꿔야 하는 1m 구간이 문 앞으로 옮겨간다.
+        // 문은 닫혀 있을 수 있고 조작 사거리·압력 판정이 겹치는 자리라 거기서 비스듬히 들어가게
+        // 만들지 않는다. 방향 전환은 문이 없는 쪽 입구에서 끝낸다.
 
-        /// <summary>배플이 막아야 하는 z 중심. 두 개구부 중심의 중점이고 통로 중심과 같다.</summary>
-        public static float BaffleCenterZ(int passage) =>
-            (OpeningCenterZ(BaffleNearOpening(passage)) + OpeningCenterZ(BaffleFarOpening(passage))) * 0.5f;
+        /// <summary>
+        /// 배플의 통로 안 위치. 0 = 방 쪽 개구부 평면, 1 = 문 쪽 개구부 평면.
+        /// 리터럴 0.2 를 적지 않는 이유는 이 값이 GAP_Z 의 파생이기 때문이다.
+        /// </summary>
+        public const float BaffleOffsetT = OpeningGapZ / (OpeningWidth + OpeningGapZ);
+
+        /// <summary>배플이 서는 x. 통로 중심이 아니라 <see cref="BaffleOffsetT"/> 자리다.</summary>
+        public static float BaffleCenterX(int passage) => Mathf.LerpUnclamped(
+            OpeningX(BaffleNearOpening(passage)), OpeningX(BaffleFarOpening(passage)), BaffleOffsetT);
+
+        /// <summary>배플이 막아야 하는 z 중심. 같은 t 로 보간해야 그 x 평면의 관통 구간을 덮는다.</summary>
+        public static float BaffleCenterZ(int passage) => Mathf.LerpUnclamped(
+            OpeningCenterZ(BaffleNearOpening(passage)), OpeningCenterZ(BaffleFarOpening(passage)), BaffleOffsetT);
 
         /// <summary>배플 폭(z). 선형 보간이 구간 길이를 보존하므로 개구부 폭과 같다.</summary>
         public const float BaffleWidth = OpeningWidth;
@@ -264,8 +295,17 @@ namespace DoodleUp.Runtime
         /// <summary>배플 두께(x). 얇아도 되지만 광선이 아니라 사람이 보기에 설비로 읽힐 두께다.</summary>
         public const float BaffleThickness = 0.4f;
 
-        /// <summary>배플 양옆에 남는 통행 폭. 승무원 지름 0.56m 보다 넉넉해야 한다.</summary>
-        public const float BaffleFreeStrip = (PassageWidth - BaffleWidth) * 0.5f;
+        /// <summary>
+        /// 배플 옆 통행 차선의 폭. 승무원(지름 0.56m)이 아니라 <b>물건을 든 승무원</b>이 기준이고,
+        /// 그래서 개구부 폭과 같다. 통로는 그것이 잇는 개구부보다 좁아질 수 없다.
+        /// </summary>
+        public const float BaffleFreeStrip = OpeningWidth;
+
+        /// <summary>배플 반대쪽에 남는 죽은 틈. 승무원 지름보다 좁아 통행에 쓰이지 않는다.</summary>
+        public const float BaffleDeadStrip = PassageWidth - BaffleWidth - BaffleFreeStrip;
+
+        /// <summary>통행 차선의 z 중심. 문 쪽 개구부 중심과 같다 — 그게 t 를 그렇게 잡은 이유다.</summary>
+        public static float BaffleFreeStripCenterZ(int passage) => OpeningCenterZ(BaffleFarOpening(passage));
 
         /// <summary>통로의 방 쪽 개구부(문이 없는 쪽).</summary>
         public static int BaffleNearOpening(int passage) => passage <= 0 ? 0 : 3;

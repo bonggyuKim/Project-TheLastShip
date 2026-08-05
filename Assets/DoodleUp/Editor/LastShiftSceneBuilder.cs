@@ -205,10 +205,10 @@ namespace DoodleUp.Editor
         /// <summary>
         /// 시선 차단 배플. <b>이 볼륨은 장식이 아니라 A3 성립 조건이다. 옮기면 T4 가 FAIL 한다.</b>
         ///
-        /// 통로 한가운데를 가로질러 세우는 판이며, 근거는 <see cref="LastShiftShipDimensions.BaffleCenterZ"/>
-        /// 주석에 있다 — 두 개구부를 모두 지나는 직선은 통로 중앙에서 반드시 이 1.6m 구간을
+        /// 통로를 가로질러 세우는 판이며, 근거는 <see cref="LastShiftShipDimensions.BaffleOffsetT"/>
+        /// 주석에 있다 — 두 개구부를 모두 지나는 직선은 그 x 평면에서 반드시 이 1.6m 구간을
         /// 지나므로, 그 구간을 바닥부터 천장까지 막으면 관통 직선이 하나도 남지 않는다.
-        /// 양옆 1.0m 씩은 열려 있어 걸어서는 돌아 지나갈 수 있다.
+        /// 한쪽에 남는 1.6m 차선은 문 쪽 개구부와 z 가 같아 물건을 들고 직진해 지나간다.
         ///
         /// 외형(랙·캐비닛)은 아트 CT-11 소관이다. 여기서 정하는 것은 존재와 위치·치수뿐이다.
         /// </summary>
@@ -216,7 +216,7 @@ namespace DoodleUp.Editor
         {
             var side = passage <= 0 ? "A" : "B";
             CreateCube($"SightlineBaffle_{side}", ship,
-                new Vector3(LastShiftShipDimensions.PassageCenterX(passage),
+                new Vector3(LastShiftShipDimensions.BaffleCenterX(passage),
                     CeilingInnerHeight * 0.5f,
                     LastShiftShipDimensions.BaffleCenterZ(passage)),
                 new Vector3(LastShiftShipDimensions.BaffleThickness,

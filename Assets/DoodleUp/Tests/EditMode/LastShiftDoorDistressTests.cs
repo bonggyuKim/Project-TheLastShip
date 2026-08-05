@@ -254,8 +254,14 @@ namespace DoodleUp.Tests.EditMode
         {
             // 개구부 0·3 은 양쪽이 같은 구역이다 — 통로 A 전체가 조종석 구역이고 통로 B 전체가
             // 산소실 구역이기 때문이다(구역 경계는 통로 안이 아니라 통로 끝에 있다).
-            // 이건 결함이 아니라 성질이고, 6m 판독은 개구부 0 에 서서 <b>개구부 1 의</b> 게이지를
-            // 보는 것이다. 여기가 조용히 뒤집히면 문 달린 두 개구부의 판독도 같이 어긋난다.
+            // 이건 결함이 아니라 성질이다. 여기가 조용히 뒤집히면 문 달린 두 개구부의 판독도
+            // 같이 어긋난다.
+            //
+            // <b>판독 자리는 개구부 0 앞이 아니다.</b> 개구부 0 평면에 서서 개구부 1 을 보는
+            // 시선은 정의상 두 개구부를 모두 지나므로 배플이 전부 막는다 — 그게 배플이 막는
+            // 집합의 정의다(LastShiftShipDimensions.BaffleOffsetT). 실제로 읽히는 자리는 통로
+            // 안, 배플 옆 통행 차선이고 거기서 개구부 1 까지는 6m 가 아니라 5.5m 다.
+            // 배플 도입(7be4938) 전 그림이 이 주석에 남아 있었다.
             Assert.That(
                 LastShiftZoneAtlas.Resolve(new Vector3(LastShiftShipDimensions.PassageCenterX(0), 0f, 0f)),
                 Is.EqualTo(LastShiftZone.Cockpit));

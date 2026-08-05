@@ -243,6 +243,12 @@ namespace DoodleUp.Editor
         ///
         /// 기준은 구역이 아니라 <b>방</b>이다. 구역으로 재면 통로 안 좌표가 "조종석 안" 으로
         /// 판정돼, 이미 벽에 막힌 자리에서 쏘고 PASS 를 받게 된다.
+        ///
+        /// <b>wallInset 을 줄이는 방향으로만 틀린다.</b> 0.3 → z = ±2.7 이고 d=1 누출 띠는
+        /// z ≥ 1.467 이라 띠 안쪽 여유가 1.23m, 벽 쪽 여유가 0.3m 다. 늘리면 띠 안이라
+        /// 안전하고, 줄이면 z 가 벽면(±3.0)에 붙어 광선이 벽에 먼저 막혀 <b>차단물이 없어도
+        /// 언제나 PASS</b> 가 된다. 가운데 한 발만 쏘던 시절의 실패와 같은 형태이고,
+        /// 좌·우 두 발도 z 를 벽 쪽으로 미는 같은 상수를 쓰므로 똑같이 성립한다.
         /// </summary>
         private static Vector3[] SightSamples(LastShiftZone zone, LastShiftZone toward)
         {
