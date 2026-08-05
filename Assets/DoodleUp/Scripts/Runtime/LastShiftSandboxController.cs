@@ -1006,8 +1006,11 @@ namespace DoodleUp.Runtime
                 $"INPUT state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
                 $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}", bodyStyle);
 
-            DrawZonePressureCells();
+            DrawZonePressureCells(28f, 130f);
         }
+
+        /// <summary>구역 압력 줄 하나의 폭. 클라이언트가 자기 상자를 이 폭에 맞춘다.</summary>
+        public const float ZonePressureRowWidth = 34f + 3f * 132f + 2f * 52f;
 
         /// <summary>
         /// N10 구역 3칸 압력 표시. 격리(문 닫기)의 즉시 가시성이 여기에 걸려 있다 —
@@ -1015,17 +1018,24 @@ namespace DoodleUp.Runtime
         ///
         /// 칸 사이에 문 상태를 그린다. 세 칸을 그냥 나열하면 "왜 이 칸만 안 떨어지는가" 가
         /// 안 읽히고, 그 답이 곧 문이기 때문이다.
+        ///
+        /// 좌표를 인자로 받는 이유는 호출자가 둘이기 때문이다. 솔로/호스트는 sandbox 패널 안에
+        /// 끼워 그리고, 클라이언트는 <see cref="LastShiftNetworkPlayer"/> 가 자기 상자를 만들어
+        /// 그린다 — 클라이언트에서는 이 컴포넌트가 <c>enabled = IsServer</c> 로 꺼져 있어
+        /// OnGUI 가 돌지 않지만, 스냅샷으로 들어온 압력·문 상태 자체는 여기에 최신으로 들어 있다.
         /// </summary>
-        private void DrawZonePressureCells()
+        public void DrawZonePressureCells(float originX, float originY)
         {
+            bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
+            sirenStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
             sirenStyle.normal.textColor = sirenActive
                 ? Color.Lerp(new Color(0.88f, 0.94f, 1f), new Color(1f, 0.25f, 0.18f), BlinkPhase)
                 : new Color(0.88f, 0.94f, 1f);
 
             const float cellWidth = 132f;
             const float doorWidth = 52f;
-            var x = 28f;
-            GUI.Label(new Rect(x, 130f, 34f, 24f), "O2", sirenStyle);
+            var x = originX;
+            GUI.Label(new Rect(x, originY, 34f, 24f), "O2", sirenStyle);
             x += 34f;
 
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
@@ -1035,7 +1045,7 @@ namespace DoodleUp.Runtime
                 {
                     // 경계 index-1 이 이 두 칸을 잇는 문이다.
                     var open = doorState[index - 1];
-                    GUI.Label(new Rect(x, 130f, doorWidth, 24f), open ? "─┤├─" : "─┫┣─", bodyStyle);
+                    GUI.Label(new Rect(x, originY, doorWidth, 24f), open ? "─┤├─" : "─┫┣─", bodyStyle);
                     x += doorWidth;
                 }
 
@@ -1044,13 +1054,13 @@ namespace DoodleUp.Runtime
                 var alarming = vacuum || pressure <= LastShiftRecoveryTuning.OxygenSirenTrigger;
                 var style = alarming ? sirenStyle : bodyStyle;
                 var suffix = vacuum ? " 진공" : string.Empty;
-                GUI.Label(new Rect(x, 130f, cellWidth, 24f),
+                GUI.Label(new Rect(x, originY, cellWidth, 24f),
                     $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {pressure:F2}{suffix}", style);
                 x += cellWidth;
             }
 
             if (sirenActive)
-                GUI.Label(new Rect(28f, 152f, 650f, 20f), "⚠ 전선 경보: 산소 위험 (전 구역)", sirenStyle);
+                GUI.Label(new Rect(originX, originY + 22f, ZonePressureRowWidth, 20f), "⚠ 전선 경보: 산소 위험 (전 구역)", sirenStyle);
         }
 
         /// <summary>

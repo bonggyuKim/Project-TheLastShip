@@ -154,14 +154,23 @@ namespace DoodleUp.Runtime
 
         /// <summary>
         /// 클라이언트에서는 sandbox 가 <c>enabled = IsServer</c> 로 꺼져 있어 OnGUI 가 돌지 않는다.
-        /// 그래서 owner 가 자기 예비 산소 막대만 직접 그린다. 서버(호스트)에서는 sandbox 가
-        /// 전원 분을 이미 그리므로 여기서는 그리지 않는다 — 그렸다면 호스트만 막대가 겹친다.
+        /// 그래서 owner 가 자기 예비 산소 막대와 구역 압력 줄을 직접 그린다. 서버(호스트)에서는
+        /// sandbox 가 둘 다 이미 그리므로 여기서는 그리지 않는다 — 그렸다면 호스트만 겹친다.
+        ///
+        /// 구역 압력(N10)을 클라이언트에도 두는 이유는 격리가 여기서 판단되기 때문이다. 문을
+        /// 닫아 놓고 그 결과를 볼 수 없으면 클라이언트에게 격리는 "눌렀지만 뭐가 달라졌는지
+        /// 모르는" 조작이 된다. 값 자체는 스냅샷으로 sandbox 안에 이미 최신으로 들어와 있다.
         /// </summary>
         private void OnGUI()
         {
             if (!IsSpawned || !IsOwner || IsServer) return;
             var crew = GetComponent<LastShiftCrewOxygen>();
             LastShiftCrewOxygen.DrawGauge(crew, playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0, ref suitGaugeStyle);
+
+            var sandbox = FindFirstObjectByType<LastShiftSandboxController>();
+            if (sandbox == null) return;
+            GUI.Box(new Rect(16f, 16f, LastShiftSandboxController.ZonePressureRowWidth + 24f, 62f), GUIContent.none);
+            sandbox.DrawZonePressureCells(28f, 28f);
         }
 
         private void LateUpdate()
