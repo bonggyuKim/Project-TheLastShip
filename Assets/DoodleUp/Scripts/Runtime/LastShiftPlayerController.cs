@@ -13,6 +13,43 @@ namespace DoodleUp.Runtime
     public sealed class LastShiftPlayerController : MonoBehaviour
     {
         public const float MoveSpeed = 4f;
+
+        /// <summary>
+        /// 부피가 큰 부품을 든 동안의 이동 속도. 전역 <see cref="MoveSpeed"/> 를 낮추지 않는
+        /// 이유는 그것이 같은 빈 공간을 더 오래 걷게 만드는 일이기 때문이다
+        /// (concept-draft.md:165 가 금지한 그것). 큰 물건을 들었을 때만 느려지면
+        /// 의미 있는 일을 하는 동안에만 느려진다.
+        ///
+        /// 설계 요구는 <c>CARRY_SPEED &lt; 3.5</c> 하나이고, 2.8 이라는 값 자체는
+        /// game-balance 검증 대상이다. 이 상수를 인접 구역 왕복이 hold 8초를 넘도록
+        /// 두는 것이 목적이다 — 넘는 순간 "가서 물건을 가져오기" 가 솔로로 불가능해지고,
+        /// 역할 잠금 없이 2인이 필요해지는 지점이 하나 더 생긴다.
+        /// </summary>
+        public const float CarrySpeed = 2.8f;
+
+        /// <summary>
+        /// 부피가 크다고 볼 최소 길이(가장 긴 변)와 최소 두께(두 번째로 긴 변).
+        ///
+        /// 역할 이름을 나열하지 않고 치수로 판정하는 이유는, 부품이 늘어도 여기를 고치지
+        /// 않고 "큰 물건은 느리다" 가 성립하게 하려는 것이다. 두 변을 함께 보는 이유는
+        /// 한쪽만으로는 갈리지 않기 때문이다.
+        ///
+        /// <code>
+        /// 부품            치수                긴 변  둘째 변  부피
+        /// PatchPlate      1.15 x 1.15 x 0.18   1.15   1.15   0.238  느려짐
+        /// CoolingCanister 0.55 x 1.10 x 0.55   1.10   0.55   0.333  느려짐
+        /// Battery         0.65 x 0.65 x 0.90   0.90   0.65   0.380  그대로
+        /// Tether          0.25 x 0.25 x 1.20   1.20   0.25   0.075  그대로
+        /// </code>
+        ///
+        /// 부피로만 보면 Battery(0.380)가 걸리고 PatchPlate(0.238)가 빠져 기획이 지정한
+        /// 둘과 정반대가 된다. 긴 변으로만 보면 Tether(1.20)가 함께 걸려, 밧줄을 들었다는
+        /// 이유로 결속 동사가 무거워진다. "길고 <b>또한</b> 가늘지 않은" 것만 걸러야
+        /// 판자와 통은 걸리고 밧줄과 배터리는 빠진다.
+        /// </summary>
+        public const float BulkyItemLongestSide = 1.0f;
+        public const float BulkyItemSecondSide = 0.5f;
+
         public const float GrabDistance = 2.2f;
         public const float AwarenessDistance = 8f;
         public const float GrabAimRadius = 0.22f;
@@ -311,7 +348,39 @@ namespace DoodleUp.Runtime
                 verticalSpeed += LastShiftShipPhysics.GravityY * deltaTime;
             }
 
-            characterController.Move((worldMove * MoveSpeed + Vector3.up * verticalSpeed) * deltaTime);
+            characterController.Move((worldMove * CurrentMoveSpeed + Vector3.up * verticalSpeed) * deltaTime);
+        }
+
+        /// <summary>
+        /// 지금 적용되는 이동 속도. 부피가 큰 부품을 든 동안에만 <see cref="CarrySpeed"/> 다.
+        /// 솔로와 네트워크가 각자 소지품을 다른 곳에 들고 있으므로 둘 다 본다 — 한쪽만 보면
+        /// 호스트에서만 느려지거나 클라이언트에서만 느려져 같은 배에서 두 속도가 생긴다.
+        /// </summary>
+        public float CurrentMoveSpeed => IsCarryingBulkyItem ? CarrySpeed : MoveSpeed;
+
+        public bool IsCarryingBulkyItem
+        {
+            get
+            {
+                var carried = networkPlayer != null && networkPlayer.IsSpawned
+                    ? (networkPlayer.HeldItem != null ? networkPlayer.HeldItem.Grabbable : null)
+                    : heldItem;
+                return IsBulky(carried);
+            }
+        }
+
+        /// <summary>
+        /// "길고 또한 가늘지 않은가". 가장 긴 변과 두 번째로 긴 변을 함께 본다 —
+        /// <see cref="BulkyItemLongestSide"/> 주석의 표가 왜 두 변이어야 하는지를 담고 있다.
+        /// </summary>
+        public static bool IsBulky(LastShiftGrabbable item)
+        {
+            if (item == null) return false;
+            var size = item.transform.localScale;
+            var longest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            var shortest = Mathf.Min(size.x, Mathf.Min(size.y, size.z));
+            var second = size.x + size.y + size.z - longest - shortest;
+            return longest >= BulkyItemLongestSide && second >= BulkyItemSecondSide;
         }
 
         private void ToggleGrab()
