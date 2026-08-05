@@ -130,6 +130,8 @@ namespace DoodleUp.Editor
             CreateCube("OuterHull_Right", ship.transform, new Vector3(EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial);
             CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, HullBackZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, WindowSillHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
+            CreatePassage(ship.transform, 0);
+            CreatePassage(ship.transform, 1);
             CreateBulkheadWithDoor("Left", ship.transform, 0);
             CreateBulkheadWithDoor("Right", ship.transform, 1);
             CreateShipCeiling(ship.transform);
@@ -150,6 +152,77 @@ namespace DoodleUp.Editor
 
         /// <summary>끝벽의 안쪽 면(선미 쪽). 부호를 바꾸면 선수 쪽이다.</summary>
         private const float EndWallInnerX = HalfLength;
+
+        /// <summary>
+        /// 통로 하나. 방 둘 사이 6m 구간이고, 통로 폭(3.6) 밖의 z 를 벽으로 메워 방과 방이
+        /// 직선으로 마주보지 않게 한다. 통로 A 는 우현(+z)에, B 는 좌현(-z)에 붙는다.
+        ///
+        /// 통로가 방 끝 개구부와 경계 개구부를 z 로 어긋나게 잇는 것이 A3(구역끼리 서로 안
+        /// 보임)의 1차 방어다. 다만 그것만으로는 비스듬한 시선이 남으므로 배플을 함께 세운다.
+        /// </summary>
+        private static void CreatePassage(Transform ship, int passage)
+        {
+            var minX = LastShiftShipDimensions.PassageMinX(passage);
+            var maxX = LastShiftShipDimensions.PassageMaxX(passage);
+            var centerX = LastShiftShipDimensions.PassageCenterX(passage);
+            var length = LastShiftShipDimensions.PassageLength;
+            var side = passage <= 0 ? "A" : "B";
+
+            // 통로 폭 밖을 메우는 벽. 통로가 한쪽 벽에 붙으므로 반대쪽 한 장이면 된다.
+            // 폭은 실측으로 뽑는다 — 리터럴 2.4 를 적으면 통로 폭이 바뀔 때 벽이 안 따라온다.
+            var fillMin = passage <= 0 ? -HalfWidth : LastShiftShipDimensions.PassageMaxZ(passage);
+            var fillMax = passage <= 0 ? LastShiftShipDimensions.PassageMinZ(passage) : HalfWidth;
+            CreateCube($"PassageWall_{side}", ship,
+                new Vector3(centerX, CeilingInnerHeight * 0.5f, (fillMin + fillMax) * 0.5f),
+                new Vector3(length, CeilingInnerHeight, fillMax - fillMin), hullMaterial);
+
+            // 방 끝 개구부(문이 없는 쪽)의 벌크헤드. 통로 폭 안에서 개구부를 뺀 나머지를 메운다.
+            // 이게 없으면 방이 통로 폭 전체로 열려 통로가 꺾이지 않는다.
+            var near = LastShiftShipDimensions.BaffleNearOpening(passage);
+            var wallX = passage <= 0 ? minX : maxX;
+            CreatePassageEndWall(ship, $"PassageEnd_{side}", wallX,
+                LastShiftShipDimensions.PassageMinZ(passage), LastShiftShipDimensions.OpeningMinZ(near));
+            CreatePassageEndWall(ship, $"PassageEnd_{side}", wallX,
+                LastShiftShipDimensions.OpeningMaxZ(near), LastShiftShipDimensions.PassageMaxZ(passage));
+            CreateCube($"PassageEnd_{side}_Lintel", ship,
+                new Vector3(wallX, (CeilingInnerHeight + LastShiftZoneDoor.OpeningHeight) * 0.5f,
+                    LastShiftShipDimensions.OpeningCenterZ(near)),
+                new Vector3(LastShiftZoneDoor.PanelThickness,
+                    CeilingInnerHeight - LastShiftZoneDoor.OpeningHeight,
+                    LastShiftZoneDoor.OpeningWidth), hullMaterial);
+
+            CreateSightlineBaffle(ship, passage);
+        }
+
+        private static void CreatePassageEndWall(Transform ship, string name, float x, float minZ, float maxZ)
+        {
+            if (maxZ - minZ <= 0.0001f) return;
+            CreateCube($"{name}_{(minZ < 0f ? "Fore" : "Aft")}", ship,
+                new Vector3(x, CeilingInnerHeight * 0.5f, (minZ + maxZ) * 0.5f),
+                new Vector3(LastShiftZoneDoor.PanelThickness, CeilingInnerHeight, maxZ - minZ), hullMaterial);
+        }
+
+        /// <summary>
+        /// 시선 차단 배플. <b>이 볼륨은 장식이 아니라 A3 성립 조건이다. 옮기면 T4 가 FAIL 한다.</b>
+        ///
+        /// 통로 한가운데를 가로질러 세우는 판이며, 근거는 <see cref="LastShiftShipDimensions.BaffleCenterZ"/>
+        /// 주석에 있다 — 두 개구부를 모두 지나는 직선은 통로 중앙에서 반드시 이 1.6m 구간을
+        /// 지나므로, 그 구간을 바닥부터 천장까지 막으면 관통 직선이 하나도 남지 않는다.
+        /// 양옆 1.0m 씩은 열려 있어 걸어서는 돌아 지나갈 수 있다.
+        ///
+        /// 외형(랙·캐비닛)은 아트 CT-11 소관이다. 여기서 정하는 것은 존재와 위치·치수뿐이다.
+        /// </summary>
+        private static void CreateSightlineBaffle(Transform ship, int passage)
+        {
+            var side = passage <= 0 ? "A" : "B";
+            CreateCube($"SightlineBaffle_{side}", ship,
+                new Vector3(LastShiftShipDimensions.PassageCenterX(passage),
+                    CeilingInnerHeight * 0.5f,
+                    LastShiftShipDimensions.BaffleCenterZ(passage)),
+                new Vector3(LastShiftShipDimensions.BaffleThickness,
+                    CeilingInnerHeight,
+                    LastShiftShipDimensions.BaffleWidth), hullMaterial);
+        }
 
         /// <summary>
         /// 벌크헤드 한 장 + 그 가운데 문 하나(N0b). 예전에는 벌크헤드 폭이 3.2 라 좌우로

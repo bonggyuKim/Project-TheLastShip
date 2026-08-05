@@ -59,8 +59,13 @@ namespace DoodleUp.Tests.EditMode
                 // 그래서 "보인다" 가 아니라 "배 안쪽을 향한다" 만 검증한다 — 스폰 시선이 조종석
                 // 끝벽을 향하면 첫 프레임에 갈 방향이 읽히지 않는다.
                 Assert.That(forward.x, Is.GreaterThan(0f), "스폰 시선은 선미(엔진실) 쪽이어야 한다.");
-                Assert.That(spawn.x, Is.LessThan(LastShiftShipDimensions.ZoneMaxX(LastShiftZone.Cockpit)),
-                    "스폰은 조종석 안이어야 한다.");
+                // 기준은 구역이 아니라 <b>방</b>이다. 예전에는 ZoneMaxX 로 쟀는데, 통로 A 도
+                // 조종석 구역이라 스폰이 통로 한복판(x -8.6)으로 들어가도 이 줄이 PASS 했다.
+                Assert.That(spawn.x, Is.LessThan(LastShiftShipDimensions.RoomMaxX(LastShiftZone.Cockpit)),
+                    "스폰은 조종석 방 안이어야 한다 — 구역으로 재면 통로도 조종석이다.");
+                Assert.That(spawn.z, Is.InRange(
+                        -LastShiftShipDimensions.HalfWidth, LastShiftShipDimensions.HalfWidth),
+                    "4인 슬롯의 z 폭이 방 폭을 넘으면 한 명이 벽 안에서 시작한다.");
             }
         }
 

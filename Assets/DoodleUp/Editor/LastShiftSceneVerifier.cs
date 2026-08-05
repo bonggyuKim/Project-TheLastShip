@@ -87,7 +87,9 @@ namespace DoodleUp.Editor
             Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
             VerifyZoneDoors(roots);
             var sightRange = VerifyCameraCoversTheShip(roots, player.TargetCamera);
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={player.TargetCamera.farClipPlane:F0} sightRange={sightRange:F1} result=PASS");
+            var (rays, gapZ) = VerifyZonesCannotSeeEachOther();
+            var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={player.TargetCamera.farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
         }
 
         /// <summary>
@@ -176,6 +178,145 @@ namespace DoodleUp.Editor
                     $"boundary {boundary} bulkhead must cover z [{openingMax:F2}, {wallMax:F2}] beside the door");
             }
         }
+
+        /// <summary>
+        /// 구역끼리 서로 보이지 않는가(A3). 구역 쌍 셋에 대해 각각 눈 3자리 × 표적 3자리로
+        /// 9발씩, 모두 27발을 쏘고 전부 막혀야 한다.
+        ///
+        /// 조종석↔엔진실을 빼먹은 것이 이번 사건의 원인이다. 조종석↔산소실만 보면 통로가
+        /// 둘 다 꺾여 있어 자동으로 막히지만, 통로 하나만 지나는 인접 구역 쌍은 통로가
+        /// 직선이면 그대로 뚫린다. 그래서 인접 쌍 둘을 반드시 함께 본다.
+        ///
+        /// 다만 레이캐스트만으로는 부족하다. 유한 개를 쏘는 이상 폭 0 의 칼날 틈은 확률적으로
+        /// 안 걸리고, 그때 검사는 "여유 0" 을 "막혔음" 으로 보고한다. 그래서 왜 막혔는지의
+        /// 여유값인 GAP_Z 를 함께 재서 돌려준다 — 실측이므로 다음에 누가 개구부를 0.1m 옮길 때
+        /// 남은 여유가 계산 없이 보인다.
+        /// </summary>
+        private static (int rays, float gapZ) VerifyZonesCannotSeeEachOther()
+        {
+            var pairs = new[]
+            {
+                (from: LastShiftZone.Cockpit, to: LastShiftZone.Utility),
+                (from: LastShiftZone.Utility, to: LastShiftZone.LifeSupport),
+                (from: LastShiftZone.Cockpit, to: LastShiftZone.LifeSupport)
+            };
+
+            // 씬을 막 열었거나 막 만든 직후에는 콜라이더의 물리 트랜스폼이 아직 반영되지 않아
+            // 레이가 전부 빈 공간을 지나간다. 그 상태로 두면 이 검사가 "27발 전부 안 막힘" 이라는
+            // 요란한 실패가 아니라, 형상을 조금만 손보면 조용히 뒤집히는 불안정한 검사가 된다.
+            UnityEngine.Physics.SyncTransforms();
+
+            var rays = 0;
+            foreach (var pair in pairs)
+                foreach (var eye in SightSamples(pair.from, pair.to))
+                    foreach (var target in SightSamples(pair.to, pair.from))
+                    {
+                        rays++;
+                        var direction = target - eye;
+                        var distance = direction.magnitude;
+                        // 막혔다 = 눈과 표적 사이에 무엇이든 있다. 무엇이 막았는지는 보지 않는다 —
+                        // 벌크헤드든 통로 벽이든 캐비닛이든 시선을 끊었으면 조건은 만족이다.
+                        // UnityEngine.Physics 를 명시한다 — DoodleUp.Physics 네임스페이스가 있어
+                        // 짧게 쓰면 그쪽으로 해석된다.
+                        Require(UnityEngine.Physics.Raycast(eye, direction / distance, distance),
+                            $"{pair.from}→{pair.to} sightline from {eye} to {target} is not blocked");
+                    }
+
+            // 실측 GAP_Z. 상수를 다시 읽는 것이 아니라 개구부 구간에서 직접 뺀다. 통로 A 는
+            // 개구부 0·1, 통로 B 는 3·2 이고 둘 중 좁은 쪽이 실제 여유다.
+            var gapA = LastShiftShipDimensions.OpeningMinZ(0) - LastShiftShipDimensions.OpeningMaxZ(1);
+            var gapB = LastShiftShipDimensions.OpeningMinZ(3) - LastShiftShipDimensions.OpeningMaxZ(2);
+            var gapZ = Mathf.Min(gapA, gapB);
+            Require(gapZ > 0f,
+                $"openings inside a passage must not overlap in z (measured gap {gapZ:F2}m)");
+            return (rays, gapZ);
+        }
+
+        /// <summary>
+        /// 한 방 안에서 시선을 쏘거나 받을 세 자리. 눈높이는 서 있는 승무원 기준 1.55m 다.
+        ///
+        /// 세 자리 모두 <b>문턱 쪽 벽 밀착</b>이다. 예전에는 방 중심의 좌/중/우를 잡았는데,
+        /// 그러면 새는 자리를 비껴간다 — 누출은 벽에 붙어 문턱 가까이 선 자리에서 가장 크고,
+        /// 방 중심(문턱에서 4m)에서는 필요한 z 가 1.667 이라 inset 2.6 이 그것보다 크긴 해도
+        /// 여유가 얇다. 벽에서 0.3m, 문턱에서 1m 안으로 잡으면 설비(배플)가 사라지는 순간
+        /// 이 검사가 FAIL 한다.
+        ///
+        /// 기준은 구역이 아니라 <b>방</b>이다. 구역으로 재면 통로 안 좌표가 "조종석 안" 으로
+        /// 판정돼, 이미 벽에 막힌 자리에서 쏘고 PASS 를 받게 된다.
+        /// </summary>
+        private static Vector3[] SightSamples(LastShiftZone zone, LastShiftZone toward)
+        {
+            const float eyeHeight = 1.55f;
+            const float wallInset = 0.3f;
+            const float thresholdInset = 1.0f;
+            var forward = LastShiftShipDimensions.RoomCenterX(toward) > LastShiftShipDimensions.RoomCenterX(zone);
+            // 상대 구역 쪽 문턱에서 1m 안. 그 자리가 이 방에서 가장 크게 새는 자리다.
+            var x = forward
+                ? LastShiftShipDimensions.RoomMaxX(zone) - thresholdInset
+                : LastShiftShipDimensions.RoomMinX(zone) + thresholdInset;
+            var inset = LastShiftShipDimensions.HalfWidth - wallInset;
+            return new[]
+            {
+                new Vector3(x, eyeHeight, -inset),
+                new Vector3(x, eyeHeight, 0f),
+                new Vector3(x, eyeHeight, inset)
+            };
+        }
+
+        /// <summary>
+        /// 사람과 물건이 놓이는 자리가 실제 <b>형상</b> 안인가. 여기서 구역 범위를 쓰면 안 된다 —
+        /// 통로도 조종석 구역이므로 통로 한가운데 좌표가 "조종석 안" 으로 통과한다. 실제로
+        /// 그렇게 됐었다: 스폰이 x -8.6 으로 통로 A 한복판이었고 4인 슬롯 중 하나는 통로 z 범위
+        /// 밖(벽 안)이었으며, Tether 받침대도 통로 옆 솔리드 안이었는데 셋 다 검사를 통과했다.
+        ///
+        /// 그래서 방 셋과 통로 둘의 x·z 범위를 실제로 나열하고, 그 중 어느 하나에 완전히
+        /// 들어가는지를 본다. 반환값은 가장 아슬아슬한 자리의 여유다 — 다음에 누가 좌표를
+        /// 0.2m 옮길 때 남은 여유가 계산 없이 보인다.
+        /// </summary>
+        private static float VerifyOccupiedPointsSitInsideRealGeometry()
+        {
+            var points = new (string name, Vector3 at)[]
+            {
+                ("spawn0", LastShiftNetworkSession.SpawnForSlot(0)),
+                ("spawn1", LastShiftNetworkSession.SpawnForSlot(1)),
+                ("spawn2", LastShiftNetworkSession.SpawnForSlot(2)),
+                ("spawn3", LastShiftNetworkSession.SpawnForSlot(3)),
+                ("Battery", LastShiftShipDimensions.BatteryNominal),
+                ("CoolingCanister", LastShiftShipDimensions.CoolingNominal),
+                ("PatchPlate", LastShiftShipDimensions.PatchPlateNominal),
+                ("Tether", LastShiftShipDimensions.TetherNominal)
+            };
+
+            var worst = float.MaxValue;
+            foreach (var point in points)
+            {
+                var clearance = BestGeometryClearance(point.at);
+                Require(clearance > 0f,
+                    $"{point.name} at {point.at:F2} is not inside any room or passage (clearance {clearance:F2}m)");
+                worst = Mathf.Min(worst, clearance);
+            }
+            return worst;
+        }
+
+        /// <summary>
+        /// 이 점이 방·통로 중 가장 여유 있게 들어가는 곳에서의 여유. 어디에도 안 들어가면 음수다.
+        /// </summary>
+        private static float BestGeometryClearance(Vector3 point)
+        {
+            var best = float.MinValue;
+            foreach (LastShiftZone zone in Enum.GetValues(typeof(LastShiftZone)))
+                best = Mathf.Max(best, Clearance(point,
+                    LastShiftShipDimensions.RoomMinX(zone), LastShiftShipDimensions.RoomMaxX(zone),
+                    -LastShiftShipDimensions.HalfWidth, LastShiftShipDimensions.HalfWidth));
+            for (var passage = 0; passage < 2; passage++)
+                best = Mathf.Max(best, Clearance(point,
+                    LastShiftShipDimensions.PassageMinX(passage), LastShiftShipDimensions.PassageMaxX(passage),
+                    LastShiftShipDimensions.PassageMinZ(passage), LastShiftShipDimensions.PassageMaxZ(passage)));
+            return best;
+        }
+
+        private static float Clearance(Vector3 point, float minX, float maxX, float minZ, float maxZ) =>
+            Mathf.Min(point.x - minX, maxX - point.x, point.z - minZ, maxZ - point.z);
 
         /// <summary>
         /// [min, max] 구간이 판들에 실제로 덮였는가. 판 하나가 통째로 덮거나, 여러 판이

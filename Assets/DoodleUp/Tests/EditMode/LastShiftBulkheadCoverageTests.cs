@@ -102,6 +102,113 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        [Test]
+        public void RoomsAndPassagesTileTheHullWithoutGapOrOverlap()
+        {
+            // 방 셋 + 통로 둘이 전장을 남김없이 채우는가. 하나라도 어긋나면 그 틈에 놓인
+            // 좌표가 "어느 형상에도 안 들어감" 이 되어 형상 검사가 통과할 수 없다.
+            Assert.That(LastShiftShipDimensions.RoomLength * 3f + LastShiftShipDimensions.PassageLength * 2f,
+                Is.EqualTo(LastShiftShipDimensions.InteriorLength).Within(0.0001f));
+            Assert.That(LastShiftShipDimensions.RoomMinX(LastShiftZone.Cockpit),
+                Is.EqualTo(-LastShiftShipDimensions.HalfLength).Within(0.0001f));
+            Assert.That(LastShiftShipDimensions.RoomMaxX(LastShiftZone.LifeSupport),
+                Is.EqualTo(LastShiftShipDimensions.HalfLength).Within(0.0001f));
+            for (var passage = 0; passage < 2; passage++)
+            {
+                var before = passage == 0 ? LastShiftZone.Cockpit : LastShiftZone.Utility;
+                var after = passage == 0 ? LastShiftZone.Utility : LastShiftZone.LifeSupport;
+                Assert.That(LastShiftShipDimensions.PassageMinX(passage),
+                    Is.EqualTo(LastShiftShipDimensions.RoomMaxX(before)).Within(0.0001f));
+                Assert.That(LastShiftShipDimensions.PassageMaxX(passage),
+                    Is.EqualTo(LastShiftShipDimensions.RoomMinX(after)).Within(0.0001f));
+            }
+
+            // 구역 경계는 엔진실 방의 양 끝과 같은 자리여야 한다. 문이 달리는 자리와 압력
+            // 판정 자리가 갈라지면 문을 닫아도 판정면에 차단물이 없어 압력이 안 끊긴다.
+            Assert.That(LastShiftShipDimensions.ZoneBoundaryX,
+                Is.EqualTo(LastShiftShipDimensions.RoomMaxX(LastShiftZone.Utility)).Within(0.0001f),
+                "ZoneBoundaryX 는 const 라 RoomMaxX 와 따로 계산된다 — 둘이 어긋나면 여기서 잡는다.");
+        }
+
+        [Test]
+        public void SightlineBaffleBlocksEveryStraightLineThroughAPassage()
+        {
+            // 배플이 A3 를 성립시키는 근거를 식으로 고정한다. 두 개구부를 모두 지나는 직선은
+            // 통로 중앙(t=0.5)에서 반드시 두 개구부 구간의 중점 구간 안에 있다. 그 구간을
+            // 막으면 관통 직선이 표본이 아니라 전부 사라진다.
+            for (var passage = 0; passage < 2; passage++)
+            {
+                var near = LastShiftShipDimensions.BaffleNearOpening(passage);
+                var far = LastShiftShipDimensions.BaffleFarOpening(passage);
+                var midMin = (LastShiftShipDimensions.OpeningMinZ(near) + LastShiftShipDimensions.OpeningMinZ(far)) * 0.5f;
+                var midMax = (LastShiftShipDimensions.OpeningMaxZ(near) + LastShiftShipDimensions.OpeningMaxZ(far)) * 0.5f;
+
+                Assert.That(LastShiftShipDimensions.BaffleMinZ(passage), Is.LessThanOrEqualTo(midMin + 0.0001f),
+                    $"통로 {passage} 배플이 관통 직선 구간의 하단을 덮지 않는다.");
+                Assert.That(LastShiftShipDimensions.BaffleMaxZ(passage), Is.GreaterThanOrEqualTo(midMax - 0.0001f),
+                    $"통로 {passage} 배플이 관통 직선 구간의 상단을 덮지 않는다.");
+                Assert.That(LastShiftShipDimensions.BaffleMinZ(passage),
+                    Is.GreaterThanOrEqualTo(LastShiftShipDimensions.PassageMinZ(passage) - 0.0001f));
+                Assert.That(LastShiftShipDimensions.BaffleMaxZ(passage),
+                    Is.LessThanOrEqualTo(LastShiftShipDimensions.PassageMaxZ(passage) + 0.0001f));
+            }
+
+            // 그리고 사람은 지나갈 수 있어야 한다. 배플이 통행까지 막으면 격리가 아니라 폐쇄다.
+            // CharacterController 지름 0.56m 에 여유를 둔다.
+            Assert.That(LastShiftShipDimensions.BaffleFreeStrip, Is.GreaterThan(0.56f),
+                "배플 옆 통행 폭이 승무원 지름보다 좁으면 통로가 막힌다.");
+        }
+
+        [Test]
+        public void FixedPointsSitInsideARoomOrPassageNotJustInsideAZone()
+        {
+            // PM 이 찾은 두 자리(스폰·Tether)를 코드로 못 박는다. 구역으로 재면 통로 한복판도
+            // 통과하므로, 방 또는 통로의 실제 x·z 범위 안인지를 본다.
+            var points = new (string name, Vector3 at)[]
+            {
+                ("spawn0", LastShiftNetworkSession.SpawnForSlot(0)),
+                ("spawn1", LastShiftNetworkSession.SpawnForSlot(1)),
+                ("spawn2", LastShiftNetworkSession.SpawnForSlot(2)),
+                ("spawn3", LastShiftNetworkSession.SpawnForSlot(3)),
+                ("Battery", LastShiftShipDimensions.BatteryNominal),
+                ("CoolingCanister", LastShiftShipDimensions.CoolingNominal),
+                ("PatchPlate", LastShiftShipDimensions.PatchPlateNominal),
+                ("Tether", LastShiftShipDimensions.TetherNominal)
+            };
+
+            foreach (var point in points)
+                Assert.That(Clearance(point.at), Is.GreaterThan(0f),
+                    $"{point.name} {point.at} 이 방·통로 어디에도 들어가지 않는다 — 벽 안이거나 통로 옆 솔리드다.");
+
+            // Tether 는 위치에 의미가 있다. 스폰에서 조준해 바로 잡히는 거리여야 하고
+            // (씬 빌더 주석 참조), 도킹 트리거와 겹치면 시작하자마자 도킹이 성립한다.
+            var eye = LastShiftSandboxController.PlayerSpawn + new Vector3(0f, 1.55f, 0f);
+            Assert.That(Vector3.Distance(eye, LastShiftShipDimensions.TetherNominal),
+                Is.LessThan(LastShiftPlayerController.GrabDistance),
+                "Tether 가 시작 자리 사거리 밖이면 상시 grab 대상이라는 성질이 사라진다.");
+            Assert.That(Vector3.Distance(
+                    LastShiftSandboxController.PlayerSpawn, LastShiftShipDimensions.TetherRackPosition),
+                Is.GreaterThan(LastShiftSandboxController.DockingTriggerRadius),
+                "받침대가 도킹 트리거 반경 안이면 시작 자리와 도킹 자리가 구분되지 않는다.");
+        }
+
+        private static float Clearance(Vector3 point)
+        {
+            var best = float.MinValue;
+            foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
+                best = Mathf.Max(best, Box(point,
+                    LastShiftShipDimensions.RoomMinX(zone), LastShiftShipDimensions.RoomMaxX(zone),
+                    -LastShiftShipDimensions.HalfWidth, LastShiftShipDimensions.HalfWidth));
+            for (var passage = 0; passage < 2; passage++)
+                best = Mathf.Max(best, Box(point,
+                    LastShiftShipDimensions.PassageMinX(passage), LastShiftShipDimensions.PassageMaxX(passage),
+                    LastShiftShipDimensions.PassageMinZ(passage), LastShiftShipDimensions.PassageMaxZ(passage)));
+            return best;
+        }
+
+        private static float Box(Vector3 point, float minX, float maxX, float minZ, float maxZ) =>
+            Mathf.Min(point.x - minX, maxX - point.x, point.z - minZ, maxZ - point.z);
+
         private static void AssertGap(int upper, int lower)
         {
             var gap = LastShiftShipDimensions.OpeningMinZ(upper) - LastShiftShipDimensions.OpeningMaxZ(lower);
