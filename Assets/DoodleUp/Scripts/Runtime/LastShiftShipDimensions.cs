@@ -60,7 +60,15 @@ namespace DoodleUp.Runtime
         //   통로 A -10~-4 / B +4~+10                              (각 6m)
         //   구역 조종석 -18~-4 / 엔진실 -4~+4 / 산소실 +4~+18      (14/8/14)
 
-        /// <summary>통로 길이(x). 판독선 거리와 같은 값이다(기획 §2.3 — 6m).</summary>
+        /// <summary>
+        /// 통로 길이(x). 확정 치수 6m 이며 <b>선체 배치값</b>이다.
+        ///
+        /// 예전 주석은 이 값을 "판독선 거리와 같다" 고 적어 두었는데 그 등식은 지금 흔들리는
+        /// 중이다 — 배플이 두 개구부를 모두 지나는 직선을 전부 막으면서 통로 반대편 개구부를
+        /// 마주 보는 판독 자체가 다시 검토에 들어갔다. 판독 거리는 표현 요건(글자 크기·발광
+        /// 세기)이라 아트·기획 소관이고, 치수 정본이 그 값을 대신 정해서는 안 된다.
+        /// 여기서 이 값이 뜻하는 것은 방과 방 사이에 놓인 통로의 길이뿐이다.
+        /// </summary>
         public const float PassageLength = 6f;
 
         /// <summary>방 하나의 x 길이. 전장에서 통로 둘을 빼고 셋으로 나눈다 — (36 - 12) / 3 = 8m.</summary>
@@ -185,6 +193,46 @@ namespace DoodleUp.Runtime
 
         /// <summary>개구부 z 구간의 상한.</summary>
         public static float OpeningMaxZ(int opening) => OpeningCenterZ(opening) + OpeningWidth * 0.5f;
+
+        /// <summary>
+        /// 개구부가 놓인 x 평면. 통로 양 끝이 곧 개구부다 — 접합부가 넷이 되는 것은 방·통로가
+        /// 번갈아 놓인 데서 나오는 기하학적 귀결이므로 여기서도 통로 범위에서 파생시킨다.
+        /// </summary>
+        public static float OpeningX(int opening) => opening switch
+        {
+            0 => PassageMinX(0),
+            1 => PassageMaxX(0),
+            2 => PassageMinX(1),
+            _ => PassageMaxX(1)
+        };
+
+        /// <summary>
+        /// 개구부의 -x 쪽에 붙은 공간의 중심 x. 개구부 너머가 어느 구역인지를 판정할 때
+        /// 경계 평면에서 ε 만큼 민 좌표를 쓰지 않으려고 둔다 — 개구부 1·2 는 x 가 구역 판정
+        /// 경계와 <b>같은 값</b>이라, ε 부호를 한 번 잘못 잡으면 판독이 통째로 반대편 구역을
+        /// 가리키고도 값이 그럴듯해서 눈에 띄지 않는다. 공간 중심은 그런 여지가 없다.
+        ///
+        ///   개구부 0 : 조종석 방 | 통로 A
+        ///   개구부 1 : 통로 A    | 엔진실 방
+        ///   개구부 2 : 엔진실 방 | 통로 B
+        ///   개구부 3 : 통로 B    | 산소실 방
+        /// </summary>
+        public static float SpaceCenterXBefore(int opening) => opening switch
+        {
+            0 => RoomCenterX(LastShiftZone.Cockpit),
+            1 => PassageCenterX(0),
+            2 => RoomCenterX(LastShiftZone.Utility),
+            _ => PassageCenterX(1)
+        };
+
+        /// <summary>개구부의 +x 쪽에 붙은 공간의 중심 x.</summary>
+        public static float SpaceCenterXAfter(int opening) => opening switch
+        {
+            0 => PassageCenterX(0),
+            1 => RoomCenterX(LastShiftZone.Utility),
+            2 => PassageCenterX(1),
+            _ => RoomCenterX(LastShiftZone.LifeSupport)
+        };
 
         // ── 시선 차단 배플 ───────────────────────────────────────────────────
         // <b>이 볼륨은 장식이 아니라 A3 성립 조건이다. 옮기면 T4 가 FAIL 한다.</b>

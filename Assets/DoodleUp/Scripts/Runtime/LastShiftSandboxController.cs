@@ -46,6 +46,11 @@ namespace DoodleUp.Runtime
         private AudioSource sirenAudio;
         private LastShiftDoorState doorState = LastShiftDoorState.AllOpen;
 
+        // 판독(T2)이 읽는 미억제 계통 마스크. 클라이언트에서는 손상 판정과 수리 장부가 없어
+        // 같은 식을 다시 계산할 수 없으므로 서버가 접은 값을 그대로 받는다.
+        private byte replicatedUncontainedSystemMask;
+        private bool usesReplicatedState;
+
         public LastShiftPreset CurrentPreset => currentPreset;
         public LastShiftShipState CurrentState => currentState;
         public LastShiftPlayerController[] Players => players;
@@ -78,6 +83,105 @@ namespace DoodleUp.Runtime
         public LastShiftZonePressures ZonePressures => zonePressures;
 
         public float PressureOf(LastShiftZone zone) => zonePressures[zone];
+
+        /// <summary>
+        /// 개구부 너머 상태의 3단계 등급(CT-10 T2). 개구부 프레임에 붙는 게이지가 읽는 값이다.
+        ///
+        /// <b>문 상태를 보지 않는다.</b> 여기 어디에도 <see cref="doorState"/> 가 들어가지
+        /// 않는다 — 열어야 수치가 보이면 "확인" 과 "압력 혼합" 이 같은 동작이 되어 판단이
+        /// 사라진다(기획 §3.1.2). 닫힌 문 앞에서도 같은 값이 읽힌다.
+        ///
+        /// <b>얼마나 떨어져서 읽히는가는 여기서 정하지 않는다.</b> 그건 게이지의 크기·밝기이고
+        /// 아트 소관이다. 이 API 는 거리와 무관하게 언제나 같은 값을 돌려준다.
+        /// </summary>
+        public LastShiftDistressReading DistressOf(LastShiftZone zone)
+        {
+            return LastShiftDoorDistress.Evaluate(
+                zone, zonePressures[zone], IsZoneVacuum(zone), WorstUncontainedClockProgress(zone));
+        }
+
+        /// <summary>
+        /// 이 개구부 너머 공간의 판독값. 보는 사람의 x 로 어느 쪽이 "너머" 인지 정한다.
+        ///
+        /// 개구부 1·2 는 x 가 구역 판정 경계와 <b>같은 값</b>이라, 경계 평면에서 ε 만큼 민
+        /// 좌표로 구역을 정하면 부호를 한 번 잘못 잡았을 때 판독이 통째로 반대편 구역을
+        /// 가리키고도 값이 그럴듯해서 안 보인다. 그래서 방·통로의 <b>중심</b>으로 판정한다.
+        /// </summary>
+        public LastShiftDistressReading DistressBeyondOpening(int opening, float viewerX)
+        {
+            var beyondX = viewerX <= LastShiftShipDimensions.OpeningX(opening)
+                ? LastShiftShipDimensions.SpaceCenterXAfter(opening)
+                : LastShiftShipDimensions.SpaceCenterXBefore(opening);
+            return DistressOf(LastShiftZoneAtlas.Resolve(new Vector3(beyondX, 0f, 0f)));
+        }
+
+        /// <summary>
+        /// 이 구역에서 아직 억제되지 않은 손상 계통 중 가장 진행한 시계. 손상이 없으면 음수다.
+        ///
+        /// 계통이 어느 구역에 속하는지는 부품 정위치가 정한다 — PatchPlate 가 산소실에 있으니
+        /// 파공은 산소실 일이다. 그 대응이 곧 "고치러 그 구역까지 간다" 이고, 판독도 같은
+        /// 대응을 써야 게이지가 가리키는 구역과 실제로 가야 하는 구역이 어긋나지 않는다.
+        /// </summary>
+        private float WorstUncontainedClockProgress(LastShiftZone zone)
+        {
+            var worst = -1f;
+            var mask = UncontainedSystemMask;
+            for (var index = 0; index < LastShiftSystemMap.SystemCount; index++)
+            {
+                if ((mask & (1 << index)) == 0) continue;
+                var system = (LastShiftShipSystem)index;
+                if (ZoneOfSystem(system) != zone) continue;
+                worst = Mathf.Max(worst, LastShiftDoorDistress.ClockProgress(currentState, system));
+            }
+            return worst;
+        }
+
+        /// <summary>
+        /// 손상됐고 아직 억제되지 않은 계통. 판독(T2)이 이 마스크 하나만 읽는다.
+        ///
+        /// 마스크로 접어 두는 이유는 클라이언트다. 손상 판정(<see cref="damagedSystemMask"/>)과
+        /// 수리 장부의 완료 플래그는 서버에만 있고 스냅샷에는 성능 포기 마스크만 실린다. 클라이언트가
+        /// 같은 식을 다시 계산하면 "고쳤는데 게이지는 계속 위험" 이 되는데, 그건 화면이 조용히
+        /// 틀리는 형태라 눈에 띄지 않는다. 그래서 서버가 접은 결과를 그대로 실어 보낸다.
+        /// </summary>
+        public byte UncontainedSystemMask =>
+            usesReplicatedState ? replicatedUncontainedSystemMask : ComputeUncontainedSystemMask();
+
+        private byte ComputeUncontainedSystemMask()
+        {
+            byte mask = 0;
+            var containment = BuildContainment();
+            for (var index = 0; index < LastShiftSystemMap.SystemCount; index++)
+            {
+                var system = (LastShiftShipSystem)index;
+                if (!IsSystemDamaged(system) || IsSystemContained(containment, system)) continue;
+                mask |= (byte)(1 << index);
+            }
+            return mask;
+        }
+
+        private static bool IsSystemContained(in LastShiftContainment containment, LastShiftShipSystem system) =>
+            system switch
+            {
+                LastShiftShipSystem.Cooling => containment.CoolingContained,
+                LastShiftShipSystem.Power => containment.PowerContained,
+                _ => containment.OxygenContained
+            };
+
+        /// <summary>계통이 걸린 구역. 부품 정위치가 정본이며 <see cref="BreachZone"/> 과 같은 규칙이다.</summary>
+        private LastShiftZone ZoneOfSystem(LastShiftShipSystem system)
+        {
+            var item = FindItem(LastShiftSystemMap.RoleFor(system));
+            if (item != null) return LastShiftZoneAtlas.Resolve(item.NominalPosition);
+            // 부품이 없는 최소 조립에서는 치수 정본의 정위치를 본다. Vector3.zero 로 떨어지면
+            // 세 계통이 전부 엔진실로 몰려 판독이 한 구역에만 쌓인다.
+            return LastShiftZoneAtlas.Resolve(system switch
+            {
+                LastShiftShipSystem.Cooling => LastShiftShipDimensions.CoolingNominal,
+                LastShiftShipSystem.Power => LastShiftShipDimensions.BatteryNominal,
+                _ => LastShiftShipDimensions.PatchPlateNominal
+            });
+        }
 
         /// <summary>구역 문 개폐 상태. 닫힌 경계는 압력 교환이 0 이 된다(기획 §2.2.1).</summary>
         public LastShiftDoorState Doors => doorState;
@@ -204,6 +308,8 @@ namespace DoodleUp.Runtime
             HasAppliedImpact = value.HasAppliedImpact;
             verdict = value.Verdict;
             repairLedger.ApplyReplicatedSacrificeMask(value.SacrificedSystemMask);
+            replicatedUncontainedSystemMask = value.UncontainedSystemMask;
+            usesReplicatedState = true;
             lastTick = new LastShiftTickReport
             {
                 ThrustCeiling = value.ThrustCeiling,

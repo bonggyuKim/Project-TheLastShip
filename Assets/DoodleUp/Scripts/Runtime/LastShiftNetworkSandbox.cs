@@ -150,7 +150,8 @@ namespace DoodleUp.Runtime
                 UtilityPressure = sandbox.PressureOf(LastShiftZone.Utility),
                 LifeSupportPressure = sandbox.PressureOf(LastShiftZone.LifeSupport),
                 CockpitUtilityDoorOpen = sandbox.IsDoorOpen(0),
-                UtilityLifeSupportDoorOpen = sandbox.IsDoorOpen(1)
+                UtilityLifeSupportDoorOpen = sandbox.IsDoorOpen(1),
+                UncontainedSystemMask = sandbox.UncontainedSystemMask
             };
         }
 

@@ -39,6 +39,12 @@ namespace DoodleUp.Runtime
         public bool CockpitUtilityDoorOpen;
         public bool UtilityLifeSupportDoorOpen;
 
+        /// <summary>
+        /// T2 판독이 읽는 미억제 손상 계통. 손상 판정과 수리 완료 플래그는 서버에만 있으므로
+        /// 클라이언트는 이 마스크 없이는 같은 등급을 낼 수 없다 — 고쳐도 게이지가 안 내려간다.
+        /// </summary>
+        public byte UncontainedSystemMask;
+
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref Preset);
@@ -70,6 +76,7 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref LifeSupportPressure);
             serializer.SerializeValue(ref CockpitUtilityDoorOpen);
             serializer.SerializeValue(ref UtilityLifeSupportDoorOpen);
+            serializer.SerializeValue(ref UncontainedSystemMask);
         }
 
         public bool Equals(LastShiftNetworkSnapshot other)
@@ -102,7 +109,8 @@ namespace DoodleUp.Runtime
                    UtilityPressure.Equals(other.UtilityPressure) &&
                    LifeSupportPressure.Equals(other.LifeSupportPressure) &&
                    CockpitUtilityDoorOpen == other.CockpitUtilityDoorOpen &&
-                   UtilityLifeSupportDoorOpen == other.UtilityLifeSupportDoorOpen;
+                   UtilityLifeSupportDoorOpen == other.UtilityLifeSupportDoorOpen &&
+                   UncontainedSystemMask == other.UncontainedSystemMask;
         }
     }
 }
