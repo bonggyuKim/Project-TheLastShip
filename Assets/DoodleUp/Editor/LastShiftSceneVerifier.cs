@@ -86,7 +86,51 @@ namespace DoodleUp.Editor
             Require(sandboxes[0].Items.All(item => items.Contains(item)), "sandbox item references must match scene grabbables");
             Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
             VerifyZoneDoors(roots);
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 result=PASS");
+            var sightRange = VerifyCameraCoversTheShip(roots, player.TargetCamera);
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={player.TargetCamera.farClipPlane:F0} sightRange={sightRange:F1} result=PASS");
+        }
+
+        /// <summary>
+        /// 카메라 far clip 이 씬을 실제로 덮는가. 배 대각선을 손으로 계산해 비교하면 안 된다 —
+        /// 화면에서 잘리는 것은 선체가 아니라 창밖 우주판과 별이고, 그것들은 선체 바깥에
+        /// 따로 놓여 있어 선체 치수에서 나오지 않는다. 그래서 씬에 실제로 놓인 오브젝트의
+        /// 좌표 범위를 재고, 승무원이 설 수 있는 가장 먼 자리에서 가장 먼 오브젝트까지의
+        /// 거리를 기준으로 삼는다.
+        ///
+        /// 반환값은 그 최대 시거리다. 로그에 남겨 두면 다음에 배를 키울 때 far clip 여유가
+        /// 얼마나 남았는지 계산 없이 보인다.
+        /// </summary>
+        private static float VerifyCameraCoversTheShip(GameObject[] roots, Camera camera)
+        {
+            var all = roots.SelectMany(root => root.GetComponentsInChildren<Renderer>(true)).ToArray();
+            Require(all.Length > 0, "scene must contain renderers");
+            var scene = all[0].bounds;
+            foreach (var renderer in all) scene.Encapsulate(renderer.bounds);
+
+            // 승무원이 설 수 있는 가장 먼 두 자리. 눈높이는 카메라 로컬 y 를 그대로 쓴다.
+            var eyeHeight = camera.transform.localPosition.y;
+            var corners = new[]
+            {
+                new Vector3(-LastShiftShipDimensions.HalfLength, eyeHeight, -LastShiftShipDimensions.HalfWidth),
+                new Vector3(-LastShiftShipDimensions.HalfLength, eyeHeight, LastShiftShipDimensions.HalfWidth),
+                new Vector3(LastShiftShipDimensions.HalfLength, eyeHeight, -LastShiftShipDimensions.HalfWidth),
+                new Vector3(LastShiftShipDimensions.HalfLength, eyeHeight, LastShiftShipDimensions.HalfWidth)
+            };
+            var sightRange = 0f;
+            foreach (var eye in corners)
+            {
+                // 축마다 눈에서 먼 쪽 끝을 고르면 그 자리에서 보이는 가장 먼 점이 된다.
+                var farthest = new Vector3(
+                    Mathf.Abs(scene.min.x - eye.x) > Mathf.Abs(scene.max.x - eye.x) ? scene.min.x : scene.max.x,
+                    Mathf.Abs(scene.min.y - eye.y) > Mathf.Abs(scene.max.y - eye.y) ? scene.min.y : scene.max.y,
+                    Mathf.Abs(scene.min.z - eye.z) > Mathf.Abs(scene.max.z - eye.z) ? scene.min.z : scene.max.z);
+                sightRange = Mathf.Max(sightRange, Vector3.Distance(eye, farthest));
+            }
+
+            Require(camera.farClipPlane >= sightRange,
+                $"camera far clip {camera.farClipPlane:F0} must cover the {sightRange:F1}m sight range");
+            Require(camera.nearClipPlane < 0.1f, "camera near clip must stay under 0.1m for close item inspection");
+            return sightRange;
         }
 
         /// <summary>
