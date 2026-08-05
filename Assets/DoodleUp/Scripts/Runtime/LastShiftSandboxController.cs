@@ -116,6 +116,24 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 개구부에 붙은 <b>게이지가 실제로 표시하는</b> 판독값. 게이지는 통로 쪽 한 면에만
+        /// 달리므로 보는 사람이 어디에 있든 값이 같다.
+        ///
+        /// <see cref="DistressBeyondOpening"/> 를 단면화하지 않고 접근자를 따로 두는 이유는
+        /// <b>두 가지 "양쪽이 같음" 이 성질이 다르기 때문</b>이다. 개구부 0·3 이 양쪽에서 같은
+        /// 값을 내는 것은 방과 통로가 같은 구역이라는 <b>기하 사실</b>이고, 개구부 1·2 가 한 값을
+        /// 내는 것은 게이지를 한쪽에만 달기로 한 <b>배치 결정</b>이다. 한 함수로 합치면 배치가
+        /// 바뀔 때 둘 중 하나만 움직여야 하는데 어느 쪽이 움직여야 하는지가 코드에서 사라진다.
+        ///
+        /// 그래서 이 접근자는 방향을 스스로 정하지 않고 <see cref="LastShiftShipDimensions.GaugeViewerX"/>
+        /// 에 묻는다 — "엔진실" 을 값으로 박아 두면 통로가 늘거나 게이지가 옮겨갈 때 조용히 틀린다.
+        /// </summary>
+        public LastShiftDistressReading GaugeReading(int opening)
+        {
+            return DistressBeyondOpening(opening, LastShiftShipDimensions.GaugeViewerX(opening));
+        }
+
+        /// <summary>
         /// 이 구역에서 아직 억제되지 않은 손상 계통 중 가장 진행한 시계. 손상이 없으면 음수다.
         ///
         /// 계통이 어느 구역에 속하는지는 부품 정위치가 정한다 — PatchPlate 가 산소실에 있으니

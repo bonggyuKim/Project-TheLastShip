@@ -192,6 +192,42 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
+        public void EveryThroughSegmentActuallyIntersectsTheBaffleBox()
+        {
+            // 위 검사와 <b>같은 사실을 다른 계산으로</b> 잰다. 위쪽은 배플 중심 평면에서 보간
+            // 구간을 대수로 덮는 방식이고 — 중심 평면은 판 두께 안의 단면이므로 그것만으로도
+            // 증명은 완결이다 — 이쪽은 두 개구부를 잇는 선분을 실제로 만들어 상자와 교차하는지
+            // 본다. 목적은 증명 보강이 아니라 <b>보간 대수가 틀렸을 때를 잡는 것</b>이다.
+            // 한쪽이 조용히 틀리면 다른 쪽이 남는다.
+            for (var passage = 0; passage < 2; passage++)
+            {
+                var near = LastShiftShipDimensions.BaffleNearOpening(passage);
+                var far = LastShiftShipDimensions.BaffleFarOpening(passage);
+                var nearX = LastShiftShipDimensions.OpeningX(near);
+                var farX = LastShiftShipDimensions.OpeningX(far);
+                var step = 0.05f / LastShiftShipDimensions.OpeningWidth;
+                var missed = 0;
+                var total = 0;
+
+                // 두 개구부 z 구간을 각각 0.05m 로 훑어 모든 조합의 관통 선분을 만든다.
+                for (var a = 0f; a <= 1f + 0.0001f; a += step)
+                for (var b = 0f; b <= 1f + 0.0001f; b += step)
+                {
+                    var from = new Vector2(nearX, Mathf.Lerp(
+                        LastShiftShipDimensions.OpeningMinZ(near), LastShiftShipDimensions.OpeningMaxZ(near), a));
+                    var to = new Vector2(farX, Mathf.Lerp(
+                        LastShiftShipDimensions.OpeningMinZ(far), LastShiftShipDimensions.OpeningMaxZ(far), b));
+                    total++;
+                    if (!LastShiftSightlineProbe.BaffleBlocks(from, to, passage)) missed++;
+                }
+
+                Assert.That(total, Is.GreaterThan(0));
+                Assert.That(missed, Is.EqualTo(0),
+                    $"통로 {passage}: 두 개구부를 잇는 선분 {total}개 중 {missed}개가 배플 상자를 비껴간다.");
+            }
+        }
+
+        [Test]
         public void FixedPointsSitInsideARoomOrPassageNotJustInsideAZone()
         {
             // PM 이 찾은 두 자리(스폰·Tether)를 코드로 못 박는다. 구역으로 재면 통로 한복판도

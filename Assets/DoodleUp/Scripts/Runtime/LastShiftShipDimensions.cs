@@ -206,6 +206,28 @@ namespace DoodleUp.Runtime
             _ => PassageMaxX(1)
         };
 
+        /// <summary>개구부가 속한 통로. 개구부는 통로의 양 끝이므로 둘씩 묶인다.</summary>
+        public static int PassageOfOpening(int opening) => opening <= 1 ? 0 : 1;
+
+        /// <summary>
+        /// 게이지를 읽는 쪽 공간의 x. <b>게이지는 통로 쪽 한 면에만 붙는다.</b>
+        ///
+        /// 양면에 달면 엔진실 방 중앙에서 개구부 1·2 가 동시에 읽혀 조종석·엔진실·산소실
+        /// 세 구역이 한자리에서 들어온다. 배전반 앞에 자리 잡고 뒤만 돌아보면 되므로 금지 규칙
+        /// 166(회피 플레이 억제)이 겨냥한 그림이 <b>일이 가장 많은 방에서</b> 성립한다. 기획 정본
+        /// <c>SIMUL_ZONES ≤ 2</c> 가 그것을 막는 조건이고, 단면 배치가 그 조건의 구현이다.
+        ///
+        /// 방향은 리터럴로 적지 않는다 — 게이지가 향하는 곳은 언제나 그 개구부가 물고 있는
+        /// 통로이고, 통로가 어느 쪽인지는 개구부 x 와 통로 중심 x 의 부호가 정한다.
+        /// </summary>
+        public static float GaugeViewerX(int opening) => PassageCenterX(PassageOfOpening(opening));
+
+        /// <summary>
+        /// 게이지 면의 법선 x 부호. 이 부호와 같은 쪽에 선 사람만 게이지를 읽는다 — 반대쪽은
+        /// 뒷면이다(아트 소관). <c>SIMUL_ZONES</c> 검사가 "앞에 서 있는가" 를 이 값으로 판정한다.
+        /// </summary>
+        public static float GaugeFacingX(int opening) => Mathf.Sign(GaugeViewerX(opening) - OpeningX(opening));
+
         /// <summary>
         /// 개구부의 -x 쪽에 붙은 공간의 중심 x. 개구부 너머가 어느 구역인지를 판정할 때
         /// 경계 평면에서 ε 만큼 민 좌표를 쓰지 않으려고 둔다 — 개구부 1·2 는 x 가 구역 판정
