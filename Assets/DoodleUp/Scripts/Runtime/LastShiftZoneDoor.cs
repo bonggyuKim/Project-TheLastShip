@@ -152,12 +152,33 @@ namespace DoodleUp.Runtime
         public const float ReachDistance = 1.8f;
 
         /// <summary>
-        /// 이 위치에서 조작할 수 있는 문. 경계가 둘뿐이라 전수 조회로 충분하고, 그래야 문이
-        /// 하나만 있는 최소 조립에서도 같은 코드가 돈다.
+        /// 살아 있는 문 목록. 프롬프트가 매 프레임 <see cref="FindOperable"/> 를 부르므로
+        /// 씬 전수 조회를 그때마다 돌리면 안 된다. 문은 씬 빌드 시점에만 생기고 사라지므로
+        /// 자기 등록/해제로 목록을 유지하는 편이 정확하고 싸다.
+        /// </summary>
+        private static readonly System.Collections.Generic.List<LastShiftZoneDoor> Live = new();
+
+        private void OnEnable()
+        {
+            if (!Live.Contains(this)) Live.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            Live.Remove(this);
+        }
+
+        /// <summary>
+        /// 이 위치에서 조작할 수 있는 문. 등록된 문만 훑으므로 문 수에 비례하고 씬 크기와는
+        /// 무관하다 — 배가 커져 문이 늘어도 비용이 오브젝트 수를 따라가지 않는다.
         /// </summary>
         public static LastShiftZoneDoor FindOperable(Vector3 position)
         {
-            var doors = FindObjectsByType<LastShiftZoneDoor>(FindObjectsSortMode.None);
+            // EditMode 조립처럼 OnEnable 이 아직 돌지 않은 구성에서는 목록이 비어 있을 수 있다.
+            // 그때만 전수 조회로 되돌아간다.
+            var doors = Live.Count > 0
+                ? Live.ToArray()
+                : FindObjectsByType<LastShiftZoneDoor>(FindObjectsSortMode.None);
             LastShiftZoneDoor best = null;
             var bestDistance = float.PositiveInfinity;
             foreach (var door in doors)

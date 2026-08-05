@@ -51,6 +51,7 @@ namespace DoodleUp.Runtime
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
         private GUIStyle suitGaugeStyle;
+        private LastShiftSandboxController hudSandbox;
 
         [SerializeField] private LastShiftPlayerController playerController;
         [SerializeField] private Camera playerCamera;
@@ -167,7 +168,10 @@ namespace DoodleUp.Runtime
             var crew = GetComponent<LastShiftCrewOxygen>();
             LastShiftCrewOxygen.DrawGauge(crew, playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0, ref suitGaugeStyle);
 
-            var sandbox = FindFirstObjectByType<LastShiftSandboxController>();
+            // OnGUI 는 이벤트마다(레이아웃·리페인트) 돌므로 씬 전수 조회를 매번 하면 안 된다.
+            // 한 번 찾으면 sandbox 는 씬 수명 동안 바뀌지 않는다.
+            if (hudSandbox == null) hudSandbox = FindFirstObjectByType<LastShiftSandboxController>();
+            var sandbox = hudSandbox;
             if (sandbox == null) return;
             GUI.Box(new Rect(16f, 16f, LastShiftSandboxController.ZonePressureRowWidth + 24f, 62f), GUIContent.none);
             sandbox.DrawZonePressureCells(28f, 28f);
