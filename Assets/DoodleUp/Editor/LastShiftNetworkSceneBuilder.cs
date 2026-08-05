@@ -77,7 +77,7 @@ namespace DoodleUp.Editor
             // 지우지 않는 편이 결과가 같고 diff 가 조용하다. 지우는 것으로 되돌리지 말 것.
             var player = new GameObject("LastShiftNetworkPlayer");
             var characterController = player.AddComponent<CharacterController>();
-            characterController.radius = 0.28f;
+            characterController.radius = LastShiftShipPhysics.CrewRadius;
             characterController.height = 1.7f;
             characterController.center = new Vector3(0f, 0.85f, 0f);
             player.AddComponent<NetworkObject>();
@@ -95,7 +95,7 @@ namespace DoodleUp.Editor
             var cameraObject = new GameObject("Player Camera");
             cameraObject.tag = "MainCamera";
             cameraObject.transform.SetParent(player.transform, false);
-            cameraObject.transform.localPosition = new Vector3(0f, 1.55f, 0f);
+            cameraObject.transform.localPosition = new Vector3(0f, LastShiftShipPhysics.EyeHeight, 0f);
             var camera = cameraObject.AddComponent<Camera>();
             camera.fieldOfView = 72f;
             camera.nearClipPlane = 0.05f;

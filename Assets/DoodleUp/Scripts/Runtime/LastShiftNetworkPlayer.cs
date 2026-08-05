@@ -69,7 +69,7 @@ namespace DoodleUp.Runtime
         private LastShiftOwnerNetworkTransform ownerNetworkTransform;
 
         /// <summary>씬 빌더가 배치한 플레이어 카메라의 로컬 오프셋. 조준 원점 기본값 계산에만 쓴다.</summary>
-        private static readonly Vector3 CameraLocalOffset = new(0f, 1.55f, 0f);
+        private static readonly Vector3 CameraLocalOffset = new(0f, LastShiftShipPhysics.EyeHeight, 0f);
 
         public LastShiftNetworkGrabbable HeldItem => heldItem;
         public Renderer BodyRenderer => bodyRenderer;
@@ -427,6 +427,10 @@ namespace DoodleUp.Runtime
         {
             if (playerController != null) playerController.enabled = isLocalPlayer;
             if (playerCamera != null) playerCamera.enabled = isLocalPlayer;
+            // 귀도 카메라와 같은 소유권 게이트를 탄다. 승무원 넷의 리스너가 다 살아 있으면
+            // Unity 는 그중 하나만 쓰고 어느 것을 쓸지는 스폰 순서가 정한다 — 3D 감쇠가
+            // 남의 자리 기준으로 계산되는데 경고 한 줄 말고는 표가 안 난다.
+            LastShiftZoneAudio.EnsureListener(playerCamera, isLocalPlayer);
             if (bodyRenderer == null) return;
             bodyRenderer.enabled = !isLocalPlayer;
             bodyRenderer.material.color = PlayerColor;

@@ -585,7 +585,11 @@ namespace DoodleUp.Runtime
                 sirenAudio.loop = true;
                 // spatialBlend 0 이 곧 "모든 구역에서 들린다" 이다. 3D 로 두면 조종석에서
                 // 감쇠되어 N9 가 존재하지 않는 것과 같아진다.
-                sirenAudio.spatialBlend = 0f;
+                //
+                // A2(구역별 감쇠)에서 <b>유일한 예외</b>다. 값은 그대로 0 이고 이름만 붙였다 —
+                // 리터럴 0f 는 "3D 로 일괄 전환" 작업에서 그냥 지워지지만
+                // ShipWideSpatialBlend 는 그 자리에서 왜 2D 인지를 읽게 만든다.
+                LastShiftZoneAudio.ConfigureShipWide(sirenAudio);
                 sirenAudio.volume = 0.45f;
                 sirenAudio.clip = LastShiftProceduralAudio.CreateSirenLoop();
             }

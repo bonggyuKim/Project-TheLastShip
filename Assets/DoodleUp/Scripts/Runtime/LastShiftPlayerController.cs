@@ -122,6 +122,10 @@ namespace DoodleUp.Runtime
             networkPlayer = GetComponent<LastShiftNetworkPlayer>();
             if (targetCamera == null) targetCamera = GetComponentInChildren<Camera>(true);
             if (holdSocket == null && targetCamera != null) holdSocket = targetCamera.transform.Find("HoldSocket");
+            // A2. 귀를 여기서 만든다. 컴포넌트는 붙여 두되 활성 여부는 소유권을 아는 쪽이 정한다 —
+            // 네트워크 승무원은 ApplyLocalPresentation 이 다시 정하고, 단독 씬(SP-01)은
+            // NetworkPlayer 가 없으므로 여기서 바로 켠다. 배에 활성 리스너는 하나여야 한다.
+            LastShiftZoneAudio.EnsureListener(targetCamera, networkPlayer == null);
         }
 
         private void Start()

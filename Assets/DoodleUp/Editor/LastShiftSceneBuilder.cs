@@ -488,13 +488,13 @@ namespace DoodleUp.Editor
             var player = new GameObject("PlayerOne");
             player.transform.position = LastShiftSandboxController.PlayerSpawn;
             var controller = player.AddComponent<CharacterController>();
-            controller.radius = 0.28f;
+            controller.radius = LastShiftShipPhysics.CrewRadius;
             controller.height = 1.7f;
             controller.center = new Vector3(0f, 0.85f, 0f);
             var cameraObject = new GameObject("PlayerOne Camera");
             cameraObject.tag = "MainCamera";
             cameraObject.transform.SetParent(player.transform, false);
-            cameraObject.transform.localPosition = new Vector3(0f, 1.55f, 0f);
+            cameraObject.transform.localPosition = new Vector3(0f, LastShiftShipPhysics.EyeHeight, 0f);
             var camera = cameraObject.AddComponent<Camera>();
             camera.rect = new Rect(0f, 0f, 1f, 1f);
             camera.fieldOfView = 72f;

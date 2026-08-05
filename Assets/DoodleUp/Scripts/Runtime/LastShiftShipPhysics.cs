@@ -36,6 +36,24 @@ namespace DoodleUp.Runtime
         /// <summary>점프 정점 고도(발 기준). 천장 검증용.</summary>
         public static float JumpApexHeight => JumpSpeed * JumpSpeed / (2f * Mathf.Abs(GravityY));
 
+        /// <summary>
+        /// 카메라 눈높이(발 기준 local y). <see cref="JumpSpeed"/> 주석이 이미 이 값을 천장
+        /// 여유 계산의 근거로 쓰고 있었는데 상수가 없어 씬 빌더와 네트워크 플레이어가 각자
+        /// 리터럴로 들고 있었다. 셋이 갈리면 점프 상한 근거가 조용히 틀린다.
+        ///
+        /// 3D 오디오의 <see cref="LastShiftZoneAudio.MinDistance"/> 도 이 값을 쓴다 — 음원이
+        /// 승무원 루트에 붙고 리스너는 눈높이에 있어서, 자기 몸에서 나는 소리의 거리가
+        /// 0 이 아니라 이 값이다.
+        /// </summary>
+        public const float EyeHeight = 1.55f;
+
+        /// <summary>
+        /// 승무원 캡슐 반지름. 판독 검사(<c>T5</c>)가 "설 수 있는 자리" 를 이 값으로 정한다 —
+        /// 벽이나 배플에서 이만큼 떨어져야 실제로 서 있을 수 있고, 그 제약이 판독 가능한
+        /// z 띠의 폭을 정한다. 씬 빌더의 CharacterController 와 같은 값이어야 한다.
+        /// </summary>
+        public const float CrewRadius = 0.28f;
+
         /// <summary>접지 시 유지하는 하향 속도. 경사·틈에서 미끄러지지 않을 최소값.</summary>
         public const float GroundedSettleSpeed = -1f;
 

@@ -190,7 +190,10 @@ namespace DoodleUp.Runtime
             breathAudio = gameObject.AddComponent<AudioSource>();
             breathAudio.playOnAwake = false;
             breathAudio.loop = true;
-            breathAudio.spatialBlend = 0f;
+            // A2. 다른 승무원의 호흡이 거리에 따라 들려야 통로에서 "근처에 누가 있다" 가 읽힌다.
+            // 자기 호흡음은 2D 채널로 남는데, 음원이 자기 루트에 붙어 있고 MinDistance 가
+            // 눈높이를 덮으므로 거리 감쇠가 안 걸린다 — 별도 분기가 필요하지 않다.
+            LastShiftZoneAudio.ConfigureLocal(breathAudio, LastShiftZoneAudio.BreathMaxDistance);
             breathAudio.clip = LastShiftProceduralAudio.CreateBreathLoop();
         }
     }

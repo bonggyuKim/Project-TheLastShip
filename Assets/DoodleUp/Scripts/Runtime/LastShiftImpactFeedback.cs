@@ -39,6 +39,7 @@ namespace DoodleUp.Runtime
         private MaterialPropertyBlock damageMarkerProperties;
 
         private AudioSource impactAudio;
+        private Transform impactAudioTransform;
         private float shakeRemaining;
         private float damageMarkerRemaining;
         private int shakeSeed;
@@ -58,10 +59,19 @@ namespace DoodleUp.Runtime
 
         private void Awake()
         {
-            impactAudio = GetComponent<AudioSource>();
-            if (impactAudio == null) impactAudio = gameObject.AddComponent<AudioSource>();
+            // A2. 음원을 <b>자식 오브젝트</b>로 뺀다. 이 컴포넌트는 씬 런타임 루트에 붙어 있어서
+            // 3D 로만 바꾸면 배 안 모든 충격이 루트 좌표 한 점에서 나고, "어느 구역에서 났는가"
+            // 라는 정보가 그대로 사라진다. 재생 직전에 충격 지점으로 옮긴다.
+            //
+            // 루트에 붙은 것을 재사용하지 않는다. 재사용하면 옮기는 대상이 런타임 루트가 되어
+            // 충격 한 번에 배 전체가 이동한다. 씬·프리팹에 직렬화된 AudioSource 는 0 개이므로
+            // (전부 런타임 생성이었다) 재사용할 것도 없다.
+            var emitter = new GameObject("Impact Audio");
+            emitter.transform.SetParent(transform, false);
+            impactAudio = emitter.AddComponent<AudioSource>();
+            impactAudioTransform = emitter.transform;
             impactAudio.playOnAwake = false;
-            impactAudio.spatialBlend = 0f;
+            LastShiftZoneAudio.ConfigureLocal(impactAudio, LastShiftZoneAudio.ImpactMaxDistance);
             if (impactAudio.clip == null) impactAudio.clip = CreateImpactClip();
         }
 
@@ -83,6 +93,9 @@ namespace DoodleUp.Runtime
             damageMarkerRemaining = DamageMarkerSeconds;
             if (impactAudio != null && impactAudio.clip != null)
             {
+                // 3D 음원이므로 재생 위치가 곧 판독 정보다. 옮기지 않으면 어느 구역이 맞았는지
+                // 귀로는 알 수 없고 시각 표시만 남는다.
+                if (impactAudioTransform != null) impactAudioTransform.position = impactPoint;
                 impactAudio.volume = Mathf.Clamp(0.35f + severity * 0.25f, 0.2f, 0.9f);
                 impactAudio.Play();
             }
