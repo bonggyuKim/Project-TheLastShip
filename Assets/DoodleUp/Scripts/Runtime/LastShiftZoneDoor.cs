@@ -40,6 +40,24 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float PanelFaceOffset = 0.13f;
 
+        /// <summary>
+        /// 경계에 문이 달리는 개구부 번호. 개구부는 넷이고 그중 둘에만 움직이는 판이 붙는다 —
+        /// 조종석|통로A|엔진실|통로B|산소실 배치에서 접합부가 넷이 되는 것은 기하학적 귀결이고,
+        /// 압력 경계는 여전히 둘이다(기획 §3.1.1).
+        ///
+        /// 매핑을 여기 한 줄로 두는 이유는 개구부 중심 z 가 넷 다 다르기 때문이다. 판·문틀·
+        /// 인방·차단 콜라이더·조작 사거리가 전부 이 값에서 나오므로, 어느 개구부에 문이 붙는지가
+        /// 여러 자리에 흩어지면 그중 하나만 옛 번호를 보고 구멍에서 어긋난다.
+        /// </summary>
+        public static int OpeningIndexOf(int boundary) => boundary <= 0 ? 1 : 2;
+
+        /// <summary>이 문이 덮는 개구부의 중심 z. 더 이상 0 이 아니다.</summary>
+        public static float CenterZOf(int boundary) =>
+            LastShiftShipDimensions.OpeningCenterZ(OpeningIndexOf(boundary));
+
+        /// <summary>이 문이 덮는 개구부의 중심 z.</summary>
+        public float CenterZ => CenterZOf(boundary);
+
         [SerializeField] private int boundary;
         [SerializeField] private Transform panelFore;
         [SerializeField] private Transform panelAft;
@@ -145,7 +163,7 @@ namespace DoodleUp.Runtime
         {
             var boundaryX = LastShiftZoneAtlas.BoundaryX(boundary);
             return Mathf.Abs(position.x - boundaryX) <= ReachDistance &&
-                   Mathf.Abs(position.z) <= OpeningWidth * 0.5f + 1.0f;
+                   Mathf.Abs(position.z - CenterZ) <= OpeningWidth * 0.5f + 1.0f;
         }
 
         /// <summary>문 앞이라고 인정하는 x 거리. 잡기 사거리(2.2)보다 짧게 두어 대상이 겹치지 않는다.</summary>

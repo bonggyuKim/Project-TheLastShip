@@ -149,10 +149,15 @@ namespace DoodleUp.Editor
                 var door = matching[0];
                 Require(Mathf.Abs(door.transform.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f,
                     $"boundary {boundary} door must sit on the boundary plane");
+                var centerZ = LastShiftZoneDoor.CenterZOf(boundary);
+                Require(Mathf.Abs(door.transform.position.z - centerZ) < 0.0001f,
+                    $"boundary {boundary} door must sit on its opening centre");
 
-                // 문 옆 통과 경로 검사. 벌크헤드 조각의 z 범위 합이 선체 안쪽 폭에서
-                // 문 구멍을 뺀 만큼을 덮어야 한다. 기준 폭은 치수 정본에서 가져온다 —
-                // 리터럴로 두면 배 폭을 넓힐 때 이 검사만 옛 폭을 계속 통과시킨다.
+                // 문 옆 통과 경로 검사. 예전에는 두 판의 z 스케일 <b>합</b>만 봤는데, 합이
+                // 맞으면 위치가 어긋나도 통과한다 — 판 둘이 같은 쪽으로 몰려 반대편이
+                // 통째로 뚫려 있어도 PASS 다. 개구부가 통로를 따라 한쪽으로 치우친 뒤로는
+                // 좌우 판 폭이 서로 다르므로 합 검사가 특히 위험하다. 그래서 실제로 덮인
+                // z 구간을 보고, 개구부를 뺀 나머지가 남김없이 덮였는지 확인한다.
                 var panels = roots
                     .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
                     .Where(x => x.name.StartsWith("Bulkhead_") &&
@@ -160,10 +165,39 @@ namespace DoodleUp.Editor
                                 !x.name.EndsWith("_Lintel"))
                     .ToArray();
                 Require(panels.Length == 2, $"boundary {boundary} must have two side panels beside the opening");
-                var covered = panels.Sum(panel => panel.localScale.z);
-                Require(covered >= LastShiftShipDimensions.InteriorWidth - LastShiftZoneDoor.OpeningWidth - 0.0001f,
-                    $"boundary {boundary} bulkhead must leave no walkable gap beside the door");
+
+                var wallMin = -LastShiftShipDimensions.EndWallSpan * 0.5f;
+                var wallMax = LastShiftShipDimensions.EndWallSpan * 0.5f;
+                var openingMin = centerZ - LastShiftZoneDoor.OpeningWidth * 0.5f;
+                var openingMax = centerZ + LastShiftZoneDoor.OpeningWidth * 0.5f;
+                RequireCovered(panels, wallMin, openingMin,
+                    $"boundary {boundary} bulkhead must cover z [{wallMin:F2}, {openingMin:F2}] beside the door");
+                RequireCovered(panels, openingMax, wallMax,
+                    $"boundary {boundary} bulkhead must cover z [{openingMax:F2}, {wallMax:F2}] beside the door");
             }
+        }
+
+        /// <summary>
+        /// [min, max] 구간이 판들에 실제로 덮였는가. 판 하나가 통째로 덮거나, 여러 판이
+        /// 이어 붙어 덮는 경우를 모두 인정한다. 덮인 z 를 왼쪽부터 밀어 나가면서 빈 곳이
+        /// 나오면 실패한다 — 합 비교와 달리 위치가 틀리면 여기서 걸린다.
+        /// </summary>
+        private static void RequireCovered(Transform[] panels, float min, float max, string message)
+        {
+            if (max - min <= 0.0001f) return;
+            var reached = min;
+            var spans = panels
+                .Select(panel => (lo: panel.position.z - panel.localScale.z * 0.5f,
+                                  hi: panel.position.z + panel.localScale.z * 0.5f))
+                .OrderBy(span => span.lo)
+                .ToArray();
+            foreach (var span in spans)
+            {
+                if (span.lo > reached + 0.0001f) break;
+                if (span.hi > reached) reached = span.hi;
+                if (reached >= max - 0.0001f) return;
+            }
+            Require(false, $"{message} (covered up to {reached:F2})");
         }
 
         private static void Require(bool condition, string message)

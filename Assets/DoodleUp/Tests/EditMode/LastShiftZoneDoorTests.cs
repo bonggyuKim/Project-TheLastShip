@@ -57,15 +57,18 @@ namespace DoodleUp.Tests.EditMode
         {
             var setup = CreateDoorSetup(boundary: 1);
             var boundaryX = LastShiftZoneAtlas.BoundaryX(1);
+            // 문 앞의 z 는 개구부 중심에서 뽑는다. 통로가 어긋나면서 개구부가 더 이상 z=0 이
+            // 아니므로, 리터럴 0 을 두면 이 테스트가 "문 앞" 이 아닌 자리에서 조작을 시도한다.
+            var doorZ = LastShiftZoneDoor.CenterZOf(1);
 
             // 엔진실 쪽(경계보다 낮은 x)에서 닫는다.
-            setup.player.transform.position = new Vector3(boundaryX - 1f, 0.1f, 0f);
+            setup.player.transform.position = new Vector3(boundaryX - 1f, 0.1f, doorZ);
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
             Assert.That(setup.sandbox.IsDoorOpen(1), Is.False);
 
             // 산소실 쪽(경계보다 높은 x)에서 다시 연다. 갇힌 쪽에서 열 수 없으면 격리가
             // 아니라 사형이고, 문서가 격리를 "되돌리기 가능" 으로 둔 이유가 사라진다.
-            setup.player.transform.position = new Vector3(boundaryX + 1f, 0.1f, 0f);
+            setup.player.transform.position = new Vector3(boundaryX + 1f, 0.1f, doorZ);
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
             Assert.That(setup.sandbox.IsDoorOpen(1), Is.True, "수용 기준 11: 문은 안팎 양쪽에서 열린다.");
 
@@ -77,12 +80,20 @@ namespace DoodleUp.Tests.EditMode
         {
             var setup = CreateDoorSetup(boundary: 0);
             var boundaryX = LastShiftZoneAtlas.BoundaryX(0);
+            var doorZ = LastShiftZoneDoor.CenterZOf(0);
 
-            setup.player.transform.position = new Vector3(boundaryX - 4f, 0.1f, 0f);
+            setup.player.transform.position = new Vector3(boundaryX - 4f, 0.1f, doorZ);
             Assert.That(setup.door.TryOperate(setup.player), Is.False, "사거리 밖에서는 조작되지 않는다.");
             Assert.That(setup.sandbox.IsDoorOpen(0), Is.True);
 
-            setup.player.transform.position = new Vector3(boundaryX, 0.1f, 0f);
+            // z 로 벗어난 경우도 사거리 밖이다. 개구부가 통로를 따라 한쪽으로 치우쳤으므로
+            // 경계면 위에 서 있다는 것만으로는 문 앞이 아니다 — 반대쪽 벽 앞일 수 있다.
+            setup.player.transform.position = new Vector3(
+                boundaryX, 0.1f, doorZ + LastShiftZoneDoor.OpeningWidth * 0.5f + 1.5f);
+            Assert.That(setup.door.TryOperate(setup.player), Is.False, "개구부에서 z 로 벗어나면 조작되지 않는다.");
+            Assert.That(setup.sandbox.IsDoorOpen(0), Is.True);
+
+            setup.player.transform.position = new Vector3(boundaryX, 0.1f, doorZ);
             var crew = LastShiftCrewOxygen.Ensure(setup.player);
             crew.KillForProbe();
             Assert.That(setup.door.TryOperate(setup.player), Is.False,
@@ -103,11 +114,13 @@ namespace DoodleUp.Tests.EditMode
             var second = CreateDoor(boundary: 1);
 
             // 조종석↔엔진실 경계(-2) 바로 앞. 반대쪽 경계(+2)는 4m 떨어져 있다.
-            var found = LastShiftZoneDoor.FindOperable(new Vector3(LastShiftZoneAtlas.BoundaryX(0) + 0.5f, 0.1f, 0f));
+            var found = LastShiftZoneDoor.FindOperable(new Vector3(
+                LastShiftZoneAtlas.BoundaryX(0) + 0.5f, 0.1f, LastShiftZoneDoor.CenterZOf(0)));
             Assert.That(found, Is.Not.Null);
             Assert.That(found.Boundary, Is.EqualTo(0));
 
-            found = LastShiftZoneDoor.FindOperable(new Vector3(LastShiftZoneAtlas.BoundaryX(1) - 0.5f, 0.1f, 0f));
+            found = LastShiftZoneDoor.FindOperable(new Vector3(
+                LastShiftZoneAtlas.BoundaryX(1) - 0.5f, 0.1f, LastShiftZoneDoor.CenterZOf(1)));
             Assert.That(found, Is.Not.Null);
             Assert.That(found.Boundary, Is.EqualTo(1));
 
@@ -139,7 +152,8 @@ namespace DoodleUp.Tests.EditMode
             // 격리하면 파공 구역이 자기 공기만으로 빠지므로 훨씬 빨리 진공에 닿는다.
             setup.sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(setup.sandbox.ApplyMeteorImpact(), Is.True);
-            setup.player.transform.position = new Vector3(LastShiftZoneAtlas.BoundaryX(1) - 1f, 0.1f, 0f);
+            setup.player.transform.position = new Vector3(
+                LastShiftZoneAtlas.BoundaryX(1) - 1f, 0.1f, LastShiftZoneDoor.CenterZOf(1));
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
 
             var seconds = 0;

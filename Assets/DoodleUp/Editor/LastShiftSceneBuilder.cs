@@ -167,26 +167,30 @@ namespace DoodleUp.Editor
             const float opening = LastShiftZoneDoor.OpeningWidth;
             const float openingHeight = LastShiftZoneDoor.OpeningHeight;
             var x = LastShiftZoneAtlas.BoundaryX(boundary);
+            var centerZ = LastShiftZoneDoor.CenterZOf(boundary);
 
-            // 구멍 좌우를 메우는 벽 두 짝. 폭은 (전체 - 구멍) / 2 이고, 중심은 구멍 가장자리에서
-            // 자기 폭의 절반만큼 바깥이다.
-            var sideWidth = (fullWidth - opening) * 0.5f;
-            var sideCenter = (opening + sideWidth) * 0.5f;
-            foreach (var sign in new[] { -1f, 1f })
-            {
-                var label = sign < 0f ? "Fore" : "Aft";
-                CreateCube($"Bulkhead_{side}_{label}", ship,
-                    new Vector3(x, CeilingInnerHeight * 0.5f, sign * sideCenter),
-                    new Vector3(thickness, CeilingInnerHeight, sideWidth), hullMaterial);
-            }
+            // 구멍 좌우를 메우는 벽 두 짝. 구멍이 통로를 따라 한쪽으로 치우쳤으므로 두 짝의
+            // 폭이 서로 다르다. 예전 대칭식 (fullWidth - opening) / 2 를 그대로 두면 구멍이
+            // 옮겨간 만큼 한쪽 벽이 짧아져 그 옆으로 걸어서 지나갈 틈이 생긴다 — N0b 가
+            // 막으려던 바로 그 상태다. 각 짝은 자기 쪽 선체 끝에서 구멍 가장자리까지를 메운다.
+            var wallMin = -fullWidth * 0.5f;
+            var wallMax = fullWidth * 0.5f;
+            var openingMin = centerZ - opening * 0.5f;
+            var openingMax = centerZ + opening * 0.5f;
+            CreateCube($"Bulkhead_{side}_Fore", ship,
+                new Vector3(x, CeilingInnerHeight * 0.5f, (wallMin + openingMin) * 0.5f),
+                new Vector3(thickness, CeilingInnerHeight, openingMin - wallMin), hullMaterial);
+            CreateCube($"Bulkhead_{side}_Aft", ship,
+                new Vector3(x, CeilingInnerHeight * 0.5f, (openingMax + wallMax) * 0.5f),
+                new Vector3(thickness, CeilingInnerHeight, wallMax - openingMax), hullMaterial);
 
             // 문 위 인방. 구멍 높이(2.2)에서 천장 내면(3.2)까지를 메운다. 이게 없으면 문을 닫아도
             // 머리 위 1m 가 그대로 뚫려 있어 압력 차단이 그림과 어긋난다.
             CreateCube($"Bulkhead_{side}_Lintel", ship,
-                new Vector3(x, (CeilingInnerHeight + openingHeight) * 0.5f, 0f),
+                new Vector3(x, (CeilingInnerHeight + openingHeight) * 0.5f, centerZ),
                 new Vector3(thickness, CeilingInnerHeight - openingHeight, opening), hullMaterial);
 
-            CreateZoneDoor($"ZoneDoor_{side}", ship, boundary, x);
+            CreateZoneDoor($"ZoneDoor_{side}", ship, boundary, x, centerZ);
         }
 
         /// <summary>
@@ -195,7 +199,7 @@ namespace DoodleUp.Editor
         /// 콜라이더로 막으면 CharacterController 가 판에 끼거나 밀려나서, 확인하려는 것
         /// ("닫힌 문은 못 지나간다")이 아니라 밀림 현상이 먼저 보인다.
         /// </summary>
-        private static void CreateZoneDoor(string name, Transform ship, int boundary, float x)
+        private static void CreateZoneDoor(string name, Transform ship, int boundary, float x, float centerZ)
         {
             const float thickness = LastShiftZoneDoor.PanelThickness;
             const float opening = LastShiftZoneDoor.OpeningWidth;
@@ -204,7 +208,11 @@ namespace DoodleUp.Editor
 
             var door = new GameObject(name);
             door.transform.SetParent(ship, false);
-            door.transform.localPosition = new Vector3(x, 0f, 0f);
+            // 문 오브젝트 자체를 개구부 중심에 놓는다. 판·문틀·차단 콜라이더는 이 아래에서
+            // 로컬 대칭으로 두면 되고, LastShiftZoneDoor 가 매 프레임 다시 쓰는 판 위치도
+            // 로컬이라 그대로 따라온다. 자식마다 중심 z 를 더하는 방식으로 짜면 여섯 자리
+            // 중 하나만 빠져도 그 조각이 구멍에서 어긋난 채 조용히 통과한다.
+            door.transform.localPosition = new Vector3(x, 0f, centerZ);
 
             // 판은 구멍 절반씩 덮는다. 위치는 LastShiftZoneDoor 가 매 프레임 다시 쓰므로
             // 여기서는 크기와 재질만 정해 두면 된다.

@@ -76,6 +76,67 @@ namespace DoodleUp.Runtime
 
         public static float ZoneCenterX(LastShiftZone zone) => (ZoneMinX(zone) + ZoneMaxX(zone)) * 0.5f;
 
+        // ── 통로와 개구부 ────────────────────────────────────────────────────
+        // 여기서 정본으로 두는 것은 통로 폭이 아니라 GAP_Z 다. "통로 폭 ≥ 개구부 폭 × 2" 는
+        // 프록시고, 실제 조건은 한 통로 안 두 개구부의 z 구간이 겹치지 않는 것이다. 폭을
+        // 리터럴로 두면 개구부 폭이 바뀔 때 그 조건이 조용히 깨진다 — 게다가 간격 0 은
+        // 유한 개 레이캐스트로 잡히지 않아 검증기가 PASS 를 뱉는다. 그래서 간격을 먼저
+        // 정하고 폭을 거기서 뽑는다.
+
+        /// <summary>
+        /// 한 통로 안 두 개구부의 z 구간 간격. 확정 조건 0.4m — 0 이면 두 구간이 한 점에서
+        /// 맞닿아 실플레이에서는 안 보이지만 검증이 그 칼날 틈을 못 잡는다.
+        /// </summary>
+        public const float OpeningGapZ = 0.4f;
+
+        /// <summary>개구부 폭(z). 런타임 정본은 <see cref="LastShiftZoneDoor.OpeningWidth"/> 이고 여기서는 파생 계산에만 쓴다.</summary>
+        public const float OpeningWidth = LastShiftZoneDoor.OpeningWidth;
+
+        /// <summary>
+        /// 통로 폭(z). 개구부 둘이 <see cref="OpeningGapZ"/> 만큼 떨어져 나란히 들어가는 폭이다.
+        /// 확정값 3.6m 이 여기서 나온다 — 1.6 × 2 + 0.4.
+        /// </summary>
+        public const float PassageWidth = OpeningWidth * 2f + OpeningGapZ;
+
+        /// <summary>통로 길이(x). 판독선 거리와 같은 값이다(기획 §2.3 — 6m).</summary>
+        public const float PassageLength = 6f;
+
+        /// <summary>
+        /// 통로 중심의 z 오프셋. 통로가 선체 한쪽 벽에 붙으므로 반폭에서 통로 반폭을 뺀 값이다.
+        /// 6.0 폭 / 3.6 통로에서 1.2m 다. 통로 A 가 +이 값, 통로 B 가 -이 값이다.
+        /// </summary>
+        public const float PassageOffsetZ = HalfWidth - PassageWidth * 0.5f;
+
+        /// <summary>통로 중심에서 개구부 중심까지의 z 오프셋. (개구부 폭 + 간격) / 2 = 1.0m.</summary>
+        public const float OpeningOffsetZ = (OpeningWidth + OpeningGapZ) * 0.5f;
+
+        /// <summary>개구부 개수. 조종석|통로A|엔진실|통로B|산소실 배치의 접합부가 넷이다.</summary>
+        public const int OpeningCount = 4;
+
+        /// <summary>
+        /// 개구부 중심 z. 통로 오프셋과 개구부 오프셋의 조합이며 리터럴을 적지 않는다 —
+        /// 개구부 폭이나 선체 폭이 바뀌면 네 값이 함께 따라와야 한다.
+        ///
+        /// 0: 조종석↔통로A (+2.2) / 1: 통로A↔엔진실 (+0.2)
+        /// 2: 엔진실↔통로B (-2.2) / 3: 통로B↔산소실 (-0.2)
+        ///
+        /// 한 통로 안에서 z 가 어긋나 있는 것이 요점이다. 통로 A 의 0↔1 이 겹치면 조종석에서
+        /// 엔진실이 그대로 보이고, 그러면 "구역에 가야 진단이 읽힌다" 가 화면에서 거짓이 된다.
+        /// </summary>
+        public static float OpeningCenterZ(int opening) => opening switch
+        {
+            0 => PassageOffsetZ + OpeningOffsetZ,
+            1 => PassageOffsetZ - OpeningOffsetZ,
+            2 => -PassageOffsetZ - OpeningOffsetZ,
+            _ => -PassageOffsetZ + OpeningOffsetZ
+        };
+
+        /// <summary>개구부 z 구간의 하한.</summary>
+        public static float OpeningMinZ(int opening) => OpeningCenterZ(opening) - OpeningWidth * 0.5f;
+
+        /// <summary>개구부 z 구간의 상한.</summary>
+        public static float OpeningMaxZ(int opening) => OpeningCenterZ(opening) + OpeningWidth * 0.5f;
+
         // ── 배 안의 고정 지점 ────────────────────────────────────────────────
         // 전부 구역 중심에서 상대 배치다. 리터럴 x 를 쓰지 않는 이유는 전장이 바뀌면
         // "조종석 안" 이 다른 좌표가 되기 때문이다. 상대로 두면 따라온다.
