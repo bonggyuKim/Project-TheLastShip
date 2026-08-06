@@ -54,6 +54,13 @@ namespace DoodleUp.Runtime
         public const float AwarenessDistance = 8f;
         public const float GrabAimRadius = 0.22f;
 
+        /// <summary>
+        /// 유령의 부유 속도(기획 §4.4 N11). <see cref="MoveSpeed"/> 와 <b>같은 값이며 일부러
+        /// 같다.</b> 기획이 v0.4 에서 "유령의 우위는 속도가 아니라 접근" 으로 근거를 바꿨고,
+        /// 여기서 속도를 올리면 폐기된 그 논거를 코드가 되살린다.
+        /// </summary>
+        public const float GhostFloatSpeed = MoveSpeed;
+
         [SerializeField] private Camera targetCamera;
         [SerializeField] private Transform holdSocket;
         [SerializeField] private LastShiftGrabbable heldItem;
@@ -82,13 +89,27 @@ namespace DoodleUp.Runtime
         private bool managesCursor = true;
         private string serverRejectionReason;
         private float serverRejectionExpiry;
+        private float ghostVerticalInput;
 
         public LastShiftGrabbable HeldItem => heldItem;
         public LastShiftPlayerSlot PlayerSlot => playerSlot;
         public Camera TargetCamera => targetCamera;
         public Transform HoldSocket => holdSocket;
         public bool UsesMouseLook => true;
-        public string InputLabel => "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / Q 문 / 1·2·3 프리셋 / R 리셋";
+
+        /// <summary>
+        /// 유령인가(기획 §4.4 N11). 사망(<c>SuitOxygen == 0.00</c>)의 표현 방식이지 새 계통이
+        /// 아니므로 상태의 정본은 <see cref="LastShiftCrewOxygen.IsDead"/> 이고, 이 컴포넌트는
+        /// 그 상태를 <see cref="SetGhost"/> 로 받아 <b>이동 방식과 조작 차단</b>만 바꾼다.
+        ///
+        /// 사망 시 이 컴포넌트를 통째로 꺼 버리면 원칙 문장("이동 제약만 잃는다")의 정반대가
+        /// 된다 — 이동까지 잃고 조작만 남는 것이 아니라 둘 다 잃는다.
+        /// </summary>
+        public bool IsGhost { get; private set; }
+
+        public string InputLabel => IsGhost
+            ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 — 유령: 잡기·수리·문 조작 불가"
+            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / Q 문 / 1·2·3 프리셋 / R 리셋";
         public string InteractionPrompt => BuildInteractionPrompt();
         public Vector3 AimOrigin => targetCamera != null ? targetCamera.transform.position : transform.position;
 
@@ -162,6 +183,41 @@ namespace DoodleUp.Runtime
             ProcessKeyboardInput(Keyboard.current, Time.deltaTime);
         }
 
+        /// <summary>
+        /// 유령 전환/복귀(기획 §4.4 N11 구현물 1). 호출자는 <see cref="LastShiftCrewOxygen"/>
+        /// 하나이며, 서버·클라이언트·솔로 세 경로가 모두 그 컴포넌트를 거친다.
+        ///
+        /// 하는 일은 셋이다 — <b>콜라이더를 끄고</b>(CharacterController 를 비활성화하면
+        /// 캡슐 콜라이더가 함께 꺼진다), <b>들고 있던 것을 놓고</b>, <b>자세를 세운다</b>.
+        /// 중력은 <see cref="ApplyMovement"/> 가 유령 분기에서 아예 적분하지 않으므로
+        /// 여기서 끌 것이 없다.
+        ///
+        /// <see cref="Behaviour.enabled"/> 는 건드리지 않는다. 그 플래그는 네트워크 소유권
+        /// 게이트(<see cref="LastShiftNetworkPlayer"/> 의 ApplyLocalPresentation)가 쓰고
+        /// 있고, 여기서 함께 쓰면 원격 승무원이 죽었다 살아날 때 남의 화면에서 조작 권한이
+        /// 되살아난다.
+        /// </summary>
+        public void SetGhost(bool ghost)
+        {
+            if (IsGhost == ghost) return;
+            if (characterController == null) characterController = GetComponent<CharacterController>();
+            IsGhost = ghost;
+
+            if (ghost)
+            {
+                // 부품을 문 채로 굳으면 그 부품이 시신과 함께 잠긴다. 유령은 물건을 만질 수
+                // 없으므로 놓을 방법도 없다 — 죽는 순간이 유일한 반환 시점이다.
+                DropHeldItem();
+                // 덕트 안에서 죽으면 웅크린 자세가 그대로 남아 시선 높이가 바닥에 붙는다.
+                // 유령은 몸이 없으니 자세도 없고, 머리 위 공간 검사도 의미가 없다.
+                if (IsCrouching) ApplyStance(false);
+                verticalSpeed = 0f;
+                ghostVerticalInput = 0f;
+            }
+
+            if (characterController != null) characterController.enabled = !ghost;
+        }
+
         public void ProcessKeyboardInput(Keyboard keyboard)
         {
             ProcessKeyboardInput(keyboard, Time.deltaTime);
@@ -176,7 +232,11 @@ namespace DoodleUp.Runtime
             var jump = keyboard.spaceKey.wasPressedThisFrame;
             // 누르고 있는 동안 웅크린다. 토글로 두면 덕트에서 나온 뒤에도 웅크린 채 걸어
             // 다니게 되고, 그 상태가 화면에서 잘 안 읽혀 "왜 느리지" 가 된다.
-            SetCrouching(keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed);
+            var descend = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+            SetCrouching(descend);
+            // 유령의 수직 입력. 같은 두 키를 재사용한다 — 웅크림은 유령에게 의미가 없고,
+            // 조작 동사를 하나 더 만들지 않는 것이 §4.4 의 "새 규칙 없음" 판정 근거다.
+            ghostVerticalInput = (keyboard.spaceKey.isPressed ? 1f : 0f) - (descend ? 1f : 0f);
             var grab = ConsumePress(keyboard.eKey.isPressed, ref grabPressed);
             var secure = ConsumePress(keyboard.fKey.isPressed, ref securePressed);
             // 제자리에 놓기(F)와 계통에 연결하기(C·V·G)는 다른 행동이다. E·F 는 이미 쓰고 있다.
@@ -193,14 +253,24 @@ namespace DoodleUp.Runtime
 
             ApplyLook(look, deltaTime);
             ApplyMovement(move, jump, deltaTime);
-            if (grab) ToggleGrab();
-            if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
-            if (door && (networkPlayer == null || !networkPlayer.IsSpawned)) TryOperateNearestDoor();
+            // 유령은 배를 만질 수 없다(기획 §4.4 N11 구현물 2 — 잡기·수리·문·조종 전면 차단).
+            // 서버도 같은 판정을 각 진입점에서 다시 하지만, 요청 자체가 나가지 않는 것이
+            // 정상 상태다. 프리셋·리셋(1·2·3·R)은 조작 동사가 아니라 검증 도구이므로 남긴다 —
+            // 막으면 2인 모두 죽은 뒤 아무도 씬을 되돌릴 수 없다.
+            if (!IsGhost)
+            {
+                if (grab) ToggleGrab();
+                if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
+                if (door && (networkPlayer == null || !networkPlayer.IsSpawned)) TryOperateNearestDoor();
+            }
             if (networkPlayer == null || !networkPlayer.IsSpawned) return;
-            if (door) networkPlayer.RequestDoorToggle();
-            if (safeRestore) networkPlayer.RequestRepair(LastShiftRepairMode.SafeRestore);
-            else if (quickBypass) networkPlayer.RequestRepair(LastShiftRepairMode.QuickBypass);
-            else if (sacrifice) networkPlayer.RequestRepair(LastShiftRepairMode.PerformanceSacrifice);
+            if (!IsGhost)
+            {
+                if (door) networkPlayer.RequestDoorToggle();
+                if (safeRestore) networkPlayer.RequestRepair(LastShiftRepairMode.SafeRestore);
+                else if (quickBypass) networkPlayer.RequestRepair(LastShiftRepairMode.QuickBypass);
+                else if (sacrifice) networkPlayer.RequestRepair(LastShiftRepairMode.PerformanceSacrifice);
+            }
             if (presetOne) networkPlayer.RequestPresetReset(LastShiftPreset.HighHeatHighThrust);
             else if (presetTwo) networkPlayer.RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
             else if (presetThree) networkPlayer.RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
@@ -209,6 +279,7 @@ namespace DoodleUp.Runtime
 
         public bool TryGrabForProbe(LastShiftGrabbable item)
         {
+            if (IsGhost) return false;
             if (item == null || item.IsHeld || heldItem != null || holdSocket == null) return false;
             heldItem = item;
             heldItem.Grab(holdSocket);
@@ -252,6 +323,16 @@ namespace DoodleUp.Runtime
             ApplyMovement(Vector2.ClampMagnitude(move, 1f), false, deltaTime);
         }
 
+        /// <summary>
+        /// 수직 입력까지 지정하는 이동 프로브. 유령의 부유는 Space·Ctrl 이 만드는 값이라
+        /// 평면 입력만으로는 재현되지 않고, 키보드는 EditMode 검증에서 만들 수 없다.
+        /// </summary>
+        public void MoveForProbe(Vector2 move, float vertical, float deltaTime)
+        {
+            ghostVerticalInput = Mathf.Clamp(vertical, -1f, 1f);
+            ApplyMovement(Vector2.ClampMagnitude(move, 1f), false, deltaTime);
+        }
+
         public Vector2 ReadMoveForProbe(Keyboard keyboard)
         {
             return ReadMove(keyboard);
@@ -270,6 +351,10 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool TryOperateNearestDoor()
         {
+            // 문 개폐는 격리이고, 격리는 대가를 치르는 사람이 결정해야 한다(기획 §4.4).
+            // 진입점이 셋(솔로 입력·서버 RPC·이 함수)이라 각자 막지 않고 조작 판정이 모이는
+            // LastShiftZoneDoor.TryOperate 가 최종 권위지만, 여기서도 조기에 끊어 둔다.
+            if (IsGhost) return false;
             var door = LastShiftZoneDoor.FindOperable(transform.position);
             if (door != null) return door.TryOperate(this);
 
@@ -289,7 +374,8 @@ namespace DoodleUp.Runtime
             DropHeldItem();
             characterController.enabled = false;
             transform.SetPositionAndRotation(position, rotation);
-            characterController.enabled = true;
+            // 유령이면 꺼진 채로 둔다. 무조건 켜면 리셋 한 번으로 유령이 벽에 다시 막힌다.
+            characterController.enabled = !IsGhost;
             yaw = rotation.eulerAngles.y;
             pitch = 0f;
             verticalSpeed = 0f;
@@ -347,6 +433,12 @@ namespace DoodleUp.Runtime
         private void ApplyMovement(Vector2 move, bool jump, float deltaTime)
         {
             if (characterController == null) characterController = GetComponent<CharacterController>();
+            if (IsGhost)
+            {
+                ApplyGhostMovement(move, deltaTime);
+                return;
+            }
+
             var worldMove = transform.right * move.x + transform.forward * move.y;
             // 선내 저중력은 LastShiftShipPhysics 정본을 쓴다. 전역 Physics.gravity 를 읽으면
             // ProjectSettings 를 바꿔야 하고, 그러면 지구 중력을 전제한 DU02/DU03BC 검증이 깨진다.
@@ -361,6 +453,24 @@ namespace DoodleUp.Runtime
             }
 
             characterController.Move((worldMove * CurrentMoveSpeed + Vector3.up * verticalSpeed) * deltaTime);
+        }
+
+        /// <summary>
+        /// 유령 이동(기획 §4.4 — "이동 제약만 잃는다"). 벽·문·닫힌 격리를 통과해야 하므로
+        /// <b><see cref="CharacterController.Move"/> 를 쓰지 않는다.</b> 그 함수는 콜라이더를
+        /// 꺼도 씬 지오메트리를 쓸어(sweep) 막히기 때문에, 통과하려면 transform 을 직접
+        /// 옮기는 수밖에 없다.
+        ///
+        /// 시선 기준 3차원 부유다. 저중력을 받지 않으므로 바닥이라는 기준면이 없고, 위아래는
+        /// Space·Ctrl 로 직접 준다. 이것이 §4.4 가 말한 "격리된 산소실에 그냥 걸어 들어간다" 의
+        /// 실제 동작이다.
+        /// </summary>
+        private void ApplyGhostMovement(Vector2 move, float deltaTime)
+        {
+            var velocity = AimDirection * move.y + transform.right * move.x + Vector3.up * ghostVerticalInput;
+            // 대각 입력이 축 입력보다 빨라지지 않게 한다. 셋을 더한 뒤 한 번만 자른다.
+            if (velocity.sqrMagnitude > 1f) velocity.Normalize();
+            transform.position += velocity * (GhostFloatSpeed * deltaTime);
         }
 
         /// <summary>
@@ -392,8 +502,21 @@ namespace DoodleUp.Runtime
         {
             if (characterController == null) characterController = GetComponent<CharacterController>();
             if (crouch == IsCrouching) return;
+            // 유령에게는 자세가 없다. 웅크림의 유일한 용도가 단면 0.9m 통로를 지나는 것인데,
+            // 유령은 통로든 벽이든 그냥 통과한다.
+            if (IsGhost) return;
             if (!crouch && !HasStandingHeadroom()) return;
 
+            ApplyStance(crouch);
+        }
+
+        /// <summary>
+        /// 자세를 실제로 적용한다. <see cref="SetCrouching"/> 의 머리 위 공간 검사와 분리한
+        /// 이유는 유령 전환이 그 검사를 통과할 필요가 없기 때문이다 — 덕트 안에서 죽어도
+        /// 몸이 없으므로 천장을 뚫을 것이 없다.
+        /// </summary>
+        private void ApplyStance(bool crouch)
+        {
             IsCrouching = crouch;
             var height = crouch ? LastShiftShipPhysics.CrouchHeight : LastShiftShipPhysics.StandingHeight;
             characterController.height = height;
@@ -554,6 +677,11 @@ namespace DoodleUp.Runtime
 
         private string BuildInteractionPrompt()
         {
+            // 유령은 어느 프롬프트도 받지 않는다. 잡을 수 있다고 표시해 놓고 눌러도 안 되는
+            // 것보다, 왜 안 되는지를 한 줄로 못박는 편이 낫다(문 프롬프트가 사망 승무원에게
+            // "조작 불가" 를 보여 주던 것과 같은 이유다).
+            if (IsGhost) return "유령 — 이동만 가능 (잡기·수리·문 조작 불가)";
+
             // 문 프롬프트가 아이템 프롬프트보다 먼저다. 문 앞에서만 뜨는 안내이고, 그 자리에서
             // 아이템을 조준하고 있을 확률보다 문을 조작하려 할 확률이 높다.
             var doorPrompt = BuildDoorPrompt();

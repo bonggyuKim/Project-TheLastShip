@@ -67,6 +67,7 @@ namespace DoodleUp.Runtime
 
         private LastShiftNetworkGrabbable heldItem;
         private LastShiftOwnerNetworkTransform ownerNetworkTransform;
+        private bool appliedGhostPresentation;
 
         /// <summary>씬 빌더가 배치한 플레이어 카메라의 로컬 오프셋. 조준 원점 기본값 계산에만 쓴다.</summary>
         private static readonly Vector3 CameraLocalOffset = new(0f, LastShiftShipPhysics.EyeHeight, 0f);
@@ -148,9 +149,33 @@ namespace DoodleUp.Runtime
                 if (!Mathf.Approximately(suitOxygen.Value, crew.SuitOxygen)) suitOxygen.Value = crew.SuitOxygen;
                 if (crewDead.Value != crew.IsDead) crewDead.Value = crew.IsDead;
                 if (crewDraining.Value != crew.IsDraining) crewDraining.Value = crew.IsDraining;
-                return;
+                // 소지품 반환은 서버만 할 수 있다. 솔로 경로는 SetGhost 가 자기 손에 든 것을
+                // 놓지만, 네트워크에서 소지품의 정본은 이쪽 heldItem 이다 — 안 놓으면 부품이
+                // 시신에 잠긴 채 복제되어 남은 1인이 그 부품으로는 아무것도 못 고친다.
+                if (crew.IsDead && heldItem != null) heldItem.DropFromServer(this, Vector3.zero);
             }
-            crew.ApplyReplicated(suitOxygen.Value, crewDead.Value, crewDraining.Value);
+            else
+            {
+                crew.ApplyReplicated(suitOxygen.Value, crewDead.Value, crewDraining.Value);
+            }
+
+            ApplyGhostPresentation(crew.IsDead);
+        }
+
+        /// <summary>
+        /// 유령의 반투명 실루엣(기획 §4.4 N11 구현물 4). 사망 여부는 <see cref="crewDead"/> 로
+        /// 이미 전원에게 복제되므로 새 NetworkVariable 을 만들지 않는다 — 표현은 복제된
+        /// 상태에서 유도하는 것이지 따로 동기화할 값이 아니다.
+        ///
+        /// <see cref="Renderer.enabled"/> 는 소유권 게이트가 정한 값을 그대로 둔다. 소유자는
+        /// 1인칭이라 자기 몸을 안 보고, 남들에게는 이미 보인다 — 유령이 바꾸는 것은 "보이는가"
+        /// 가 아니라 "어떻게 보이는가" 다.
+        /// </summary>
+        private void ApplyGhostPresentation(bool isGhost)
+        {
+            if (bodyRenderer == null || appliedGhostPresentation == isGhost) return;
+            appliedGhostPresentation = isGhost;
+            LastShiftGhostVisuals.Apply(bodyRenderer.material, isGhost, PlayerColor);
         }
 
         /// <summary>
@@ -410,6 +435,10 @@ namespace DoodleUp.Runtime
         {
             if (!IsServer) return "not-server";
             if (senderClientId != OwnerClientId) return "sender-not-owner";
+            // 유령은 물건을 만질 수 없다(기획 §4.4). 클라이언트도 요청 자체를 막지만, 잡기의
+            // 권위는 이 함수 하나이므로 조건도 여기 있어야 한다.
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead) return "crew-dead";
             if (heldItem != null) return "already-holding-item";
             if (item == null || item.Grabbable == null) return "invalid-item";
             if (item.IsClaimed) return "item-already-claimed";

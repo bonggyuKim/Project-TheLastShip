@@ -194,6 +194,7 @@ namespace DoodleUp.Runtime
             if (!IsConnectedSender(sender) || !NetworkManager.ConnectedClients.TryGetValue(sender, out var client)) return;
             var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
             if (player == null || player.OwnerClientId != sender || player.HeldItem == null) return;
+            if (IsGhostCrew(player, sender, "secure")) return;
             if (player.HeldItem.SecureFromServer(player))
             {
                 sandbox.RefreshResultAfterImpact();
@@ -243,10 +244,25 @@ namespace DoodleUp.Runtime
             if (!NetworkManager.ConnectedClients.TryGetValue(sender, out var client)) return;
             var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
             if (player == null || player.OwnerClientId != sender) return;
+            if (IsGhostCrew(player, sender, "repair")) return;
 
             var held = player.HeldItem != null ? player.HeldItem.Grabbable : null;
             if (!sandbox.TryBeginRepair(mode, held, player.transform.position)) return;
             PublishSnapshot();
+        }
+
+        /// <summary>
+        /// 요청자가 유령인가(기획 §4.4 — 수리 동사 3종 불가). 문은
+        /// <see cref="LastShiftZoneDoor.TryOperate"/> 가, 잡기는
+        /// <see cref="LastShiftNetworkPlayer.TryGrabFromServer"/> 가 각자 같은 판정을 하고,
+        /// 여기는 그 둘을 지나지 않는 나머지 두 동사(수리·고정)의 자리다.
+        /// </summary>
+        private static bool IsGhostCrew(LastShiftNetworkPlayer player, ulong sender, string action)
+        {
+            var crew = player.GetComponent<LastShiftCrewOxygen>();
+            if (crew == null || !crew.IsDead) return false;
+            Debug.Log($"[LAST_SHIFT_INTERACTION] client={sender} action={action} result=REJECT reason=crew-dead");
+            return true;
         }
 
         private void OnSnapshotChanged(LastShiftNetworkSnapshot previous, LastShiftNetworkSnapshot current)

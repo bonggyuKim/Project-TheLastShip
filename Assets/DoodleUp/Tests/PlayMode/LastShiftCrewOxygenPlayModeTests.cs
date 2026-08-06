@@ -104,7 +104,12 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(crew.IsDead, Is.True, "예비 0.00 에서 해당 승무원이 사망해야 한다.");
             Assert.That(crew.IsDraining, Is.False, "사망 후에는 소모가 멈춘다.");
             Assert.That(crew.ShowsSuitGauge, Is.True, "사망 상태도 막대로 보여야 한다.");
-            Assert.That(player.enabled, Is.False, "사망한 승무원은 조작할 수 없어야 한다.");
+            // CT-08 N11: 사망은 조작을 뺏되 이동은 남긴다. 컨트롤러를 통째로 끄면 유령이
+            // 성립하지 않으므로, "조작 불가" 의 판정 대상이 enabled 에서 IsGhost 로 옮겨졌다.
+            Assert.That(player.IsGhost, Is.True, "사망한 승무원은 유령이 되어야 한다(기획 §4.4).");
+            Assert.That(player.enabled, Is.True, "유령은 이동 제약만 잃는다 — 컨트롤러는 살아 있다.");
+            Assert.That(player.GetComponent<CharacterController>().enabled, Is.False,
+                "몸이 없으므로 콜라이더는 꺼져야 한다.");
 
             yield break;
         }

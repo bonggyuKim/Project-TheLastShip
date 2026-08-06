@@ -110,7 +110,7 @@ namespace DoodleUp.Runtime
             StopBreathAudio();
             // 사망한 승무원은 더 이상 조작할 수 없고 도킹 판정에도 잡히지 않는다.
             // 남은 승무원으로 항해가 계속되는 것이 이 카드의 핵심이라 게임을 끝내지 않는다.
-            if (playerController != null) playerController.enabled = false;
+            EnterGhost(true);
             Debug.Log($"[LAST_SHIFT_CREW] crew={name} event=DEATH cause=suit-oxygen-depleted");
         }
 
@@ -124,7 +124,7 @@ namespace DoodleUp.Runtime
             IsDraining = false;
             IsDead = true;
             StopBreathAudio();
-            if (playerController != null) playerController.enabled = false;
+            EnterGhost(true);
         }
 
         /// <summary>프리셋 리셋. 예비 산소는 항해 단위 예산이므로 리셋에서만 1.00 으로 되돌아온다.</summary>
@@ -135,7 +135,7 @@ namespace DoodleUp.Runtime
             IsDraining = false;
             wasDraining = false;
             StopBreathAudio();
-            if (playerController != null) playerController.enabled = true;
+            EnterGhost(false);
         }
 
         /// <summary>클라이언트가 서버 값을 그대로 받는다. 소모 계산은 서버만 한다.</summary>
@@ -146,10 +146,23 @@ namespace DoodleUp.Runtime
             if (IsDead != isDead)
             {
                 IsDead = isDead;
-                if (playerController != null) playerController.enabled = !isDead;
+                EnterGhost(isDead);
             }
             if (isDead) StopBreathAudio();
             else UpdateBreathAudio();
+        }
+
+        /// <summary>
+        /// 사망 상태를 유령 모드로 넘긴다(기획 §4.4 N11 구현물 1).
+        ///
+        /// <b>서버·클라이언트·솔로 세 경로가 모두 여기로 모인다.</b> 원격 승무원의 인스턴스도
+        /// 이 함수를 타야 하는 이유는 콜라이더 때문이다 — 원격 사본의 CharacterController 가
+        /// 살아 있으면, 산 사람이 남의 화면에서 유령에게 막혀 통로가 시신으로 봉쇄된다.
+        /// </summary>
+        private void EnterGhost(bool ghost)
+        {
+            if (playerController == null) playerController = GetComponent<LastShiftPlayerController>();
+            if (playerController != null) playerController.SetGhost(ghost);
         }
 
         /// <summary>
