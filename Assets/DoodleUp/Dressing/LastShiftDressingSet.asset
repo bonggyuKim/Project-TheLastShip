@@ -1495,7 +1495,7 @@ MonoBehaviour:
     prefab: {fileID: 7323183460006941106, guid: 7842230ec4a41084ee0b71f8139cd856, type: 3}
     material: {fileID: 2100000, guid: 425206b95dca3334999f01897c81f9ce, type: 2}
     semantics: 64
-    lightIntensity: 0.8
+    lightIntensity: 0.7
     justification: 
   - id: DuctLane_Leg
     space:
@@ -1512,7 +1512,7 @@ MonoBehaviour:
     prefab: {fileID: 6841451090087344143, guid: d0fbc8376c59be52456724da03f13d2b, type: 3}
     material: {fileID: 2100000, guid: 425206b95dca3334999f01897c81f9ce, type: 2}
     semantics: 64
-    lightIntensity: 0.8
+    lightIntensity: 0.7
     justification: 
   - id: AirlockStripe_0
     space:
@@ -1768,4 +1768,21 @@ MonoBehaviour:
     material: {fileID: 0}
     semantics: 64
     lightIntensity: 4.57
+    justification: 
+  - id: Lamp
+    space:
+      kind: 3
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.3, y: 0.09, z: 0.2}
+    anchorMode: 1
+    anchor: {x: 0, y: 1.5}
+    bottomY: 0.80999994
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1078595747557895142, guid: 30d5d8f49a8219d29b67fa721c7ef5a6, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 0.6
     justification: 

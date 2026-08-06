@@ -382,7 +382,10 @@ namespace DoodleUp.Editor
                 bottomY = 0.005f,
                 material = lane,
                 semantics = LastShiftDressingSemantics.LightSource,
-                lightIntensity = 0.8f
+                // 0.8 -> 0.7. 바닥 띠 둘이 C4 예산 2.0 중 1.6 을 쓰고 있어 천장 등이
+                // 한 개도 안 들어갔다. planning 이 예산 인상 대신 띠를 낮추기로 정했고
+                // (합 1.6 -> 1.4), 남은 0.6 이 LSDress_Lamp_Duct 한 개다.
+                lightIntensity = 0.7f
             });
 
             // 선수 다리. 승강구 자리는 비운다 — 단(Step)이 서 있어 띠가 묻히고, 비어 있는
@@ -400,7 +403,7 @@ namespace DoodleUp.Editor
                 bottomY = 0.005f,
                 material = lane,
                 semantics = LastShiftDressingSemantics.LightSource,
-                lightIntensity = 0.8f
+                lightIntensity = 0.7f
             });
 
             // 에어록 경고 띠. 바깥 해치는 배 밑면이라 진공으로 나가는 자리다 — 배 안에서
@@ -471,13 +474,22 @@ namespace DoodleUp.Editor
             AddLamp(props, LastShiftDressingSpace.OfAirlock(), "Lamp",
                 Vector2.zero, RoomLampSize, LampPrefab("Airlock"));
 
-            // 우회 통로에는 등을 달지 않는다. LSDress_Lamp_Duct(0.6) 가 있고 art §3.4 는
-            // 셋까지(합 1.8) 를 전제했지만, C4_BypassLightBudget 의 예산 2.0 중 1.6 을
-            // DuctLane_Run·DuctLane_Leg(각 0.8) 가 이미 쓰고 있어 한 개도 들어가지 않는다
-            // (1.6 + 0.6 = 2.2 > 2.0). 예산을 늘리거나 바닥 띠 밝기를 낮추는 것은 §5 가
-            // 설계한 "불편해서 평소엔 안 쓰는 길" 의 세기를 바꾸는 판단이라 여기서 정하지
-            // 않는다 — art/planning 이 배분을 정하면 그때 슬롯을 추가한다.
+            // 우회 통로 등은 하나다. art §3.4 는 셋(합 1.8)을 전제했지만 C4 예산 2.0 을
+            // 바닥 띠 둘이 먼저 쓰고 있어 셋은 들어가지 않는다. planning 이 예산 인상 대신
+            // 띠를 1.6 -> 1.4 로 낮추고 등 하나만 두기로 정했다 — "듬성듬성한 어둠이
+            // 의도에 맞다". 합계는 1.4 + 0.6 = 2.0 으로 예산에 딱 맞는다.
+            //
+            // 자리는 관의 가로 구간 중앙이다. 하나뿐이라 간격 규칙(AddSpacedLamps)이
+            // 의미가 없고, 가운데에 둬야 양 끝이 대칭으로 어두워진다.
+            var run = LastShiftDressingSpace.OfBypassRun();
+            var runBounds = LastShiftDressingSpaces.BoundsOf(run);
+            AddLamp(props, run, "Lamp",
+                new Vector2(0f, LastShiftBypassDuct.RunZ - runBounds.CenterZ),
+                DuctLampSize, LampPrefab("Duct"));
         }
+
+        /// <summary>관 등기구 외형 치수. 방 등보다 작다 — 관 단면이 좁다.</summary>
+        private static readonly Vector3 DuctLampSize = new(0.30f, 0.09f, 0.20f);
 
         /// <summary>
         /// 공간 길이에서 등 개수를 뽑아 x 축으로 고르게 배치한다. 간격 <c>5.5</c> 는 점광원
