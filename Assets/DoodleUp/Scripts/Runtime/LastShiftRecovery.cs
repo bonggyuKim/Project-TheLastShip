@@ -59,6 +59,27 @@ namespace DoodleUp.Runtime
         public const float HeatRecoveryPerSecond = 0.030f;
         public const float HeatProtectionTrigger = 1.00f;
 
+        // ── CT-06 N5 열 폭주 가속 (기획 §3.3 S-H2) ────────────────────────
+        /// <summary>
+        /// <c>S-H2</c> 엔진 열 폭주 발동선. 냉각 미연결 상태에서 열이 이 값에 닿으면 tick 이
+        /// <see cref="HeatRisePerSecond"/> 에서 <see cref="HeatRiseRunawayPerSecond"/> 로 갈아탄다.
+        ///
+        /// <b>기존 tick 을 대체하지 않고 분기만 늘린다.</b> 0.90 아래에서는 여전히 0.020/s 다.
+        ///
+        /// 기획 §3.3 은 해제선 <c>0.84</c> 도 함께 정의하지만 여기서는 쓰지 않는다 —
+        /// 히스테리시스가 관측되려면 열이 내려갔다 올라와야 하는데, 이 분기가 도는 조건
+        /// (<c>냉각 미봉쇄 AND 추력 &gt; 0.60</c>)에서 열은 <b>단조 증가</b>다. 열이 내려가는
+        /// 유일한 경로는 냉각 복구이고 그때는 이 분기 자체가 꺼진다. 해제선은 상황 표시 계층
+        /// (<c>S-H2</c> 연출·HUD, CT-07 N6·N7)의 것이며 그쪽에서 다뤄야 한다.
+        /// </summary>
+        public const float HeatRunawayTrigger = 0.90f;
+
+        /// <summary>
+        /// <c>S-H2</c> 활성 중 열 상승률. <b>초안값이며 <c>game-balance</c> 검증 대상이다.</b>
+        /// 0.020 → 0.035 는 1.75배이고, 0.90 에서 보호 발동(1.00)까지 5초가 2.9초로 줄어든다.
+        /// </summary>
+        public const float HeatRiseRunawayPerSecond = 0.035f;
+
         /// <summary>엔진 보호가 발동했을 때 강제되는 추력 상한. 성공선 0.30 아래라서 추력 성공선 자체를 잃는다.</summary>
         public const float ProtectedThrustCeiling = 0.25f;
 
@@ -120,6 +141,32 @@ namespace DoodleUp.Runtime
         public const float BusDropPerSecond = 0.050f;
         public const float BusRecoveryPerSecond = 0.060f;
         public const float UnpoweredSteeringDelaySeconds = 0.5f;
+
+        // ── CT-06 N3 연료 예산 (기획 §2.3 B-2) ────────────────────────────
+        /// <summary>항해 1회 예산. 보급 지점은 0개다.</summary>
+        public const float FuelReserveInitial = 1.00f;
+
+        /// <summary>
+        /// 연료 소모율. <c>-FuelDrainPerThrustSecond × ThrustDemand /s</c> 로 줄어든다 —
+        /// 추력에 비례하므로 <b>엔진을 켜 두는 것 자체가 예산 집행</b>이다.
+        ///
+        /// <b>초안값이며 <c>game-balance</c> 검증 대상이다.</b> 이 값이 정하는 총 예산은
+        /// <c>1.00 / 0.0040 = 250 thrust·s</c> 이고, 도킹 요구
+        /// (<see cref="DockTargetThrustSeconds"/> 150)에 대해 여유 67% 다. 여유가 과하면 연료가
+        /// 사건이 되지 않고, 부족하면 <c>S-T2</c> 가 상시 활성이 된다(기획 §7.4).
+        /// </summary>
+        public const float FuelDrainPerThrustSecond = 0.0040f;
+
+        // ── CT-06 N4 도킹 누적 진행 (기획 §2.3 B-2) ───────────────────────
+        /// <summary>
+        /// 도킹 성립에 필요한 추력적분. 단위 <c>thrust·s</c> 이며 <c>DockProgress</c> 가 이 값에
+        /// 닿아야 도킹이 성립한다.
+        ///
+        /// <b>초안값이며 <c>game-balance</c> 검증 대상이다.</b> 추력 0.50 을 300초 유지하면
+        /// 150 이므로 제한시간(<see cref="DockingTimerSeconds"/>)과 아슬아슬하게 맞물린다 —
+        /// 이 관계가 "추력을 내려 열을 식힐지" 를 실제 비용 있는 선택으로 만든다.
+        /// </summary>
+        public const float DockTargetThrustSeconds = 150f;
 
         // ── R3 판정 ───────────────────────────────────────────────────────
         /// <summary>CT-01 §2.4 권고. 6분은 "다 고치고 기다리기" 가 되어 압박이 사라졌다.</summary>
@@ -419,9 +466,15 @@ namespace DoodleUp.Runtime
 
             // ── 열 시계 ── 고추력 + 냉각 미복구에서만 오른다. 복구 후에만 내려간다.
             // 구역을 포기한 경우 악화는 멈추지만 회복도 없다(그 자리에 얼어붙는다).
+            //
+            // CT-06 N5: 열이 S-H2 발동선을 넘으면 상승률이 갈아탄다(기획 §3.3). 기존 tick 을
+            // 대체하는 것이 아니라 분기가 하나 늘 뿐이고, 발동선 아래는 그대로 0.020/s 다.
             if (!containment.CoolingContained && state.ThrustDemand > LastShiftRecoveryTuning.HeatRiseThrustThreshold)
             {
-                state.EngineHeat = Mathf.Clamp01(state.EngineHeat + LastShiftRecoveryTuning.HeatRisePerSecond * deltaTime);
+                var rise = IsHeatRunaway(state, containment)
+                    ? LastShiftRecoveryTuning.HeatRiseRunawayPerSecond
+                    : LastShiftRecoveryTuning.HeatRisePerSecond;
+                state.EngineHeat = Mathf.Clamp01(state.EngineHeat + rise * deltaTime);
             }
             else if (containment.CoolingRestored)
             {
@@ -461,10 +514,50 @@ namespace DoodleUp.Runtime
             var ceiling = ResolveThrustCeiling(state, containment);
             if (state.ThrustDemand > ceiling) state.ThrustDemand = ceiling;
 
+            // ── 연료·도킹 적분 (CT-06 N3·N4) ──
+            // 추력 상한을 적용한 <b>뒤에</b> 적분한다. 열 보호가 추력을 0.25 로 눌렀는데 연료는
+            // 0.92 어치를 태우고 도킹 진행은 0.92 어치를 버는 그림이 되면, 플레이어가 화면에서
+            // 보는 추력과 예산이 어긋난다. 상한이 곧 실제 추력이므로 그 값으로 재야 한다.
+            AdvanceFuelAndDocking(ref state, deltaTime);
+
             report.ThrustCeiling = ceiling;
             report.HeatProtectionEngaged = state.EngineHeat >= LastShiftRecoveryTuning.HeatProtectionTrigger;
             report.SteeringDelayed = !containment.PowerRestored;
             return report;
+        }
+
+        /// <summary>
+        /// <c>S-H2</c> 엔진 열 폭주가 성립하는가(기획 §3.3). 조건은 <c>EngineHeat ≥ 0.90</c> 이고
+        /// 냉각이 연결되지 않은 상태다.
+        ///
+        /// 봉쇄(<c>Contained</c>)를 "냉각이 연결됨" 으로 읽는다 — 구역을 포기해 봉쇄한 경우도
+        /// 열이 더는 오르지 않으므로 폭주가 아니다. 어차피 호출부의 상승 분기가 같은 조건으로
+        /// 먼저 걸러지지만, 이 술어 자체가 단독으로 참이어야 테스트가 조건을 직접 겨눌 수 있다.
+        /// </summary>
+        public static bool IsHeatRunaway(in LastShiftShipState state, in LastShiftContainment containment)
+        {
+            return !containment.CoolingContained &&
+                   state.EngineHeat >= LastShiftRecoveryTuning.HeatRunawayTrigger;
+        }
+
+        /// <summary>
+        /// 연료를 태우고 도킹 진행을 쌓는다(CT-06 N3·N4, 기획 §2.3 B-2).
+        ///
+        /// <b>연료가 바닥나면 추력이 나오지 않는다.</b> 그래서 남은 연료로 낼 수 있는
+        /// 추력적분만큼만 <c>DockProgress</c> 에 실린다 — 연료 0 인 배가 추력 슬라이더만 올려
+        /// 도킹을 채우는 일이 없어야 한다. 한 tick 안에서 연료가 소진되는 경계에서도
+        /// 어긋나지 않도록, 태운 연료에서 실제 추력적분을 되돌려 계산한다.
+        /// </summary>
+        private static void AdvanceFuelAndDocking(ref LastShiftShipState state, float deltaTime)
+        {
+            if (deltaTime <= 0f || state.ThrustDemand <= 0f) return;
+
+            var demandedThrustSeconds = state.ThrustDemand * deltaTime;
+            var demandedFuel = LastShiftRecoveryTuning.FuelDrainPerThrustSecond * demandedThrustSeconds;
+            var burnedFuel = Mathf.Min(state.FuelReserve, demandedFuel);
+
+            state.FuelReserve = Mathf.Clamp01(state.FuelReserve - burnedFuel);
+            state.DockProgress += burnedFuel / LastShiftRecoveryTuning.FuelDrainPerThrustSecond;
         }
 
         /// <summary>
@@ -544,7 +637,25 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static LastShiftVerdict EvaluateContinuous(in LastShiftShipState state, bool anyCrewAlive)
         {
-            return anyCrewAlive ? LastShiftVerdict.Pending : LastShiftVerdict.FailureAsphyxiation;
+            if (!anyCrewAlive) return LastShiftVerdict.FailureAsphyxiation;
+            return IsStrandedWithoutFuel(state) ? LastShiftVerdict.FailureAdrift : LastShiftVerdict.Pending;
+        }
+
+        /// <summary>
+        /// 연료가 바닥났고 도킹 진행도 모자란가 — 표류 확정(CT-06 N3, 기획 §2.3 B-2).
+        ///
+        /// <b>타이머를 기다리지 않고 즉시 판정한다.</b> 연료가 0 이면 추력이 안 나오고
+        /// <c>DockProgress</c> 도 더는 오르지 않으므로 도킹은 물리적으로 불가능하다. 그 상태로
+        /// 남은 시간을 흘려보내게 두면 플레이어는 <b>아무것도 할 수 없는 채로 시계만 보게 되고</b>,
+        /// 그건 기획 §4.3 <c>RG-3</c> 이 금지한 영구 잠금과 같은 것이다.
+        ///
+        /// 진행도가 이미 목표에 닿았으면 연료가 0 이어도 실패가 아니다 — 도킹은 이미 성립
+        /// 가능하고 남은 것은 트리거로 들어가는 일뿐이다.
+        /// </summary>
+        public static bool IsStrandedWithoutFuel(in LastShiftShipState state)
+        {
+            return state.FuelReserve <= 0f &&
+                   state.DockProgress < LastShiftRecoveryTuning.DockTargetThrustSeconds;
         }
 
         /// <summary>
@@ -555,6 +666,7 @@ namespace DoodleUp.Runtime
         public static bool MeetsDockingConditions(in LastShiftShipState state, bool anyCrewAlive)
         {
             return anyCrewAlive &&
+                   state.DockProgress >= LastShiftRecoveryTuning.DockTargetThrustSeconds &&
                    state.ThrustDemand >= LastShiftRecoveryTuning.DockingSuccessThrust &&
                    state.OxygenPressure >= LastShiftRecoveryTuning.DockingSuccessOxygen;
         }

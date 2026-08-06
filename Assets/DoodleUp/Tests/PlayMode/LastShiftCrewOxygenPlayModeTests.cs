@@ -162,6 +162,9 @@ namespace DoodleUp.Tests.PlayMode
             var docking = sandbox.CurrentState;
             docking.ThrustDemand = LastShiftRecoveryTuning.DockingSuccessThrust + 0.05f;
             docking.OxygenPressure = LastShiftRecoveryTuning.DockingSuccessOxygen + 0.05f;
+            // CT-06 N4: 순간 조건 둘에 더해 누적 진행도 채워야 도킹이 성립한다. 이 테스트가
+            // 겨누는 것은 "시신은 도킹을 성립시키지 못한다" 이므로 누적은 조건에서 빼 준다.
+            docking.DockProgress = LastShiftRecoveryTuning.DockTargetThrustSeconds;
             sandbox.OverrideStateForProbe(docking);
             player.ResetPlayer(LastShiftSandboxController.DockingTriggerPosition);
             sandbox.AdvanceMission(0.01f);

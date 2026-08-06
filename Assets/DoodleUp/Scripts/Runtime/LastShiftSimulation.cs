@@ -54,6 +54,23 @@ namespace DoodleUp.Runtime
         [Range(0f, 1f)] public float EngineHeat;
         public float ShipAttitudeDegrees;
         [Range(0f, 1f)] public float ExistingDamage;
+
+        /// <summary>
+        /// 연료 예산(CT-06 N3, 기획 §2.3 B-2). <b>보급 지점은 0개다</b> — 한 번 쓰면 돌아오지 않는
+        /// 항해 1회 예산이고, 그래서 추력을 쓰는 것 자체가 결정이 된다.
+        ///
+        /// 기본값 <c>0</c> 은 유효한 배 상태가 아니다. 배는 언제나
+        /// <see cref="LastShiftPresetFactory"/> 를 거쳐 만들어지고 거기서 1.00 으로 채워진다.
+        /// </summary>
+        [Range(0f, 1f)] public float FuelReserve;
+
+        /// <summary>
+        /// 도킹 진행도(CT-06 N4, 기획 §2.3 B-2). 단위는 <c>thrust·s</c> 이며 매 tick
+        /// <c>ThrustDemand × dt</c> 만큼 누적된다. <b>0~1 정규화가 아니다</b> — 목표가
+        /// <see cref="LastShiftRecoveryTuning.DockTargetThrustSeconds"/>(150) 이라 범위 특성이
+        /// 다르고, 정규화하면 "추력을 얼마나 오래 유지했는가" 라는 단위가 사라진다.
+        /// </summary>
+        public float DockProgress;
     }
 
     public readonly struct LastShiftResolverInput
@@ -134,9 +151,15 @@ namespace DoodleUp.Runtime
 
     public static class LastShiftPresetFactory
     {
+        /// <summary>
+        /// 프리셋 상태. <b>연료·도킹 진행도는 프리셋별로 다르지 않다</b> — 세 프리셋은 운석
+        /// 직후의 서로 다른 사고 상황이지 서로 다른 항해 시점이 아니므로, 항해 시작 시점의
+        /// 예산(연료 1.00)과 누적(도킹 0)은 셋 다 같다. 프리셋마다 다르게 두면 "연료가 모자란
+        /// 것이 내 조종 탓인지 프리셋 탓인지" 를 플레이어가 구분할 수 없다.
+        /// </summary>
         public static LastShiftShipState Create(LastShiftPreset preset)
         {
-            return preset switch
+            var state = preset switch
             {
                 LastShiftPreset.HighHeatHighThrust => new LastShiftShipState
                 {
@@ -169,6 +192,10 @@ namespace DoodleUp.Runtime
                     ExistingDamage = 0.42f
                 }
             };
+
+            state.FuelReserve = LastShiftRecoveryTuning.FuelReserveInitial;
+            state.DockProgress = 0f;
+            return state;
         }
     }
 

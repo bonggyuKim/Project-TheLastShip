@@ -133,6 +133,7 @@ namespace DoodleUp.Tests.PlayMode
                 "성능 포기는 악화를 멈추지만 상태를 회복하지 않아야 한다.");
             Assert.That(sandbox.CurrentState.ThrustDemand, Is.EqualTo(LastShiftRecoveryTuning.SacrificedThrustCeiling).Within(0.001f));
 
+            GrantDockProgress();
             player.ResetPlayer(LastShiftSandboxController.DockingTriggerPosition);
             sandbox.AdvanceMission(0.01f);
             Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.SuccessCompromised));
@@ -140,11 +141,38 @@ namespace DoodleUp.Tests.PlayMode
             yield break;
         }
 
+        /// <summary>
+        /// 도킹 누적 진행(CT-06 N4)을 목표까지 채운다.
+        ///
+        /// 이 테스트들이 겨누는 축은 누적이 아니라 수리 결과·질식·성공 판정이다. 실제로
+        /// <c>150 thrust·s</c> 를 벌려면 추력 <c>0.50</c> 을 <c>300초</c> 유지해야 하는데, 그 시간을
+        /// 밀면 이 테스트가 재는 <b>다른 시계</b>(예비 산소, 우회 수명, 도킹 타이머)가 함께 흘러
+        /// 검사 대상 자체가 바뀐다. 누적 규칙은 EditMode <c>LastShiftFuelBudgetTests</c> 가 따로 본다.
+        /// </summary>
+        private void GrantDockProgress()
+        {
+            var state = sandbox.CurrentState;
+            state.DockProgress = LastShiftRecoveryTuning.DockTargetThrustSeconds;
+            sandbox.OverrideStateForProbe(state);
+        }
+
         [UnityTest]
         public IEnumerator DockingOxygenAndTimeoutSettleAllMissionVerdictPaths()
         {
             sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
+            player.ResetPlayer(Vector3.zero);
+            sandbox.AdvanceMission(0.01f);
+
+            // CT-06 N4 이후 도킹은 순간 조건만으로 성립하지 않는다. 누적이 모자란 채 트리거에
+            // 들어가면 성공이 아니라 Pending 이어야 한다 — 실패가 아니라 "아직 아니다" 다.
+            player.ResetPlayer(LastShiftSandboxController.DockingTriggerPosition);
+            sandbox.AdvanceMission(0.01f);
+            Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.Pending),
+                "추력·산소 성공선을 넘겨도 누적 진행이 모자라면 도킹이 성립하면 안 된다.");
+
+            // 누적을 채우고 다시 들어온다. 트리거는 상주가 아니라 진입으로 판정하므로 한 번 나갔다 온다.
+            GrantDockProgress();
             player.ResetPlayer(Vector3.zero);
             sandbox.AdvanceMission(0.01f);
             player.ResetPlayer(LastShiftSandboxController.DockingTriggerPosition);
@@ -186,6 +214,63 @@ namespace DoodleUp.Tests.PlayMode
             sandbox.AdvanceMission(LastShiftRecoveryTuning.DockingTimerSeconds);
             Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.FailureAdrift));
             Assert.That(sandbox.DockingSecondsRemaining, Is.Zero);
+
+            yield break;
+        }
+
+        /// <summary>
+        /// CT-06 N3 — 연료가 바닥나고 도킹 진행이 모자라면 <b>타이머를 기다리지 않고</b> 표류로
+        /// 끝난다(기획 §2.3 B-2). 아무것도 할 수 없는 채로 남은 시간을 지켜보게 두는 것이
+        /// <c>RG-3</c> 이 금지한 영구 잠금이라 즉시 판정한다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EmptyFuelTankStrandsTheShipBeforeTheTimerRunsOut()
+        {
+            sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
+            Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
+            Assert.That(sandbox.CurrentState.FuelReserve,
+                Is.EqualTo(LastShiftRecoveryTuning.FuelReserveInitial).Within(0.0001f));
+
+            // 연료만 마지막 한 방울로 줄인다. 진행도는 목표에 한참 못 미친 채로 둔다.
+            var nearlyDry = sandbox.CurrentState;
+            nearlyDry.FuelReserve = LastShiftRecoveryTuning.FuelDrainPerThrustSecond * 0.1f;
+            nearlyDry.DockProgress = 0f;
+            sandbox.OverrideStateForProbe(nearlyDry);
+
+            var timerBefore = sandbox.DockingSecondsRemaining;
+            sandbox.AdvanceMission(1f);
+
+            Assert.That(sandbox.CurrentState.FuelReserve, Is.EqualTo(0f).Within(0.0001f),
+                "추력을 유지했는데 연료가 안 말랐다.");
+            Assert.That(sandbox.Verdict, Is.EqualTo(LastShiftVerdict.FailureAdrift),
+                "연료가 0 이고 도킹도 못 채웠는데 판정이 안 났다.");
+            Assert.That(sandbox.DockingSecondsRemaining, Is.GreaterThan(0f),
+                "제한시간이 아직 남은 채로 끝나야 '기다리지 않고 즉시 판정' 이다.");
+            Assert.That(sandbox.DockingSecondsRemaining, Is.LessThan(timerBefore),
+                "제한시간이 계속 흐르고 있어야 한다 — N4 가 기존 타이머를 대체하면 안 된다.");
+
+            yield break;
+        }
+
+        /// <summary>
+        /// CT-06 N4 — 도킹 누적이 실제 항해 시간으로 쌓이는지 씬 위에서 확인한다.
+        /// EditMode 는 순수 tick 을 보고, 여기서는 샌드박스가 그 tick 을 실제로 돌리는지를 본다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DockProgressAccumulatesWhileTheMissionRuns()
+        {
+            sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
+            Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
+            Assert.That(sandbox.CurrentState.DockProgress, Is.EqualTo(0f).Within(0.0001f));
+
+            var thrust = sandbox.CurrentState.ThrustDemand;
+            sandbox.AdvanceMission(10f);
+
+            Assert.That(sandbox.CurrentState.DockProgress, Is.EqualTo(thrust * 10f).Within(0.01f),
+                "샌드박스 tick 이 도킹 진행을 쌓지 않는다.");
+            Assert.That(sandbox.CurrentState.DockProgress,
+                Is.LessThan(LastShiftRecoveryTuning.DockTargetThrustSeconds),
+                "10초 만에 도킹 목표에 닿았다 — 누적이 사건이 되지 않는 수치다.");
 
             yield break;
         }

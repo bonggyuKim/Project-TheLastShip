@@ -55,6 +55,8 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref ShipState.EngineHeat);
             serializer.SerializeValue(ref ShipState.ShipAttitudeDegrees);
             serializer.SerializeValue(ref ShipState.ExistingDamage);
+            serializer.SerializeValue(ref ShipState.FuelReserve);
+            serializer.SerializeValue(ref ShipState.DockProgress);
             serializer.SerializeValue(ref FirstProblem);
             serializer.SerializeValue(ref CurrentProblem);
             serializer.SerializeValue(ref CoolingScore);
@@ -89,6 +91,8 @@ namespace DoodleUp.Runtime
                    ShipState.EngineHeat.Equals(other.ShipState.EngineHeat) &&
                    ShipState.ShipAttitudeDegrees.Equals(other.ShipState.ShipAttitudeDegrees) &&
                    ShipState.ExistingDamage.Equals(other.ShipState.ExistingDamage) &&
+                   ShipState.FuelReserve.Equals(other.ShipState.FuelReserve) &&
+                   ShipState.DockProgress.Equals(other.ShipState.DockProgress) &&
                    FirstProblem == other.FirstProblem &&
                    CurrentProblem == other.CurrentProblem &&
                    CoolingScore.Equals(other.CoolingScore) &&

@@ -467,10 +467,14 @@ namespace DoodleUp.Runtime
             UpdateSiren();
             AdvanceCrewOxygen(deltaTime);
 
+            // 연속 판정은 이제 원인이 둘이다 — 전원 예비산소 고갈(N2)과 연료 소진 표류(CT-06 N3).
+            // 트리거 문자열을 하나로 두면 로그만 보고는 어느 쪽으로 끝났는지 알 수 없다.
             var continuous = LastShiftVerdictResolver.EvaluateContinuous(currentState, AnyCrewAlive);
             if (continuous != LastShiftVerdict.Pending)
             {
-                SettleVerdict(continuous, "all-crew-suit-oxygen-depleted");
+                SettleVerdict(continuous, continuous == LastShiftVerdict.FailureAdrift
+                    ? "fuel-exhausted-dock-progress-short"
+                    : "all-crew-suit-oxygen-depleted");
                 return;
             }
 
@@ -499,7 +503,8 @@ namespace DoodleUp.Runtime
             verdict = value;
             Debug.Log($"[LAST_SHIFT_VERDICT] generation={ResetGeneration} verdict={value} trigger={trigger} " +
                       $"thrust={currentState.ThrustDemand:F2} O2={currentState.OxygenPressure:F2} heat={currentState.EngineHeat:F2} " +
-                      $"bus={currentState.BusPower:F2} T-{dockingSecondsRemaining:F0}s sacrifices={repairLedger.SacrificeCount} bypassLapses={repairLedger.BypassLapseCount}");
+                      $"bus={currentState.BusPower:F2} fuel={currentState.FuelReserve:F3} dock={currentState.DockProgress:F1} " +
+                      $"T-{dockingSecondsRemaining:F0}s sacrifices={repairLedger.SacrificeCount} bypassLapses={repairLedger.BypassLapseCount}");
         }
 
         /// <summary>
@@ -1113,7 +1118,11 @@ namespace DoodleUp.Runtime
             GUI.Label(new Rect(28f, 56f, 650f, 48f),
                 $"WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M one-shot meteor | 화살표 조종 (8초)\n" +
                 $"Docking T-{dockingSecondsRemaining:F0}s | Hold {controlHold.RemainingSeconds:F1}s | " +
-                $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}", bodyStyle);
+                $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}\n" +
+                // CT-06 N3·N4. 연료와 도킹 진행은 제한시간과 나란히 보여야 "시간은 남았는데
+                // 연료가 없다" 는 상태가 화면에서 읽힌다 — 그게 S-T2 가 사건이 되는 자리다.
+                $"Fuel {currentState.FuelReserve:F2} | Dock {currentState.DockProgress:F0}/" +
+                $"{LastShiftRecoveryTuning.DockTargetThrustSeconds:F0} thrust·s", bodyStyle);
             DrawShipStateLine();
             GUI.Label(new Rect(28f, 179f, 650f, 52f),
                 HasAppliedImpact
