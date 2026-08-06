@@ -29,6 +29,10 @@ namespace DoodleUp.Tests.PlayMode
         [UnitySetUp]
         public IEnumerator LoadSoloScene()
         {
+            // 이 파일은 네트워크가 아니라 시계를 잰다. 씬이 하나가 되면서 이 씬을 열기만 해도
+            // host 가 자동으로 뜨는데, 테스트마다 같은 UDP 포트를 잡으면 앞 테스트의 host 가
+            // 내려가기 전에 다음이 떠서 SetUp 부터 죽는다. 로드 전에 꺼 둔다.
+            LastShiftNetworkSession.AutoStartHostInEditor = false;
             var load = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
             Assert.That(load, Is.Not.Null, $"Failed to start loading {ScenePath}");
             while (!load.isDone) yield return null;
@@ -36,7 +40,19 @@ namespace DoodleUp.Tests.PlayMode
 
             var roots = SceneManager.GetActiveScene().GetRootGameObjects();
             sandbox = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftSandboxController>(true)).Single();
-            player = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftPlayerController>(true)).Single();
+            var items = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftGrabbable>(true)).ToArray();
+
+            // 씬에는 승무원이 없다 — 레벨이 하나가 되면서 플레이어는 접속 시 NGO 가 프리팹에서
+            // 스폰한다. 이 파일이 재는 것은 산소 시계이지 네트워크가 아니므로 host 를 띄우지 않고
+            // 같은 프리팹으로 승무원 하나를 직접 세운다.
+            // 아이템은 이제 NetworkObject 다. host 없이 도는 이 파일에서 잡기(재부모화)를 하면
+            // NGO 자동 부모 동기화가 "listening 이 아니다" 며 에러를 찍는다 — 검사 대상이 아니라
+            // 소음이므로 끈다. 실제 잡기 복제는 LastShiftNetworkGrabbable 이 따로 한다.
+            foreach (var grabbable in roots.SelectMany(root => root.GetComponentsInChildren<Unity.Netcode.NetworkObject>(true)))
+                grabbable.AutoObjectParentSync = false;
+
+            player = SpawnCrewFromPrefab();
+            sandbox.Configure(new[] { player }, items);
             sandbox.enabled = false;
         }
 
@@ -293,6 +309,32 @@ namespace DoodleUp.Tests.PlayMode
             // 슬롯을 나눠야 HUD 막대 두 줄이 서로 다른 승무원으로 읽힌다.
             controller.Configure(camera, socket, LastShiftPlayerSlot.PlayerTwo, new Color(1f, 0.6f, 0.2f));
             return controller;
+        }
+
+        /// <summary>
+        /// 세션이 들고 있는 플레이어 프리팹으로 승무원 하나를 세운다. 경로를 테스트가 따로 적으면
+        /// 빌더가 프리팹을 옮겼을 때 여기만 조용히 뒤처진다.
+        /// </summary>
+        private static LastShiftPlayerController SpawnCrewFromPrefab()
+        {
+            var session = Object.FindAnyObjectByType<LastShiftNetworkSession>();
+            Assert.That(session, Is.Not.Null, "network session missing from the scene");
+            var prefab = session.PlayerPrefab;
+            Assert.That(prefab, Is.Not.Null, "session is not wired to a player prefab");
+            var crew = Object.Instantiate(prefab.gameObject);
+            crew.name = "PlayerOne";
+            var controller = crew.GetComponent<LastShiftPlayerController>();
+            Assert.That(controller, Is.Not.Null, "player prefab must carry LastShiftPlayerController");
+            controller.transform.position = LastShiftShipDimensions.SpawnPoint;
+            return controller;
+        }
+
+        [OneTimeTearDown]
+        public void RestoreAutoHost()
+        {
+            // 껐던 것을 되돌린다. 정적 값이라 안 되돌리면 같은 Play 세션의 네트워크 테스트가
+            // host 없이 돌아 원인을 알 수 없는 실패가 된다.
+            LastShiftNetworkSession.AutoStartHostInEditor = true;
         }
     }
 }

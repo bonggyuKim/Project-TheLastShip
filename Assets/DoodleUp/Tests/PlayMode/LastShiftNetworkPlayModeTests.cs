@@ -53,6 +53,9 @@ namespace DoodleUp.Tests.PlayMode
         [UnityTest]
         public IEnumerator HostStartsOwnsStateAndExercisesHeldItemLifecycle()
         {
+            // 이 파일은 자동 host 로 뜬 세션을 전제로 승무원 spawn 을 검사한다. 같은 Play
+            // 세션의 시뮬레이션 테스트가 그것을 꺼 두므로, 순서 운에 맡기지 않고 스스로 켠다.
+            LastShiftNetworkSession.AutoStartHostInEditor = true;
             var load = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
             while (!load.isDone) yield return null;
             yield return null;

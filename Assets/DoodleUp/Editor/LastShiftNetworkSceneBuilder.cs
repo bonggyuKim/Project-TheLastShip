@@ -64,14 +64,6 @@ namespace DoodleUp.Editor
             sandbox.Configure(System.Array.Empty<LastShiftPlayerController>(), items);
             sandbox.gameObject.AddComponent<NetworkObject>();
             sandbox.gameObject.AddComponent<LastShiftNetworkSandbox>().Configure(sandbox);
-            foreach (var item in items)
-            {
-                var networkObject = item.gameObject.AddComponent<NetworkObject>();
-                networkObject.DontDestroyWithOwner = true;
-                item.gameObject.AddComponent<LastShiftOwnerNetworkTransform>();
-                item.gameObject.AddComponent<LastShiftNetworkGrabbable>();
-            }
-
             var sessionObject = new GameObject("LAST_SHIFT_SP02A_NETWORK_Session");
             var manager = sessionObject.AddComponent<NetworkManager>();
             var transport = sessionObject.AddComponent<UnityTransport>();
@@ -84,6 +76,7 @@ namespace DoodleUp.Editor
             EditorSceneManager.SaveScene(scene, ScenePath);
             EnsureSceneInBuildSettings();
             AssetDatabase.SaveAssets();
+            StampSceneNetworkObjectHash();
             Debug.Log($"[LAST_SHIFT_NETWORK_BUILD] scene={ScenePath} players=1-4 authority=host items={items.Length} result=PASS");
         }
 
@@ -163,6 +156,34 @@ namespace DoodleUp.Editor
             scenes.RemoveAll(scene => scene.path == ScenePath);
             scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
             EditorBuildSettings.scenes = scenes.ToArray();
+        }
+
+        /// <summary>
+        /// 씬에 직접 세운 <see cref="NetworkObject"/>(sandbox)의 <c>GlobalObjectIdHash</c> 를 확정한다.
+        ///
+        /// 그 값은 NGO 의 <c>OnValidate</c> 가 <c>GlobalObjectId</c> 로부터 찍는데, 스크립트가
+        /// <c>AddComponent</c> 로 붙인 직후에는 아직 안 돈다 — 그대로 저장하면 <b>0 이 파일에 남는다.</b>
+        /// 0 이면 NGO 가 이 오브젝트를 구분하지 못해 spawn 이 죽는데, 씬은 멀쩡히 저장되고 빌드
+        /// 로그도 PASS 라 조용히 지나간다. 프리팹 쪽에서 이미 두 번 겪은 함정이다
+        /// (<c>CreatePlayerPrefab</c>, <c>RebuildItemPrefabs</c>).
+        ///
+        /// 씬 오브젝트는 프리팹처럼 재임포트로 못 밀어 넣으므로 <b>한 번 다시 열어</b> OnValidate 를
+        /// 돌린 뒤 그 값을 저장한다. 아래 검사가 침묵을 막는다.
+        /// </summary>
+        private static void StampSceneNetworkObjectHash()
+        {
+            var reopened = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var identity = reopened.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<LastShiftNetworkSandbox>(true))
+                .Single()
+                .GetComponent<NetworkObject>();
+            EditorUtility.SetDirty(identity);
+            EditorSceneManager.MarkSceneDirty(reopened);
+            EditorSceneManager.SaveScene(reopened, ScenePath);
+            if (identity.PrefabIdHash == 0u)
+                throw new System.InvalidOperationException(
+                    $"{ScenePath} sandbox saved with GlobalObjectIdHash 0 — NGO cannot spawn it.");
+            Debug.Log($"[LAST_SHIFT_SCENE_IDENTITY] sandboxHash={identity.PrefabIdHash} result=PASS");
         }
     }
 }

@@ -15,6 +15,13 @@ namespace DoodleUp.Runtime
         [SerializeField] private NetworkManager networkManager;
         [SerializeField] private UnityTransport transport;
         [SerializeField] private LastShiftNetworkPlayer playerPrefab;
+
+        /// <summary>
+        /// 승무원 프리팹. 레벨이 하나가 된 뒤로 씬에는 플레이어가 없고 접속 시 여기서 스폰되므로,
+        /// 승무원이 필요한 쪽(테스트 등)이 경로를 따로 적지 않고 이것을 본다 — 경로를 각자 적으면
+        /// 빌더가 프리팹을 옮겼을 때 그쪽만 조용히 뒤처진다.
+        /// </summary>
+        public LastShiftNetworkPlayer PlayerPrefab => playerPrefab;
         [SerializeField] private LastShiftSandboxController sandbox;
         [SerializeField] private string address = "127.0.0.1";
         [SerializeField] private ushort port = DefaultPort;
@@ -136,6 +143,20 @@ namespace DoodleUp.Runtime
             return allowed;
         }
 
+        /// <summary>
+        /// 에디터 Play 자동 host 를 끈다.
+        ///
+        /// 레벨이 하나가 되면서 <b>모든 PlayMode 테스트가 이 씬을 연다.</b> 그러면 테스트마다
+        /// host 가 자동으로 떠서 같은 UDP 포트를 잡으려 하고, 앞 테스트의 host 가 아직 안 내려간
+        /// 사이에 다음 테스트가 뜨면 "address is already in use" 로 SetUp 부터 죽는다. 산소·임무
+        /// 시계처럼 네트워크와 무관한 검사까지 그 경쟁에 얹히면 실패가 무엇 때문인지 안 갈린다.
+        ///
+        /// 그래서 <b>씬을 로드하기 전에</b> 이 값을 <c>false</c> 로 두면 자동 host 를 건너뛴다.
+        /// 명시적 <c>-lastShiftNetworkMode</c> 인자 경로와 <see cref="StartHost"/> 직접 호출은
+        /// 영향받지 않는다 — 끄는 것은 "에디터 Play 라서 알아서 뜨는" 편의 경로 하나뿐이다.
+        /// </summary>
+        public static bool AutoStartHostInEditor = true;
+
         private void Start()
         {
             var mode = ReadArgument("-lastShiftNetworkMode");
@@ -150,7 +171,7 @@ namespace DoodleUp.Runtime
                 if (!StartClient()) Debug.LogError($"[LAST_SHIFT_NETWORK_FAILED] mode=client address={address} port={port}");
             }
 #if UNITY_EDITOR
-            else if (StartHost())
+            else if (AutoStartHostInEditor && StartHost())
             {
                 // 에디터 Play 는 -lastShiftNetworkMode 인자를 받을 수 없다. host 가 켜지지 않으면
                 // player 가 spawn 되지 않고 preset 도 적용되지 않아 잡을 물건이 하나도 없는 상태로 보인다.

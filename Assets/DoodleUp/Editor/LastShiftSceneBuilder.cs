@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using DoodleUp.Runtime;
+using Unity.Netcode;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -713,7 +714,18 @@ namespace DoodleUp.Editor
 
             AssetDatabase.SaveAssets();
             foreach (var spec in ItemSpecs)
-                AssetDatabase.ImportAsset(ItemPrefabPath(spec.Role), ImportAssetOptions.ForceSynchronousImport);
+            {
+                var path = ItemPrefabPath(spec.Role);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                var identity = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<NetworkObject>();
+                EditorUtility.SetDirty(identity);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                if (identity.PrefabIdHash == 0u)
+                    throw new System.InvalidOperationException(
+                        $"{path} saved with GlobalObjectIdHash 0 — NGO cannot tell it from the other items.");
+            }
+
             Debug.Log($"[LAST_SHIFT_ITEM_PREFABS] count={ItemSpecs.Length} result=PASS");
         }
 
@@ -757,6 +769,14 @@ namespace DoodleUp.Editor
             // 씬을 열어 첫 물리 스텝이 도는 사이 한 프레임 동안 지구 중력으로 떨어진다.
             LastShiftShipPhysics.ConfigureItemBody(body);
             item.AddComponent<LastShiftGrabbable>().Configure(role, true);
+            // 네트워크 부품은 프리팹이 들고 있어야 한다. 씬 인스턴스에 나중에 AddComponent 하면
+            // NetworkObject.OnValidate 가 안 돌아 GlobalObjectIdHash 가 0 으로 남고, 0 끼리는
+            // 서로 같은 값이라 NGO 가 "이미 같은 해시가 등록됐다" 며 두 번째 아이템부터 죽는다.
+            // 씬은 멀쩡히 저장되고 빌드 로그도 PASS 라 조용히 지나간다 — 플레이어 프리팹이
+            // 겪은 것과 같은 함정이다(CreatePlayerPrefab 주석).
+            item.AddComponent<NetworkObject>().DontDestroyWithOwner = true;
+            item.AddComponent<LastShiftOwnerNetworkTransform>();
+            item.AddComponent<LastShiftNetworkGrabbable>();
             return item;
         }
 
