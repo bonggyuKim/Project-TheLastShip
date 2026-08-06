@@ -1094,12 +1094,17 @@ namespace DoodleUp.Editor
             {
                 if (prop == null || !SameSpace(prop.space, space)) continue;
 
-                var local = parent.InverseTransformPoint(LastShiftDressingSpaces.WorldCenter(prop));
+                var center = LastShiftDressingSpaces.WorldCenter(prop);
+                var local = parent.InverseTransformPoint(center);
                 GameObject instance;
                 if (prop.prefab != null)
                 {
+                    // 프리팹 원점은 밑면이다 — art 가 bottomY 훅에 맞춰 그렇게 만들었다
+                    // (last-shift-dressing-assets-v1.md §3 "루트 = 밑면"). WorldCenter 는 중심이라
+                    // 그대로 넣으면 소품이 제 높이의 절반만큼 뜬다. 박스 폴백만 중심 기준이다.
                     instance = (GameObject)PrefabUtility.InstantiatePrefab(prop.prefab, parent);
-                    instance.transform.localPosition = local;
+                    instance.transform.localPosition = parent.InverseTransformPoint(
+                        new Vector3(center.x, LastShiftDressingSpaces.BottomY(prop), center.z));
                 }
                 else
                 {
@@ -1371,48 +1376,12 @@ namespace DoodleUp.Editor
             light.color = new Color(0.72f, 0.78f, 0.95f);
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
 
-            CreateZoneLights("Cockpit", LastShiftZone.Cockpit, new Color(0.62f, 0.78f, 1f), 2.5f);
-            CreateZoneLights("Power", LastShiftZone.Power, new Color(1f, 0.86f, 0.62f), 2.3f);
-            CreateZoneLights("Cooling", LastShiftZone.Cooling, new Color(0.66f, 0.86f, 1f), 2.3f);
-            CreateZoneLights("LifeSupport", LastShiftZone.LifeSupport, new Color(0.66f, 1f, 0.80f), 2.3f);
-
-            // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
-            // 잠긴 문틈으로 빛이 새면 §17.7 이 미결로 남긴 "차폐 수준" 을 코드가 먼저 정해 버린다.
-            foreach (var spec in LastShiftCompartments.Specs)
-            {
-                if (!spec.IsPassable) continue;
-                CreateZoneLight($"Light_{LastShiftCompartments.NameOf(spec.Compartment)}",
-                    new Vector3(spec.CenterX, LastShiftCompartments.InteriorHeight - 0.35f, spec.CenterZ),
-                    new Color(0.78f, 0.80f, 0.86f), 2.0f);
-            }
-        }
-
-        /// <summary>
-        /// 구역 조명. 구역 하나에 등 하나로 두면 11~14m 구역에서 가운데만 밝고 양 끝이 캄캄해진다
-        /// (점광원 range 7 은 반경이다). 등 사이 간격을 고정하고 개수를 구역 길이에서 뽑는다.
-        /// </summary>
-        private static void CreateZoneLights(string name, LastShiftZone zone, Color color, float intensity)
-        {
-            const float lightSpacing = 5.5f;
-            var length = LastShiftShipDimensions.ZoneLength(zone);
-            var center = LastShiftShipDimensions.ZoneCenterX(zone);
-            var count = Mathf.Max(1, Mathf.RoundToInt(length / lightSpacing));
-            var start = center - (count - 1) * lightSpacing * 0.5f;
-            for (var index = 0; index < count; index++)
-                CreateZoneLight($"Light_{name}_{index}", new Vector3(start + index * lightSpacing, CeilingInnerHeight - 0.35f, 0f), color, intensity);
-        }
-
-        private static void CreateZoneLight(string name, Vector3 position, Color color, float intensity)
-        {
-            var lightObject = new GameObject(name);
-            lightObject.transform.position = position;
-            var light = lightObject.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = color;
-            light.intensity = intensity;
-            // 등 간격(5.5)보다 넉넉해 사이가 어둡지 않고, 옆 구역까지 흘러 구분이 사라지지는 않는 반경.
-            light.range = 7f;
-            light.shadows = LightShadows.Soft;
+            // 천장 등은 여기서 만들지 않는다. 등기구 프리팹(LSDress_Lamp_*)이 Light 를 들고
+            // 오므로 씬에서 맨 점광원을 또 만들면 같은 자리에 둘이 겹쳐 배 전체가 두 배로
+            // 밝아진다. 자리·개수·색·밝기의 정본은 드레싱 세트의 Lamp 슬롯이고
+            // (LastShiftDressingSeed.AddCeilingLamps), 밝기 실값은 프리팹에 박혀 있다
+            // (art last-shift-dressing-assets-v1.md §3.3). 여기 남는 것은 형태 보조용
+            // ambient/directional 뿐이다.
         }
 
         /// <summary>

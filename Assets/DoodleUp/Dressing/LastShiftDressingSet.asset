@@ -393,7 +393,7 @@ MonoBehaviour:
       zone: 0
       compartment: 3
       passage: 0
-    size: {x: 2.5, y: 2.0, z: 0.64}
+    size: {x: 2.5, y: 2, z: 0.64}
     anchorMode: 0
     anchor: {x: -1, y: 0}
     bottomY: 0
@@ -444,7 +444,7 @@ MonoBehaviour:
       zone: 0
       compartment: 4
       passage: 0
-    size: {x: 0.76, y: 2.0, z: 0.87}
+    size: {x: 0.76, y: 2, z: 0.87}
     anchorMode: 0
     anchor: {x: 0, y: -0.35}
     bottomY: 0
@@ -481,7 +481,7 @@ MonoBehaviour:
       zone: 0
       compartment: 4
       passage: 0
-    size: {x: 0.76, y: 2.0, z: 0.87}
+    size: {x: 0.76, y: 2, z: 0.87}
     anchorMode: 0
     anchor: {x: 0, y: 0.099999994}
     bottomY: 0
@@ -518,7 +518,7 @@ MonoBehaviour:
       zone: 0
       compartment: 4
       passage: 0
-    size: {x: 0.76, y: 2.0, z: 0.87}
+    size: {x: 0.76, y: 2, z: 0.87}
     anchorMode: 0
     anchor: {x: 0, y: 0.54999995}
     bottomY: 0
@@ -555,7 +555,7 @@ MonoBehaviour:
       zone: 0
       compartment: 4
       passage: 0
-    size: {x: 0.76, y: 2.0, z: 0.87}
+    size: {x: 0.76, y: 2, z: 0.87}
     anchorMode: 0
     anchor: {x: 0, y: 1}
     bottomY: 0
@@ -626,7 +626,7 @@ MonoBehaviour:
       zone: 0
       compartment: 5
       passage: 0
-    size: {x: 1.2, y: 2.0, z: 0.24}
+    size: {x: 1.2, y: 2, z: 0.24}
     anchorMode: 0
     anchor: {x: 0, y: 0.45}
     bottomY: 0
@@ -643,7 +643,7 @@ MonoBehaviour:
       zone: 0
       compartment: 5
       passage: 0
-    size: {x: 1.2, y: 2.0, z: 0.24}
+    size: {x: 1.2, y: 2, z: 0.24}
     anchorMode: 0
     anchor: {x: 0, y: 0.85}
     bottomY: 0
@@ -1273,7 +1273,7 @@ MonoBehaviour:
       zone: 0
       compartment: 10
       passage: 0
-    size: {x: 0.6, y: 1.0, z: 0.6}
+    size: {x: 0.6, y: 1, z: 0.6}
     anchorMode: 0
     anchor: {x: -0.55, y: -0.55}
     bottomY: 0
@@ -1290,7 +1290,7 @@ MonoBehaviour:
       zone: 0
       compartment: 10
       passage: 0
-    size: {x: 0.6, y: 1.0, z: 0.6}
+    size: {x: 0.6, y: 1, z: 0.6}
     anchorMode: 0
     anchor: {x: -0.55, y: 0.55}
     bottomY: 0
@@ -1307,7 +1307,7 @@ MonoBehaviour:
       zone: 0
       compartment: 10
       passage: 0
-    size: {x: 0.6, y: 1.0, z: 0.6}
+    size: {x: 0.6, y: 1, z: 0.6}
     anchorMode: 0
     anchor: {x: 0.15, y: -0.55}
     bottomY: 0
@@ -1324,7 +1324,7 @@ MonoBehaviour:
       zone: 0
       compartment: 10
       passage: 0
-    size: {x: 0.6, y: 1.0, z: 0.6}
+    size: {x: 0.6, y: 1, z: 0.6}
     anchorMode: 0
     anchor: {x: 0.15, y: 0.55}
     bottomY: 0
@@ -1581,4 +1581,191 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
+    justification: 
+  - id: Lamp
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1765387717509410466, guid: cf078753a8f36e06068cad33442bfe92, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 2.46
+    justification: 
+  - id: Lamp
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5376081338877276433, guid: 3387a6ff4cd944122c435d4f23c1cc10, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 1.4
+    justification: 
+  - id: Lamp
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3504304478643053799, guid: 621b2c9b2eb15b3de9ae4812baf5805d, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 2.11
+    justification: 
+  - id: Lamp
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4844111721578274311, guid: 8dd02e85e06d638fd68454ad505c7ecf, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 2.11
+    justification: 
+  - id: Lamp
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1765387717509410466, guid: cf078753a8f36e06068cad33442bfe92, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 2.46
+    justification: 
+  - id: Lamp
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 3.04
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4844111721578274311, guid: 8dd02e85e06d638fd68454ad505c7ecf, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 2.11
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 5
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 6770363897356591816, guid: 93cd26d65187868d8834091fc8d7eee9, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 3.48
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 6
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3164178924218493660, guid: cde5e1775ac6067e5c9c2e764ed575c1, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 1.99
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 7
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 6163461992081819494, guid: f34342e6f80a00dc9022c104d3938319, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 4.15
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 10
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7120139092460378410, guid: 8f21cae5c9a605e0abb690d656fb7ea7, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 3.14
+    justification: 
+  - id: Lamp
+    space:
+      kind: 4
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.8399997
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 2382491903188551675, guid: 6d30b6d01dbb5d40d88125488f9baf5d, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 4.57
     justification: 

@@ -28,8 +28,10 @@ namespace DoodleUp.Editor
             var existing = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
             if (existing != null && !EditorUtility.DisplayDialog(
                     "드레싱 에셋 덮어쓰기",
-                    $"{LastShiftDressingSet.AssetPath} 를 코드에 든 초기값으로 되돌린다.\n" +
-                    "Inspector 에서 편집한 내용은 사라진다.",
+                    $"{LastShiftDressingSet.AssetPath} 를 코드에 든 초기값으로 되돌린다.\n\n" +
+                    $"연결된 프리팹 참조 {CountLinkedPrefabs(existing)}개가 전부 끊긴다. " +
+                    "Inspector 에서 편집한 재질·좌표도 사라진다.\n\n" +
+                    "슬롯만 늘리려는 것이라면 이게 아니라 '드레싱 슬롯 동기화 (연결 보존)' 이다.",
                     "덮어쓴다", "취소"))
                 return;
 
@@ -41,6 +43,77 @@ namespace DoodleUp.Editor
         /// <c>-executeMethod DoodleUp.Editor.LastShiftDressingSeed.SeedForAutomation</c>
         /// </summary>
         public static void SeedForAutomation() => Seed();
+
+        /// <summary>
+        /// 코드에 새로 생긴 슬롯만 에셋에 덧붙인다. <b>기존 항목은 손대지 않는다</b> —
+        /// art 가 채운 프리팹·재질 참조가 그대로 남는다.
+        ///
+        /// <see cref="Seed"/> 와 갈라 두는 이유가 이것이다. 시드는 목록을 통째로 되돌리므로
+        /// 지금 실행하면 art 가 연결한 프리팹 참조가 전부 사라진다. 슬롯이 늘어날 때 필요한
+        /// 것은 되돌리기가 아니라 덧붙이기이고, 그건 시드와 다른 동작이다.
+        ///
+        /// 같은 자리(<c>space</c> + <c>id</c>)가 이미 있으면 건너뛴다. 코드 쪽 좌표가 바뀐
+        /// 경우에도 덮지 않는다 — 그때는 무엇을 정본으로 볼지가 판단이라 자동으로 정하지 않고
+        /// 로그로만 알린다.
+        /// </summary>
+        [MenuItem("Last Shift/SP-02A/드레싱 슬롯 동기화 (연결 보존)")]
+        public static void SyncMissingProps()
+        {
+            var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
+            if (set == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_DRESSING_SYNC] path={LastShiftDressingSet.AssetPath} " +
+                               "result=FAIL reason=asset-missing — 먼저 부트스트랩을 돌린다");
+                return;
+            }
+
+            var existing = new List<LastShiftDressingProp>(set.Props);
+            var known = new HashSet<string>();
+            foreach (var prop in existing)
+                if (prop != null) known.Add(KeyOf(prop));
+
+            var added = 0;
+            var drifted = 0;
+            foreach (var candidate in BuildInitialProps())
+            {
+                if (known.Add(KeyOf(candidate)))
+                {
+                    existing.Add(candidate);
+                    added++;
+                }
+                else
+                {
+                    drifted++;
+                }
+            }
+
+            if (added == 0)
+            {
+                Debug.Log($"[LAST_SHIFT_DRESSING_SYNC] added=0 kept={existing.Count} result=PASS");
+                return;
+            }
+
+            set.ReplaceAll(existing);
+            EditorUtility.SetDirty(set);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(LastShiftDressingSet.AssetPath, ImportAssetOptions.ForceSynchronousImport);
+            Debug.Log($"[LAST_SHIFT_DRESSING_SYNC] added={added} kept={existing.Count - added} " +
+                      $"untouched={drifted} total={existing.Count} result=PASS");
+        }
+
+        /// <summary><c>-executeMethod DoodleUp.Editor.LastShiftDressingSeed.SyncForAutomation</c></summary>
+        public static void SyncForAutomation() => SyncMissingProps();
+
+        private static int CountLinkedPrefabs(LastShiftDressingSet set)
+        {
+            var linked = 0;
+            foreach (var prop in set.Props)
+                if (prop != null && prop.prefab != null) linked++;
+            return linked;
+        }
+
+        private static string KeyOf(LastShiftDressingProp prop) =>
+            $"{prop.space.kind}/{prop.space.zone}/{prop.space.compartment}/{prop.space.passage}/{prop.id}";
 
         /// <summary>에셋을 만들고(또는 덮어쓰고) 저장한다.</summary>
         public static LastShiftDressingSet Seed()
@@ -76,6 +149,7 @@ namespace DoodleUp.Editor
             AddCompartmentProps(props, fixture, hazard, indicator, grow);
             AddStateCues(props);
             AddBypassProps(props, lane, hazard);
+            AddCeilingLamps(props);
             return props;
         }
 
@@ -346,6 +420,115 @@ namespace DoodleUp.Editor
                     bottomY = airlockSize * 0.05f,
                     material = hazard
                 });
+        }
+
+        // ── 천장 등기구 ───────────────────────────────────────────────────────────────
+
+        private const string DressingPrefabFolder = "Assets/DoodleUp/Prefabs/Dressing";
+
+        /// <summary>등기구 프리팹. 없으면 <c>null</c> 이고 그 자리는 박스 폴백으로 선다.</summary>
+        private static GameObject LampPrefab(string suffix) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>($"{DressingPrefabFolder}/LSDress_Lamp_{suffix}.prefab");
+
+        /// <summary>
+        /// 천장 등. <b>이 슬롯이 배 조명의 정본이다</b> — 예전에는 빌더가 씬에 맨 점광원을
+        /// 직접 세웠고(<c>CreateZoneLights</c>), 그래서 art 가 만든 등기구 프리팹이 붙을 자리가
+        /// 없었다. 자리·개수는 여기서 정하고 <b>밝기·색·반경 실값은 프리팹에 박혀 있다</b>
+        /// (art `last-shift-dressing-assets-v1.md` §3.3). 코드에 숫자를 옮겨 적으면 정본이 둘이 된다.
+        ///
+        /// <paramref name="props"/> 에 붙는 <c>lightIntensity</c> 만 프리팹에서 읽어 복사한다 —
+        /// 이건 표시용 실값이 아니라 §3.4 밝기 합계 검사가 보는 집계 칸이다.
+        /// </summary>
+        private static void AddCeilingLamps(List<LastShiftDressingProp> props)
+        {
+            // 구역 등. <b>개수는 구역 길이가 아니라 방 길이에서 뽑는다</b> — 드레싱 공간
+            // Zone 의 경계는 RoomMinX~RoomMaxX(방)이고 통로는 별도 공간이다. 예전 빌더는
+            // 구역 길이(방+통로)로 간격을 잘라 등 하나가 통로에 떨어졌는데, 슬롯으로 옮기면
+            // 그 등이 방 경계 밖이라 R1_Bounds 에 걸린다. 통로는 아래에서 따로 단다.
+            foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
+                AddSpacedLamps(props, LastShiftDressingSpace.Of(zone), LampPrefab(zone.ToString()));
+
+            // 통로. 6m 짜리 방 사이 구간이라 양쪽 방 등의 range 7 로는 가운데가 처진다.
+            // 색은 통로 중심이 속한 구역을 따른다 — 통로는 경계(±7)를 걸치므로 절반씩
+            // 나뉘지만, 압력상 어느 구역인지는 중심이 정한다. 조명색이 구역 표시를 겸하는
+            // 이상(§CreateLighting) 두 색을 섞으면 그 표시가 흐려진다.
+            for (var passage = 0; passage <= 1; passage++)
+            {
+                var centerX = LastShiftShipDimensions.PassageCenterX(passage);
+                var zone = LastShiftZoneAtlas.Resolve(new Vector3(centerX, 0f, 0f));
+                AddSpacedLamps(props, LastShiftDressingSpace.OfPassage(passage), LampPrefab(zone.ToString()));
+            }
+
+            // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
+            // 잠긴 문틈으로 빛이 새면 §17.7 이 미결로 남긴 "차폐 수준" 을 코드가 먼저 정해 버린다.
+            foreach (var spec in LastShiftCompartments.Specs)
+            {
+                if (!spec.IsPassable) continue;
+                AddLamp(props, LastShiftDressingSpace.Of(spec.Compartment), "Lamp",
+                    Vector2.zero, RoomLampSize, LampPrefab(spec.Compartment.ToString()));
+            }
+
+            AddLamp(props, LastShiftDressingSpace.OfAirlock(), "Lamp",
+                Vector2.zero, RoomLampSize, LampPrefab("Airlock"));
+
+            // 우회 통로에는 등을 달지 않는다. LSDress_Lamp_Duct(0.6) 가 있고 art §3.4 는
+            // 셋까지(합 1.8) 를 전제했지만, C4_BypassLightBudget 의 예산 2.0 중 1.6 을
+            // DuctLane_Run·DuctLane_Leg(각 0.8) 가 이미 쓰고 있어 한 개도 들어가지 않는다
+            // (1.6 + 0.6 = 2.2 > 2.0). 예산을 늘리거나 바닥 띠 밝기를 낮추는 것은 §5 가
+            // 설계한 "불편해서 평소엔 안 쓰는 길" 의 세기를 바꾸는 판단이라 여기서 정하지
+            // 않는다 — art/planning 이 배분을 정하면 그때 슬롯을 추가한다.
+        }
+
+        /// <summary>
+        /// 공간 길이에서 등 개수를 뽑아 x 축으로 고르게 배치한다. 간격 <c>5.5</c> 는 점광원
+        /// range 7 이 서로 겹쳐 사이가 처지지 않는 값이다(예전 빌더가 쓰던 값 그대로).
+        /// </summary>
+        private static void AddSpacedLamps(List<LastShiftDressingProp> props,
+            LastShiftDressingSpace space, GameObject prefab)
+        {
+            const float lampSpacing = 5.5f;
+            var bounds = LastShiftDressingSpaces.BoundsOf(space);
+            var length = bounds.MaxX - bounds.MinX;
+            var count = Mathf.Max(1, Mathf.RoundToInt(length / lampSpacing));
+            for (var index = 0; index < count; index++)
+            {
+                var offsetX = (index - (count - 1) * 0.5f) * lampSpacing;
+                AddLamp(props, space, count > 1 ? $"Lamp_{index}" : "Lamp",
+                    new Vector2(offsetX, 0f), RoomLampSize, prefab);
+            }
+        }
+
+        /// <summary>등기구 외형 치수. 스케일이 아니라 경계 검사용이다(§ <c>LastShiftDressingProp.size</c>).</summary>
+        private static readonly Vector3 RoomLampSize = new(1.6f, 0.16f, 0.34f);
+
+        /// <summary>
+        /// 천장면에 밀착시킨다. <c>bottomY</c> 가 밑면 기준이므로 공간 높이에서 등기구 두께를
+        /// 뺀 값이 곧 밑면 높이다 — 공간마다 천장이 다르므로(구역 3.2 / 구획 3.0 / 관은 더 낮다)
+        /// 상수를 적지 않고 그 공간의 실제 높이에서 뽑는다.
+        /// </summary>
+        private static void AddLamp(List<LastShiftDressingProp> props, LastShiftDressingSpace space,
+            string id, Vector2 anchor, Vector3 size, GameObject prefab)
+        {
+            var bounds = LastShiftDressingSpaces.BoundsOf(space);
+            props.Add(new LastShiftDressingProp
+            {
+                id = id,
+                space = space,
+                anchorMode = LastShiftDressingAnchorMode.MetersFromSpaceCenter,
+                anchor = anchor,
+                size = size,
+                bottomY = bounds.CeilingY - bounds.FloorY - size.y,
+                prefab = prefab,
+                semantics = LastShiftDressingSemantics.LightSource,
+                lightIntensity = LampIntensityOf(prefab)
+            });
+        }
+
+        private static float LampIntensityOf(GameObject prefab)
+        {
+            if (prefab == null) return 0f;
+            var light = prefab.GetComponentInChildren<Light>(true);
+            return light != null ? light.intensity : 0f;
         }
     }
 }
