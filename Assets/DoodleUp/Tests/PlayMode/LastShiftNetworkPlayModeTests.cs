@@ -227,7 +227,23 @@ namespace DoodleUp.Tests.PlayMode
             UnityEngine.Physics.SyncTransforms();
             yield return null;
             yield return PressAndRelease(Key.F);
-            yield return WaitFor(() => player.HeldItem == null && battery.IsSecured, "secure-battery");
+            // 이 대기가 이 파일에서 유일하게 간헐 실패한다(카드 0fb18e77). 타임아웃 메시지만으로는
+            // "왜 안 잠겼는지" 가 안 남아서 원인을 못 좁혔다 — F 는 유령이면 통째로 막히고
+            // (LastShiftPlayerController:260, CT-08), 거리·소유권·수리 판정에서도 조용히 떨어진다.
+            // WaitFor 가 이미 진단 훅을 받으므로 여기에 상태를 붙여 다음 실패에서 바로 갈리게 한다.
+            yield return WaitFor(() => player.HeldItem == null && battery.IsSecured, "secure-battery",
+                diagnostics: () =>
+                {
+                    var crew = controller.GetComponent<LastShiftCrewOxygen>();
+                    var nominal = battery.Grabbable.NominalPosition;
+                    return $"ghost={controller.IsGhost} dead={(crew != null ? crew.IsDead.ToString() : "n/a")} " +
+                           $"suitO2={(crew != null ? crew.SuitOxygen.ToString("F2") : "n/a")} " +
+                           $"held={(player.HeldItem != null ? player.HeldItem.name : "null")} " +
+                           $"secured={battery.IsSecured} grabbableSecured={battery.Grabbable.Secured} " +
+                           $"distToNominal={Vector3.Distance(battery.transform.position, nominal):F2} " +
+                           $"impact={sandbox.HasAppliedImpact} resolved={sandbox.IsResolved} " +
+                           $"bus={sandbox.CurrentState.BusPower:F2}";
+                });
             Assert.That(battery.IsSecured, Is.True);
 
             yield return PressAndRelease(Key.Digit1);
