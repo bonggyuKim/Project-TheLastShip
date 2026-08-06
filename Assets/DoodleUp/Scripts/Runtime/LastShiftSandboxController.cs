@@ -1283,9 +1283,24 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void DrawObjectiveLine()
         {
+            GUI.Label(new Rect(28f, 24f, 480f, 28f), "목표 — 추력과 산소를 선 위로 올려 도킹", headingStyle);
+
+            // <b>운석 전에는 카운트다운을 그리지 않는다.</b> 도킹 제한시간은 사고 이후 예산이라
+            // 그 전에는 흐르지 않는데(AdvanceMission 의 HasAppliedImpact 게이트), 멈춘 숫자를
+            // 카운트다운 모양으로 띄우면 "시간이 아예 안 간다" 로 읽힌다. 실제로 플레이
+            // 확인에서 그 오해가 났다.
+            //
+            // 근본은 CT-01 §3.2 의 T-20초 예고 + 자동 운석(백로그 R5)이 아직 없어서 이 구간이
+            // 20초가 아니라 무한정이라는 것이다. R5 가 들어오면 이 분기는 예고 카운트다운으로
+            // 바뀐다.
+            if (!HasAppliedImpact)
+            {
+                GUI.Label(new Rect(508f, 24f, 180f, 28f), "사건 대기 · M", headingStyle);
+                return;
+            }
+
             var minutes = Mathf.FloorToInt(dockingSecondsRemaining / 60f);
             var seconds = Mathf.FloorToInt(dockingSecondsRemaining % 60f);
-            GUI.Label(new Rect(28f, 24f, 480f, 28f), "목표 — 추력과 산소를 선 위로 올려 도킹", headingStyle);
             GUI.Label(new Rect(508f, 24f, 180f, 28f), $"DOCK T-{minutes}:{seconds:00}", headingStyle);
         }
 
