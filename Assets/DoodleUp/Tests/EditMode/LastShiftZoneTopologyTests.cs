@@ -96,6 +96,58 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// <b>문 구멍이 실제로 지나갈 수 있는 자리에 뚫리는가.</b> 사용자 플레이에서 "냉각실에서
+        /// 산소실로 가는 길이 막혔다" 로 잡힌 건의 회귀 검사다.
+        ///
+        /// 원인은 <c>OpeningIndexOf</c> 가 3구역 시절 식(<c>boundary &lt;= 0 ? 1 : 2</c>)으로
+        /// 남아 있어 경계 2 가 개구부 3 이 아니라 2 를 가리킨 것이었다. 벌크헤드 x 는 맞고
+        /// 구멍 z 만 통로 반대편에 뚫려서, 그림상으로는 문이 있는데 통로로 걸어가면 벽이었다.
+        ///
+        /// 번호 대응(<c>boundary + 1</c>)을 직접 비교하지 않는다 — 그건 구현을 구현으로
+        /// 검사하는 것이다. 대신 <b>구멍이 그 경계에 접한 통로의 z 폭 안에 들어오는지</b>를 본다.
+        /// 통로가 없는 방-방 경계(전력실|냉각실)는 통로 대신 선체 폭 안이면 된다.
+        /// </summary>
+        [Test]
+        public void EveryDoorOpeningLiesInsideThePassageItConnects()
+        {
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+            {
+                var centerZ = LastShiftZoneDoor.CenterZOf(boundary);
+                var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
+
+                // <b>어느 통로에 접한 경계인지는 x 로 판정한다.</b> OpeningIndexOf 로 나누면
+                // 검사 대상이 스스로 "나는 방-방이라 통로 검사 대상이 아니다" 라고 답할 수 있어,
+                // 잘못된 번호가 예외 분기로 빠져나간다 — 처음 쓴 판이 실제로 그래서 통과했다.
+                var boundaryX = LastShiftZoneAtlas.BoundaryX(boundary);
+                var passage = -1;
+                for (var candidate = 0; candidate <= 1; candidate++)
+                {
+                    if (Mathf.Abs(boundaryX - LastShiftShipDimensions.PassageMinX(candidate)) > 0.001f &&
+                        Mathf.Abs(boundaryX - LastShiftShipDimensions.PassageMaxX(candidate)) > 0.001f) continue;
+                    passage = candidate;
+                    break;
+                }
+
+                if (passage < 0)
+                {
+                    Assert.That(Mathf.Abs(centerZ) + half, Is.LessThanOrEqualTo(LastShiftShipDimensions.HalfWidth + 0.001f),
+                        $"방-방 경계 {boundary} 의 구멍이 선체 밖으로 나간다.");
+                    continue;
+                }
+
+                // 구멍은 그 통로 안에 있어야 한다. 아니면 통로로 걸어가는 승무원 앞에
+                // 벌크헤드만 있다.
+                var minZ = LastShiftShipDimensions.PassageMinZ(passage);
+                var maxZ = LastShiftShipDimensions.PassageMaxZ(passage);
+
+                Assert.That(centerZ - half, Is.GreaterThanOrEqualTo(minZ - 0.001f),
+                    $"경계 {boundary} 의 구멍이 통로 {passage}(z {minZ:0.##}~{maxZ:0.##}) 밖이다 — 구멍 z={centerZ:0.##}.");
+                Assert.That(centerZ + half, Is.LessThanOrEqualTo(maxZ + 0.001f),
+                    $"경계 {boundary} 의 구멍이 통로 {passage}(z {minZ:0.##}~{maxZ:0.##}) 밖이다 — 구멍 z={centerZ:0.##}.");
+            }
+        }
+
         [Test]
         public void NearestBoundaryPicksTheClosestPlane()
         {
