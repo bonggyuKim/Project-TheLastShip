@@ -32,6 +32,8 @@ namespace DoodleUp.Editor
         private static Material starMaterial;
         private static Material voidMaterial;
         private static Material compartmentMaterial;
+        private static Material galleryMaterial;
+        private static Material discHullMaterial;
 
         // ── 드레싱 재질 ─────────────────────────────────────────────────────────
         // 색 정본은 Runtime 의 LastShiftDressing 이고 여기서는 캐시만 든다.
@@ -109,7 +111,9 @@ namespace DoodleUp.Editor
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ShipPrefabPath);
             if (prefab == null)
                 throw new System.InvalidOperationException($"{ShipPrefabPath} failed to save or import.");
-            Debug.Log($"[LAST_SHIFT_SHIP_PREFAB] path={ShipPrefabPath} compartments={LastShiftCompartments.Count} result=PASS");
+            Debug.Log($"[LAST_SHIFT_SHIP_PREFAB] path={ShipPrefabPath} compartments={LastShiftCompartments.Count} " +
+                      $"gallery_legs={LastShiftUpperGallery.LegCount} gallery_branches={LastShiftUpperGallery.BranchCount} " +
+                      $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} result=PASS");
             return prefab;
         }
 
@@ -141,7 +145,9 @@ namespace DoodleUp.Editor
             CreateInstrumentPanels(ship.transform);
             CreateDucts(ship.transform);
             CreateCompartments(ship.transform);
+            CreateUpperGallery(ship.transform);
             CreateBypassDuct(ship.transform);
+            CreateDiscHull(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
@@ -625,6 +631,143 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
+        /// 상부 회랑(§25.4(B), §27.4). 좌표 정본은 Runtime 의
+        /// <see cref="LastShiftUpperGallery"/> 이고 여기서는 판으로 세우기만 한다.
+        ///
+        /// <b>속이 빈 관이다.</b> 우회 덕트(<see cref="CreateBypassDuct"/>)와 같은 이유로
+        /// 솔리드 큐브를 쓸 수 없다 — 콜라이더를 붙이면 회랑이 통째로 막힌 블록이 되고,
+        /// 빼면 승무원이 바닥을 뚫고 떨어진다.
+        ///
+        /// <b>문은 여기서 안 뚫는다.</b> 회랑이 구획에 붙는 다섯 자리(§27.4)의 문은 전부
+        /// 구획 쪽 면에 있고, 면 소유 규칙상 그 면은 구획이 세운다 —
+        /// <see cref="ChildDoorwaysOn"/> 이 <see cref="LastShiftUpperGallery.DoorwaysOn"/> 을
+        /// 같이 보는 것이 그 연결이다. 여기서 또 뚫으면 같은 평면에 판이 두 장 겹친다.
+        /// </summary>
+        private static void CreateUpperGallery(Transform ship)
+        {
+            // 구획 회색보다 살짝 푸르고 밝다. 회랑은 방이 아니라 <b>방들을 잇는 길</b>이라
+            // 통로(선체 내부)와 구획 중 어느 쪽으로도 안 읽혀야 한다.
+            galleryMaterial ??= CreateMaterial("LS_Gallery", new Color(0.27f, 0.30f, 0.34f));
+
+            var root = new GameObject(LastShiftUpperGallery.RootName);
+            root.transform.SetParent(ship, false);
+
+            const float thickness = LastShiftUpperGallery.PanelThickness;
+            const float height = LastShiftUpperGallery.InteriorHeight;
+            var nearZ = LastShiftUpperGallery.NearZ;
+            var farZ = LastShiftUpperGallery.FarZ;
+            var runMinX = LastShiftUpperGallery.RunMinX;
+            var runMaxX = LastShiftUpperGallery.RunMaxX;
+
+            // ── 격납고 끝벽에서 구명정 위까지 달리는 긴 구간 ───────────────────────────
+            CreateGalleryPlate(root.transform, "Run_Floor",
+                runMinX, runMaxX + thickness, nearZ - thickness, farZ + thickness, -thickness, 0f);
+            CreateGalleryPlate(root.transform, "Run_Ceiling",
+                runMinX, runMaxX + thickness, nearZ - thickness, farZ + thickness, height, height + thickness);
+            CreateGalleryPlate(root.transform, "Run_WallFar",
+                runMinX, runMaxX + thickness, farZ, farZ + thickness, 0f, height);
+            CreateGalleryPlate(root.transform, "Run_EndAft",
+                runMaxX, runMaxX + thickness, nearZ, farZ, 0f, height);
+
+            // 안쪽 벽은 다리가 붙는 x 구간을 비운다. 안 비우면 분기 셋과 강하 하나가 벽으로
+            // 막혀 고리가 형상으로만 남고 실제로는 막다른 알코브 넷이 된다.
+            var mouths = LastShiftUpperGallery.Legs
+                .Where((_, index) => index != LastShiftUpperGallery.RunLeg)
+                .OrderBy(leg => leg.MinX)
+                .ToArray();
+            var edge = runMinX;
+            foreach (var mouth in mouths)
+            {
+                CreateGalleryPlate(root.transform, $"Run_WallNear_{mouth.Name}",
+                    edge, mouth.MinX, nearZ - thickness, nearZ, 0f, height);
+                edge = mouth.MaxX;
+            }
+            CreateGalleryPlate(root.transform, "Run_WallNear_End",
+                edge, runMaxX, nearZ - thickness, nearZ, 0f, height);
+
+            // ── z 로 달리는 다리 넷(분기 셋 + 강하 하나) ─────────────────────────────
+            foreach (var leg in mouths)
+                CreateGalleryLegAlongZ(root.transform, leg, nearZ);
+        }
+
+        /// <summary>
+        /// z 축으로 달리는 회랑 다리 하나. 구획 쪽 끝은 구획이 세운 벽이 막고(거기에 문이
+        /// 뚫린다), 회랑 쪽 끝은 열려 있어야 하므로 마구리를 안 세운다.
+        ///
+        /// 바닥·천장이 <paramref name="nearZ"/> 가 아니라 그 <b>한 판 앞</b>에서 끝나는 것은
+        /// 긴 구간의 바닥·천장이 이미 거기까지 나와 있기 때문이다 — 겹치면 같은 높이에
+        /// 판 두 장이 포개져 z-fighting 이 난다.
+        /// </summary>
+        private static void CreateGalleryLegAlongZ(Transform root, LastShiftGalleryLeg leg, float nearZ)
+        {
+            const float thickness = LastShiftUpperGallery.PanelThickness;
+            const float height = LastShiftUpperGallery.InteriorHeight;
+            var slabMinZ = leg.MinZ + thickness;
+            var slabMaxZ = nearZ - thickness;
+
+            CreateGalleryPlate(root, $"{leg.Name}_Floor",
+                leg.MinX - thickness, leg.MaxX + thickness, slabMinZ, slabMaxZ, -thickness, 0f);
+            CreateGalleryPlate(root, $"{leg.Name}_Ceiling",
+                leg.MinX - thickness, leg.MaxX + thickness, slabMinZ, slabMaxZ, height, height + thickness);
+            CreateGalleryPlate(root, $"{leg.Name}_WallFore",
+                leg.MinX - thickness, leg.MinX, leg.MinZ, nearZ, 0f, height);
+            CreateGalleryPlate(root, $"{leg.Name}_WallAft",
+                leg.MaxX, leg.MaxX + thickness, leg.MinZ, nearZ, 0f, height);
+        }
+
+        /// <summary>회랑 판 한 장. 덕트와 같은 이유로 세 축 전부 구간으로 받는다.</summary>
+        private static void CreateGalleryPlate(Transform parent, string name,
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY)
+        {
+            if (maxX - minX <= 0.0001f || maxZ - minZ <= 0.0001f) return;
+            CreateCube(name, parent,
+                new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f),
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), galleryMaterial);
+        }
+
+        /// <summary>
+        /// 원반 외피 테두리(§26, §27.2). <see cref="LastShiftHullShell"/> 이 정본이고 여기서는
+        /// 타원을 직선 판 <see cref="LastShiftHullShell.SegmentCount"/> 장으로 두른다.
+        ///
+        /// <b>곡면 메시를 만들지 않는다.</b> §27.7-1 이 메시·자투리 공간 구조체를 <c>art</c>
+        /// 로 남겼다 — 여기서 프로시저럴 메시를 구우면 아트가 그걸 정본으로 오인하고, 그
+        /// 순간 "좌표는 코드, 형상은 아트" 라는 이 프로젝트의 경계가 한 군데서만 깨진다.
+        /// 그레이박스가 답해야 하는 것은 <b>평면 실루엣</b>뿐이고, 세로 프로파일(렌즈 단면)은
+        /// 여기 없다.
+        ///
+        /// 판이 안쪽으로 들어오는 내접 근사라 구획·회랑이 그 다각형 안에 들어가는지는
+        /// 이상적인 타원이 아니라 <see cref="LastShiftHullShell.InscribedContains"/> 로
+        /// 검사해야 한다 — EditMode 검사가 그 자리를 잡는다.
+        /// </summary>
+        private static void CreateDiscHull(Transform ship)
+        {
+            discHullMaterial ??= CreateMaterial("LS_DiscHull", new Color(0.22f, 0.24f, 0.27f));
+
+            var root = new GameObject("DiscHull");
+            root.transform.SetParent(ship, false);
+
+            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+            {
+                var start = LastShiftHullShell.SegmentStart(segment);
+                var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
+                var chord = end - start;
+                var middle = (start + end) * 0.5f;
+
+                var panel = CreateCube($"Rim_{segment:00}", root.transform,
+                    new Vector3(middle.x,
+                        LastShiftHullShell.RimBaseY + LastShiftHullShell.RimHeight * 0.5f,
+                        middle.y),
+                    new Vector3(chord.magnitude, LastShiftHullShell.RimHeight, LastShiftHullShell.PanelThickness),
+                    discHullMaterial);
+
+                // 로컬 +x 를 현 방향에 맞춘다. y 축 회전은 +x 를 (cos, 0, -sin) 으로 보내므로
+                // 부호가 뒤집힌 atan2 다 — 그냥 Atan2(dz, dx) 를 쓰면 판이 거울처럼 반대로 눕는다.
+                panel.transform.localRotation =
+                    Quaternion.Euler(0f, -Mathf.Atan2(chord.y, chord.x) * Mathf.Rad2Deg, 0f);
+            }
+        }
+
+        /// <summary>
         /// 갑판 하부 우회 통로와 에어록(§5, §23). 좌표 정본은 Runtime 의
         /// <see cref="LastShiftBypassDuct"/> 이고 여기서는 판으로 세우기만 한다.
         ///
@@ -919,13 +1062,29 @@ namespace DoodleUp.Editor
                 .ToArray();
         }
 
-        /// <summary>이 면에 뚫어야 하는 구멍의 자유축 로컬 좌표. 잠긴 자식은 구멍을 안 낸다.</summary>
+        /// <summary>
+        /// 이 면에 뚫어야 하는 구멍의 자유축 로컬 좌표. 잠긴 자식은 구멍을 안 낸다.
+        ///
+        /// 자식 구획만으로는 부족하다 — 상부 회랑(§27.4)이 붙는 다섯 자리도 구획 쪽 면에
+        /// 문을 요구하고, 그 면 역시 구획이 소유한다. 회랑을 <see cref="ChildrenOn"/> 의
+        /// 부모-자식 사슬에 넣지 않은 것은 의도다: 회랑은 고리라서 사슬에 넣는 순간
+        /// <c>ParentIndex</c> 가 트리라는 전제(<see cref="LastShiftCompartments.DoorDepth"/>)가
+        /// 깨지고, 깨진 것을 고치려다 §9.4 의 "막다른 방" 이 조용히 사라진다.
+        /// </summary>
         private static float[] ChildDoorwaysOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
         {
             var origin = alongX ? spec.CenterZ : spec.CenterX;
+            var face = alongX
+                ? (atMax ? spec.MaxX : spec.MinX)
+                : (atMax ? spec.MaxZ : spec.MinZ);
+            var gallery = LastShiftUpperGallery.DoorwaysOn(spec.Compartment,
+                alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ, face);
+
             return ChildrenOn(spec, alongX, atMax)
                 .Where(child => child.IsPassable)
-                .Select(child => child.DoorCenter - origin)
+                .Select(child => child.DoorCenter)
+                .Concat(gallery)
+                .Select(doorCenter => doorCenter - origin)
                 .ToArray();
         }
 
