@@ -365,7 +365,7 @@ MonoBehaviour:
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 5096009974830982094, guid: 467c808b3066d5f33b5dc2a9ef0fef67, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
@@ -382,7 +382,7 @@ MonoBehaviour:
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 5096009974830982094, guid: 467c808b3066d5f33b5dc2a9ef0fef67, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
@@ -1384,7 +1384,7 @@ MonoBehaviour:
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 6106992308736460504, guid: 502c2957902ef861c674de5a5dbe4509, type: 3}
     material: {fileID: 2100000, guid: 20662825fd6f70a46b4faf5f5e9c299e, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1402,7 +1402,7 @@ MonoBehaviour:
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 6015288728983846048, guid: 8afe93e3ee2dded8a1c03eaba8fcb149, type: 3}
     material: {fileID: 2100000, guid: 20662825fd6f70a46b4faf5f5e9c299e, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1420,7 +1420,7 @@ MonoBehaviour:
     bottomY: 1.8299999
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 2274537123175411544, guid: 1060b731844ff45066c969f18a05aee1, type: 3}
     material: {fileID: 2100000, guid: 20662825fd6f70a46b4faf5f5e9c299e, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1438,7 +1438,7 @@ MonoBehaviour:
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 3150663223398473918, guid: 6b643a6f9e4f1071ce9ef801be71714c, type: 3}
     material: {fileID: 2100000, guid: b763d21bddbb46240800d4d2d426badf, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1456,7 +1456,7 @@ MonoBehaviour:
     bottomY: 0.50000006
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 8072553434748280576, guid: 35ee8cbf61294a493b8cd28e0a00928c, type: 3}
     material: {fileID: 2100000, guid: b763d21bddbb46240800d4d2d426badf, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1474,7 +1474,7 @@ MonoBehaviour:
     bottomY: 2.1100001
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 1560820317976173076, guid: b8d0dbff6af82f7cf52ef6fe7824d3f5, type: 3}
     material: {fileID: 2100000, guid: b763d21bddbb46240800d4d2d426badf, type: 2}
     semantics: 1
     lightIntensity: 0
@@ -1492,7 +1492,7 @@ MonoBehaviour:
     bottomY: 0.005
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 7323183460006941106, guid: 7842230ec4a41084ee0b71f8139cd856, type: 3}
     material: {fileID: 2100000, guid: 425206b95dca3334999f01897c81f9ce, type: 2}
     semantics: 64
     lightIntensity: 0.8
@@ -1509,7 +1509,7 @@ MonoBehaviour:
     bottomY: 0.005
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 6841451090087344143, guid: d0fbc8376c59be52456724da03f13d2b, type: 3}
     material: {fileID: 2100000, guid: 425206b95dca3334999f01897c81f9ce, type: 2}
     semantics: 64
     lightIntensity: 0.8
@@ -1526,7 +1526,7 @@ MonoBehaviour:
     bottomY: 0.15
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 1155641527833867634, guid: cfa8f00c5bf4b6fce47c5abc7870c9f1, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
@@ -1543,7 +1543,7 @@ MonoBehaviour:
     bottomY: 0.15
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 1155641527833867634, guid: cfa8f00c5bf4b6fce47c5abc7870c9f1, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
@@ -1560,7 +1560,7 @@ MonoBehaviour:
     bottomY: 0.15
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 1155641527833867634, guid: cfa8f00c5bf4b6fce47c5abc7870c9f1, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
@@ -1577,7 +1577,7 @@ MonoBehaviour:
     bottomY: 0.15
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
+    prefab: {fileID: 1155641527833867634, guid: cfa8f00c5bf4b6fce47c5abc7870c9f1, type: 3}
     material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
     semantics: 0
     lightIntensity: 0
