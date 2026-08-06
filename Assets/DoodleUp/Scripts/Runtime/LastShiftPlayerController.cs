@@ -174,6 +174,9 @@ namespace DoodleUp.Runtime
             var move = ReadMove(keyboard);
             var look = ReadLook(Mouse.current);
             var jump = keyboard.spaceKey.wasPressedThisFrame;
+            // 누르고 있는 동안 웅크린다. 토글로 두면 덕트에서 나온 뒤에도 웅크린 채 걸어
+            // 다니게 되고, 그 상태가 화면에서 잘 안 읽혀 "왜 느리지" 가 된다.
+            SetCrouching(keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed);
             var grab = ConsumePress(keyboard.eKey.isPressed, ref grabPressed);
             var secure = ConsumePress(keyboard.fKey.isPressed, ref securePressed);
             // 제자리에 놓기(F)와 계통에 연결하기(C·V·G)는 다른 행동이다. E·F 는 이미 쓰고 있다.
@@ -360,7 +363,54 @@ namespace DoodleUp.Runtime
         /// 솔로와 네트워크가 각자 소지품을 다른 곳에 들고 있으므로 둘 다 본다 — 한쪽만 보면
         /// 호스트에서만 느려지거나 클라이언트에서만 느려져 같은 배에서 두 속도가 생긴다.
         /// </summary>
-        public float CurrentMoveSpeed => IsCarryingBulkyItem ? CarrySpeed : MoveSpeed;
+        public float CurrentMoveSpeed => IsCrouching
+            ? LastShiftShipPhysics.CrouchSpeed
+            : IsCarryingBulkyItem ? CarrySpeed : MoveSpeed;
+
+        /// <summary>
+        /// 웅크리고 있는가. 우회 통로(docs §5, 단면 <c>0.9m</c>)를 지나는 자세이고, 그 통로가
+        /// 유일한 용도다 — 선내 어디서든 웅크릴 수 있게 두는 것은 조작을 하나 늘리는 대신
+        /// 얻는 것이 없다. 다만 상태를 통로 안에서만 켜지게 만들면 "통로에 들어가려면 이미
+        /// 웅크려 있어야 하는데 통로 밖에서는 못 웅크린다" 는 순환이 생긴다.
+        /// </summary>
+        public bool IsCrouching { get; private set; }
+
+        /// <summary>
+        /// 웅크림 자세를 적용한다. 높이만 바꾸는 것이 아니라 <b>중심과 눈높이도 같이</b> 옮긴다 —
+        /// CharacterController 는 중심이 그대로면 높이를 줄일 때 발이 바닥에서 떠서, 웅크리는
+        /// 순간 승무원이 공중에 뜨고 다음 프레임에 떨어진다.
+        ///
+        /// <b>일어서기는 머리 위 공간이 있을 때만 된다.</b> 없으면 웅크린 채로 남는다 —
+        /// 덕트 안에서 일어서면 CharacterController 가 천장을 뚫고 나가 갑판 위로 솟는다.
+        /// </summary>
+        public void SetCrouching(bool crouch)
+        {
+            if (characterController == null) characterController = GetComponent<CharacterController>();
+            if (crouch == IsCrouching) return;
+            if (!crouch && !HasStandingHeadroom()) return;
+
+            IsCrouching = crouch;
+            var height = crouch ? LastShiftShipPhysics.CrouchHeight : LastShiftShipPhysics.StandingHeight;
+            characterController.height = height;
+            characterController.center = new Vector3(0f, height * 0.5f, 0f);
+            if (targetCamera != null)
+                targetCamera.transform.localPosition = new Vector3(0f,
+                    crouch ? LastShiftShipPhysics.CrouchEyeHeight : LastShiftShipPhysics.EyeHeight, 0f);
+        }
+
+        /// <summary>
+        /// 일어설 자리가 있는가. 웅크린 캡슐 머리 위로 서 있을 높이만큼 비어 있는지 본다.
+        /// 반지름을 조금 줄여 쏘는 것은 벽에 붙어 선 상태에서 벽 자체를 짚어 영영 못 일어서는
+        /// 것을 막기 위해서다.
+        /// </summary>
+        private bool HasStandingHeadroom()
+        {
+            var probeRadius = LastShiftShipPhysics.CrewRadius * 0.9f;
+            var bottom = transform.position + Vector3.up * (LastShiftShipPhysics.CrouchHeight - probeRadius);
+            var top = transform.position + Vector3.up * (LastShiftShipPhysics.StandingHeight - probeRadius);
+            return !UnityEngine.Physics.CheckCapsule(bottom, top, probeRadius, ~0,
+                QueryTriggerInteraction.Ignore);
+        }
 
         public bool IsCarryingBulkyItem
         {

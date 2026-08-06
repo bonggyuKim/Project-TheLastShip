@@ -91,8 +91,8 @@ namespace DoodleUp.Editor
             var player = new GameObject("LastShiftNetworkPlayer");
             var characterController = player.AddComponent<CharacterController>();
             characterController.radius = LastShiftShipPhysics.CrewRadius;
-            characterController.height = 1.7f;
-            characterController.center = new Vector3(0f, 0.85f, 0f);
+            characterController.height = LastShiftShipPhysics.StandingHeight;
+            characterController.center = new Vector3(0f, LastShiftShipPhysics.StandingHeight * 0.5f, 0f);
             player.AddComponent<NetworkObject>();
             player.AddComponent<LastShiftOwnerNetworkTransform>();
 

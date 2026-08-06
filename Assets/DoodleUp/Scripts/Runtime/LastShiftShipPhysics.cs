@@ -54,6 +54,33 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float CrewRadius = 0.28f;
 
+        /// <summary>
+        /// 서 있을 때의 승무원 높이. 씬 빌더와 플레이어 프리팹이 CharacterController 에 쓰던
+        /// 리터럴 <c>1.7</c> 을 여기로 올린다 — 웅크림이 생기면서 이 값이 "기본 높이" 라는
+        /// 뜻을 갖게 됐고, 두 자리에 흩어져 있으면 웅크림 복귀가 한쪽에서만 맞는다.
+        /// </summary>
+        public const float StandingHeight = 1.7f;
+
+        /// <summary>
+        /// 웅크렸을 때의 승무원 높이. 우회 통로 단면(<c>0.9m</c>, docs §5)과 같은 값이다 —
+        /// 덕트가 통과 가능한 최소 단면이고, 웅크림은 그 단면을 지나기 위한 자세다.
+        /// 이 둘이 어긋나면 "웅크렸는데도 안 들어가는" 통로가 생긴다.
+        /// </summary>
+        public const float CrouchHeight = 0.9f;
+
+        /// <summary>
+        /// 웅크림 눈높이. 서 있을 때(<see cref="EyeHeight"/> <c>1.55</c>)와 같은 비율을 유지한다 —
+        /// 리터럴을 적으면 높이를 조정할 때 카메라만 천장을 뚫거나 바닥에 묻힌다.
+        /// </summary>
+        public const float CrouchEyeHeight = EyeHeight * CrouchHeight / StandingHeight;
+
+        /// <summary>
+        /// 웅크림 이동 속도. 물건을 든 속도(<c>2.8</c>)보다 느려야 "기어서 건너가는 우회로" 가
+        /// 주 통로보다 빠른 지름길이 되지 않는다 — docs §5 가 우회로에 비용을 요구하는 이유다.
+        /// 산소 비용(<c>SuitOxygen</c>)과 함께 두 번째 비용축이다.
+        /// </summary>
+        public const float CrouchSpeed = 1.6f;
+
         /// <summary>접지 시 유지하는 하향 속도. 경사·틈에서 미끄러지지 않을 최소값.</summary>
         public const float GroundedSettleSpeed = -1f;
 
