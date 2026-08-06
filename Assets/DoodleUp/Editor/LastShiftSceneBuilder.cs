@@ -503,10 +503,14 @@ namespace DoodleUp.Editor
         /// 갑판 하부 우회 통로와 에어록(§5, §23). 좌표 정본은 Runtime 의
         /// <see cref="LastShiftBypassDuct"/> 이고 여기서는 판으로 세우기만 한다.
         ///
-        /// <b>바닥에 구멍을 안 뚫는다.</b> 갑판 슬래브는 구역 바닥이라 그대로 두고, 승강구는
-        /// 슬래브를 지나는 수직 통이다 — 지금 단계에서 뚫으면 저중력에서 뜬 물건이 전부
-        /// 덕트로 떨어져 회수 불가가 된다. 통행 개통은 승강구 해치를 실제로 구현할 때다.
-        /// 그래서 이 블록이 세우는 것은 <b>형상과 좌표</b>뿐이고, 통행은 아직 안 열린다.
+        /// <b>여기서 통행이 열린다.</b> 3단계까지는 솔리드 큐브 겉면만 세우고 콜라이더를 뺐다 —
+        /// 승강구 해치가 없어 승무원이 못 들어오는데 콜라이더를 남기면 갑판 아래 보이지 않는
+        /// 벽이 되기 때문이었다. 해치가 생긴 지금은 반대로 <b>속이 빈 관</b>이어야 한다:
+        /// 솔리드 큐브에 콜라이더를 붙이면 덕트가 통째로 막힌 블록이 되고, 안 붙이면 해치를
+        /// 열자마자 허공으로 떨어진다.
+        ///
+        /// 그래서 판 넷(바닥·천장·옆벽 둘)으로 세운다. 판 두께는 슬래브 아래 여유
+        /// (<see cref="LastShiftBypassDuct.PanelThickness"/>)라 내부 <c>0.9m</c> 가 그대로 남는다.
         /// </summary>
         private static void CreateBypassDuct(Transform ship)
         {
@@ -515,45 +519,88 @@ namespace DoodleUp.Editor
             root.transform.SetParent(ship, false);
 
             const float section = LastShiftBypassDuct.Section;
+            const float half = section * 0.5f;
             const float thickness = LastShiftBypassDuct.PanelThickness;
             var floor = LastShiftBypassDuct.FloorY;
+            var ceiling = LastShiftBypassDuct.CeilingY;
             var runZ = LastShiftBypassDuct.RunZ;
             var foreX = LastShiftBypassDuct.ForeShaftX;
             var aftX = LastShiftBypassDuct.AftShaftX;
             var foreZ = LastShiftBypassDuct.ForeShaftZ;
 
-            // 선미로 달리는 긴 구간과, 선수 쪽으로 꺾이는 짧은 다리. 꺾임은 1 회다(§23.4).
-            CreateDuctSegment(root.transform, "Run_Aft",
-                new Vector3((foreX + aftX) * 0.5f, floor + section * 0.5f, runZ),
-                new Vector3(aftX - foreX + section, section, section), thickness);
-            CreateDuctSegment(root.transform, "Run_Fore",
-                new Vector3(foreX, floor + section * 0.5f, (foreZ + runZ) * 0.5f),
-                new Vector3(section, section, Mathf.Abs(runZ - foreZ) + section), thickness);
+            // ── 선미로 달리는 긴 구간(x 축). 꺾임 모서리는 이쪽이 갖는다(§23.4) ──────────
+            var runMinX = foreX - half;
+            var runMaxX = aftX + half;
+            CreateDuctPlate(root.transform, "Run_Floor", runMinX, runMaxX, runZ - half, runZ + half, floor - thickness, floor);
+            // 천장은 선미 승강구 자리를 비운다 — 안 비우면 올라갈 구멍이 천장 판에 막힌다.
+            CreateDuctPlate(root.transform, "Run_Ceiling", runMinX, aftX - half, runZ - half, runZ + half, ceiling, ceiling + thickness);
+            CreateDuctPlate(root.transform, "Run_WallStarboard", runMinX, runMaxX, runZ + half, runZ + half + thickness, floor, ceiling);
+            // 안쪽 옆벽은 선수 다리가 붙는 구간을 비운다. 안 비우면 L 자 모서리가 벽으로 막혀
+            // 꺾임이 형상으로만 남고 실제로는 두 개의 막다른 관이 된다.
+            CreateDuctPlate(root.transform, "Run_WallPort", foreX + half, runMaxX, runZ - half - thickness, runZ - half, floor, ceiling);
+            CreateDuctPlate(root.transform, "Run_EndFore", runMinX - thickness, runMinX, runZ - half, runZ + half, floor, ceiling);
+            CreateDuctPlate(root.transform, "Run_EndAft", runMaxX, runMaxX + thickness, runZ - half, runZ + half, floor, ceiling);
 
-            // 양 끝 수직 승강구. 갑판까지 올라오며, 바닥의 단은 걸어서 오르는 높이다(§23.6).
-            foreach (var (name, x, z) in new[] { ("Fore", foreX, foreZ), ("Aft", aftX, runZ) })
-            {
-                var shaftHeight = -floor;
-                CreateDuctSegment(root.transform, $"Shaft_{name}",
-                    new Vector3(x, floor + shaftHeight * 0.5f, z),
-                    new Vector3(section, shaftHeight, section), thickness);
-                CreateCube($"Step_{name}", root.transform,
-                    new Vector3(x, floor + LastShiftBypassDuct.StepHeight * 0.5f, z),
-                    new Vector3(section, LastShiftBypassDuct.StepHeight, section * 0.5f), ductMaterial);
-            }
+            // ── 선수 쪽으로 꺾이는 짧은 다리(z 축) ────────────────────────────────────
+            var legMinZ = foreZ - half;
+            var legMaxZ = runZ - half;
+            CreateDuctPlate(root.transform, "Leg_Floor", foreX - half, foreX + half, legMinZ, legMaxZ, floor - thickness, floor);
+            // 천장은 선수 승강구 자리를 비운다.
+            CreateDuctPlate(root.transform, "Leg_Ceiling", foreX - half, foreX + half, foreZ + half, legMaxZ, ceiling, ceiling + thickness);
+            CreateDuctPlate(root.transform, "Leg_WallFore", foreX - half - thickness, foreX - half, legMinZ, legMaxZ, floor, ceiling);
+            CreateDuctPlate(root.transform, "Leg_WallAft", foreX + half, foreX + half + thickness, legMinZ, legMaxZ, floor, ceiling);
+            CreateDuctPlate(root.transform, "Leg_End", foreX - half, foreX + half, legMinZ - thickness, legMinZ, floor, ceiling);
+
+            // ── 양 끝 수직 승강구 ─────────────────────────────────────────────────────
+            for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
+                CreateShaft(root.transform, shaft);
 
             CreateAirlock(root.transform);
         }
 
         /// <summary>
-        /// 덕트 한 구간. 안쪽을 비우려면 판 넷을 세워야 하지만 그레이박스에서는 겉면만
-        /// 세운다 — 안이 보이지 않는 좁은 관이라 내부 면이 화면에 안 나오고, 판 넷을 세우면
-        /// 오브젝트가 네 배가 되면서 씬만 무거워진다. 콜라이더는 뺀다: 지금은 통행이 안
-        /// 열려 있어 승무원이 여기 들어올 수 없고, 남겨 두면 갑판 아래 보이지 않는 벽이 된다.
+        /// 덕트 판 한 장. 세 축 전부 구간으로 받는다 — 관 하나가 판 여섯 장이고 그중 셋이 승강구·
+        /// 모서리 때문에 잘려 있어서, 중심·크기로 적으면 어느 판이 어디서 끊기는지가 안 읽힌다.
         /// </summary>
-        private static void CreateDuctSegment(Transform parent, string name, Vector3 center, Vector3 size, float thickness)
+        private static void CreateDuctPlate(Transform parent, string name,
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY)
         {
-            CreateDecorCube(name, parent, center, size, ductMaterial);
+            CreateCube(name, parent,
+                new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f),
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), ductMaterial);
+        }
+
+        /// <summary>
+        /// 수직 승강구 하나. 덕트 천장(<c>-0.3</c>)에서 갑판 슬래브 밑면(<c>-0.2</c>)까지의 짧은
+        /// 목만 세운다 — 그 아래는 덕트 본체이고 그 위는 슬래브에 뚫은 구멍이라 이미 벽이 있다.
+        /// 목을 안 두면 <c>0.1m</c> 띠가 옆으로 열려 물건이 슬래브 밑으로 끼어든다.
+        ///
+        /// 바닥의 단은 §23.6 의 권고다. <c>CharacterController.stepOffset</c> 기본값과 같아 걸어서
+        /// 오르내리고, 상승이 <c>1.2 → 0.9m</c> 로 줄어 점프 여유가 두 배가 된다.
+        /// </summary>
+        private static void CreateShaft(Transform parent, int shaft)
+        {
+            const float half = LastShiftBypassDuct.Section * 0.5f;
+            const float thickness = LastShiftBypassDuct.PanelThickness;
+            var mouth = LastShiftBypassDuct.ShaftMouth(shaft);
+            var name = shaft == LastShiftBypassDuct.ForeShaft ? "Fore" : "Aft";
+            var neckMin = LastShiftBypassDuct.CeilingY;
+            var neckMax = -LastShiftShipDimensions.HullThickness;
+
+            CreateDuctPlate(parent, $"ShaftNeck_{name}_Fore",
+                mouth.x - half - thickness, mouth.x - half, mouth.z - half, mouth.z + half, neckMin, neckMax);
+            CreateDuctPlate(parent, $"ShaftNeck_{name}_Aft",
+                mouth.x + half, mouth.x + half + thickness, mouth.z - half, mouth.z + half, neckMin, neckMax);
+            CreateDuctPlate(parent, $"ShaftNeck_{name}_Port",
+                mouth.x - half - thickness, mouth.x + half + thickness, mouth.z - half - thickness, mouth.z - half, neckMin, neckMax);
+            CreateDuctPlate(parent, $"ShaftNeck_{name}_Starboard",
+                mouth.x - half - thickness, mouth.x + half + thickness, mouth.z + half, mouth.z + half + thickness, neckMin, neckMax);
+
+            CreateCube($"Step_{name}", parent,
+                new Vector3(mouth.x, LastShiftBypassDuct.FloorY + LastShiftBypassDuct.StepHeight * 0.5f, mouth.z),
+                new Vector3(LastShiftBypassDuct.Section, LastShiftBypassDuct.StepHeight, half), ductMaterial);
+
+            CreateDeckHatch(parent, shaft);
         }
 
         /// <summary>
@@ -572,13 +619,73 @@ namespace DoodleUp.Editor
                 LastShiftBypassDuct.AirlockCenterZ);
             CreateDecorCube("Airlock", parent, centre, new Vector3(size, size, size), ductMaterial);
 
-            // 해치 두 짝. 형상으로만 존재하고 아직 열리지 않는다 - 안쪽은 덕트 바닥,
-            // 바깥은 배 밑면이다.
-            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth, 0.08f, LastShiftZoneDoor.OpeningWidth);
+            // 해치 두 짝. 형상으로만 존재하고 아직 안 열린다 — EVA 감압 시퀀스는 §24.7-2 가
+            // 별도 카드로 남긴 항목이다.
+            //
+            // 안쪽 해치는 덕트 바닥 판 <b>바로 아래</b>에 매단다. 예전처럼 덕트 바닥과 같은 y 에
+            // 두면 판과 겹쳐 z-fighting 이 나고, 무엇보다 이 카드에서 중요한 것은 그 판이
+            // 에어록 천장을 통째로 막고 있다는 사실이다 — 갑판 구멍으로 떨어진 물건이 닿는
+            // 최저점이 덕트 바닥(-1.2)이지 에어록 바닥(-4.2)이 아닌 근거가 그것이고,
+            // LastShiftBypassDuct.DeepestFallY 가 같은 것을 코드로 말한다.
+            var hatchThickness = 0.08f;
+            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth, hatchThickness, LastShiftZoneDoor.OpeningWidth);
             CreateDecorCube("Hatch_Inner", parent,
-                new Vector3(centre.x, LastShiftBypassDuct.AirlockCeilingY, centre.z), hatch, ductMaterial);
+                new Vector3(centre.x,
+                    LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness - hatchThickness * 0.5f,
+                    centre.z), hatch, ductMaterial);
             CreateDecorCube("Hatch_Outer", parent,
                 new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch, ductMaterial);
+        }
+
+        /// <summary>
+        /// 갑판 승강구의 해치 한 짝. 판은 갑판 위로 미끄러지고, 통행 차단은 별도 콜라이더가 맡는다 —
+        /// 움직이는 콜라이더로 막으면 CharacterController 와 떠 있는 물건이 판에 끼거나 밀려나서
+        /// 확인하려는 것("닫힌 해치는 못 지나가고 물건도 안 빠진다")이 아니라 밀림이 먼저 보인다.
+        /// <see cref="CreateZoneDoor"/> 와 같은 이유·같은 구조다.
+        ///
+        /// 테두리 띠를 두르는 것은 <b>구멍이 발밑에서 읽혀야</b> 하기 때문이다. 갑판에 뚫린
+        /// <c>0.9m</c> 구멍은 눈높이(<c>1.65</c>)에서 잘 안 보이고, 저중력에서 뒷걸음질로 빠지면
+        /// 다시 올라오는 데 우회로 왕복이 든다.
+        /// </summary>
+        private static void CreateDeckHatch(Transform parent, int shaft)
+        {
+            const float span = LastShiftDeckHatch.OpeningSpan;
+            const float thickness = LastShiftDeckHatch.PanelThickness;
+            var name = $"DeckHatch_{(shaft == LastShiftBypassDuct.ForeShaft ? "Fore" : "Aft")}";
+            var hatchMaterial = CreateMaterial($"LS_Hatch_{shaft}", new Color(0.50f, 0.42f, 0.26f));
+
+            var hatch = new GameObject(name);
+            hatch.transform.SetParent(parent, false);
+            // 해치 오브젝트를 구멍 중심에 놓는다. 판·띠·차단 콜라이더가 전부 이 아래에서 로컬로
+            // 잡히고, LastShiftDeckHatch 가 매 프레임 다시 쓰는 판 위치도 로컬이라 그대로 따라온다.
+            hatch.transform.localPosition = LastShiftBypassDuct.ShaftMouth(shaft);
+
+            var panel = CreateCube($"{name}_Panel", hatch.transform, Vector3.zero,
+                new Vector3(span, thickness, span), hatchMaterial);
+            Object.DestroyImmediate(panel.GetComponent<Collider>());
+
+            panelMaterial ??= CreateMaterial("LS_Panel", new Color(0.14f, 0.16f, 0.19f));
+            foreach (var sign in new[] { -1f, 1f })
+            {
+                var rimZ = CreateCube($"{name}_Rim_{(sign < 0f ? "Port" : "Starboard")}", hatch.transform,
+                    new Vector3(0f, 0.015f, sign * (span * 0.5f + 0.06f)),
+                    new Vector3(span + 0.24f, 0.03f, 0.12f), panelMaterial);
+                Object.DestroyImmediate(rimZ.GetComponent<Collider>());
+                var rimX = CreateCube($"{name}_Rim_{(sign < 0f ? "Fore" : "Aft")}", hatch.transform,
+                    new Vector3(sign * (span * 0.5f + 0.06f), 0.015f, 0f),
+                    new Vector3(0.12f, 0.03f, span), panelMaterial);
+                Object.DestroyImmediate(rimX.GetComponent<Collider>());
+            }
+
+            var blockerObject = new GameObject($"{name}_Blocker");
+            blockerObject.transform.SetParent(hatch.transform, false);
+            // 차단면은 갑판 슬래브 자리를 그대로 메운다. 얇게 얹으면 떠 있는 물건이 얇은 판을
+            // 뚫고 지나가는 터널링이 나온다.
+            blockerObject.transform.localPosition = new Vector3(0f, -LastShiftShipDimensions.HullThickness * 0.5f, 0f);
+            var blocker = blockerObject.AddComponent<BoxCollider>();
+            blocker.size = new Vector3(span, LastShiftShipDimensions.HullThickness, span);
+
+            hatch.AddComponent<LastShiftDeckHatch>().Configure(shaft, panel.transform, blocker);
         }
 
         private static void CreateCompartment(Transform parent, LastShiftCompartmentSpec spec)
@@ -729,11 +836,58 @@ namespace DoodleUp.Editor
             zone.transform.SetParent(parent, false);
             zone.transform.position = new Vector3(LastShiftShipDimensions.ZoneCenterX(zoneId), 0f, 0f);
             var zoneLength = LastShiftShipDimensions.ZoneLength(zoneId);
-            CreateCube("Floor", zone.transform, new Vector3(0f, -LastShiftShipDimensions.HullThickness * 0.5f, 0f),
-                new Vector3(zoneLength, LastShiftShipDimensions.HullThickness, LastShiftShipDimensions.EndWallSpan),
-                floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.30f, 0.32f, 0.35f)));
+            CreateZoneFloor(zone.transform, zoneId, zoneLength);
+            CreateZoneStrip(zone.transform, zoneLength, material);
+        }
+
+        /// <summary>
+        /// 구역 바닥. 승강구가 있는 구역(조종석·산소실)은 슬래브에 <c>0.9m</c> 구멍을 뚫는다 —
+        /// 우회 통로 3단계에서 미뤄 둔 "갑판에 구멍" 이 여기서 열린다.
+        ///
+        /// <b>액자형 넉 장으로 두른다.</b> 구멍을 뺀 나머지를 x 두 장 + z 두 장으로 덮는 방식이고,
+        /// 넷 다 구멍 좌표에서 파생하므로 진입점이 옮겨가도 판이 따라온다. 리터럴로 쪼개 두면
+        /// 선체 확대 때 구멍만 옮겨 가고 판이 제자리에 남아 바닥에 엉뚱한 틈이 생긴다.
+        ///
+        /// 구멍이 뚫려도 <see cref="LastShiftDeckHatch"/> 의 차단 콜라이더가 닫혀 있는 동안 그 자리를
+        /// 메우므로, 아무도 열지 않은 상태에서는 예전과 똑같이 막힌 바닥이다.
+        /// </summary>
+        private static void CreateZoneFloor(Transform zone, LastShiftZone zoneId, float zoneLength)
+        {
+            const float thickness = LastShiftShipDimensions.HullThickness;
+            const float span = LastShiftShipDimensions.EndWallSpan;
+            floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.30f, 0.32f, 0.35f));
+
+            if (!LastShiftBypassDuct.TryShaftInZone(zoneId, out var mouth))
+            {
+                CreateCube("Floor", zone, new Vector3(0f, -thickness * 0.5f, 0f),
+                    new Vector3(zoneLength, thickness, span), floorMaterial);
+                return;
+            }
+
+            // 구역 오브젝트가 ZoneCenterX 에 놓이므로 구멍도 로컬 x 로 바꿔서 쓴다.
+            var holeX = mouth.x - LastShiftShipDimensions.ZoneCenterX(zoneId);
+            var holeZ = mouth.z;
+            var half = LastShiftDeckHatch.OpeningSpan * 0.5f;
+
+            // 선수·선미 쪽 두 장은 전폭을 그대로 덮고, 좌우 두 장이 구멍의 x 폭 안에서 z 를 메운다.
+            CreateFloorSlab(zone, "Floor_Fore", -zoneLength * 0.5f, holeX - half, -span * 0.5f, span * 0.5f);
+            CreateFloorSlab(zone, "Floor_Aft", holeX + half, zoneLength * 0.5f, -span * 0.5f, span * 0.5f);
+            CreateFloorSlab(zone, "Floor_ShaftPort", holeX - half, holeX + half, -span * 0.5f, holeZ - half);
+            CreateFloorSlab(zone, "Floor_ShaftStarboard", holeX - half, holeX + half, holeZ + half, span * 0.5f);
+        }
+
+        /// <summary>바닥 판 한 장. x·z 구간으로 받는다 — 구멍을 두르는 넉 장이 전부 구간 계산이라 중심·크기로 받으면 읽기 어렵다.</summary>
+        private static void CreateFloorSlab(Transform zone, string name, float minX, float maxX, float minZ, float maxZ)
+        {
+            const float thickness = LastShiftShipDimensions.HullThickness;
+            CreateCube(name, zone, new Vector3((minX + maxX) * 0.5f, -thickness * 0.5f, (minZ + maxZ) * 0.5f),
+                new Vector3(maxX - minX, thickness, maxZ - minZ), floorMaterial);
+        }
+
+        private static void CreateZoneStrip(Transform zone, float zoneLength, Material material)
+        {
             // 구역 색 띠. 뒷벽 앞 바닥에 깔아 어느 구역에 서 있는지가 발밑에서 읽힌다.
-            var strip = CreateCube("ZoneStrip", zone.transform, new Vector3(0f, 0.015f, BackWallInnerZ - 0.8f),
+            var strip = CreateCube("ZoneStrip", zone, new Vector3(0f, 0.015f, BackWallInnerZ - 0.8f),
                 new Vector3(zoneLength - 0.3f, 0.03f, 0.25f), material);
             Object.DestroyImmediate(strip.GetComponent<Collider>());
         }
