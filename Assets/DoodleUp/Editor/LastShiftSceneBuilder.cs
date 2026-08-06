@@ -851,10 +851,56 @@ namespace DoodleUp.Editor
             compartmentMaterial = null;
         }
 
+        /// <summary>
+        /// 머티리얼 에셋 폴더. 예전에는 <c>new Material(shader)</c> 로 만들어 어디에도 저장하지
+        /// 않았고, 그러면 유니티가 그것을 <b>씬 파일 안에</b> 직렬화한다 — 프로젝트에 <c>.mat</c>
+        /// 파일이 하나도 없는데 씬에는 머티리얼이 24개 들어 있던 이유다.
+        ///
+        /// 그 상태로는 선체를 프리팹으로 뺄 수 없다. 프리팹 에셋은 씬에 묻힌 머티리얼을 참조할
+        /// 수 없어서, 옮기는 순간 회색 기본 머티리얼이 되거나 프리팹 파일 안에 사본이 또 생긴다.
+        /// 씬 하나로 합치는 작업(SP01 폐기)의 선행 조건이 여기다.
+        ///
+        /// 부수적으로 아트 소관이 생긴다 — 드레싱 단계에서 색을 바꾸려면 만질 파일이 있어야 하는데,
+        /// 지금까지는 씬을 다시 굽는 것 말고는 방법이 없었다.
+        /// </summary>
+        private const string MaterialFolder = "Assets/DoodleUp/Materials";
+
+        private static void EnsureMaterialFolder()
+        {
+            if (AssetDatabase.IsValidFolder(MaterialFolder)) return;
+            Directory.CreateDirectory(MaterialFolder);
+            AssetDatabase.Refresh();
+        }
+
+        /// <summary>
+        /// 이름으로 머티리얼 에셋을 찾아 값을 갱신하고, 없으면 만든다.
+        ///
+        /// <b>지우고 다시 만들지 않는다.</b> 프리팹에서 이미 겪은 것과 같은 이유다
+        /// (<see cref="LastShiftNetworkSceneBuilder"/> 의 <c>CreatePlayerPrefab</c> 주석) —
+        /// 에셋을 지우면 GUID 가 새로 찍히고, 그 머티리얼을 참조하던 씬·프리팹이 전부
+        /// 끊긴 참조로 바뀐다. 덮어쓰면 GUID 가 유지되어 재빌드 diff 가 조용하다.
+        ///
+        /// 발광 상태는 매번 껐다가 <see cref="CreateEmissiveMaterial"/> 가 다시 켠다. 안 그러면
+        /// 발광이던 이름이 비발광으로 바뀔 때 에셋에 남은 키워드가 조용히 따라온다.
+        /// </summary>
         private static Material CreateMaterial(string name, Color color)
         {
+            EnsureMaterialFolder();
             var shader = Shader.Find("Standard") ?? Shader.Find("Sprites/Default");
-            return new Material(shader) { name = name, color = color };
+            var path = $"{MaterialFolder}/{name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = name };
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            if (material.shader != shader) material.shader = shader;
+            material.color = color;
+            material.DisableKeyword("_EMISSION");
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         /// <summary>
@@ -867,6 +913,9 @@ namespace DoodleUp.Editor
             material.EnableKeyword("_EMISSION");
             material.SetColor("_EmissionColor", color * intensity);
             material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            // CreateMaterial 이 발광을 끈 뒤 dirty 를 찍었으므로 여기서 다시 찍어야 한다.
+            // 안 그러면 발광 설정이 메모리에만 남고 에셋 파일에는 꺼진 상태가 저장된다.
+            EditorUtility.SetDirty(material);
             return material;
         }
     }
