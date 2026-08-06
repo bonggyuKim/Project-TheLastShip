@@ -174,12 +174,19 @@ namespace DoodleUp.Runtime
                 LastShiftPreset.PowerOverloadLooseBattery => new LastShiftShipState
                 {
                     ThrustDemand = 0.46f,
-                    // 0.98 -> 0.62 (balance, 기획 §2.2 A-3). 0.98 은 S-P1 발동선 0.65 위라
-                    // 배터리가 bus 에서 빠져 있어도 전력 상황이 하나도 안 켜졌다 — 전력 위기를
-                    // 담당하는 프리셋이 전력으로는 아무 말도 못 하는 상태였다.
-                    BusPower = 0.62f,
+                    // 0.98 -> 0.40 (balance 확정, 기획 §2.2 A-3).
+                    // 0.98 은 S-P1 발동선 0.65 위라 t=0 에 전력이 아무 말도 못 했고,
+                    // 중간에 검토된 0.62 는 HighHeat(0.62)와 전력 축이 통째로 겹쳐 기각됐다.
+                    // 0.40 이면 S-P1(<=0.65)과 S-P2(<=0.40)가 시작 프레임에 함께 걸려
+                    // 이 프리셋만 t=0 에 고장 등급을 갖는다.
+                    BusPower = 0.40f,
                     OxygenPressure = 0.58f,
-                    HullIntegrity = 0.84f,
+                    // 0.84 -> 0.70 (balance 확정, 기획 §2.2 A-4).
+                    // 파공 발동선이 <=0.75 라 0.84 에서는 S-O1 이 안 걸리고, 악화가 파공 구역
+                    // 에서만 도므로 O2 가 떨어지지 않는다. 그러면 이 프리셋의 성공선인
+                    // S-O2(<=0.35)에 영원히 못 닿아 "전력 -> 재가압 정지 -> 산소" 연쇄
+                    // (기획 :1084)가 성립하지 않는다.
+                    HullIntegrity = 0.70f,
                     EngineHeat = 0.43f,
                     ShipAttitudeDegrees = 12f,
                     ExistingDamage = 0.14f

@@ -116,15 +116,19 @@ namespace DoodleUp.Tests.EditMode
             sandbox.Configure(player, new[] { battery, cooling, patch });
             sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
             var nominal = battery.NominalPosition;
+            // 프리셋 초기값은 밸런스가 바꾸는 값이라 리터럴로 박지 않는다. 이 검사가 보는
+            // 것은 "충격이 깎고 리셋이 되돌린다" 이지 특정 숫자가 아니다 — 0.84 를 적어
+            // 뒀더니 balance 가 0.70 으로 정정한 순간 무관한 검사가 같이 울었다.
+            var presetHull = LastShiftPresetFactory.Create(LastShiftPreset.PowerOverloadLooseBattery).HullIntegrity;
             sandbox.ApplyMeteorImpact();
-            Assert.That(sandbox.CurrentState.HullIntegrity, Is.LessThan(0.84f));
+            Assert.That(sandbox.CurrentState.HullIntegrity, Is.LessThan(presetHull));
             Assert.That(battery.DisplacementFromNominal, Is.GreaterThan(0f));
 
             sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
 
             Assert.That(sandbox.HasAppliedImpact, Is.False);
             Assert.That(sandbox.LastResult.Problem, Is.EqualTo(LastShiftDominantProblem.None));
-            Assert.That(sandbox.CurrentState.HullIntegrity, Is.EqualTo(0.84f).Within(0.0001f));
+            Assert.That(sandbox.CurrentState.HullIntegrity, Is.EqualTo(presetHull).Within(0.0001f));
             Assert.That(battery.transform.position, Is.EqualTo(nominal));
             Assert.That(battery.DisplacementFromNominal, Is.Zero.Within(0.0001f));
             Assert.That(battery.Body.linearVelocity, Is.EqualTo(Vector3.zero));

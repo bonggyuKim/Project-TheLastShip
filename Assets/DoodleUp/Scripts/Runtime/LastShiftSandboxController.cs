@@ -1153,6 +1153,16 @@ namespace DoodleUp.Runtime
             RefreshResultAfterImpact();
         }
 
+        /// <summary>
+        /// 테스트 전용 — 전력 시계처럼 <b>특정 구간에서만 도는 규칙</b>을 프리셋 초기값과
+        /// 무관하게 재기 위한 진입점이다. 프리셋 값은 밸런스가 언제든 바꾸므로, 그 값에
+        /// 기대어 규칙을 검사하면 밸런스 조정이 무관한 검사를 깨뜨린다.
+        /// </summary>
+        public void SetBusPowerForTest(float value)
+        {
+            currentState.BusPower = Mathf.Clamp01(value);
+        }
+
         public void RefreshResultAfterImpact()
         {
             if (HasAppliedImpact) LastResult = ResolveCurrentState(appliedMeteor);
