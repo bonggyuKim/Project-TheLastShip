@@ -223,14 +223,28 @@ namespace DoodleUp.Tests.PlayMode
             PositionForKeyboardInteraction(player, controller, battery);
             yield return PressAndRelease(Key.E);
             yield return WaitFor(() => player.HeldItem == battery, "grab-battery");
-            player.transform.position += battery.Grabbable.NominalPosition - player.HoldSocket.position;
-            UnityEngine.Physics.SyncTransforms();
-            yield return null;
+            // 한 프레임 옮기고 바로 F 를 누르면 간헐적으로 실패했다(카드 0fb18e77).
+            // 진단 훅이 잡은 실패 상태는 distToNominal=1.02 였고 SecureDistance 는 0.9 다 —
+            // 유령도 소유권도 아니고 <b>배터리가 아직 제자리에 안 들어와 있었다</b>.
+            //
+            // 플레이어에 CharacterController 가 붙어 있어 transform 을 직접 밀면 그 프레임에
+            // 그대로 서지 않고, 들고 있는 물건은 소켓을 따라오므로 오차가 물건 위치에 그대로
+            // 남는다. 그래서 한 번 밀고 마는 대신 <b>실제로 들어올 때까지</b> 민다.
+            yield return WaitFor(
+                () =>
+                {
+                    player.transform.position += battery.Grabbable.NominalPosition - player.HoldSocket.position;
+                    UnityEngine.Physics.SyncTransforms();
+                    return Vector3.Distance(battery.transform.position, battery.Grabbable.NominalPosition)
+                           <= LastShiftSandboxController.SecureDistance * 0.5f;
+                },
+                "battery-at-nominal",
+                diagnostics: () =>
+                    $"dist={Vector3.Distance(battery.transform.position, battery.Grabbable.NominalPosition):F2} " +
+                    $"limit={LastShiftSandboxController.SecureDistance:F2}");
             yield return PressAndRelease(Key.F);
-            // 이 대기가 이 파일에서 유일하게 간헐 실패한다(카드 0fb18e77). 타임아웃 메시지만으로는
-            // "왜 안 잠겼는지" 가 안 남아서 원인을 못 좁혔다 — F 는 유령이면 통째로 막히고
-            // (LastShiftPlayerController:260, CT-08), 거리·소유권·수리 판정에서도 조용히 떨어진다.
-            // WaitFor 가 이미 진단 훅을 받으므로 여기에 상태를 붙여 다음 실패에서 바로 갈리게 한다.
+            // 위 경쟁이 잡히기 전까지 이 대기가 타임아웃으로만 보였다. 진단 훅은 남겨 둔다 —
+            // 다음에 다른 이유로 떨어지면 그때도 한 줄로 갈린다.
             yield return WaitFor(() => player.HeldItem == null && battery.IsSecured, "secure-battery",
                 diagnostics: () =>
                 {
