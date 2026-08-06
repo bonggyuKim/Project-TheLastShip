@@ -227,6 +227,38 @@ namespace DoodleUp.Tests.EditMode
             Destroy(runtimeObject, player, battery, cooling, patch, tether);
         }
 
+        /// <summary>
+        /// 든 물건이 잡은 사람을 밀지 않는가. 사용자 플레이에서 "물건을 잡으면 튕겨 나간다"
+        /// 로 잡힌 건이다 — kinematic 으로 바꿔도 콜라이더는 살아 있고, 물건이 소켓에 붙어
+        /// 눈앞에 오므로 CharacterController 가 매 프레임 그것을 밀어냈다.
+        ///
+        /// 놓을 때 되돌리는 것까지 같이 본다. <c>UnityEngine.Physics.IgnoreCollision</c> 은 쌍에 남는
+        /// 상태라 안 풀면 그 물건은 영영 그 사람을 통과한다 — 고치려다 반대 버그를 만드는
+        /// 자리이고, 화면에서는 한참 뒤에야 보인다.
+        /// </summary>
+        [Test]
+        public void HeldItemDoesNotPushTheHolderAndCollisionReturnsOnDrop()
+        {
+            var player = CreatePlayer();
+            var item = CreateItem(LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal);
+            var holder = player.GetComponent<CharacterController>();
+            var itemCollider = item.GetComponent<Collider>();
+
+            Assert.That(UnityEngine.Physics.GetIgnoreCollision(itemCollider, holder), Is.False,
+                "잡기 전에는 부딪혀야 한다 — 안 그러면 물건을 통과해 걸어간다.");
+
+            Assert.That(player.TryGrabForProbe(item), Is.True);
+            Assert.That(UnityEngine.Physics.GetIgnoreCollision(itemCollider, holder), Is.True,
+                "든 물건은 잡은 사람을 밀면 안 된다.");
+
+            player.DropForProbe();
+            Assert.That(UnityEngine.Physics.GetIgnoreCollision(itemCollider, holder), Is.False,
+                "놓으면 다시 부딪혀야 한다 — 안 풀면 그 물건만 영영 통과된다.");
+
+            Object.DestroyImmediate(item.gameObject);
+            Object.DestroyImmediate(player.gameObject);
+        }
+
         private static LastShiftPlayerController CreatePlayer()
         {
             var playerObject = new GameObject("Player");

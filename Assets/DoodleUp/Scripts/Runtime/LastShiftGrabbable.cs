@@ -10,6 +10,19 @@ namespace DoodleUp.Runtime
 
         private Rigidbody body;
         private Transform originalParent;
+
+        /// <summary>
+        /// 드는 동안 충돌을 꺼 둔 상대 콜라이더들. <b>든 물건은 잡은 사람을 밀면 안 된다</b> —
+        /// kinematic 으로 바꿔도 콜라이더는 살아 있고, 물건이 소켓에 붙어 눈앞에 오므로
+        /// CharacterController 가 매 프레임 그것을 밀어내며 플레이어가 튕겨 나간다.
+        ///
+        /// 레이어를 나누지 않고 쌍으로 끄는 이유는, 물건이 <b>다른</b> 승무원과 배 구조물과는
+        /// 계속 부딪혀야 하기 때문이다. 레이어로 빼면 든 사람뿐 아니라 전부와 안 부딪힌다.
+        ///
+        /// 되돌릴 대상을 들고 있어야 한다. <c>UnityEngine.Physics.IgnoreCollision</c> 은 쌍에 남는 상태라
+        /// 놓을 때 같은 쌍으로 풀지 않으면 그 물건은 영영 그 사람을 통과한다.
+        /// </summary>
+        private readonly System.Collections.Generic.List<Collider> holderColliders = new();
         [SerializeField] private Vector3 nominalPosition;
         [SerializeField] private Quaternion nominalRotation = Quaternion.identity;
         [SerializeField] private bool spawnSecured;
@@ -65,6 +78,7 @@ namespace DoodleUp.Runtime
         {
             if (socket == null) return;
             BeginHold();
+            IgnoreHolderCollisions(socket);
             transform.SetParent(socket, false);
             transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
         }
@@ -73,9 +87,14 @@ namespace DoodleUp.Runtime
         {
             if (socket == null) return;
             BeginHold();
+            IgnoreHolderCollisions(socket);
             transform.SetPositionAndRotation(socket.position, socket.rotation);
         }
 
+        /// <summary>
+        /// 원격 사본. 소켓을 모르므로 충돌 해제 대상도 모른다 — 이 경로는 위치가 네트워크
+        /// 트랜스폼으로 오고 로컬 플레이어가 그것을 들고 있지도 않다.
+        /// </summary>
         public void BeginReplicatedHold()
         {
             BeginHold();
@@ -86,6 +105,7 @@ namespace DoodleUp.Runtime
             IsHeld = false;
             secured = false;
             SecuredByCrew = false;
+            RestoreHolderCollisions();
             body.isKinematic = false;
             body.linearVelocity = velocity;
         }
@@ -100,6 +120,7 @@ namespace DoodleUp.Runtime
             IsHeld = false;
             secured = value;
             SecuredByCrew = value && byCrew;
+            RestoreHolderCollisions();
             ApplyPhysicsState();
         }
 
@@ -107,6 +128,7 @@ namespace DoodleUp.Runtime
         {
             IsHeld = false;
             transform.SetParent(originalParent, true);
+            RestoreHolderCollisions();
             body.isKinematic = false;
             body.linearVelocity = velocity;
         }
@@ -121,6 +143,7 @@ namespace DoodleUp.Runtime
             IsHeld = false;
             secured = value;
             SecuredByCrew = value && byCrew;
+            RestoreHolderCollisions();
             transform.SetParent(originalParent, true);
             if (secured)
                 transform.SetPositionAndRotation(nominalPosition, nominalRotation);
@@ -192,6 +215,52 @@ namespace DoodleUp.Runtime
                 body.angularVelocity = Vector3.zero;
             }
             body.isKinematic = true;
+        }
+
+        /// <summary>
+        /// 잡은 사람과의 충돌을 끈다. <paramref name="holder"/> 아래의 모든 콜라이더를 대상으로
+        /// 하는 이유는 승무원이 <see cref="CharacterController"/> 하나로 끝나지 않을 수 있어서다
+        /// (자식 콜라이더가 붙으면 그쪽으로 다시 밀린다).
+        /// </summary>
+        private void IgnoreHolderCollisions(Transform holder)
+        {
+            RestoreHolderCollisions();
+            if (holder == null) return;
+
+            var root = holder.GetComponentInParent<LastShiftPlayerController>();
+            var source = root != null ? root.transform : holder;
+            var mine = GetComponentsInChildren<Collider>(true);
+            foreach (var other in source.GetComponentsInChildren<Collider>(true))
+            {
+                if (other == null || other.transform.IsChildOf(transform)) continue;
+                foreach (var self in mine)
+                {
+                    if (self == null) continue;
+                    UnityEngine.Physics.IgnoreCollision(self, other, true);
+                }
+
+                holderColliders.Add(other);
+            }
+        }
+
+        private void RestoreHolderCollisions()
+        {
+            if (holderColliders.Count == 0) return;
+
+            var mine = GetComponentsInChildren<Collider>(true);
+            foreach (var other in holderColliders)
+            {
+                // 놓는 순간 상대가 이미 파괴됐을 수 있다(씬 리로드·리스폰). 그때는 되돌릴
+                // 쌍 자체가 없으므로 건너뛴다 — null 에 IgnoreCollision 을 부르면 예외다.
+                if (other == null) continue;
+                foreach (var self in mine)
+                {
+                    if (self == null) continue;
+                    UnityEngine.Physics.IgnoreCollision(self, other, false);
+                }
+            }
+
+            holderColliders.Clear();
         }
 
         private void ApplyPhysicsState()
