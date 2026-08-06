@@ -89,6 +89,7 @@ namespace DoodleUp.Editor
             scene.name = "LAST_SHIFT_SP01";
             CreateLighting();
             PrefabUtility.InstantiatePrefab(RebuildShipPrefab());
+            RebuildItemPrefabs();
             var player = CreatePlayer();
             var items = CreateItems();
             var runtime = new GameObject("LAST_SHIFT_SP01_Runtime");
@@ -760,33 +761,103 @@ namespace DoodleUp.Editor
 
         public static Vector3 TetherSpawnPosition => LastShiftShipDimensions.TetherNominal;
 
-        private static LastShiftGrabbable[] CreateItems()
+        /// <summary>
+        /// 아이템 하나의 제원. 정위치(<c>Position</c>)만 프리팹 밖에 남는다 — 프리팹은 "무엇인가"를
+        /// 들고 씬이 "어디인가"를 정한다. <see cref="LastShiftGrabbable.NominalPosition"/> 이
+        /// <c>Configure</c> 시점의 <c>transform.position</c> 을 그대로 잡아 두므로, 프리팹을
+        /// 원점에서 구워 두고 씬에서 놓은 뒤 다시 <c>Configure</c> 해야 정위치가 맞는다.
+        /// </summary>
+        private readonly struct ItemSpec
         {
-            return new[]
+            public ItemSpec(string name, LastShiftItemRole role, Vector3 position, Vector3 scale, Color color)
             {
-                CreateItem("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f), true),
-                CreateItem("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f), true),
-                CreateItem("PatchPlate", LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal, new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f), true),
-                CreateItem("Tether", LastShiftItemRole.Tether, TetherSpawnPosition, new Vector3(0.25f, 0.25f, 1.2f), new Color(0.95f, 0.30f, 0.22f), true)
-            };
+                Name = name;
+                Role = role;
+                Position = position;
+                Scale = scale;
+                Color = color;
+            }
+
+            public string Name { get; }
+            public LastShiftItemRole Role { get; }
+            public Vector3 Position { get; }
+            public Vector3 Scale { get; }
+            public Color Color { get; }
         }
 
-        private static LastShiftGrabbable CreateItem(string name, LastShiftItemRole role, Vector3 position, Vector3 scale, Color color, bool secured)
+        private static ItemSpec[] ItemSpecs => new[]
         {
+            new ItemSpec("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f)),
+            new ItemSpec("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f)),
+            new ItemSpec("PatchPlate", LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal, new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f)),
+            new ItemSpec("Tether", LastShiftItemRole.Tether, TetherSpawnPosition, new Vector3(0.25f, 0.25f, 1.2f), new Color(0.95f, 0.30f, 0.22f))
+        };
+
+        public static string ItemPrefabPath(LastShiftItemRole role) =>
+            $"Assets/DoodleUp/Prefabs/LastShiftItem_{role}.prefab";
+
+        /// <summary>
+        /// 아이템 프리팹 넷. 선체와 같은 이유로 씬 밖으로 뺀다 — 씬에 직접 구우면 씬이 둘일 때
+        /// 아이템도 두 벌이 되고, 한쪽만 다시 구우면 조용히 어긋난다.
+        /// 프리팹은 지우지 않고 덮어쓴다(<c>CreatePlayerPrefab</c> 주석과 같은 근거).
+        /// </summary>
+        public static void RebuildItemPrefabs()
+        {
+            Directory.CreateDirectory("Assets/DoodleUp/Prefabs");
+            foreach (var spec in ItemSpecs)
+            {
+                var item = BuildItemHierarchy(spec);
+                PrefabUtility.SaveAsPrefabAsset(item, ItemPrefabPath(spec.Role));
+                Object.DestroyImmediate(item);
+            }
+
+            AssetDatabase.SaveAssets();
+            foreach (var spec in ItemSpecs)
+                AssetDatabase.ImportAsset(ItemPrefabPath(spec.Role), ImportAssetOptions.ForceSynchronousImport);
+            Debug.Log($"[LAST_SHIFT_ITEM_PREFABS] count={ItemSpecs.Length} result=PASS");
+        }
+
+        /// <summary>
+        /// 프리팹을 씬에 놓고 정위치를 다시 잡는다. <c>Configure</c> 를 여기서 한 번 더 부르는
+        /// 이유는 정위치가 호출 시점의 좌표를 잡기 때문이다 — 프리팹 안의 값은 원점이라
+        /// 그대로 두면 물건이 전부 배 한가운데로 되돌아간다.
+        /// </summary>
+        public static LastShiftGrabbable[] CreateItems()
+        {
+            return ItemSpecs.Select(spec =>
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ItemPrefabPath(spec.Role));
+                if (prefab == null)
+                    throw new System.InvalidOperationException($"{ItemPrefabPath(spec.Role)} missing — call RebuildItemPrefabs first.");
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                instance.name = spec.Name;
+                instance.transform.position = spec.Position;
+                var grabbable = instance.GetComponent<LastShiftGrabbable>();
+                grabbable.Configure(spec.Role, true);
+                return grabbable;
+            }).ToArray();
+        }
+
+        /// <summary>
+        /// 프리팹으로 구울 아이템 하나. 원점에 세운다 — 정위치는 씬이 정한다(<see cref="CreateItems"/>).
+        /// </summary>
+        private static GameObject BuildItemHierarchy(ItemSpec spec)
+        {
+            var name = spec.Name;
+            var role = spec.Role;
             var item = GameObject.CreatePrimitive(PrimitiveType.Cube);
             item.name = name;
-            item.transform.position = position;
-            item.transform.localScale = scale;
-            item.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial($"LS_{name}", color);
+            item.transform.position = Vector3.zero;
+            item.transform.localScale = spec.Scale;
+            item.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial($"LS_{name}", spec.Color);
             var body = item.AddComponent<Rigidbody>();
             body.mass = role == LastShiftItemRole.Battery ? 8f : 3f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             // 저중력은 씬 직렬화 값에도 반영한다. Awake 의 ConfigureItemBody 만 의존하면
             // 씬을 열어 첫 물리 스텝이 도는 사이 한 프레임 동안 지구 중력으로 떨어진다.
             LastShiftShipPhysics.ConfigureItemBody(body);
-            var grabbable = item.AddComponent<LastShiftGrabbable>();
-            grabbable.Configure(role, secured);
-            return grabbable;
+            item.AddComponent<LastShiftGrabbable>().Configure(role, true);
+            return item;
         }
 
         private static void CreateMeteorStimulus()
