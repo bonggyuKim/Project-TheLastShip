@@ -217,29 +217,39 @@ namespace DoodleUp.Tests.PlayMode
             yield return null;
             SetRouteAfterSceneStart(setup, Du03AStrokeMode.Trajectory);
 
-            for (var i = 0; i < 30 && !setup.Motor.IsGrounded; i++)
-                yield return new WaitForFixedUpdate();
+            yield return WaitUntilGrounded(setup);
 
             setup.Latch.EnqueueProbeSnapshot(new Du03BCInputSnapshot(1, true, false, true, false, false, "PLAYMODE"));
             yield return null;
             var lockedDepth = setup.Player.transform.position.z;
-            setup.Controller.ApplyMovementForProbe(1f, 1f, true);
-            yield return new WaitForFixedUpdate();
+
+            // 수평 이동과 점프를 <b>따로</b> 본다. 한 호출에 섞으면 검사가 불안정해진다 —
+            // 한 프레임에 fixed 스텝이 둘 이상 도는 경우, 첫 스텝이 점프로 몸을 띄우고 둘째
+            // 스텝은 이미 공중이라 speed 가 GroundSpeed(2.5) 대신 AirSpeed(2.0) 로 잡힌다.
+            // 스텝이 몇 번 도는지는 프레임 길이에 달렸고 -nographics 에서는 특히 흔들린다
+            // (QA 실측: 이 자리에서 2.5 기대에 2.0 관측). 점프를 빼면 접지가 유지되므로
+            // 스텝이 몇 번 돌든 수평 속도는 GroundSpeed 하나로 고정된다.
+            yield return DriveProbeMovement(setup, 1f, 1f, false);
 
             Assert.That(setup.Driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Drawing));
             Assert.That(setup.Controller.DepthMovementLocked, Is.True);
             Assert.That(setup.Player.transform.position.z, Is.EqualTo(lockedDepth).Within(0.001f));
             Assert.That(setup.Motor.Velocity.z, Is.Zero.Within(0.0001f));
             Assert.That(setup.Motor.Velocity.x, Is.EqualTo(Du02Profile.GroundSpeed).Within(0.0001f));
+
+            // 점프는 뜬 사실만 본다. 스텝이 몇 번 돌아도 한 스텝의 중력(약 0.196m/s)으로는
+            // JumpSpeed 가 부호를 잃지 않으므로 이 assertion 은 스텝 수에 흔들리지 않는다.
+            yield return DriveProbeMovement(setup, 1f, 1f, true);
             Assert.That(setup.Motor.Velocity.y, Is.GreaterThan(0f));
+            Assert.That(setup.Controller.DepthMovementLocked, Is.True);
+            Assert.That(setup.Player.transform.position.z, Is.EqualTo(lockedDepth).Within(0.001f));
 
             setup.Player.transform.position += Vector3.right * 0.24f;
             setup.Latch.EnqueueProbeSnapshot(new Du03BCInputSnapshot(2, false, true, false, false, false, "PLAYMODE"));
             yield return null;
             Assert.That(setup.Driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Idle));
 
-            setup.Controller.ApplyMovementForProbe(0f, 1f, false);
-            yield return new WaitForFixedUpdate();
+            yield return DriveProbeMovement(setup, 0f, 1f, false);
             Assert.That(setup.Motor.Velocity.z, Is.GreaterThan(0f));
 
             Object.Destroy(setup.Root);
@@ -254,13 +264,11 @@ namespace DoodleUp.Tests.PlayMode
             setup.Driver.SetModeForProbe(Du03AStrokeMode.Spatial);
             setup.CameraRig.SetArmDirectProfile(true);
 
-            for (var i = 0; i < 30 && !setup.Motor.IsGrounded; i++)
-                yield return new WaitForFixedUpdate();
+            yield return WaitUntilGrounded(setup);
 
             setup.Latch.EnqueueProbeSnapshot(new Du03BCInputSnapshot(1, true, false, true, false, false, "PLAYMODE"));
             yield return null;
-            setup.Controller.ApplyMovementForProbe(1f, 1f, true);
-            yield return new WaitForFixedUpdate();
+            yield return DriveProbeMovement(setup, 1f, 1f, true);
 
             Assert.That(setup.Driver.Session.State, Is.EqualTo(Du03AStrokeSessionState.Drawing));
             Assert.That(setup.Controller.DepthMovementLocked, Is.False);
@@ -338,6 +346,54 @@ namespace DoodleUp.Tests.PlayMode
         private static float NormalizeSignedAngle(float angle)
         {
             return angle > 180f ? angle - 360f : angle;
+        }
+
+        /// <summary>
+        /// probe 이동 입력을 넣고, <b>그 입력을 실제로 먹은 fixed 스텝</b>까지 진행한다.
+        ///
+        /// 예전에는 <c>ApplyMovementForProbe</c> 뒤에 <c>WaitForFixedUpdate</c> 하나만 두었는데,
+        /// 그 둘 사이에 <c>DuSandboxController.Update</c>(실행순서 200)가 끼면 입력이 지워진다 —
+        /// batchmode 에는 장치가 없어 실제 입력이 항상 <c>(0,0,false)</c> 이기 때문이다.
+        /// <see cref="Du02PlayerMotor"/> 가 매 스텝 velocity 를 입력에서 재계산하므로 그 스텝의
+        /// 속도가 정확히 <c>0</c> 이 되고, 검사는 무작위로 실패한다(QA 실측 10회 중 5회).
+        ///
+        /// <b>보장되는 순서를 쓴다.</b> <c>yield return null</c> 로 재개하면 그 프레임의
+        /// <c>Update</c> 는 이미 지났고 남은 것은 <c>LateUpdate</c> 뿐이다. 다음 프레임에
+        /// fixed 스텝이 있으면 그 스텝은 <c>Update</c> 보다 먼저 돌므로 입력이 살아서 도착한다.
+        /// 문제는 프레임이 <c>fixedDeltaTime</c> 보다 짧아 <b>다음 프레임에 스텝이 없는</b>
+        /// 경우뿐이고, 그건 프레임 번호로 구분된다 — 스텝이 제때 돌았다면 재개 시점이 정확히
+        /// 다음 프레임이다. 아니면 <c>Update</c> 가 한 번 이상 끼었다는 뜻이므로 다시 넣는다.
+        ///
+        /// 다시 넣는 것이 안전한 이유: 입력이 지워진 경로에서는 그 스텝이 <c>jumpRequested</c>
+        /// 도 <c>false</c> 로 받았으므로 점프가 소모되지 않았다. 그래서 재시도가 점프를 두 번
+        /// 쓰지 않는다. 이 성질 덕분에 "점프가 앞선 스텝에서 소모돼 검사 스텝에서는 이미 공중"
+        /// 이라 <c>AirSpeed</c> 가 잡히던 실패(QA L233)도 함께 사라진다.
+        /// </summary>
+        private static IEnumerator DriveProbeMovement(Setup setup, float horizontal, float forward, bool jump)
+        {
+            for (var attempt = 0; attempt < 120; attempt++)
+            {
+                var appliedFrame = Time.frameCount;
+                setup.Controller.ApplyMovementForProbe(horizontal, forward, jump);
+                yield return new WaitForFixedUpdate();
+                if (Time.frameCount == appliedFrame + 1) yield break;
+                yield return null;   // Update 가 끼었다 — 그 Update 뒤에서 다시 넣는다
+            }
+
+            Assert.Fail("probe 입력을 먹은 fixed 스텝에 도달하지 못했다.");
+        }
+
+        /// <summary>
+        /// 접지까지 기다린다. 예전 <c>for (i &lt; 30 &amp;&amp; !IsGrounded)</c> 루프는 30 스텝을
+        /// 다 써도 조용히 통과해서, 접지 전제가 깨진 채 본문이 진행될 수 있었다(QA 부수 관찰).
+        /// </summary>
+        private static IEnumerator WaitUntilGrounded(Setup setup)
+        {
+            for (var step = 0; step < 30 && !setup.Motor.IsGrounded; step++)
+                yield return new WaitForFixedUpdate();
+
+            Assert.That(setup.Motor.IsGrounded, Is.True,
+                "30 스텝 안에 접지하지 못했다 — 이 검사는 접지 상태를 전제한다.");
         }
 
         private static void SetRouteAfterSceneStart(Setup setup, Du03AStrokeMode mode)
