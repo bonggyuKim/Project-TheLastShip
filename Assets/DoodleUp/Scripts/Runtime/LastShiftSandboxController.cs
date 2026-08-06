@@ -46,6 +46,12 @@ namespace DoodleUp.Runtime
         private AudioSource sirenAudio;
         private LastShiftDoorState doorState = LastShiftDoorState.AllOpen;
 
+        /// <summary>
+        /// 승강구 해치. 문과 달리 <b>닫힌 상태로 시작</b>한다 — 근거는
+        /// <see cref="LastShiftHatchState.AllClosed"/> 주석에 있다.
+        /// </summary>
+        private LastShiftHatchState hatchState = LastShiftHatchState.AllClosed;
+
         // 판독(T2)이 읽는 미억제 계통 마스크. 클라이언트에서는 손상 판정과 수리 장부가 없어
         // 같은 식을 다시 계산할 수 없으므로 서버가 접은 값을 그대로 받는다.
         private byte replicatedUncontainedSystemMask;
@@ -221,6 +227,33 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 갑판 승강구 해치의 개폐 상태(§23.6). <see cref="Doors"/> 와 <b>따로</b> 두는 이유는
+        /// <see cref="LastShiftHatchState"/> 주석에 있다 — 저쪽은 압력 평준화가 읽는 구역 경계
+        /// 배열이고 §24 가 <c>4</c>구역으로 고정한 그것이다.
+        /// </summary>
+        public LastShiftHatchState Hatches => hatchState;
+
+        public bool IsHatchOpen(int shaft) => hatchState[shaft];
+
+        /// <summary>
+        /// 해치 개폐 결과를 반영한다. 개폐 애니메이션과 <c>0.8초</c> 소요는 해치 쪽
+        /// (<see cref="LastShiftDeckHatch"/>)이 갖고 여기는 "지금 열려 있는가" 만 받는다 —
+        /// 문과 같은 구조다.
+        ///
+        /// <b>평준화는 이 값을 안 읽는다.</b> 덕트는 <c>ZonePressure</c> 슬롯이 없으므로(§24)
+        /// 해치가 열려도 교환할 상대 구역이 없다. 여기서 열리는 것은 압력이 아니라 통행이고,
+        /// 산소 비용은 <see cref="IsZoneVacuum(Vector3)"/> 가 위치로 물린다(§5).
+        /// </summary>
+        public void SetHatchOpen(int shaft, bool open)
+        {
+            if (hatchState[shaft] == open) return;
+            hatchState[shaft] = open;
+            Debug.Log($"[LAST_SHIFT_HATCH] generation={ResetGeneration} shaft={shaft} " +
+                      $"({LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.Resolve(LastShiftBypassDuct.ShaftMouth(shaft)))}) " +
+                      $"state={(open ? "OPEN" : "CLOSED")}");
+        }
+
+        /// <summary>
         /// 파공이 난 구역. 봉합 부품(PatchPlate)의 제자리가 곧 파공 지점이므로 그 구역이
         /// 새는 구역이고, 산소 계통을 성능 포기로 밀폐할 때 버려지는 구역도 같다.
         /// 부품이 없는 최소 조립에서는 씬 배치대로 생명유지 구역으로 본다.
@@ -320,6 +353,11 @@ namespace DoodleUp.Runtime
                 Boundary0Open = value.Boundary0DoorOpen,
                 Boundary1Open = value.Boundary1DoorOpen,
                 Boundary2Open = value.Boundary2DoorOpen
+            };
+            hatchState = new LastShiftHatchState
+            {
+                ForeOpen = value.ForeHatchOpen,
+                AftOpen = value.AftHatchOpen
             };
             dockingSecondsRemaining = value.DockingSecondsRemaining;
             ResetGeneration = value.ResetGeneration;
@@ -564,7 +602,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool IsZoneVacuum(Vector3 position)
         {
-            if (LastShiftBypassDuct.IsUnpressurized && LastShiftBypassDuct.Contains(position)) return true;
+            if (LastShiftBypassDuct.IsUnpressurizedSpace(position)) return true;
             return IsZoneVacuum(LastShiftZoneAtlas.Resolve(position));
         }
 
@@ -873,6 +911,9 @@ namespace DoodleUp.Runtime
             // 시작한다 — 격리는 플레이어가 내리는 판단이지 시작 조건이 아니다(§2.7 자동 격리 금지).
             zonePressures = LastShiftZonePressures.Uniform(currentState.OxygenPressure);
             doorState = LastShiftDoorState.AllOpen;
+            // 해치는 반대로 전부 닫고 시작한다. 리셋 직후 갑판에 구멍이 남아 있으면 프리셋이
+            // 제자리에 놓은 부품이 저중력에서 그리로 빠져 시작 상태가 프리셋과 달라진다.
+            hatchState = LastShiftHatchState.AllClosed;
             dockingSecondsRemaining = LastShiftRecoveryTuning.DockingTimerSeconds;
             ResetGeneration++;
             HasAppliedImpact = false;

@@ -36,8 +36,15 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float Section = LastShiftShipPhysics.CrouchHeight;
 
-        /// <summary>덕트 판 두께. 선체와 같다.</summary>
-        public const float PanelThickness = LastShiftShipDimensions.HullThickness;
+        /// <summary>
+        /// 덕트 껍데기 판의 두께. 갑판 슬래브 아래 남은 여유(<see cref="FloorY"/> 식의 <c>0.1</c>)가
+        /// 그대로 판 두께다.
+        ///
+        /// <b>선체 두께를 그대로 쓸 수 없다.</b> <c>0.2</c> 로 두면 천장 판이 슬래브를 파고들고,
+        /// 피하려고 안쪽으로 밀면 내부 높이가 웅크림 높이(<c>0.9</c>) 아래로 내려가 통로가 자기
+        /// 정의를 못 지킨다 — 여유가 애초에 <c>0.1</c> 인 것이 이 값의 근거다.
+        /// </summary>
+        public const float PanelThickness = -CeilingY - LastShiftShipDimensions.HullThickness;
 
         /// <summary>
         /// 덕트 바닥의 y. 갑판 슬래브(두께 <see cref="LastShiftShipDimensions.HullThickness"/>)
@@ -76,6 +83,48 @@ namespace DoodleUp.Runtime
 
         /// <summary>선미 쪽 진입점 x. 산소실 방 안(개구부 4 근처)이다.</summary>
         public static float AftShaftX => LastShiftShipDimensions.RoomMinX(LastShiftZone.LifeSupport) + 1f;
+
+        /// <summary>승강구 개수. 양 끝 둘이고, 이 값이 <see cref="LastShiftDeckHatch"/> 의 해치 수다.</summary>
+        public const int ShaftCount = 2;
+
+        /// <summary>선수 승강구의 번호. 조종석 방 안쪽이다.</summary>
+        public const int ForeShaft = 0;
+
+        /// <summary>선미 승강구의 번호. 산소실 방 안쪽이다.</summary>
+        public const int AftShaft = 1;
+
+        public static float ShaftX(int shaft) => shaft <= ForeShaft ? ForeShaftX : AftShaftX;
+
+        /// <summary>승강구의 z. 선수는 꺾인 다리 끝, 선미는 긴 구간 끝이라 서로 다르다.</summary>
+        public static float ShaftZ(int shaft) => shaft <= ForeShaft ? ForeShaftZ : RunZ;
+
+        /// <summary>갑판 윗면의 y. 승강구가 뚫리는 면이고 해치가 놓이는 면이다.</summary>
+        public const float DeckY = 0f;
+
+        /// <summary>
+        /// 승강구 입구의 좌표. 씬 빌더가 갑판 구멍·해치를, 런타임이 조작 사거리를 여기서 뽑는다 —
+        /// 두 벌이 되면 그림상 뚫린 자리와 조작되는 자리가 어긋난다.
+        /// </summary>
+        public static Vector3 ShaftMouth(int shaft) => new(ShaftX(shaft), DeckY, ShaftZ(shaft));
+
+        /// <summary>
+        /// 이 구역 안에 승강구가 있는가. 갑판 슬래브를 뚫는 쪽에서 쓴다. 번호를 직접 적지 않고
+        /// <see cref="LastShiftZoneAtlas.Resolve"/> 로 되묻는 이유는 진입점 x 가 방 치수 파생이라
+        /// 선체가 또 늘어나면 어느 구역에 뚫려야 하는지도 같이 움직이기 때문이다.
+        /// </summary>
+        public static bool TryShaftInZone(LastShiftZone zone, out Vector3 mouth)
+        {
+            for (var shaft = 0; shaft < ShaftCount; shaft++)
+            {
+                var candidate = ShaftMouth(shaft);
+                if (LastShiftZoneAtlas.Resolve(candidate) != zone) continue;
+                mouth = candidate;
+                return true;
+            }
+
+            mouth = default;
+            return false;
+        }
 
         /// <summary>
         /// 꺾임 횟수. §8 미결 4 에 대한 답이고 <b>1</b> 이다(§23.4). <c>2</c>회로 늘려도
@@ -142,6 +191,57 @@ namespace DoodleUp.Runtime
             return Mathf.Abs(position.x - AirlockCenterX) <= airlockHalf &&
                    Mathf.Abs(position.z - AirlockCenterZ) <= airlockHalf;
         }
+
+        /// <summary>
+        /// 승강구 목 — 덕트 천장에서 갑판까지의 짧은 수직 구간. <see cref="Contains"/> 가
+        /// <see cref="CeilingY"/> 에서 잘리므로 이 구간이 판정에서 빈다.
+        ///
+        /// <b>기하로만 본다.</b> 해치가 닫혀 있으면 여기 설 수 없으므로 개폐 상태를 안 봐도 된다 —
+        /// 진공 판정을 매 tick 도는 자리에 씬 조회를 들이지 않는 것이 이 선택의 이유다.
+        /// 갑판 위(<c>y = 0</c>, 발밑 기준)는 <b>안</b> 잡는다. 닫힌 해치 판 위에 선 승무원은
+        /// 발이 정확히 갑판 면이고, 그걸 잡으면 방 안에서 산소가 타기 시작한다.
+        /// </summary>
+        public static bool ShaftContains(Vector3 position)
+        {
+            if (position.y >= DeckY || position.y < FloorY) return false;
+
+            var half = Section * 0.5f;
+            for (var shaft = 0; shaft < ShaftCount; shaft++)
+            {
+                if (Mathf.Abs(position.x - ShaftX(shaft)) <= half &&
+                    Mathf.Abs(position.z - ShaftZ(shaft)) <= half) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 이 좌표의 승무원이 비가압 공간에 있는가. 덕트·에어록 본체와 승강구 목을 합쳐 본다 —
+        /// <see cref="LastShiftSandboxController.IsZoneVacuum(Vector3)"/> 가 부르는 단일 진입점이다.
+        /// </summary>
+        public static bool IsUnpressurizedSpace(Vector3 position) =>
+            IsUnpressurized && (Contains(position) || ShaftContains(position));
+
+        /// <summary>
+        /// 에어록 안쪽 해치는 닫혀 있고 이 카드에서 열지 않는다 — EVA 감압 시퀀스는 §24.7-2 가
+        /// 별도 카드로 남긴 항목이다. 형상으로도 덕트 바닥 판이 에어록 천장을 그대로 덮는다.
+        /// </summary>
+        public const bool AirlockInnerHatchSealed = true;
+
+        /// <summary>
+        /// 갑판 구멍으로 떨어진 물건이 닿는 가장 낮은 바닥. 승강구를 개통하면서 실제로 위험해지는
+        /// 것은 "저중력에서 뜬 물건이 회수 불가가 된다" 하나이고, 그 답이 이 값이다.
+        ///
+        /// 안쪽 해치가 막혀 있는 한 최저점은 덕트 바닥이다. 거기서 갑판까지는 단
+        /// (<see cref="StepHeight"/>)을 밟고 오르므로 <see cref="RecoveryRise"/> 만큼만 뛰면 되고,
+        /// 그 값이 점프 정점 안이면 <b>회수는 우회일 뿐 손실이 아니다</b>. 안쪽 해치를 여는 날
+        /// 최저점이 에어록 바닥(<c>3m</c> 더 아래)으로 내려가 이 성질이 깨지므로,
+        /// 이 식이 테스트가 잡아 주는 자리다.
+        /// </summary>
+        public static float DeepestFallY => AirlockInnerHatchSealed ? FloorY : AirlockFloorY;
+
+        /// <summary>최저점에서 갑판으로 되올라오는 데 필요한 상승. 단 하나를 밟는 것까지 뺀 값이다.</summary>
+        public static float RecoveryRise => DeckY - DeepestFallY - StepHeight;
 
         /// <summary>
         /// 두 승강구를 잇는 통행 거리. 주 통로와 비교해 우회로가 실제로 더 먼지 재는 값이고,

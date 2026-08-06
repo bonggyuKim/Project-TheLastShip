@@ -42,6 +42,15 @@ namespace DoodleUp.Runtime
         public bool Boundary2DoorOpen;
 
         /// <summary>
+        /// 갑판 승강구 해치. 문 셋과 별도 필드인 것은 별도 상태이기 때문이다 — 이쪽은 압력
+        /// 평준화에 안 들어가고(§24), 클라이언트가 같은 값을 봐야 하는 이유도 다르다:
+        /// 열린 해치는 갑판에 뚫린 <b>구멍</b>이라 차단 콜라이더가 서버와 어긋나면 한쪽에서만
+        /// 빠지는 바닥이 된다.
+        /// </summary>
+        public bool ForeHatchOpen;
+        public bool AftHatchOpen;
+
+        /// <summary>
         /// T2 판독이 읽는 미억제 손상 계통. 손상 판정과 수리 완료 플래그는 서버에만 있으므로
         /// 클라이언트는 이 마스크 없이는 같은 등급을 낼 수 없다 — 고쳐도 게이지가 안 내려간다.
         /// </summary>
@@ -82,6 +91,8 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref Boundary0DoorOpen);
             serializer.SerializeValue(ref Boundary1DoorOpen);
             serializer.SerializeValue(ref Boundary2DoorOpen);
+            serializer.SerializeValue(ref ForeHatchOpen);
+            serializer.SerializeValue(ref AftHatchOpen);
             serializer.SerializeValue(ref UncontainedSystemMask);
         }
 
@@ -120,6 +131,8 @@ namespace DoodleUp.Runtime
                    Boundary0DoorOpen == other.Boundary0DoorOpen &&
                    Boundary1DoorOpen == other.Boundary1DoorOpen &&
                    Boundary2DoorOpen == other.Boundary2DoorOpen &&
+                   ForeHatchOpen == other.ForeHatchOpen &&
+                   AftHatchOpen == other.AftHatchOpen &&
                    UncontainedSystemMask == other.UncontainedSystemMask;
         }
     }

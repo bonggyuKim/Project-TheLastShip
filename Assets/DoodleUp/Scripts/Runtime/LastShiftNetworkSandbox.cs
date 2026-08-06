@@ -153,6 +153,8 @@ namespace DoodleUp.Runtime
                 Boundary0DoorOpen = sandbox.IsDoorOpen(0),
                 Boundary1DoorOpen = sandbox.IsDoorOpen(1),
                 Boundary2DoorOpen = sandbox.IsDoorOpen(2),
+                ForeHatchOpen = sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft),
+                AftHatchOpen = sandbox.IsHatchOpen(LastShiftBypassDuct.AftShaft),
                 UncontainedSystemMask = sandbox.UncontainedSystemMask
             };
         }
@@ -213,8 +215,19 @@ namespace DoodleUp.Runtime
             var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
             if (player == null || player.OwnerClientId != sender) return;
 
+            var crew = player.GetComponent<LastShiftPlayerController>();
             var door = LastShiftZoneDoor.FindOperable(player.transform.position);
-            if (door == null || !door.TryOperate(player.GetComponent<LastShiftPlayerController>())) return;
+            if (door != null)
+            {
+                if (!door.TryOperate(crew)) return;
+            }
+            else
+            {
+                // 같은 Q 가 승강구 해치도 조작한다(§23.6 — 새 조작 동사를 안 늘린다). 문과 해치는
+                // 사거리가 겹치지 않으므로 순서를 정할 필요가 없고, 여기서는 문을 먼저 볼 뿐이다.
+                var hatch = LastShiftDeckHatch.FindOperable(player.transform.position);
+                if (hatch == null || !hatch.TryOperate(crew)) return;
+            }
             PublishSnapshot();
         }
 

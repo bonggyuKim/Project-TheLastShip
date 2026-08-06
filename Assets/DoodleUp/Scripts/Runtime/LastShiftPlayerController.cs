@@ -271,7 +271,12 @@ namespace DoodleUp.Runtime
         public bool TryOperateNearestDoor()
         {
             var door = LastShiftZoneDoor.FindOperable(transform.position);
-            return door != null && door.TryOperate(this);
+            if (door != null) return door.TryOperate(this);
+
+            // 갑판 승강구 해치도 같은 키다(§23.6 — 수직 진입에 새 조작 동사를 안 만든다).
+            // 사거리가 겹치지 않아 순서가 결과를 바꾸지 않는다(LastShiftDeckHatch.FindOperable).
+            var hatch = LastShiftDeckHatch.FindOperable(transform.position);
+            return hatch != null && hatch.TryOperate(this);
         }
 
         public void ResetPlayer(Vector3 position)
@@ -603,8 +608,18 @@ namespace DoodleUp.Runtime
         private string BuildDoorPrompt()
         {
             var door = LastShiftZoneDoor.FindOperable(transform.position);
-            if (door == null) return null;
             var crew = GetComponent<LastShiftCrewOxygen>();
+            if (door == null)
+            {
+                var hatch = LastShiftDeckHatch.FindOperable(transform.position);
+                if (hatch == null) return null;
+                if (crew != null && crew.IsDead) return $"{hatch.ShaftLabel} 승강구: 조작 불가";
+                // 여는 쪽에 경고를 붙인다. 여기서 열리는 것은 압력이 아니라 갑판의 구멍이고,
+                // 저중력에서 뜬 물건이 그리로 빠지는 것이 이 동사의 유일한 되돌리기 비용이다.
+                return hatch.IsOpen
+                    ? $"[Q] {hatch.ShaftLabel} 승강구 해치 닫기"
+                    : $"[Q] {hatch.ShaftLabel} 승강구 해치 열기 (갑판에 구멍)";
+            }
             if (crew != null && crew.IsDead) return $"{door.BoundaryLabel} 문: 조작 불가";
             return door.IsOpen
                 ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
