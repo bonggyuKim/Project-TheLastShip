@@ -300,17 +300,45 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void LowThrustStillStopsHeatEvenInRunawayRange()
+        public void LowThrustReversesHeatEvenInRunawayRange()
         {
-            // 가속 분기는 상승 조건 안쪽에만 있다. 추력을 내리는 것이 여전히 유효한 대응이어야
+            // 가속 분기는 상승 조건 안쪽에만 있다. 추력을 내리는 것이 유효한 대응이어야
             // "추력을 내려 시간을 벌지" 라는 S-H2 의 선택지가 성립한다(§3.3).
+            //
+            // CT-07 이전에는 이 자리에서 열이 <b>멈추기만</b> 했다. 자연 냉각(§0.2 HEAT_COOL)이
+            // 코드에 없었기 때문이고, 그것이 S-H3 영구 잠금(RG-3 위반)의 원인이었다. 이제는
+            // 냉각 미복구 상태에서도 내려간다 — 멈추는 것이 아니라 되돌아온다.
             var state = Nominal(LastShiftRecoveryTuning.HeatRiseThrustThreshold);
             state.EngineHeat = LastShiftRecoveryTuning.HeatRunawayTrigger + 0.05f;
             var before = state.EngineHeat;
             LastShiftDeterioration.Tick(ref state, NothingContained, 5f);
 
-            Assert.That(state.EngineHeat, Is.EqualTo(before).Within(0.0001f),
-                "추력을 성공선까지 내렸는데도 열이 오른다.");
+            Assert.That(before - state.EngineHeat,
+                Is.EqualTo(LastShiftRecoveryTuning.HeatNaturalCoolPerSecond * 5f).Within(0.0001f),
+                "추력을 상승선까지 내렸는데 자연 냉각이 안 돈다.");
+        }
+
+        [Test]
+        public void HeatProtectionLockAlwaysReleasesOnItsOwn()
+        {
+            // RG-3 의 관측 형태. 잠금이 추력 상한을 0.25 로 눌러 상승 분기를 스스로 끄므로,
+            // 아무것도 안 해도 자연 냉각만으로 해제선까지 내려와야 한다. 기획이 계산한
+            // 1.00 → 0.80 = 25초와 같은 값이 나오는지까지 본다.
+            var state = Nominal(1f);
+            state.EngineHeat = LastShiftRecoveryTuning.HeatProtectionTrigger;
+
+            var elapsed = 0f;
+            while (state.EngineHeat > 0.80f && elapsed < 120f)
+            {
+                LastShiftDeterioration.Tick(ref state, NothingContained, 0.5f);
+                elapsed += 0.5f;
+            }
+
+            Assert.That(state.EngineHeat, Is.LessThanOrEqualTo(0.80f),
+                "S-H3 이 스스로 풀리지 않는다 — 냉각통을 못 가져오면 영구 잠금이다.");
+            var expected = 0.20f / LastShiftRecoveryTuning.HeatNaturalCoolPerSecond;   // 25초
+            Assert.That(elapsed, Is.EqualTo(expected).Within(1.5f),
+                $"해제까지 {elapsed:F1}초 걸렸다 — 기획이 계산한 {expected:F0}초와 다르다.");
         }
 
         [Test]

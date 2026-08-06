@@ -129,8 +129,19 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(sandbox.ThrustCeiling, Is.EqualTo(LastShiftRecoveryTuning.SacrificedThrustCeiling).Within(0.001f));
 
             sandbox.AdvanceMission(5f);
-            Assert.That(sandbox.CurrentState.EngineHeat, Is.EqualTo(heatAtSacrifice).Within(0.001f),
-                "성능 포기는 악화를 멈추지만 상태를 회복하지 않아야 한다.");
+
+            // 성능 포기는 <b>악화</b>를 멈춘다. 예전에는 "회복도 없다(그 자리에 얼어붙는다)" 로
+            // 검사했는데, 그 동작은 자연 냉각(§0.2 HEAT_COOL)이 코드에 없어서 생긴 것이었고
+            // S-H3 영구 잠금(RG-3 위반)의 원인이기도 했다. CT-07 에서 자연 냉각을 넣으면서
+            // 포기 상태에서도 열은 내려간다 — 포기가 막는 것은 악화이지 물리적 방열이 아니고,
+            // 포기했을 때만 잠금이 안 풀리면 RG-3 에 구멍이 남는다.
+            //
+            // 포기가 회복을 주지 않는다는 성질 자체는 여전히 검사한다: 능동 냉각률(0.030/s)이
+            // 아니라 자연 냉각률(0.008/s)로만 내려가야 한다. 이 구분이 사라지면 "고쳤다" 와
+            // "포기했다" 가 같은 결과가 되어 수리 3택의 비용 차이가 없어진다.
+            var cooled = heatAtSacrifice - sandbox.CurrentState.EngineHeat;
+            Assert.That(cooled, Is.EqualTo(LastShiftRecoveryTuning.HeatNaturalCoolPerSecond * 5f).Within(0.001f),
+                "성능 포기 상태의 열은 자연 냉각률로만 내려가야 한다 — 능동 냉각과 같아지면 안 된다.");
             Assert.That(sandbox.CurrentState.ThrustDemand, Is.EqualTo(LastShiftRecoveryTuning.SacrificedThrustCeiling).Within(0.001f));
 
             GrantDockProgress();
