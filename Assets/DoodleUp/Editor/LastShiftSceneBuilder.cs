@@ -33,6 +33,17 @@ namespace DoodleUp.Editor
         private static Material voidMaterial;
         private static Material compartmentMaterial;
 
+        // ── 드레싱 재질 ─────────────────────────────────────────────────────────
+        // 색 정본은 Runtime 의 LastShiftDressing 이고 여기서는 캐시만 든다.
+        private static Material fixtureMaterial;
+        private static Material hazardMaterial;
+        private static Material laneMaterial;
+        private static Material bypassMaterial;
+        private static Material frostMaterial;
+        private static Material scorchMaterial;
+        private static Material growMaterial;
+        private static Material indicatorMaterial;
+
         /// <summary>
         /// 천장 내면 높이. 정본은 Runtime 의 LastShiftShipPhysics 다. 점프 정점이 이 값을
         /// 넘으면 카메라가 선체 밖으로 나가므로 두 값은 반드시 같은 상수를 봐야 한다.
@@ -105,10 +116,12 @@ namespace DoodleUp.Editor
         private static GameObject BuildShipGrayboxHierarchy()
         {
             var ship = new GameObject("ShipGraybox");
-            CreateZone(CockpitZoneName, ship.transform, LastShiftZone.Cockpit, cockpitMaterial ??= CreateMaterial("LS_Cockpit", new Color(0.24f, 0.38f, 0.50f)));
-            CreateZone(PowerZoneName, ship.transform, LastShiftZone.Power, powerMaterial ??= CreateMaterial("LS_Power", new Color(0.42f, 0.38f, 0.28f)));
-            CreateZone(CoolingZoneName, ship.transform, LastShiftZone.Cooling, coolingMaterial ??= CreateMaterial("LS_Cooling", new Color(0.26f, 0.42f, 0.50f)));
-            CreateZone(LifeSupportZoneName, ship.transform, LastShiftZone.LifeSupport, lifeSupportMaterial ??= CreateMaterial("LS_LifeSupport", new Color(0.26f, 0.48f, 0.36f)));
+            // 구역 색 정본은 Runtime 의 LastShiftDressing 이다. 여기 리터럴을 남겨 두면 구획색
+            // 열한 개가 구역색 넷과 충분히 떨어졌는지를 EditMode 에서 확인할 수 없다.
+            CreateZone(CockpitZoneName, ship.transform, LastShiftZone.Cockpit, cockpitMaterial ??= CreateMaterial("LS_Cockpit", LastShiftDressing.TintOf(LastShiftZone.Cockpit)));
+            CreateZone(PowerZoneName, ship.transform, LastShiftZone.Power, powerMaterial ??= CreateMaterial("LS_Power", LastShiftDressing.TintOf(LastShiftZone.Power)));
+            CreateZone(CoolingZoneName, ship.transform, LastShiftZone.Cooling, coolingMaterial ??= CreateMaterial("LS_Cooling", LastShiftDressing.TintOf(LastShiftZone.Cooling)));
+            CreateZone(LifeSupportZoneName, ship.transform, LastShiftZone.LifeSupport, lifeSupportMaterial ??= CreateMaterial("LS_LifeSupport", LastShiftDressing.TintOf(LastShiftZone.LifeSupport)));
             // 벽 높이는 천장 내면(CeilingInnerHeight)까지 올린다. 예전 3.0 을 유지하면
             // 벽과 천장 사이에 0.2m 띠 구멍이 남아 저중력에서 뜬 물건이 그 틈으로 빠진다.
             //
@@ -133,6 +146,8 @@ namespace DoodleUp.Editor
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, BackWallInnerZ - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
+            CreateCoolingStack(ship.transform);
+            CreateStateCues(ship.transform);
             CreateZoneLabel(ship.transform, "COCKPIT", new Vector3(LastShiftShipDimensions.CockpitCenterX, 2.25f, BackWallInnerZ - 0.13f), cockpitMaterial.color);
             CreateZoneLabel(ship.transform, "POWER / BUS", new Vector3(LastShiftShipDimensions.PowerCenterX, 2.25f, BackWallInnerZ - 0.13f), powerMaterial.color);
             CreateZoneLabel(ship.transform, "COOLING", new Vector3(LastShiftShipDimensions.CoolingCenterX, 2.25f, BackWallInnerZ - 0.13f), coolingMaterial.color);
@@ -185,6 +200,57 @@ namespace DoodleUp.Editor
                     LastShiftZoneDoor.OpeningWidth), hullMaterial);
 
             CreateSightlineBaffle(ship, passage);
+            CreatePassageDressing(ship, passage);
+        }
+
+        /// <summary>
+        /// 통로 드레싱. <b>이 통로가 답해야 하는 질문은 "어느 쪽으로 지나가는가" 하나다.</b>
+        /// 통로 폭을 배플이 가로막고 있고, 남는 통행 차선
+        /// (<see cref="LastShiftShipDimensions.BaffleFreeStrip"/>)은 배플 한쪽에만 있으며 반대쪽
+        /// (<see cref="LastShiftShipDimensions.BaffleDeadStrip"/>)은 사람이 못 지나는 죽은 틈이다.
+        /// 회색 판만 서 있으면 초행에는 그 둘이 구분되지 않아 죽은 틈으로 걸어가 막힌다 —
+        /// 저중력에서 물건을 들고 산소 시계를 보며 걷는 중에 일어나면 그냥 손해다.
+        ///
+        /// 그래서 세 가지만 한다. 바닥 유도띠가 차선을 발밑에서 알리고, 배플 모서리의 경고
+        /// 띠가 부딪히는 자리를 세우고, 손잡이가 통로를 "머무는 방" 이 아니라 "지나는 구간"
+        /// 으로 읽히게 한다. 상태 정보는 하나도 싣지 않는다 — 통로가 정보 우위 지점이라는
+        /// §5.3 은 개구부 게이지가 만드는 것이고, 여기에 색을 더 얹으면 그것과 경쟁한다.
+        ///
+        /// 전부 콜라이더 없는 장식이다. 통로 통행 폭은 A3·CARRY_SPEED 가 걸린 수치라
+        /// 드레싱이 1cm 도 줄이면 안 된다.
+        /// </summary>
+        private static void CreatePassageDressing(Transform ship, int passage)
+        {
+            var side = passage <= 0 ? "A" : "B";
+            var centerX = LastShiftShipDimensions.PassageCenterX(passage);
+            var length = LastShiftShipDimensions.PassageLength;
+            var minZ = LastShiftShipDimensions.PassageMinZ(passage);
+            var maxZ = LastShiftShipDimensions.PassageMaxZ(passage);
+
+            // 통행 차선의 z 중심은 배플 반대쪽 개구부와 같다 — 띠를 그 위에 깔면 "이 선을
+            // 따라가면 문이 나온다" 가 그대로 참이다. 리터럴을 쓰면 배플이 움직일 때 띠만 남는다.
+            var laneZ = LastShiftShipDimensions.BaffleFreeStripCenterZ(passage);
+            laneMaterial ??= CreateEmissiveMaterial("LS_Lane", new Color(0.55f, 0.70f, 0.86f), 0.8f);
+            CreateDecorCube($"PassageLane_{side}", ship,
+                new Vector3(centerX, 0.016f, laneZ), new Vector3(length - 0.2f, 0.03f, 0.45f), laneMaterial);
+
+            // 배플 모서리 경고 띠. 배플은 바닥부터 천장까지 불투명한 판이라 어두운 통로에서
+            // 정면으로 걸어 들어가면 벽인지 통로인지 구분이 안 된다.
+            EnsureHazardMaterial();
+            var baffleX = LastShiftShipDimensions.BaffleCenterX(passage);
+            var faceOffset = LastShiftShipDimensions.BaffleThickness * 0.5f + 0.03f;
+            var index = 0;
+            foreach (var faceSign in new[] { -1f, 1f })
+            foreach (var edgeZ in new[] { LastShiftShipDimensions.BaffleMinZ(passage), LastShiftShipDimensions.BaffleMaxZ(passage) })
+                CreateDecorCube($"BaffleEdge_{side}_{index++}", ship,
+                    new Vector3(baffleX + faceSign * faceOffset, CeilingInnerHeight * 0.5f, edgeZ),
+                    new Vector3(0.06f, CeilingInnerHeight - 0.3f, 0.14f), hazardMaterial);
+
+            // 양 벽 손잡이. 저중력이라 손으로 잡고 몸을 던지는 이동이 서사적으로 맞고,
+            // 수평선 둘이 통로에 원근을 줘서 통로가 실제보다 길게 읽힌다.
+            foreach (var (railName, railZ) in new[] { ("Port", minZ + 0.09f), ("Starboard", maxZ - 0.09f) })
+                CreateDecorCube($"PassageRail_{side}_{railName}", ship,
+                    new Vector3(centerX, 1.10f, railZ), new Vector3(length - 0.6f, 0.08f, 0.08f), EnsureFixtureMaterial());
         }
 
         private static void CreatePassageEndWall(Transform ship, string name, float x, float minZ, float maxZ)
@@ -414,6 +480,54 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
+        /// 냉각실 열교환기. <b>4구역 분할(§2)이 남긴 빈자리를 메운다</b> — 조종석에는 콘솔,
+        /// 전력실에는 배전반, 산소실에는 랙이 있는데 냉각실만 아무것도 없었다. 분할로 새로
+        /// 생긴 방이라 소품이 딸려 오지 않았던 것이고, 그 상태에서는 냉각실이 "지나가는 빈
+        /// 구간" 으로 읽혀 네 방 중 하나만 격이 낮아진다.
+        ///
+        /// 뒷벽에 붙이는 것은 배전반·랙과 같은 줄을 만들기 위해서다. 이 자리는 개구부`2`
+        /// 노출 원뿔 안이지만 <see cref="LastShiftDressing.StateCueSafeMaxZ"/> 제한에 걸리지
+        /// 않는다 — §19.4 가 막는 것은 <b>상태에 반응하는</b> 단서이고, 열교환기는 냉각 상태와
+        /// 무관하게 늘 같은 모습이라 원뿔로 새는 정보가 없다. 냉각 상태를 말하는 서리는
+        /// <see cref="CreateStateCues"/> 가 안전대 안에 따로 놓는다.
+        /// </summary>
+        private static void CreateCoolingStack(Transform ship)
+        {
+            var centerX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
+            CreateCube("CoolingStack", ship, new Vector3(centerX, 0.90f, BackWallInnerZ - 0.60f),
+                new Vector3(2.2f, 1.8f, 0.6f), coolingMaterial);
+            // 방열 핀. 판 하나짜리 상자는 어느 방에 놔도 같아 보이므로, 실루엣에 결을 준다.
+            for (var index = 0; index < 5; index++)
+                CreateDecorCube($"CoolingStack_Fin_{index}", ship,
+                    new Vector3(centerX - 0.8f + index * 0.4f, 1.85f, BackWallInnerZ - 0.60f),
+                    new Vector3(0.14f, 0.5f, 0.7f), EnsureFixtureMaterial());
+        }
+
+        /// <summary>
+        /// 냉각실·전력실 상태 단서(서리·그을음). 자리 정본은 Runtime 의
+        /// <see cref="LastShiftDressing.StateCues"/> 다 — Editor 어셈블리에 좌표를 적으면
+        /// 씬을 다시 굽기 전에는 §19.7 안전대 위반을 아무도 못 본다.
+        ///
+        /// <b>지금 세우는 것은 정적 판이다.</b> 상태 연동(서리가 자라고 아크가 튀는 것)은
+        /// `game-ta` 소관이고, 이 카드가 확정하는 것은 그 이펙트가 나중에 붙을 <b>자리</b>다.
+        /// 자리를 먼저 못 박는 이유는 §19.4 의 제약이 이펙트가 아니라 좌표에 걸려 있기
+        /// 때문이다 — 이펙트를 만들 때 원뿔 데이터를 다시 읽게 두면 그때 한 번 더 틀린다.
+        /// </summary>
+        private static void CreateStateCues(Transform ship)
+        {
+            var root = new GameObject("StateCues");
+            root.transform.SetParent(ship, false);
+
+            foreach (var cue in LastShiftDressing.StateCues)
+            {
+                var material = cue.Kind == LastShiftStateCue.Frost
+                    ? frostMaterial ??= CreateEmissiveMaterial("LS_Frost", new Color(0.74f, 0.87f, 0.95f), 0.35f)
+                    : scorchMaterial ??= CreateMaterial("LS_Scorch", new Color(0.09f, 0.08f, 0.08f));
+                CreateDecorCube(cue.Name, root.transform, cue.Center, cue.Size, material);
+            }
+        }
+
+        /// <summary>
         /// 배관·덕트. 천장 아래를 가로지르는 관은 "선체 설비"라는 신호가 가장 강한 요소다.
         /// 캡슐을 눕혀 쓰면 원통이 되므로 별도 메시 자산이 필요 없다.
         /// </summary>
@@ -514,7 +628,10 @@ namespace DoodleUp.Editor
         /// </summary>
         private static void CreateBypassDuct(Transform ship)
         {
-            ductMaterial ??= CreateMaterial("LS_Duct", new Color(0.34f, 0.33f, 0.30f));
+            // 갑판 위 배관(<c>LS_Duct</c>)보다 한 단계 어둡고 채도가 낮다. 같은 재질을 쓰면
+            // 우회 통로가 본선 설비의 연장으로 읽히는데, 이 길은 <b>비용을 치르고 쓰는 임시
+            // 경로</b>다. 배 안에서 이 재질이 붙는 곳은 갑판 아래뿐이다.
+            bypassMaterial ??= CreateMaterial("LS_DuctBypass", new Color(0.25f, 0.24f, 0.22f));
             var root = new GameObject("BypassDuct");
             root.transform.SetParent(ship, false);
 
@@ -556,6 +673,64 @@ namespace DoodleUp.Editor
                 CreateShaft(root.transform, shaft);
 
             CreateAirlock(root.transform);
+            CreateBypassDressing(root.transform, runMinX, runMaxX, legMinZ, legMaxZ);
+        }
+
+        /// <summary>
+        /// 우회 통로 드레싱. <b>이 길이 비싸다는 것을 색과 형태로 먼저 말한다.</b>
+        ///
+        /// 우회 통로의 비용은 웅크림 이동 속도와 <c>SuitOxygen</c> 소모(§5)인데, 둘 다 들어가
+        /// 봐야 알 수 있는 값이다. 승강구가 갑판에 뚫린 회색 사각형이면 주 통로와 시각적으로
+        /// 대등해 보이고, 그러면 승무원은 그 비용을 겪은 다음에야 배운다 — 산소 시계가 도는
+        /// 중에 한 번 잘못 고른 것이 그대로 손해다.
+        ///
+        /// 그래서 <b>배 안에서 이 색 조합이 여기에만 있게</b> 한다. 어두운 덕트 재질
+        /// (<c>LS_DuctBypass</c>)은 갑판 아래 전용이고, 경고 황색은 통로 배플 모서리·격납고
+        /// 발진 구역 말고는 안 쓴다. 배플과 색을 공유하는 것은 의도다 — 둘 다 "부딪히거나
+        /// 걸리는 자리" 다.
+        ///
+        /// <b>지오메트리와 콜라이더는 손대지 않는다.</b> 덕트 치수·경로·에어록 좌표는
+        /// <see cref="LastShiftBypassDuct"/> 가 정본이고 EditMode 검사가 그 값을 직접 본다.
+        /// 여기서 세우는 것은 전부 <see cref="CreateDecorCube"/> 라 콜라이더가 없다 — 승강구
+        /// 문턱도 넘어가는 판이 아니라 그려진 띠이고, 관 안쪽에는 바닥 유도띠 말고 아무것도
+        /// 안 둔다. 단면이 웅크림 높이 그대로라 벽에 뭘 붙이면 통행 폭이 눈으로 좁아진다.
+        /// </summary>
+        private static void CreateBypassDressing(Transform root, float runMinX, float runMaxX,
+            float legMinZ, float legMaxZ)
+        {
+            EnsureHazardMaterial();
+            laneMaterial ??= CreateEmissiveMaterial("LS_Lane", new Color(0.55f, 0.70f, 0.86f), 0.8f);
+            const float section = LastShiftBypassDuct.Section;
+            const float half = section * 0.5f;
+            var floor = LastShiftBypassDuct.FloorY;
+
+            // 갑판 위에서 보이는 것은 승강구 자리뿐이고, 그 테두리·문턱은
+            // <see cref="CreateDeckHatch"/> 가 해치와 한 덩어리로 세운다 — 여기서 또 두르면
+            // 같은 자리에 판이 겹쳐 z-fighting 이 난다. 이 메서드는 갑판 <b>아래</b>만 맡는다.
+
+            // 관 바닥의 유도띠. 갑판 위 통로 차선과 같은 재질이라 "지나가는 길" 이라는 읽기가
+            // 이어지고, 등이 없는 갑판 아래에서 발광 띠가 유일한 방향 단서가 된다.
+            // 승강구 자리는 비운다 — 단(Step)이 서 있어 띠가 묻히고, 비어 있는 것 자체가
+            // "여기가 오르내리는 자리" 라는 표시다.
+            var laneY = floor + 0.02f;
+            CreateDecorCube("DuctLane_Run", root,
+                new Vector3((runMinX + runMaxX) * 0.5f, laneY, LastShiftBypassDuct.RunZ),
+                new Vector3(runMaxX - runMinX - section * 2f, 0.03f, 0.30f), laneMaterial);
+            CreateDecorCube("DuctLane_Leg", root,
+                new Vector3(LastShiftBypassDuct.ForeShaftX, laneY, (legMinZ + legMaxZ) * 0.5f + half * 0.5f),
+                new Vector3(0.30f, 0.03f, legMaxZ - legMinZ - half), laneMaterial);
+
+            // 에어록 경고 띠. 바깥 해치는 배 밑면이라 진공으로 나가는 자리다 — 배 안에서
+            // 유일하게 선체 밖과 맞닿은 문이고, 그 사실이 색으로 서 있어야 한다.
+            const float airlockSize = LastShiftBypassDuct.AirlockSize;
+            var airlockY = (LastShiftBypassDuct.AirlockFloorY + LastShiftBypassDuct.AirlockCeilingY) * 0.5f;
+            var stripe = 0;
+            foreach (var sx in new[] { -1f, 1f })
+            foreach (var sz in new[] { -1f, 1f })
+                CreateDecorCube($"AirlockStripe_{stripe++}", root,
+                    new Vector3(LastShiftBypassDuct.AirlockCenterX + sx * airlockSize * 0.5f, airlockY,
+                        LastShiftBypassDuct.AirlockCenterZ + sz * airlockSize * 0.5f),
+                    new Vector3(0.16f, airlockSize * 0.9f, 0.16f), hazardMaterial);
         }
 
         /// <summary>
@@ -567,7 +742,7 @@ namespace DoodleUp.Editor
         {
             CreateCube(name, parent,
                 new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f),
-                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), ductMaterial);
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), bypassMaterial);
         }
 
         /// <summary>
@@ -598,7 +773,7 @@ namespace DoodleUp.Editor
 
             CreateCube($"Step_{name}", parent,
                 new Vector3(mouth.x, LastShiftBypassDuct.FloorY + LastShiftBypassDuct.StepHeight * 0.5f, mouth.z),
-                new Vector3(LastShiftBypassDuct.Section, LastShiftBypassDuct.StepHeight, half), ductMaterial);
+                new Vector3(LastShiftBypassDuct.Section, LastShiftBypassDuct.StepHeight, half), bypassMaterial);
 
             CreateDeckHatch(parent, shaft);
         }
@@ -617,7 +792,7 @@ namespace DoodleUp.Editor
             var centre = new Vector3(LastShiftBypassDuct.AirlockCenterX,
                 (LastShiftBypassDuct.AirlockFloorY + LastShiftBypassDuct.AirlockCeilingY) * 0.5f,
                 LastShiftBypassDuct.AirlockCenterZ);
-            CreateDecorCube("Airlock", parent, centre, new Vector3(size, size, size), ductMaterial);
+            CreateDecorCube("Airlock", parent, centre, new Vector3(size, size, size), bypassMaterial);
 
             // 해치 두 짝. 형상으로만 존재하고 아직 안 열린다 — EVA 감압 시퀀스는 §24.7-2 가
             // 별도 카드로 남긴 항목이다.
@@ -632,9 +807,9 @@ namespace DoodleUp.Editor
             CreateDecorCube("Hatch_Inner", parent,
                 new Vector3(centre.x,
                     LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness - hatchThickness * 0.5f,
-                    centre.z), hatch, ductMaterial);
+                    centre.z), hatch, bypassMaterial);
             CreateDecorCube("Hatch_Outer", parent,
-                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch, ductMaterial);
+                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch, bypassMaterial);
         }
 
         /// <summary>
@@ -664,16 +839,23 @@ namespace DoodleUp.Editor
                 new Vector3(span, thickness, span), hatchMaterial);
             Object.DestroyImmediate(panel.GetComponent<Collider>());
 
-            panelMaterial ??= CreateMaterial("LS_Panel", new Color(0.14f, 0.16f, 0.19f));
+            // 테두리는 경고 황색이다. 배에서 이 색이 붙는 자리는 셋뿐이고(통로 배플 모서리,
+            // 승강구, 격납고 발진 구역) 셋 다 "부딪히거나 걸리거나 비용을 치르는 자리" 다.
+            // 승강구가 갑판에 뚫린 회색 사각형이면 주 통로와 시각적으로 대등해 보이는데,
+            // 이 길의 비용(웅크림 속도·SuitOxygen 소모, §5)은 들어가 봐야 아는 값이라
+            // 색이 먼저 말하지 않으면 승무원은 산소가 도는 중에 그 비용을 배운다.
+            EnsureHazardMaterial();
             foreach (var sign in new[] { -1f, 1f })
             {
+                // z 쪽 테두리만 문턱(coaming) 높이로 세운다. 판이 +x 로 미끄러져 열리므로
+                // x 쪽에 턱을 세우면 열린 판이 그것을 뚫고 지나간다.
                 var rimZ = CreateCube($"{name}_Rim_{(sign < 0f ? "Port" : "Starboard")}", hatch.transform,
-                    new Vector3(0f, 0.015f, sign * (span * 0.5f + 0.06f)),
-                    new Vector3(span + 0.24f, 0.03f, 0.12f), panelMaterial);
+                    new Vector3(0f, 0.07f, sign * (span * 0.5f + 0.06f)),
+                    new Vector3(span + 0.24f, 0.14f, 0.12f), hazardMaterial);
                 Object.DestroyImmediate(rimZ.GetComponent<Collider>());
                 var rimX = CreateCube($"{name}_Rim_{(sign < 0f ? "Fore" : "Aft")}", hatch.transform,
                     new Vector3(sign * (span * 0.5f + 0.06f), 0.015f, 0f),
-                    new Vector3(0.12f, 0.03f, span), panelMaterial);
+                    new Vector3(0.12f, 0.03f, span), hazardMaterial);
                 Object.DestroyImmediate(rimX.GetComponent<Collider>());
             }
 
@@ -723,6 +905,7 @@ namespace DoodleUp.Editor
             }
 
             CreateCompartmentLabel(spec, root.transform);
+            CreateCompartmentDressing(spec, root.transform);
 
             // 등은 여기서 안 단다. 조명은 씬 소관이라 선체 프리팹에 안 들어가고,
             // 구획 등도 CreateLighting 이 같이 세운다 — 프리팹 안에 등이 섞이면
@@ -812,10 +995,186 @@ namespace DoodleUp.Editor
         {
             var text = spec.Compartment.ToString().ToUpperInvariant();
             // 라벨은 +z 를 보는 면에 글자를 그린다. 구획 선수 쪽 벽 안쪽에 붙여 문으로 들어오는
-            // 방향에서 읽히게 둔다.
+            // 방향에서 읽히게 둔다. 색은 구획색이다 — 벽이 공통 중성색이라 라벨과 바닥 띠가
+            // 이 방의 색을 말하는 유일한 자리다.
             CreateZoneLabel(root.parent, text,
                 new Vector3(spec.CenterX, LastShiftCompartments.InteriorHeight - 0.75f, spec.MinZ + 0.12f),
-                compartmentMaterial.color);
+                LastShiftDressing.TintOf(spec.Compartment));
+        }
+
+        /// <summary>
+        /// 구획 하나의 드레싱. 바닥 띠(구획색) + 소품 서넛(공통 설비색)이다.
+        ///
+        /// <b>벽은 물들이지 않는다.</b> 배에는 이미 압력 구역 색 넷이 있고 그것이 1차 인지
+        /// 앵커다 — 구획 열한 개까지 벽 색을 가지면 색이 스물다섯 가지가 되어 구역 색이
+        /// 그 안에 묻힌다. 위계를 <b>면적</b>으로 만든다: 구역은 벽·바닥, 구획은 띠·라벨.
+        ///
+        /// <b>잠긴 구획도 안쪽은 채운다.</b> 지금은 들어갈 수 없지만 §15.2 언락이 붙는 순간
+        /// 여덟 방이 한꺼번에 열리고, 그때 비어 있으면 언락 보상이 회색 상자가 된다.
+        /// 반대로 <b>바깥 면에는 아무것도 안 붙인다</b> — §17.7-3/§17.8-4 가 잠긴 문의 차폐
+        /// 수준을 미결로 남겨 뒀고, 표식은 그 자체가 "정보를 흘린다" 쪽 결정이다(§21.4).
+        /// 여기 있는 것은 전부 구획 볼륨 안쪽이고, 잠긴 방은 등도 없어 문틈으로 샐 빛도 없다.
+        ///
+        /// <b>게이지·사이렌은 없다.</b> 열한 개 전부 압력존 밖이라(§24) 상태를 말하는 계기를
+        /// 달면 §17.6 이 미결로 남긴 편입 여부가 그림 쪽에서 먼저 닫힌다. 발광은 수경재배
+        /// 그로우 라이트와 서버 랙 인디케이터 둘뿐이고, 둘 다 방의 <b>정체</b>를 말할 뿐
+        /// 선체 상태를 말하지 않는다.
+        ///
+        /// 소품은 전부 콜라이더 없는 장식이다. 구획 통행 폭·문 폭은 §9.4 막다른 방 전제가
+        /// 걸린 수치라 드레싱이 줄이면 안 된다.
+        /// </summary>
+        private static void CreateCompartmentDressing(LastShiftCompartmentSpec spec, Transform root)
+        {
+            var tint = CreateMaterial($"LS_Tint_{spec.Compartment}", LastShiftDressing.TintOf(spec.Compartment));
+            var fixture = EnsureFixtureMaterial();
+
+            // 문 앞에서 방 안쪽으로 뻗는 바닥 띠. 문을 통과하는 순간 발밑 색이 바뀌어
+            // "다른 공간으로 넘어왔다" 가 천장 높이 말고 하나 더 생긴다. 띠는 방 중심이
+            // 아니라 <b>문 중심</b>을 지난다 — 둘이 어긋난 구획(의무실)에서 방 중심에 깔면
+            // 띠가 문을 안 지나 유도선 노릇을 못 한다.
+            var bandAlongX = spec.DoorPlane == LastShiftDoorPlane.AlongX;
+            CreateDecorCube("FloorBand", root,
+                bandAlongX
+                    ? new Vector3(0f, 0.016f, spec.DoorCenter - spec.CenterZ)
+                    : new Vector3(spec.DoorCenter - spec.CenterX, 0.016f, 0f),
+                bandAlongX
+                    ? new Vector3(spec.LengthX - 0.3f, 0.03f, 0.5f)
+                    : new Vector3(0.5f, 0.03f, spec.WidthZ - 0.3f),
+                tint);
+
+            // ux/uz 는 구획 반치수 대비 위치(-1 = 벽에 붙음, 0 = 가운데). 미터로 적으면
+            // §2.2 같은 치수 개정이 들어올 때 소품만 벽을 뚫고 남는다.
+            void Prop(string name, float ux, float uz, float sizeX, float sizeY, float sizeZ,
+                Material material, float bottomY = 0f)
+            {
+                const float clearance = 0.06f;
+                var slackX = Mathf.Max(0f, spec.LengthX * 0.5f - sizeX * 0.5f - clearance);
+                var slackZ = Mathf.Max(0f, spec.WidthZ * 0.5f - sizeZ * 0.5f - clearance);
+                CreateDecorCube(name, root,
+                    new Vector3(ux * slackX, bottomY + sizeY * 0.5f, uz * slackZ),
+                    new Vector3(sizeX, sizeY, sizeZ), material);
+            }
+
+            // 축 규약은 선체와 같다 — x = 전장(선수 -/선미 +), z = 전폭(좌현 -/우현 +).
+            // 소품을 벽에 붙일 때는 <b>그 벽에 문이 없는지</b> 먼저 본다. 문 앞을 막으면
+            // 지금은 통과되지만(장식이라 콜라이더가 없다) 언락 뒤에 문이 열리는 순간
+            // 방 입구에 상자가 박혀 있는 상태가 된다.
+            switch (spec.Compartment)
+            {
+                // 관측실 — 앉아서 밖을 보는 방. 콘솔을 낮게 깔아 시선 높이를 비워 둔다.
+                case LastShiftCompartment.Observatory:
+                    Prop("SightingConsole", 0f, -1f, 2.0f, 0.85f, 0.5f, fixture);
+                    Prop("ObserverSeat", 0f, -0.2f, 0.6f, 0.5f, 0.6f, fixture);
+                    Prop("InstrumentColumn", 1f, 1f, 0.4f, 2.0f, 0.4f, fixture);
+                    Prop("StarChart", -1f, 0.3f, 0.12f, 1.0f, 1.4f, tint, 1.0f);
+                    break;
+
+                // 정비창 — 작업대가 양 현에 붙어 가운데 x 동선을 남긴다. 양 끝 x 면은 둘 다
+                // 문 면이라(선수 쪽 관측실, 선미 쪽 화물칸) 거기에는 아무것도 안 붙인다.
+                case LastShiftCompartment.Workshop:
+                    Prop("Bench_Port", 0f, -1f, 3.0f, 0.9f, 0.7f, fixture);
+                    Prop("Bench_Starboard", 0f, 1f, 3.0f, 0.9f, 0.7f, fixture);
+                    Prop("ToolRack", 0f, -1f, 2.4f, 1.0f, 0.3f, fixture, 1.2f);
+                    Prop("PartsPallet", 0.2f, 0f, 1.0f, 0.35f, 1.0f, tint);
+                    break;
+
+                // 화물칸 — 높이가 다른 스택 넷. 같은 높이로 깔면 바닥 무늬로 보인다.
+                case LastShiftCompartment.CargoBay:
+                    EnsureHazardMaterial();
+                    Prop("Crate_0", -0.8f, -0.7f, 1.6f, 1.6f, 1.6f, fixture);
+                    Prop("Crate_1", -0.8f, 0.5f, 1.2f, 2.4f, 1.2f, fixture);
+                    Prop("Crate_2", 0.7f, -0.4f, 2.0f, 1.0f, 1.8f, fixture);
+                    Prop("Crate_3", 0.9f, 0.9f, 1.2f, 1.8f, 1.2f, tint);
+                    Prop("LashRail_Port", -0.5f, -1f, 5.5f, 0.06f, 0.2f, hazardMaterial);
+                    Prop("LashRail_Starboard", -0.5f, 1f, 5.5f, 0.06f, 0.2f, hazardMaterial);
+                    break;
+
+                // 격납고 — 가운데를 비운다. 발진 구역이 비어 있어야 방이 격납고로 읽힌다.
+                case LastShiftCompartment.Hangar:
+                    EnsureHazardMaterial();
+                    Prop("Cradle_Fore", 0f, -0.45f, 4.5f, 0.5f, 0.4f, fixture);
+                    Prop("Cradle_Aft", 0f, 0.45f, 4.5f, 0.5f, 0.4f, fixture);
+                    Prop("LaunchMark_Fore", 0f, -0.75f, 5.0f, 0.03f, 0.18f, hazardMaterial);
+                    Prop("LaunchMark_Aft", 0f, 0.75f, 5.0f, 0.03f, 0.18f, hazardMaterial);
+                    Prop("HangarRack", -1f, 0f, 0.5f, 2.2f, 4.0f, fixture);
+                    Prop("Gantry", 1f, 0f, 0.4f, 2.6f, 5.0f, tint);
+                    break;
+
+                // 서버통신실 — 랙 네 열. 문 면에서 한 열 물려 세워 들어서는 자리를 비운다.
+                // 인디케이터는 방의 정체를 말할 뿐 선체 상태는 안 말한다 — 압력존 밖이라
+                // 상태 계기를 달면 §24 편입 여부가 그림에서 먼저 닫힌다.
+                case LastShiftCompartment.ServerRoom:
+                    indicatorMaterial ??= CreateEmissiveMaterial("LS_ServerIndicator", new Color(0.36f, 0.94f, 0.60f), 1.1f);
+                    for (var rack = 0; rack < 4; rack++)
+                    {
+                        var uz = -0.35f + rack * 0.45f;
+                        Prop($"Rack_{rack}", 0f, uz, 2.4f, 2.2f, 0.5f, fixture);
+                        Prop($"RackIndicator_{rack}", -0.55f, uz, 0.5f, 0.06f, 0.56f, indicatorMaterial, 1.7f);
+                    }
+                    break;
+
+                // 화장실 — 폭이 좁고 양 끝이 다 문이라 x 동선(z ≈ 0)을 비워 둬야 한다.
+                // 칸막이는 한쪽 끝으로 몰고 세면대는 반대 끝에 둔다.
+                case LastShiftCompartment.Lavatory:
+                    Prop("Basin", 0f, -1f, 1.2f, 0.9f, 0.5f, fixture);
+                    Prop("Stall_Fore", 0f, 0.45f, 1.2f, 2.0f, 0.08f, tint);
+                    Prop("Stall_Aft", 0f, 0.85f, 1.2f, 2.0f, 0.08f, tint);
+                    break;
+
+                // 숙소 — 2단 침상 두 조 = 네 자리. 4인 승무원과 수를 맞춘다. 양 x 면은 문
+                // (화장실 쪽·휴게실 쪽)이고 우현 면은 의무실 문 자리라 사물함은 좌현이다.
+                case LastShiftCompartment.Quarters:
+                    foreach (var (bunkName, uz) in new[] { ("Port", -0.75f), ("Starboard", 0.75f) })
+                    {
+                        Prop($"Bunk_{bunkName}_Lower", 0f, uz, 2.6f, 0.25f, 0.9f, fixture, 0.45f);
+                        Prop($"Bunk_{bunkName}_Upper", 0f, uz, 2.6f, 0.25f, 0.9f, fixture, 1.55f);
+                    }
+                    Prop("Lockers", 0f, -1f, 2.4f, 1.9f, 0.45f, tint);
+                    break;
+
+                // 휴게실 — 넷이 마주 앉는 자리. 이 배에서 유일하게 일 안 하는 방이다.
+                // 양 x 면은 문(숙소 쪽·구명정 쪽)이라 갤리는 우현 벽으로 보낸다.
+                case LastShiftCompartment.Lounge:
+                    Prop("Table", 0f, 0f, 1.6f, 0.75f, 1.2f, fixture);
+                    Prop("Bench_Port", 0f, -0.75f, 2.0f, 0.45f, 0.5f, tint);
+                    Prop("Bench_Starboard", 0f, 0.75f, 2.0f, 0.45f, 0.5f, tint);
+                    Prop("GalleyCounter", 0f, 1f, 3.0f, 1.0f, 0.6f, fixture);
+                    break;
+
+                // 수경재배·산소재생실 — 그로우 라이트가 이 배에서 가장 밝은 색이다.
+                // 산소를 만드는 방이 살아 있는 색을 갖는 것은 §9 생활 축과 같은 방향이다.
+                case LastShiftCompartment.Hydroponics:
+                    growMaterial ??= CreateEmissiveMaterial("LS_GrowLight", new Color(0.86f, 0.42f, 0.76f), 1.6f);
+                    for (var row = 0; row < 2; row++)
+                    {
+                        var uz = row == 0 ? -0.72f : 0.72f;
+                        for (var tier = 0; tier < 3; tier++)
+                        {
+                            Prop($"Tray_{row}_{tier}", 0f, uz, 4.4f, 0.14f, 1.0f, fixture, 0.45f + tier * 0.8f);
+                            Prop($"Growth_{row}_{tier}", 0f, uz, 4.0f, 0.22f, 0.8f, tint, 0.59f + tier * 0.8f);
+                            Prop($"GrowLight_{row}_{tier}", 0f, uz, 4.2f, 0.06f, 0.24f, growMaterial, 0.86f + tier * 0.8f);
+                        }
+                    }
+                    break;
+
+                // 의무실 — 침상 하나. 넷이 타는 배에 침상이 하나라는 것 자체가 정보다.
+                // 스캐너는 침상 머리맡에 걸치게 둬서 둘이 한 덩어리로 안 보이게 한다.
+                case LastShiftCompartment.MedBay:
+                    Prop("MedBed", 0f, -0.3f, 2.1f, 0.6f, 0.9f, fixture);
+                    Prop("ScannerArch", -0.5f, -0.3f, 0.35f, 2.0f, 1.6f, tint);
+                    Prop("MedCabinet", 1f, 1f, 0.5f, 1.8f, 1.6f, fixture);
+                    break;
+
+                // 구명정 — 좌석 넷과 해치 링. 색이 배에서 여기 하나뿐인 적색이다.
+                // 선수 쪽 x 면이 휴게실 문이라 콘솔은 좌현, 해치는 선미 끝벽에 붙인다.
+                default:
+                    for (var seat = 0; seat < 4; seat++)
+                        Prop($"PodSeat_{seat}", seat < 2 ? -0.55f : 0.15f, seat % 2 == 0 ? -0.55f : 0.55f,
+                            0.7f, 1.0f, 0.7f, fixture);
+                    Prop("PodConsole", 0f, -1f, 2.4f, 1.1f, 0.4f, tint);
+                    Prop("HatchRing", 1f, 0f, 0.2f, 2.2f, 2.2f, tint);
+                    break;
+            }
         }
 
         private static GameObject CreateDecorCube(string name, Transform parent, Vector3 localPosition, Vector3 scale, Material material)
@@ -1128,6 +1487,21 @@ namespace DoodleUp.Editor
             light.shadows = LightShadows.Soft;
         }
 
+        /// <summary>
+        /// 경고 황색. 배에서 이 색이 붙는 자리는 셋뿐이다 — 통로 배플 모서리, 갑판 승강구,
+        /// 격납고 발진 구역. 셋 다 "부딪히거나 걸리거나 비용을 치르는 자리" 이고, 다른 데
+        /// 쓰기 시작하면 그 뜻이 없어진다.
+        /// </summary>
+        private static Material EnsureHazardMaterial() =>
+            hazardMaterial ??= CreateMaterial("LS_Hazard", new Color(0.86f, 0.62f, 0.10f));
+
+        /// <summary>
+        /// 설비 중성색. 소품 대부분이 이것을 쓴다 — 구획 벽(<c>LS_Compartment</c>)보다 밝아
+        /// 실루엣이 벽에서 떨어지고, 구획색보다 채도가 낮아 색 위계를 안 건드린다.
+        /// </summary>
+        private static Material EnsureFixtureMaterial() =>
+            fixtureMaterial ??= CreateMaterial("LS_Fixture", new Color(0.39f, 0.40f, 0.43f));
+
         private static void ResetCachedMaterials()
         {
             hullMaterial = null;
@@ -1142,6 +1516,14 @@ namespace DoodleUp.Editor
             starMaterial = null;
             voidMaterial = null;
             compartmentMaterial = null;
+            fixtureMaterial = null;
+            hazardMaterial = null;
+            laneMaterial = null;
+            bypassMaterial = null;
+            frostMaterial = null;
+            scorchMaterial = null;
+            growMaterial = null;
+            indicatorMaterial = null;
         }
 
         /// <summary>
