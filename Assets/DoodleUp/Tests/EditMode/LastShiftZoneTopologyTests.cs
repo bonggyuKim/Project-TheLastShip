@@ -148,6 +148,34 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// 문이 달린 개구부 집합을 <b>서로 독립인 두 경로</b>로 구해 같은지 본다.
+        ///
+        /// <c>OpeningIndexOf</c> 는 경계 번호에서 직접 매핑하고, <c>OpeningHasDoor</c> 는
+        /// 개구부 x 가 경계 평면과 일치하는지로 판정한다. 둘이 어긋나 있어도 각자는 그럴듯해서
+        /// 눈에 안 띈다 — 실제로 4구역 전환 때 <c>OpeningIndexOf</c> 만 3구역 식으로 남아
+        /// 둘이 갈라져 있었고, 그 상태로 씬이 계속 구워졌다.
+        /// </summary>
+        [Test]
+        public void DoorOpeningSetAgreesBetweenBoundaryMappingAndGeometry()
+        {
+            var byMapping = new System.Collections.Generic.HashSet<int>();
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                byMapping.Add(LastShiftZoneDoor.OpeningIndexOf(boundary));
+
+            var byGeometry = new System.Collections.Generic.HashSet<int>();
+            for (var opening = 0; opening < LastShiftShipDimensions.OpeningCount; opening++)
+                if (LastShiftShipDimensions.OpeningHasDoor(opening)) byGeometry.Add(opening);
+
+            Assert.That(byMapping.SetEquals(byGeometry), Is.True,
+                $"문 달린 개구부가 경로마다 다르다 — 경계 매핑 {Describe(byMapping)} / 기하 {Describe(byGeometry)}.");
+            Assert.That(byMapping.Count, Is.EqualTo(LastShiftZoneAtlas.BoundaryCount),
+                "경계마다 문이 정확히 하나여야 한다.");
+        }
+
+        private static string Describe(System.Collections.Generic.IEnumerable<int> values) =>
+            "{" + string.Join(", ", System.Linq.Enumerable.OrderBy(values, value => value)) + "}";
+
         [Test]
         public void NearestBoundaryPicksTheClosestPlane()
         {

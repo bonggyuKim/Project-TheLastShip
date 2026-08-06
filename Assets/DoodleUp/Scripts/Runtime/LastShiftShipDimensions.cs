@@ -114,7 +114,7 @@ namespace DoodleUp.Runtime
 
         public static float RoomCenterX(LastShiftZone zone) => RoomMinX(zone) + RoomLengthOf(zone) * 0.5f;
 
-        /// <summary>통로 x 범위. 0 = 통로 A(조종석↔엔진실), 1 = 통로 B(엔진실↔산소실).</summary>
+        /// <summary>통로 x 범위. 0 = 통로 A(조종석↔전력실), 1 = 통로 B(냉각실↔산소실).</summary>
         public static float PassageMinX(int passage) =>
             passage <= 0 ? RoomMaxX(LastShiftZone.Cockpit) : RoomMaxX(LastShiftZone.Cooling);
 
@@ -131,15 +131,16 @@ namespace DoodleUp.Runtime
         public static float PassageMaxZ(int passage) => PassageCenterZ(passage) + PassageWidth * 0.5f;
 
         /// <summary>
-        /// 구역 경계 x. 원점 대칭이고 조종석↔엔진실이 -이 값, 엔진실↔산소실이 +이 값이다.
+        /// 구역 경계 x. 조종석↔전력실이 -이 값, 냉각실↔산소실이 +이 값이다. 가운데
+        /// 전력실↔냉각실 경계는 원점(<see cref="LastShiftZoneAtlas.PowerMaxX"/>)이라 여기 없다.
         ///
-        /// 4m 인 이유는 <b>문이 달리는 자리와 압력 판정 자리가 같아야 하기 때문</b>이다. 통로가
-        /// 생기면서 문은 통로 끝(엔진실 방 경계)에 붙었고, 판정 경계를 통로 한가운데(±7)에
-        /// 두면 문을 닫아도 그 평면에는 차단물이 없어 압력이 안 끊긴다. 조작 사거리도 3m 밖이라
-        /// 문에 손이 닿지 않는다.
+        /// <b>문이 달리는 자리와 압력 판정 자리가 같아야 한다.</b> 통로가 생기면서 문은 통로
+        /// 끝(방 경계)에 붙었고, 판정 경계를 통로 한가운데에 두면 문을 닫아도 그 평면에는
+        /// 차단물이 없어 압력이 안 끊긴다. 조작 사거리도 3m 밖이라 문에 손이 닿지 않는다.
         ///
-        /// 부피는 조종석 14m / 엔진실 8m / 산소실 14m 로 1.75배 차이다. 3배를 넘으면 그때
-        /// EQUALIZE_RATE 를 부피 가중으로 재검토해야 하고, 지금은 안 걸린다.
+        /// 부피는 조종석 14m / 전력실 5m / 냉각실 5m / 산소실 14m 로 2.80배 차이다. 3배를
+        /// 넘으면 그때 EQUALIZE_RATE 를 부피 가중으로 재검토해야 하고, 지금은 안 걸린다 —
+        /// 여유가 1.07배뿐이라 선체 길이나 구역 경계를 건드리면 매번 다시 본다.
         ///
         /// <see cref="RoomMaxX"/>(Cooling) 와 같은 값이지만 여기서는 const 로 둔다 — 압력 판정의
         /// <see cref="LastShiftZoneAtlas.CockpitMaxX"/> 가 컴파일 타임 상수를 요구하기 때문이다.
@@ -198,7 +199,10 @@ namespace DoodleUp.Runtime
         /// <summary>통로 중심에서 개구부 중심까지의 z 오프셋. (개구부 폭 + 간격) / 2 = 1.0m.</summary>
         public const float OpeningOffsetZ = (OpeningWidth + OpeningGapZ) * 0.5f;
 
-        /// <summary>개구부 개수. 조종석|통로A|엔진실|통로B|산소실 배치의 접합부가 넷이다.</summary>
+        /// <summary>
+        /// 개구부 개수. 조종석|통로A|전력실|냉각실|통로B|산소실 배치의 접합부가 다섯이다.
+        /// 그중 셋(1·2·3)이 압력 경계이고 거기에만 문이 달린다.
+        /// </summary>
         public const int OpeningCount = 5;
 
         /// <summary>
@@ -299,14 +303,15 @@ namespace DoodleUp.Runtime
 
         /// <summary>
         /// 개구부의 -x 쪽에 붙은 공간의 중심 x. 개구부 너머가 어느 구역인지를 판정할 때
-        /// 경계 평면에서 ε 만큼 민 좌표를 쓰지 않으려고 둔다 — 개구부 1·2 는 x 가 구역 판정
+        /// 경계 평면에서 ε 만큼 민 좌표를 쓰지 않으려고 둔다 — 개구부 1·2·3 은 x 가 구역 판정
         /// 경계와 <b>같은 값</b>이라, ε 부호를 한 번 잘못 잡으면 판독이 통째로 반대편 구역을
         /// 가리키고도 값이 그럴듯해서 눈에 띄지 않는다. 공간 중심은 그런 여지가 없다.
         ///
         ///   개구부 0 : 조종석 방 | 통로 A
-        ///   개구부 1 : 통로 A    | 엔진실 방
-        ///   개구부 2 : 엔진실 방 | 통로 B
-        ///   개구부 3 : 통로 B    | 산소실 방
+        ///   개구부 1 : 통로 A    | 전력실 방   (경계 0)
+        ///   개구부 2 : 전력실 방 | 냉각실 방   (경계 1, 방-방)
+        ///   개구부 3 : 냉각실 방 | 통로 B     (경계 2)
+        ///   개구부 4 : 통로 B    | 산소실 방
         /// </summary>
         public static float SpaceCenterXBefore(int opening) => opening switch
         {
