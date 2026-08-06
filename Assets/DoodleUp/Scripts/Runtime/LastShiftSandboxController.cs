@@ -554,8 +554,17 @@ namespace DoodleUp.Runtime
         /// 이 위치가 진공인가. N0 이후 판정 대상은 <b>그 위치가 속한 구역의</b> 압력이다.
         /// 산소 계통을 성능 포기로 밀폐했다면 밀폐한 구역만 압력과 무관하게 진공이다.
         /// </summary>
+        /// <summary>
+        /// 이 좌표의 승무원이 진공에 노출돼 있는가.
+        ///
+        /// <b>갑판 하부 우회 통로를 먼저 본다.</b> <see cref="LastShiftZoneAtlas.Resolve"/> 는
+        /// x 하나로 구역을 정하므로 갑판 아래를 구분하지 못한다 — 그대로 두면 덕트 안
+        /// 승무원이 머리 위 방의 압력을 그대로 받아 산소를 안 태우고, 그러면 §5 가 우회로에
+        /// 걸어 둔 유일한 비용이 사라져 "급할 때만 쓰는 진짜 우회로" 가 지름길이 된다.
+        /// </summary>
         public bool IsZoneVacuum(Vector3 position)
         {
+            if (LastShiftBypassDuct.IsUnpressurized && LastShiftBypassDuct.Contains(position)) return true;
             return IsZoneVacuum(LastShiftZoneAtlas.Resolve(position));
         }
 
