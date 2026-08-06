@@ -266,6 +266,22 @@ namespace DoodleUp.Runtime
             if (networkSandbox != null) networkSandbox.RequestRepairRpc(mode);
         }
 
+        /// <summary>
+        /// 운석 1회 적용 요청(M). <b>서버 RPC 는 있었는데 부르는 곳이 없었다</b> —
+        /// M 은 <see cref="LastShiftSandboxController.Update"/> 에만 배선돼 있고, 그 블록은
+        /// 네트워크 샌드박스가 스폰되면 통째로 꺼진다. 씬이 하나가 되면서 에디터에서도
+        /// host 가 자동으로 뜨므로, 결과적으로 M 이 아무 데서도 안 먹었다.
+        ///
+        /// 프리셋·리셋과 같은 계열이라 유령도 쓸 수 있게 둔다 — 조작 동사가 아니라 검증
+        /// 도구이고, 막으면 둘 다 죽은 뒤 아무도 사건을 다시 일으킬 수 없다.
+        /// </summary>
+        public void RequestMeteorImpact()
+        {
+            if (!IsOwner) return;
+            var networkSandbox = FindFirstObjectByType<LastShiftNetworkSandbox>();
+            if (networkSandbox != null) networkSandbox.RequestMeteorImpactRpc();
+        }
+
         public void RequestPresetReset(LastShiftPreset preset)
         {
             if (!IsOwner) return;

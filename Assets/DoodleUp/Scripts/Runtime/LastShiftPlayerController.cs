@@ -86,6 +86,7 @@ namespace DoodleUp.Runtime
         private bool presetTwoPressed;
         private bool presetThreePressed;
         private bool resetPressed;
+        private bool meteorPressed;
         private bool managesCursor = true;
         private string serverRejectionReason;
         private float serverRejectionExpiry;
@@ -250,6 +251,7 @@ namespace DoodleUp.Runtime
             var presetTwo = ConsumePress(keyboard.digit2Key.isPressed, ref presetTwoPressed);
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
             var reset = ConsumePress(keyboard.rKey.isPressed, ref resetPressed);
+            var meteor = ConsumePress(keyboard.mKey.isPressed, ref meteorPressed);
 
             ApplyLook(look, deltaTime);
             ApplyMovement(move, jump, deltaTime);
@@ -275,6 +277,11 @@ namespace DoodleUp.Runtime
             else if (presetTwo) networkPlayer.RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
             else if (presetThree) networkPlayer.RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
             else if (reset) networkPlayer.RequestCurrentPresetReset();
+            // 운석(M). 프리셋·리셋과 같은 검증 도구 계열이라 유령 차단 밖에 둔다.
+            // 이 줄이 없어서 host 로 뜬 씬에서 M 이 아무 데서도 안 먹었다 — 서버 RPC 는
+            // 있었지만 부르는 곳이 없었고, LastShiftSandboxController 의 키 처리 블록은
+            // 네트워크 샌드박스가 스폰되면 통째로 꺼진다.
+            else if (meteor) networkPlayer.RequestMeteorImpact();
         }
 
         public bool TryGrabForProbe(LastShiftGrabbable item)

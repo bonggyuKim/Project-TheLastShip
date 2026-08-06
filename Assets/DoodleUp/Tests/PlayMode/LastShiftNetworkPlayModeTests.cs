@@ -268,6 +268,18 @@ namespace DoodleUp.Tests.PlayMode
             yield return PressAndRelease(Key.R);
             yield return WaitFor(() => sandbox.ResetGeneration == resetBefore + 1, "reset-r");
             Assert.That(networkSandbox.Snapshot.Preset, Is.EqualTo(LastShiftPreset.BadAttitudeHighOxygen));
+
+            // M(운석). <b>이 줄이 없어서 M 이 host 씬에서 아무 데서도 안 먹었다</b> —
+            // 서버 RPC 는 있는데 부르는 곳이 없었고, LastShiftSandboxController 의 키 블록은
+            // 네트워크 샌드박스가 스폰되면 통째로 꺼진다. 사용자 플레이에서 잡혔다.
+            // 다른 키와 달리 M 은 여기서만 검사되므로 이 assertion 이 유일한 방벽이다.
+            Assert.That(sandbox.HasAppliedImpact, Is.False, "리셋 직후에는 사건 전이어야 한다.");
+            yield return PressAndRelease(Key.M);
+            yield return WaitFor(() => sandbox.HasAppliedImpact, "meteor-m",
+                diagnostics: () => $"impact={sandbox.HasAppliedImpact} count={sandbox.ImpactApplicationCount} " +
+                                   $"ghost={controller.IsGhost} spawned={networkSandbox.IsSpawned}");
+            Assert.That(sandbox.ImpactApplicationCount, Is.EqualTo(1));
+
             session.StopSession();
         }
 
