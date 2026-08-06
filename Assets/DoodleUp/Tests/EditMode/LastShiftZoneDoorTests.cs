@@ -18,7 +18,7 @@ namespace DoodleUp.Tests.EditMode
         public void ClosedDoorStopsPressureEqualizationAcrossThatBoundaryOnly()
         {
             // 산소실만 낮은 상태에서 시작한다. 파공 직후의 모양이다.
-            var pressures = new LastShiftZonePressures(1f, 1f, 0.2f);
+            var pressures = new LastShiftZonePressures(1f, 1f, 1f, 0.2f);
             var doors = LastShiftDoorState.AllOpen;
             doors[1] = false;
 
@@ -27,14 +27,14 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(pressures.LifeSupport, Is.EqualTo(0.2f).Within(0.0001f),
                 "닫힌 경계 너머로는 공기가 넘어오지 않아야 한다(수용 기준 9).");
             Assert.That(pressures.Cockpit, Is.EqualTo(1f).Within(0.0001f));
-            Assert.That(pressures.Utility, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(pressures.Power, Is.EqualTo(1f).Within(0.0001f));
 
             // 같은 상태에서 문만 열면 그 자리에서 다시 평준화가 시작된다.
             doors[1] = true;
             pressures.Equalize(doors, 60f);
             Assert.That(pressures.LifeSupport, Is.GreaterThan(0.2f),
                 "문을 열면 평준화가 재개돼야 한다.");
-            Assert.That(pressures.Utility, Is.LessThan(1f));
+            Assert.That(pressures.Power, Is.LessThan(1f));
         }
 
         [Test]
@@ -42,13 +42,13 @@ namespace DoodleUp.Tests.EditMode
         {
             // 차 0.5 인 두 구역이 약 28초에 만난다(§2.2.1). 정확한 수렴 시점 대신 "절반 지나기"
             // 로 확인한다 — 지수 접근이라 완전히 같아지는 시점은 정의되지 않는다.
-            var pressures = new LastShiftZonePressures(1f, 0.5f, 0.5f);
+            var pressures = new LastShiftZonePressures(1f, 0.5f, 0.5f, 0.5f);
             pressures.Equalize(LastShiftDoorState.AllOpen, 28f);
 
-            var gap = pressures.Cockpit - pressures.Utility;
+            var gap = pressures.Cockpit - pressures.Power;
             Assert.That(gap, Is.LessThan(0.5f * 0.25f),
                 "28초면 초기 차이의 4분의 1 미만으로 좁혀져 있어야 한다(수용 기준 8).");
-            Assert.That(pressures.Cockpit, Is.GreaterThan(pressures.Utility),
+            Assert.That(pressures.Cockpit, Is.GreaterThan(pressures.Power),
                 "평준화는 순서를 뒤집지 않는다.");
         }
 

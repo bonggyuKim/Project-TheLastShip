@@ -594,12 +594,12 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static bool IsConnectedToCockpit(LastShiftZone zone, in LastShiftDoorState doors)
         {
-            return zone switch
-            {
-                LastShiftZone.Cockpit => true,
-                LastShiftZone.Utility => doors[0],
-                _ => doors[0] && doors[1]
-            };
+            // 조종석에서 그 구역까지 가는 길의 문을 전부 본다. 하나라도 닫혀 있으면 끊긴다.
+            // 구역이 늘어도 경계 수만 따라오면 되도록 사슬을 순회로 적는다 - 예전 switch 는
+            // "구역이 셋" 이라는 사실을 두 분기에 나눠 적고 있어서 넷이 되면 조용히 틀렸다.
+            for (var boundary = 0; boundary < (int)zone; boundary++)
+                if (!doors[boundary]) return false;
+            return true;
         }
 
         /// <summary>

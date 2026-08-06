@@ -32,12 +32,14 @@ namespace DoodleUp.Runtime
         /// 이미 나르므로(그 필드가 조종석 파생값이다) 여기서 다시 보내지 않는다.
         /// 클라이언트 HUD 3칸(N10)과 클라이언트 쪽 진공 판정이 이 둘을 읽는다.
         /// </summary>
-        public float UtilityPressure;
+        public float PowerPressure;
+        public float CoolingPressure;
         public float LifeSupportPressure;
 
         /// <summary>N0b 구역 문. 닫힌 경계는 압력 교환이 0 이므로 클라이언트도 같은 상태를 봐야 한다.</summary>
-        public bool CockpitUtilityDoorOpen;
-        public bool UtilityLifeSupportDoorOpen;
+        public bool Boundary0DoorOpen;
+        public bool Boundary1DoorOpen;
+        public bool Boundary2DoorOpen;
 
         /// <summary>
         /// T2 판독이 읽는 미억제 손상 계통. 손상 판정과 수리 완료 플래그는 서버에만 있으므로
@@ -74,10 +76,12 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref SteeringDelayed);
             serializer.SerializeValue(ref OxygenPumpRunning);
             serializer.SerializeValue(ref SirenActive);
-            serializer.SerializeValue(ref UtilityPressure);
+            serializer.SerializeValue(ref PowerPressure);
+            serializer.SerializeValue(ref CoolingPressure);
             serializer.SerializeValue(ref LifeSupportPressure);
-            serializer.SerializeValue(ref CockpitUtilityDoorOpen);
-            serializer.SerializeValue(ref UtilityLifeSupportDoorOpen);
+            serializer.SerializeValue(ref Boundary0DoorOpen);
+            serializer.SerializeValue(ref Boundary1DoorOpen);
+            serializer.SerializeValue(ref Boundary2DoorOpen);
             serializer.SerializeValue(ref UncontainedSystemMask);
         }
 
@@ -110,10 +114,12 @@ namespace DoodleUp.Runtime
                    SteeringDelayed == other.SteeringDelayed &&
                    OxygenPumpRunning == other.OxygenPumpRunning &&
                    SirenActive == other.SirenActive &&
-                   UtilityPressure.Equals(other.UtilityPressure) &&
+                   PowerPressure.Equals(other.PowerPressure) &&
+                   CoolingPressure.Equals(other.CoolingPressure) &&
                    LifeSupportPressure.Equals(other.LifeSupportPressure) &&
-                   CockpitUtilityDoorOpen == other.CockpitUtilityDoorOpen &&
-                   UtilityLifeSupportDoorOpen == other.UtilityLifeSupportDoorOpen &&
+                   Boundary0DoorOpen == other.Boundary0DoorOpen &&
+                   Boundary1DoorOpen == other.Boundary1DoorOpen &&
+                   Boundary2DoorOpen == other.Boundary2DoorOpen &&
                    UncontainedSystemMask == other.UncontainedSystemMask;
         }
     }

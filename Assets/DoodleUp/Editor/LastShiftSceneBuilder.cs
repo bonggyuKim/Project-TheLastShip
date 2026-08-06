@@ -16,13 +16,15 @@ namespace DoodleUp.Editor
         // 구역 이름 정본은 Runtime 의 LastShiftSceneZones 다. 런타임 연출(손상 구역 표시)이
         // 같은 문자열로 구역을 찾아야 하므로 여기서는 그것을 재노출만 한다.
         public const string CockpitZoneName = LastShiftSceneZones.CockpitZoneName;
-        public const string UtilityZoneName = LastShiftSceneZones.UtilityZoneName;
+        public const string PowerZoneName = LastShiftSceneZones.PowerZoneName;
+        public const string CoolingZoneName = LastShiftSceneZones.CoolingZoneName;
         public const string LifeSupportZoneName = LastShiftSceneZones.LifeSupportZoneName;
 
         private static Material hullMaterial;
         private static Material floorMaterial;
         private static Material cockpitMaterial;
-        private static Material utilityMaterial;
+        private static Material powerMaterial;
+        private static Material coolingMaterial;
         private static Material lifeSupportMaterial;
         private static Material ceilingMaterial;
         private static Material ductMaterial;
@@ -104,7 +106,8 @@ namespace DoodleUp.Editor
         {
             var ship = new GameObject("ShipGraybox");
             CreateZone(CockpitZoneName, ship.transform, LastShiftZone.Cockpit, cockpitMaterial ??= CreateMaterial("LS_Cockpit", new Color(0.24f, 0.38f, 0.50f)));
-            CreateZone(UtilityZoneName, ship.transform, LastShiftZone.Utility, utilityMaterial ??= CreateMaterial("LS_Utility", new Color(0.42f, 0.38f, 0.28f)));
+            CreateZone(PowerZoneName, ship.transform, LastShiftZone.Power, powerMaterial ??= CreateMaterial("LS_Power", new Color(0.42f, 0.38f, 0.28f)));
+            CreateZone(CoolingZoneName, ship.transform, LastShiftZone.Cooling, coolingMaterial ??= CreateMaterial("LS_Cooling", new Color(0.26f, 0.42f, 0.50f)));
             CreateZone(LifeSupportZoneName, ship.transform, LastShiftZone.LifeSupport, lifeSupportMaterial ??= CreateMaterial("LS_LifeSupport", new Color(0.26f, 0.48f, 0.36f)));
             // 벽 높이는 천장 내면(CeilingInnerHeight)까지 올린다. 예전 3.0 을 유지하면
             // 벽과 천장 사이에 0.2m 띠 구멍이 남아 저중력에서 뜬 물건이 그 틈으로 빠진다.
@@ -117,8 +120,9 @@ namespace DoodleUp.Editor
             CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, WindowSillHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreatePassage(ship.transform, 0);
             CreatePassage(ship.transform, 1);
-            CreateBulkheadWithDoor("Left", ship.transform, 0);
-            CreateBulkheadWithDoor("Right", ship.transform, 1);
+            // 경계마다 벌크헤드 한 장. 3 -> 4 구역이 되며 셋이 됐다(§3).
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                CreateBulkheadWithDoor($"B{boundary}", ship.transform, boundary);
             CreateShipCeiling(ship.transform);
             CreateForwardWindows(ship.transform);
             CreateInstrumentPanels(ship.transform);
@@ -126,10 +130,11 @@ namespace DoodleUp.Editor
             CreateCompartments(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
-            CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.UtilityCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), utilityMaterial);
+            CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, BackWallInnerZ - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
             CreateZoneLabel(ship.transform, "COCKPIT", new Vector3(LastShiftShipDimensions.CockpitCenterX, 2.25f, BackWallInnerZ - 0.13f), cockpitMaterial.color);
-            CreateZoneLabel(ship.transform, "UTILITY / BUS", new Vector3(LastShiftShipDimensions.UtilityCenterX, 2.25f, BackWallInnerZ - 0.13f), utilityMaterial.color);
+            CreateZoneLabel(ship.transform, "POWER / BUS", new Vector3(LastShiftShipDimensions.PowerCenterX, 2.25f, BackWallInnerZ - 0.13f), powerMaterial.color);
+            CreateZoneLabel(ship.transform, "COOLING", new Vector3(LastShiftShipDimensions.CoolingCenterX, 2.25f, BackWallInnerZ - 0.13f), coolingMaterial.color);
             CreateZoneLabel(ship.transform, "LIFE SUPPORT", new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 2.25f, BackWallInnerZ - 0.13f), lifeSupportMaterial.color);
             return ship;
         }
@@ -383,7 +388,8 @@ namespace DoodleUp.Editor
             const float endPanelX = EndWallInnerX - 0.06f;
             // 구역마다 뒷벽 패널 한 짝. 구역 중심에 두므로 전장이 바뀌면 따라 벌어진다.
             CreateWallPanel("Panel_Cockpit", ship, new Vector3(LastShiftShipDimensions.CockpitCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), cockpitMaterial.color);
-            CreateWallPanel("Panel_Utility", ship, new Vector3(LastShiftShipDimensions.UtilityCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), utilityMaterial.color);
+            CreateWallPanel("Panel_Power", ship, new Vector3(LastShiftShipDimensions.PowerCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), powerMaterial.color);
+            CreateWallPanel("Panel_Cooling", ship, new Vector3(LastShiftShipDimensions.CoolingCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), coolingMaterial.color);
             CreateWallPanel("Panel_LifeSupport", ship, new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 1.55f, panelZ), new Vector3(3.2f, 1.1f, 0.12f), lifeSupportMaterial.color);
             // 양 끝벽 패널. 배가 길어지면 이 둘 사이가 36m 가 되므로 각 구역 안에서만 보인다.
             CreateWallPanel("Panel_PortWall", ship, new Vector3(-endPanelX, 1.7f, -0.9f), new Vector3(0.12f, 1.0f, 2.2f), cockpitMaterial.color);
@@ -842,7 +848,8 @@ namespace DoodleUp.Editor
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
 
             CreateZoneLights("Cockpit", LastShiftZone.Cockpit, new Color(0.62f, 0.78f, 1f), 2.5f);
-            CreateZoneLights("Utility", LastShiftZone.Utility, new Color(1f, 0.86f, 0.62f), 2.3f);
+            CreateZoneLights("Power", LastShiftZone.Power, new Color(1f, 0.86f, 0.62f), 2.3f);
+            CreateZoneLights("Cooling", LastShiftZone.Cooling, new Color(0.66f, 0.86f, 1f), 2.3f);
             CreateZoneLights("LifeSupport", LastShiftZone.LifeSupport, new Color(0.66f, 1f, 0.80f), 2.3f);
 
             // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
@@ -889,7 +896,8 @@ namespace DoodleUp.Editor
             hullMaterial = null;
             floorMaterial = null;
             cockpitMaterial = null;
-            utilityMaterial = null;
+            powerMaterial = null;
+            coolingMaterial = null;
             lifeSupportMaterial = null;
             ceilingMaterial = null;
             ductMaterial = null;

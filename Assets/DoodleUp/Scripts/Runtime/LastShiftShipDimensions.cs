@@ -88,19 +88,25 @@ namespace DoodleUp.Runtime
         /// 가운데 블록(현재 엔진실, 개정 후 전력실+냉각실)의 x 길이. 8 → 10m 가 §2.2 의 <c>+2m</c> 다.
         /// 반으로 쪼개면 전력실·냉각실이 각 <c>5m × 6m = 30m²</c> 가 되어 부피비가 <c>2.8배</c> 로 앉는다.
         /// </summary>
-        public const float MidRoomLength = InteriorLength - 2f * (EndRoomLength + PassageLength);
+        /// <summary>
+        /// 가운데 방 <b>하나</b>의 x 길이. 예전 엔진실 블록 <c>10m</c> 를 §2.1 이 전력실·냉각실로
+        /// 정확히 반씩 쪼갠 결과라 각 <c>5m x 6m = 30m^2</c> 다. 구역 부피비가 <c>14/5 = 2.8배</c> 로
+        /// <c>RG-1(3)</c> 가드레일(<=3배) 안에 앉는다.
+        /// </summary>
+        public const float MidRoomLength = (InteriorLength - 2f * (EndRoomLength + PassageLength)) * 0.5f;
 
         /// <summary>
         /// 방 하나의 x 길이. 방마다 다르므로 상수가 아니다 — 예전 균등 분할
         /// <c>(36 - 12) / 3 = 8m</c> 을 상수로 두던 자리이고, 그 등식이 §2.2 에서 깨졌다.
         /// </summary>
         public static float RoomLengthOf(LastShiftZone zone) =>
-            zone == LastShiftZone.Utility ? MidRoomLength : EndRoomLength;
+            zone == LastShiftZone.Power || zone == LastShiftZone.Cooling ? MidRoomLength : EndRoomLength;
 
         public static float RoomMinX(LastShiftZone zone) => zone switch
         {
             LastShiftZone.Cockpit => -HalfLength,
-            LastShiftZone.Utility => -MidRoomLength * 0.5f,
+            LastShiftZone.Power => -MidRoomLength,
+            LastShiftZone.Cooling => 0f,
             _ => HalfLength - EndRoomLength
         };
 
@@ -110,7 +116,7 @@ namespace DoodleUp.Runtime
 
         /// <summary>통로 x 범위. 0 = 통로 A(조종석↔엔진실), 1 = 통로 B(엔진실↔산소실).</summary>
         public static float PassageMinX(int passage) =>
-            passage <= 0 ? RoomMaxX(LastShiftZone.Cockpit) : RoomMaxX(LastShiftZone.Utility);
+            passage <= 0 ? RoomMaxX(LastShiftZone.Cockpit) : RoomMaxX(LastShiftZone.Cooling);
 
         public static float PassageMaxX(int passage) => PassageMinX(passage) + PassageLength;
 
@@ -135,23 +141,25 @@ namespace DoodleUp.Runtime
         /// 부피는 조종석 14m / 엔진실 8m / 산소실 14m 로 1.75배 차이다. 3배를 넘으면 그때
         /// EQUALIZE_RATE 를 부피 가중으로 재검토해야 하고, 지금은 안 걸린다.
         ///
-        /// <see cref="RoomMaxX"/>(Utility) 와 같은 값이지만 여기서는 const 로 둔다 — 압력 판정의
+        /// <see cref="RoomMaxX"/>(Cooling) 와 같은 값이지만 여기서는 const 로 둔다 — 압력 판정의
         /// <see cref="LastShiftZoneAtlas.CockpitMaxX"/> 가 컴파일 타임 상수를 요구하기 때문이다.
         /// 둘이 어긋나지 않는 것은 테스트로 고정한다.
         /// </summary>
-        public const float ZoneBoundaryX = MidRoomLength * 0.5f;
+        public const float ZoneBoundaryX = MidRoomLength;
 
         public static float ZoneMinX(LastShiftZone zone) => zone switch
         {
             LastShiftZone.Cockpit => -HalfLength,
-            LastShiftZone.Utility => -ZoneBoundaryX,
+            LastShiftZone.Power => -ZoneBoundaryX,
+            LastShiftZone.Cooling => 0f,
             _ => ZoneBoundaryX
         };
 
         public static float ZoneMaxX(LastShiftZone zone) => zone switch
         {
             LastShiftZone.Cockpit => -ZoneBoundaryX,
-            LastShiftZone.Utility => ZoneBoundaryX,
+            LastShiftZone.Power => 0f,
+            LastShiftZone.Cooling => ZoneBoundaryX,
             _ => HalfLength
         };
 
@@ -191,7 +199,14 @@ namespace DoodleUp.Runtime
         public const float OpeningOffsetZ = (OpeningWidth + OpeningGapZ) * 0.5f;
 
         /// <summary>개구부 개수. 조종석|통로A|엔진실|통로B|산소실 배치의 접합부가 넷이다.</summary>
-        public const int OpeningCount = 4;
+        public const int OpeningCount = 5;
+
+        /// <summary>
+        /// 방-방 직접 인접 개구부. 전력실-냉각실(개구부 <c>2</c>) 하나뿐이고 통로에 안 속한다 -
+        /// 나머지 넷은 통로의 양 끝이다. 게이지도 안 붙는다: "게이지는 통로 쪽 한 면에만" 이라는
+        /// 규칙상 이 문은 양쪽이 다 방이라 통로 쪽 면이 아예 없다(§3).
+        /// </summary>
+        public const int RoomToRoomOpening = 2;
 
         /// <summary>
         /// 개구부 중심 z. 통로 오프셋과 개구부 오프셋의 조합이며 리터럴을 적지 않는다 —
@@ -207,7 +222,11 @@ namespace DoodleUp.Runtime
         {
             0 => PassageOffsetZ + OpeningOffsetZ,
             1 => PassageOffsetZ - OpeningOffsetZ,
-            2 => -PassageOffsetZ - OpeningOffsetZ,
+            // 개구부 2 는 통로에 안 속하므로 통로 오프셋에서 안 나온다. §19.7 이 확정한
+            // z2 = +2.2 이고 그 값은 개구부 0 과 같다 - 노출 면적을 최소화하는 자리다
+            // (냉각실 23%, 전력실 8%). A3 성립은 통로 배플이 전담하며 z2 와 무관하다.
+            RoomToRoomOpening => PassageOffsetZ + OpeningOffsetZ,
+            3 => -PassageOffsetZ - OpeningOffsetZ,
             _ => -PassageOffsetZ + OpeningOffsetZ
         };
 
@@ -225,12 +244,18 @@ namespace DoodleUp.Runtime
         {
             0 => PassageMinX(0),
             1 => PassageMaxX(0),
-            2 => PassageMinX(1),
+            RoomToRoomOpening => LastShiftZoneAtlas.PowerMaxX,
+            3 => PassageMinX(1),
             _ => PassageMaxX(1)
         };
 
         /// <summary>개구부가 속한 통로. 개구부는 통로의 양 끝이므로 둘씩 묶인다.</summary>
-        public static int PassageOfOpening(int opening) => opening <= 1 ? 0 : 1;
+        /// <summary>
+        /// 개구부가 속한 통로. 개구부 <see cref="RoomToRoomOpening"/> 은 통로에 안 속하므로
+        /// <c>-1</c> 이다 - 게이지처럼 통로를 전제하는 계산은 이 값을 먼저 봐야 한다.
+        /// </summary>
+        public static int PassageOfOpening(int opening) =>
+            opening == RoomToRoomOpening ? -1 : opening <= 1 ? 0 : 1;
 
         /// <summary>
         /// 게이지를 읽는 쪽 공간의 x. <b>게이지는 통로 쪽 한 면에만 붙는다.</b>
@@ -243,7 +268,28 @@ namespace DoodleUp.Runtime
         /// 방향은 리터럴로 적지 않는다 — 게이지가 향하는 곳은 언제나 그 개구부가 물고 있는
         /// 통로이고, 통로가 어느 쪽인지는 개구부 x 와 통로 중심 x 의 부호가 정한다.
         /// </summary>
-        public static float GaugeViewerX(int opening) => PassageCenterX(PassageOfOpening(opening));
+        public static float GaugeViewerX(int opening)
+        {
+            var passage = PassageOfOpening(opening);
+            // 방-방 개구부에는 게이지가 안 붙는다(§3). 예전에는 PassageOfOpening 이 언제나
+            // 0 이나 1 을 돌려줘서 이 함수도 아무 개구부에나 답을 냈는데, 개구부 2 가 생긴 뒤로는
+            // 그 답이 "통로 A 한가운데" 라는 엉뚱한 좌표다 — 조용히 틀리느니 여기서 막는다.
+            if (passage < 0)
+                throw new System.InvalidOperationException(
+                    $"opening {opening} is room-to-room and carries no gauge — it has no passage side.");
+            return PassageCenterX(passage);
+        }
+
+        /// <summary>이 개구부에 게이지가 붙는가. 통로에 면한 개구부만 붙는다(§3).</summary>
+        public static bool HasGauge(int opening) => PassageOfOpening(opening) >= 0 && OpeningHasDoor(opening);
+
+        /// <summary>문이 달린 개구부인가. 구역 경계에 놓인 것들이다.</summary>
+        public static bool OpeningHasDoor(int opening)
+        {
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                if (Mathf.Abs(OpeningX(opening) - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f) return true;
+            return false;
+        }
 
         /// <summary>
         /// 게이지 면의 법선 x 부호. 이 부호와 같은 쪽에 선 사람만 게이지를 읽는다 — 반대쪽은
@@ -266,7 +312,8 @@ namespace DoodleUp.Runtime
         {
             0 => RoomCenterX(LastShiftZone.Cockpit),
             1 => PassageCenterX(0),
-            2 => RoomCenterX(LastShiftZone.Utility),
+            RoomToRoomOpening => RoomCenterX(LastShiftZone.Power),
+            3 => RoomCenterX(LastShiftZone.Cooling),
             _ => PassageCenterX(1)
         };
 
@@ -274,8 +321,9 @@ namespace DoodleUp.Runtime
         public static float SpaceCenterXAfter(int opening) => opening switch
         {
             0 => PassageCenterX(0),
-            1 => RoomCenterX(LastShiftZone.Utility),
-            2 => PassageCenterX(1),
+            1 => RoomCenterX(LastShiftZone.Power),
+            RoomToRoomOpening => RoomCenterX(LastShiftZone.Cooling),
+            3 => PassageCenterX(1),
             _ => RoomCenterX(LastShiftZone.LifeSupport)
         };
 
@@ -353,10 +401,10 @@ namespace DoodleUp.Runtime
         public static float BaffleFreeStripCenterZ(int passage) => OpeningCenterZ(BaffleFarOpening(passage));
 
         /// <summary>통로의 방 쪽 개구부(문이 없는 쪽).</summary>
-        public static int BaffleNearOpening(int passage) => passage <= 0 ? 0 : 3;
+        public static int BaffleNearOpening(int passage) => passage <= 0 ? 0 : 4;
 
         /// <summary>통로의 경계 쪽 개구부(문이 달린 쪽).</summary>
-        public static int BaffleFarOpening(int passage) => passage <= 0 ? 1 : 2;
+        public static int BaffleFarOpening(int passage) => passage <= 0 ? 1 : 3;
 
         public static float BaffleMinZ(int passage) => BaffleCenterZ(passage) - BaffleWidth * 0.5f;
         public static float BaffleMaxZ(int passage) => BaffleCenterZ(passage) + BaffleWidth * 0.5f;
@@ -390,7 +438,8 @@ namespace DoodleUp.Runtime
         /// 직접 쓴다. 기획 §2.3 이 확정한 조종석 -14 / 산소실 +14 가 이 값이다.
         /// </summary>
         public static float CockpitCenterX => RoomCenterX(LastShiftZone.Cockpit);
-        public static float UtilityCenterX => RoomCenterX(LastShiftZone.Utility);
+        public static float PowerCenterX => RoomCenterX(LastShiftZone.Power);
+        public static float CoolingCenterX => RoomCenterX(LastShiftZone.Cooling);
         public static float LifeSupportCenterX => RoomCenterX(LastShiftZone.LifeSupport);
 
         /// <summary>
@@ -404,8 +453,8 @@ namespace DoodleUp.Runtime
         // 부품이 어느 구역에 속하는지가 게임 규칙이다(PatchPlate 가 산소실에 있어야 파공
         // 수리가 "산소실까지 간다" 가 된다). 그래서 좌표가 아니라 구역 중심 기준으로 둔다.
 
-        public static Vector3 BatteryNominal => new(UtilityCenterX + 1.7f, 0.38f, 0.8f);
-        public static Vector3 CoolingNominal => new(UtilityCenterX, 0.55f, -1.3f);
+        public static Vector3 BatteryNominal => new(PowerCenterX + 1.7f, 0.38f, 0.8f);
+        public static Vector3 CoolingNominal => new(CoolingCenterX, 0.55f, -1.3f);
         public static Vector3 PatchPlateNominal => new(LifeSupportCenterX + 0.5f, 0.65f, -1.6f);
 
         /// <summary>

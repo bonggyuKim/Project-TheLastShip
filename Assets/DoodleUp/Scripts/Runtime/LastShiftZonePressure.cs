@@ -10,8 +10,9 @@ namespace DoodleUp.Runtime
     public enum LastShiftZone
     {
         Cockpit = 0,
-        Utility = 1,
-        LifeSupport = 2
+        Power = 1,
+        Cooling = 2,
+        LifeSupport = 3
     }
 
     /// <summary>
@@ -39,13 +40,15 @@ namespace DoodleUp.Runtime
         /// 사슬을 다시 짜야 하고, 그 과정에서 <see cref="LastShiftZonePressures.Lowest"/> 처럼
         /// 구역 수를 따로 들고 있는 자리가 조용히 뒤처진다.
         /// </summary>
-        public const int ZoneCount = 3;
+        public const int ZoneCount = 4;
 
         /// <summary>인접 구역 쌍의 수. 구역이 일렬이므로 언제나 구역 수보다 하나 적다.</summary>
         public const int BoundaryCount = ZoneCount - 1;
 
         /// <summary>구역 판정 기준 x 경계. 치수 정본(<see cref="LastShiftShipDimensions"/>)에서 파생한다.</summary>
         public const float CockpitMaxX = -LastShiftShipDimensions.ZoneBoundaryX;
+        /// <summary>전력실↔냉각실 경계. 선체 중앙이고 개구부 2 가 놓인 평면이다(§3).</summary>
+        public const float PowerMaxX = 0f;
         public const float LifeSupportMinX = LastShiftShipDimensions.ZoneBoundaryX;
 
         /// <summary>
@@ -55,7 +58,7 @@ namespace DoodleUp.Runtime
         /// 오름차순이어야 <see cref="Resolve"/> 의 선형 훑기가 성립한다 — 그 조건은
         /// <c>LastShiftZoneTopologyTests</c> 가 고정한다.
         /// </summary>
-        private static readonly float[] BoundaryPlanes = { CockpitMaxX, LifeSupportMinX };
+        private static readonly float[] BoundaryPlanes = { CockpitMaxX, PowerMaxX, LifeSupportMinX };
 
         /// <summary>
         /// 위치 → 구역. 경계를 선수 쪽부터 훑어 처음으로 <c>x ≤ 경계</c> 인 구역을 돌려주고,
@@ -80,8 +83,9 @@ namespace DoodleUp.Runtime
             return zone switch
             {
                 LastShiftZone.Cockpit => LastShiftSceneZones.CockpitZoneName,
-                LastShiftZone.LifeSupport => LastShiftSceneZones.LifeSupportZoneName,
-                _ => LastShiftSceneZones.UtilityZoneName
+                LastShiftZone.Power => LastShiftSceneZones.PowerZoneName,
+                LastShiftZone.Cooling => LastShiftSceneZones.CoolingZoneName,
+                _ => LastShiftSceneZones.LifeSupportZoneName
             };
         }
 
@@ -113,9 +117,10 @@ namespace DoodleUp.Runtime
         public static bool TryResolveName(string zoneName, out LastShiftZone zone)
         {
             if (zoneName == LastShiftSceneZones.CockpitZoneName) { zone = LastShiftZone.Cockpit; return true; }
-            if (zoneName == LastShiftSceneZones.UtilityZoneName) { zone = LastShiftZone.Utility; return true; }
+            if (zoneName == LastShiftSceneZones.PowerZoneName) { zone = LastShiftZone.Power; return true; }
+            if (zoneName == LastShiftSceneZones.CoolingZoneName) { zone = LastShiftZone.Cooling; return true; }
             if (zoneName == LastShiftSceneZones.LifeSupportZoneName) { zone = LastShiftZone.LifeSupport; return true; }
-            zone = LastShiftZone.Utility;
+            zone = LastShiftZone.Power;
             return false;
         }
 
@@ -159,8 +164,11 @@ namespace DoodleUp.Runtime
     /// </summary>
     public struct LastShiftDoorState
     {
-        public bool CockpitUtilityOpen;
-        public bool UtilityLifeSupportOpen;
+        // 경계 이름이 아니라 번호로 든다. 이름으로 두면 구역이 늘 때 이름이 안 맞게 되고
+        // ("CockpitUtility" 가 이제 조종석-전력실이다), 새 경계를 넣을 자리도 이름 사이에 없다.
+        public bool Boundary0Open;
+        public bool Boundary1Open;
+        public bool Boundary2Open;
 
         /// <summary>
         /// 문이 아직 없는 구성(N0b 이전, EditMode 최소 조립)의 기본값은 전부 열림이다.
@@ -180,11 +188,20 @@ namespace DoodleUp.Runtime
 
         public bool this[int boundary]
         {
-            get => boundary <= 0 ? CockpitUtilityOpen : UtilityLifeSupportOpen;
+            get => boundary switch
+            {
+                0 => Boundary0Open,
+                1 => Boundary1Open,
+                _ => Boundary2Open
+            };
             set
             {
-                if (boundary <= 0) CockpitUtilityOpen = value;
-                else UtilityLifeSupportOpen = value;
+                switch (boundary)
+                {
+                    case 0: Boundary0Open = value; break;
+                    case 1: Boundary1Open = value; break;
+                    default: Boundary2Open = value; break;
+                }
             }
         }
 
@@ -198,7 +215,7 @@ namespace DoodleUp.Runtime
     }
 
     /// <summary>
-    /// 구역 세 개의 산소 압력. 기획 §2.2 A-2 의 <c>ZonePressure[zone]</c> 정본이다.
+    /// 구역 네 개의 산소 압력. 기획 §2.2 A-2 의 <c>ZonePressure[zone]</c> 정본이다.
     ///
     /// <see cref="LastShiftShipState.OxygenPressure"/> 는 이 값을 대체하지 않고 <b>조종석 압력의
     /// 파생값</b>으로 남는다. 도킹 성공 판정(§2.2 "도킹 성공 판정은 조종석 압력으로 본다")과
@@ -208,13 +225,15 @@ namespace DoodleUp.Runtime
     public struct LastShiftZonePressures
     {
         public float Cockpit;
-        public float Utility;
+        public float Power;
+        public float Cooling;
         public float LifeSupport;
 
-        public LastShiftZonePressures(float cockpit, float utility, float lifeSupport)
+        public LastShiftZonePressures(float cockpit, float power, float cooling, float lifeSupport)
         {
             Cockpit = cockpit;
-            Utility = utility;
+            Power = power;
+            Cooling = cooling;
             LifeSupport = lifeSupport;
         }
 
@@ -244,16 +263,18 @@ namespace DoodleUp.Runtime
             get => zone switch
             {
                 LastShiftZone.Cockpit => Cockpit,
-                LastShiftZone.LifeSupport => LifeSupport,
-                _ => Utility
+                LastShiftZone.Power => Power,
+                LastShiftZone.Cooling => Cooling,
+                _ => LifeSupport
             };
             set
             {
                 switch (zone)
                 {
                     case LastShiftZone.Cockpit: Cockpit = Mathf.Clamp01(value); break;
-                    case LastShiftZone.LifeSupport: LifeSupport = Mathf.Clamp01(value); break;
-                    default: Utility = Mathf.Clamp01(value); break;
+                    case LastShiftZone.Power: Power = Mathf.Clamp01(value); break;
+                    case LastShiftZone.Cooling: Cooling = Mathf.Clamp01(value); break;
+                    default: LifeSupport = Mathf.Clamp01(value); break;
                 }
             }
         }

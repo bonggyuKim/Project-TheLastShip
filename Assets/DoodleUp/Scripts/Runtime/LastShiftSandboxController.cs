@@ -314,11 +314,12 @@ namespace DoodleUp.Runtime
             currentState = value.ShipState;
             // 조종석 압력은 ShipState.OxygenPressure 가 나른다. 나머지 둘만 스냅샷에서 받는다.
             zonePressures = new LastShiftZonePressures(
-                value.ShipState.OxygenPressure, value.UtilityPressure, value.LifeSupportPressure);
+                value.ShipState.OxygenPressure, value.PowerPressure, value.CoolingPressure, value.LifeSupportPressure);
             doorState = new LastShiftDoorState
             {
-                CockpitUtilityOpen = value.CockpitUtilityDoorOpen,
-                UtilityLifeSupportOpen = value.UtilityLifeSupportDoorOpen
+                Boundary0Open = value.Boundary0DoorOpen,
+                Boundary1Open = value.Boundary1DoorOpen,
+                Boundary2Open = value.Boundary2DoorOpen
             };
             dockingSecondsRemaining = value.DockingSecondsRemaining;
             ResetGeneration = value.ResetGeneration;

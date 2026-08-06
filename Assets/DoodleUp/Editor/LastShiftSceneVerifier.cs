@@ -28,7 +28,8 @@ namespace DoodleUp.Editor
             Require(roots.All(root => root.activeInHierarchy), "all root objects must be active");
             var all = roots.SelectMany(root => root.GetComponentsInChildren<Transform>(true)).ToArray();
             Require(all.Count(x => x.name == LastShiftSceneBuilder.CockpitZoneName) == 1, "cockpit zone count must be 1");
-            Require(all.Count(x => x.name == LastShiftSceneBuilder.UtilityZoneName) == 1, "utility zone count must be 1");
+            Require(all.Count(x => x.name == LastShiftSceneBuilder.PowerZoneName) == 1, "power zone count must be 1");
+            Require(all.Count(x => x.name == LastShiftSceneBuilder.CoolingZoneName) == 1, "cooling zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.LifeSupportZoneName) == 1, "life support zone count must be 1");
             Require(all.Count(x => x.name == "CanonicalMeteorStimulus") == 1, "canonical meteor count must be 1");
             var meteorVisual = all.Single(x => x.name == "CanonicalMeteorStimulus");
@@ -61,7 +62,7 @@ namespace DoodleUp.Editor
             var sightRange = VerifyCameraCoversTheShip(roots, PlayerPrefabCamera());
             var (rays, gapZ) = VerifyZonesCannotSeeEachOther();
             var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
         }
 
         /// <summary>
@@ -181,8 +182,13 @@ namespace DoodleUp.Editor
         {
             var pairs = new[]
             {
-                (from: LastShiftZone.Cockpit, to: LastShiftZone.Utility),
-                (from: LastShiftZone.Utility, to: LastShiftZone.LifeSupport),
+                // 구역 쌍이 C(3,2)=3 에서 C(4,2)=6 으로 늘었다. 전력실-냉각실만 뺀다 -
+                // 벽 하나에 구멍 하나뿐이라 좌표로 해결되는 종류가 아니고, 그 쌍의 차단은
+                // 문 개폐 상태가 전담한다는 것이 §19.2 의 결정이다.
+                (from: LastShiftZone.Cockpit, to: LastShiftZone.Power),
+                (from: LastShiftZone.Cockpit, to: LastShiftZone.Cooling),
+                (from: LastShiftZone.Power, to: LastShiftZone.LifeSupport),
+                (from: LastShiftZone.Cooling, to: LastShiftZone.LifeSupport),
                 (from: LastShiftZone.Cockpit, to: LastShiftZone.LifeSupport)
             };
 
@@ -207,11 +213,19 @@ namespace DoodleUp.Editor
                             $"{pair.from}→{pair.to} sightline from {eye} to {target} is not blocked");
                     }
 
-            // 실측 GAP_Z. 상수를 다시 읽는 것이 아니라 개구부 구간에서 직접 뺀다. 통로 A 는
-            // 개구부 0·1, 통로 B 는 3·2 이고 둘 중 좁은 쪽이 실제 여유다.
-            var gapA = LastShiftShipDimensions.OpeningMinZ(0) - LastShiftShipDimensions.OpeningMaxZ(1);
-            var gapB = LastShiftShipDimensions.OpeningMinZ(3) - LastShiftShipDimensions.OpeningMaxZ(2);
-            var gapZ = Mathf.Min(gapA, gapB);
+            // 실측 GAP_Z. 상수를 다시 읽는 것이 아니라 개구부 구간에서 직접 뺀다. 어느 개구부가
+            // 어느 통로에 속하는지는 치수 정본이 답한다 — 번호를 여기 적어 두면 개구부가 넷에서
+            // 다섯이 되며 번호가 밀렸을 때(§3) 엉뚱한 쌍을 재고도 그럴듯한 값이 나온다.
+            var gapZ = float.MaxValue;
+            for (var passage = 0; passage < 2; passage++)
+            {
+                var near = LastShiftShipDimensions.BaffleNearOpening(passage);
+                var far = LastShiftShipDimensions.BaffleFarOpening(passage);
+                var upper = LastShiftShipDimensions.OpeningCenterZ(near) > LastShiftShipDimensions.OpeningCenterZ(far) ? near : far;
+                var lower = upper == near ? far : near;
+                gapZ = Mathf.Min(gapZ,
+                    LastShiftShipDimensions.OpeningMinZ(upper) - LastShiftShipDimensions.OpeningMaxZ(lower));
+            }
             Require(gapZ > 0f,
                 $"openings inside a passage must not overlap in z (measured gap {gapZ:F2}m)");
             return (rays, gapZ);

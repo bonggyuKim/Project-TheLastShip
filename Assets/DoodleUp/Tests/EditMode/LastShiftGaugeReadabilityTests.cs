@@ -114,15 +114,15 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void UtilityRoomCentreReadsOnlyItsOwnZone()
+        public void PowerRoomCentreReadsOnlyItsOwnZone()
         {
             // 기획이 짚은 핵심 검사 지점. 게이지를 양면에 달면 여기서 3구역이 되고, 배전반 앞에
             // 자리 잡고 뒤만 돌아보는 것이 최적 플레이가 된다 — 166 이 겨냥한 그림이 하필 일이
             // 가장 많은 방에서 성립한다. 단면 배치가 그것을 막는 조건이다.
-            var centre = new Vector2(LastShiftShipDimensions.UtilityCenterX, 0f);
+            var centre = new Vector2(LastShiftShipDimensions.PowerCenterX, 0f);
             var count = LastShiftSightlineProbe.SimultaneousZones(centre, out var zones);
             Assert.That(count, Is.EqualTo(1), $"엔진실 방 중앙에서 읽히는 구역: {string.Join(",", zones)}");
-            Assert.That(zones[0], Is.EqualTo(LastShiftZone.Utility));
+            Assert.That(zones[0], Is.EqualTo(LastShiftZone.Power));
 
             foreach (var opening in LastShiftSightlineProbe.GaugeOpenings)
                 Assert.That(LastShiftSightlineProbe.GaugeReadableFrom(centre, opening), Is.False,
@@ -141,7 +141,7 @@ namespace DoodleUp.Tests.EditMode
                 ("통로 B", new Vector2(LastShiftShipDimensions.PassageCenterX(1),
                     LastShiftShipDimensions.PassageCenterZ(1)), 2),
                 ("조종석 방", new Vector2(LastShiftShipDimensions.CockpitCenterX, 0f), 1),
-                ("엔진실 방", new Vector2(LastShiftShipDimensions.UtilityCenterX, 0f), 1),
+                ("엔진실 방", new Vector2(LastShiftShipDimensions.PowerCenterX, 0f), 1),
                 ("산소실 방", new Vector2(LastShiftShipDimensions.LifeSupportCenterX, 0f), 1)
             };
 
@@ -161,10 +161,10 @@ namespace DoodleUp.Tests.EditMode
                 var sandbox = host.AddComponent<LastShiftSandboxController>();
                 sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
                 // 세 구역 압력을 벌려 둔다. 같은 값이면 잘못된 구역을 가리켜도 스칼라가 같다.
-                sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.11f));
+                sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
                 foreach (var opening in LastShiftSightlineProbe.GaugeOpenings)
                 {
-                    Assert.That(sandbox.GaugeReading(opening).Zone, Is.EqualTo(LastShiftZone.Utility),
+                    Assert.That(sandbox.GaugeReading(opening).Zone, Is.EqualTo(LastShiftZone.Power),
                         $"개구부 {opening} 게이지가 엔진실이 아닌 구역을 가리킨다.");
 
                     // 그리고 관찰자 인자를 남겨 둔 이유 — 범용 함수는 여전히 양쪽을 구분한다.
@@ -186,7 +186,7 @@ namespace DoodleUp.Tests.EditMode
         private static bool IsStandable(Vector2 at)
         {
             var r = LastShiftShipPhysics.CrewRadius;
-            foreach (var zone in new[] { LastShiftZone.Cockpit, LastShiftZone.Utility, LastShiftZone.LifeSupport })
+            foreach (var zone in new[] { LastShiftZone.Cockpit, LastShiftZone.Power, LastShiftZone.LifeSupport })
                 if (at.x >= LastShiftShipDimensions.RoomMinX(zone) + r &&
                     at.x <= LastShiftShipDimensions.RoomMaxX(zone) - r &&
                     Mathf.Abs(at.y) <= LastShiftShipDimensions.HalfWidth - r)

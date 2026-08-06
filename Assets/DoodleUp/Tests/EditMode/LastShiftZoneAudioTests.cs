@@ -70,7 +70,7 @@ namespace DoodleUp.Tests.EditMode
                     "이동 4m/s 에 걸린 호흡 루프는 도플러가 켜져 있으면 음정이 흔들리는 잡음이 된다.");
 
                 // 엔진실 방 중앙에서 통로 A 반대쪽 끝까지의 거리는 감쇠 범위 밖이다.
-                var listener = new Vector3(LastShiftShipDimensions.UtilityCenterX, 0f, 0f);
+                var listener = new Vector3(LastShiftShipDimensions.PowerCenterX, 0f, 0f);
                 var farEnd = new Vector3(LastShiftShipDimensions.PassageMinX(0), 0f,
                     LastShiftShipDimensions.PassageCenterZ(0));
                 Assert.That(Vector3.Distance(listener, farEnd),

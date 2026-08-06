@@ -84,7 +84,7 @@ namespace DoodleUp.Tests.EditMode
                 Is.EqualTo(LastShiftDistressGrade.Critical));
 
             var reading = LastShiftDoorDistress.Evaluate(
-                LastShiftZone.Utility, pressure: 1f, vacuum: false, worstSystemProgress: 0f);
+                LastShiftZone.Power, pressure: 1f, vacuum: false, worstSystemProgress: 0f);
             Assert.That(reading.Grade, Is.EqualTo(LastShiftDistressGrade.Abnormal),
                 "압력이 멀쩡해도 계통이 터졌으면 정상으로 읽히면 안 된다.");
         }
@@ -127,8 +127,8 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(power, Is.EqualTo(0.5f).Within(0.0001f));
             Assert.That(oxygen, Is.EqualTo(0.5f).Within(0.0001f));
 
-            var a = LastShiftDoorDistress.Evaluate(LastShiftZone.Utility, 1f, false, cooling);
-            var b = LastShiftDoorDistress.Evaluate(LastShiftZone.Utility, 1f, false, oxygen);
+            var a = LastShiftDoorDistress.Evaluate(LastShiftZone.Power, 1f, false, cooling);
+            var b = LastShiftDoorDistress.Evaluate(LastShiftZone.Power, 1f, false, oxygen);
             Assert.That(a.Scalar, Is.EqualTo(b.Scalar).Within(0.0001f),
                 "판독값에서 계통을 되짚을 수 있으면 국소 정보 규칙이 깨진다.");
         }
@@ -175,7 +175,7 @@ namespace DoodleUp.Tests.EditMode
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
-            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(0.29f, 0.7f, 0.11f));
+            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(0.29f, 0.7f, 0.7f, 0.11f));
 
             var openLifeSupport = sandbox.DistressOf(LastShiftZone.LifeSupport);
             var openCockpit = sandbox.DistressOf(LastShiftZone.Cockpit);
@@ -209,10 +209,10 @@ namespace DoodleUp.Tests.EditMode
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
             // 세 구역을 서로 다른 압력으로 벌려 둔다. 같은 값이면 잘못된 구역을 가리켜도
             // 스칼라가 같아서 이 검사가 통과한다 — 조용히 틀리는 바로 그 모양이다.
-            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.11f));
+            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
 
             var cockpit = sandbox.DistressOf(LastShiftZone.Cockpit).Scalar;
-            var utility = sandbox.DistressOf(LastShiftZone.Utility).Scalar;
+            var utility = sandbox.DistressOf(LastShiftZone.Power).Scalar;
             var lifeSupport = sandbox.DistressOf(LastShiftZone.LifeSupport).Scalar;
             Assert.That(new[] { cockpit, utility, lifeSupport }, Is.Unique);
 
@@ -237,14 +237,18 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftShipDimensions.OpeningX(2),
                 Is.EqualTo(LastShiftZoneAtlas.BoundaryX(1)).Within(0.0001f));
 
+            // 개구부가 넷에서 다섯이 되며 번호가 밀렸다(§3). 옛 개구부 2(엔진실↔통로B)는 이제 3 이고,
+            // 새 2 는 전력실↔냉각실 방-방 문이다.
             Assert.That(sandbox.DistressBeyondOpening(1, LastShiftShipDimensions.PassageCenterX(0)).Zone,
-                Is.EqualTo(LastShiftZone.Utility), "통로 A 에서 개구부 1 너머는 엔진실이다.");
-            Assert.That(sandbox.DistressBeyondOpening(1, LastShiftShipDimensions.UtilityCenterX).Zone,
-                Is.EqualTo(LastShiftZone.Cockpit), "엔진실에서 개구부 1 너머는 통로 A(조종석 구역)다.");
-            Assert.That(sandbox.DistressBeyondOpening(2, LastShiftShipDimensions.UtilityCenterX).Zone,
-                Is.EqualTo(LastShiftZone.LifeSupport), "엔진실에서 개구부 2 너머는 통로 B(산소실 구역)다.");
-            Assert.That(sandbox.DistressBeyondOpening(2, LastShiftShipDimensions.PassageCenterX(1)).Zone,
-                Is.EqualTo(LastShiftZone.Utility), "통로 B 에서 개구부 2 너머는 엔진실이다.");
+                Is.EqualTo(LastShiftZone.Power), "통로 A 에서 개구부 1 너머는 전력실이다.");
+            Assert.That(sandbox.DistressBeyondOpening(1, LastShiftShipDimensions.PowerCenterX).Zone,
+                Is.EqualTo(LastShiftZone.Cockpit), "전력실에서 개구부 1 너머는 통로 A(조종석 구역)다.");
+            Assert.That(sandbox.DistressBeyondOpening(LastShiftShipDimensions.RoomToRoomOpening, LastShiftShipDimensions.PowerCenterX).Zone,
+                Is.EqualTo(LastShiftZone.Cooling), "전력실에서 개구부 2 너머는 냉각실이다 - 방-방 직접 인접이라 통로가 없다.");
+            Assert.That(sandbox.DistressBeyondOpening(3, LastShiftShipDimensions.CoolingCenterX).Zone,
+                Is.EqualTo(LastShiftZone.LifeSupport), "냉각실에서 개구부 3 너머는 통로 B(산소실 구역)다.");
+            Assert.That(sandbox.DistressBeyondOpening(3, LastShiftShipDimensions.PassageCenterX(1)).Zone,
+                Is.EqualTo(LastShiftZone.Cooling), "통로 B 에서 개구부 3 너머는 냉각실이다.");
 
             Object.DestroyImmediate(runtimeObject);
         }
@@ -272,7 +276,7 @@ namespace DoodleUp.Tests.EditMode
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
-            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.11f));
+            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
 
             foreach (var opening in new[] { 0, 3 })
             {
@@ -308,8 +312,8 @@ namespace DoodleUp.Tests.EditMode
             // 배터리 정위치는 엔진실이므로 판독도 엔진실에 실린다. 게이지가 가리키는 구역과
             // 실제로 고치러 가야 하는 구역이 어긋나면 판독이 사람을 엉뚱한 데로 보낸다.
             Assert.That(LastShiftZoneAtlas.Resolve(LastShiftShipDimensions.BatteryNominal),
-                Is.EqualTo(LastShiftZone.Utility));
-            Assert.That(sandbox.DistressOf(LastShiftZone.Utility).Grade,
+                Is.EqualTo(LastShiftZone.Power));
+            Assert.That(sandbox.DistressOf(LastShiftZone.Power).Grade,
                 Is.Not.EqualTo(LastShiftDistressGrade.Nominal));
 
             Object.DestroyImmediate(runtimeObject);
@@ -339,10 +343,12 @@ namespace DoodleUp.Tests.EditMode
                     BusPower = 1f,
                     EngineHeat = 0f
                 },
-                UtilityPressure = 1f,
+                PowerPressure = 1f,
+                CoolingPressure = 1f,
                 LifeSupportPressure = 1f,
-                CockpitUtilityDoorOpen = true,
-                UtilityLifeSupportDoorOpen = true,
+                Boundary0DoorOpen = true,
+                Boundary1DoorOpen = true,
+                Boundary2DoorOpen = true,
                 UncontainedSystemMask = 1 << (int)LastShiftShipSystem.Oxygen
             };
             sandbox.ApplyNetworkSnapshot(snapshot);

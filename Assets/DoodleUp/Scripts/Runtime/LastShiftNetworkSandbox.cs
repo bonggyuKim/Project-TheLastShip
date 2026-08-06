@@ -147,10 +147,12 @@ namespace DoodleUp.Runtime
                 SteeringDelayed = sandbox.SteeringDelayed,
                 OxygenPumpRunning = sandbox.OxygenPumpRunning,
                 SirenActive = sandbox.SirenActive,
-                UtilityPressure = sandbox.PressureOf(LastShiftZone.Utility),
+                PowerPressure = sandbox.PressureOf(LastShiftZone.Power),
+                CoolingPressure = sandbox.PressureOf(LastShiftZone.Cooling),
                 LifeSupportPressure = sandbox.PressureOf(LastShiftZone.LifeSupport),
-                CockpitUtilityDoorOpen = sandbox.IsDoorOpen(0),
-                UtilityLifeSupportDoorOpen = sandbox.IsDoorOpen(1),
+                Boundary0DoorOpen = sandbox.IsDoorOpen(0),
+                Boundary1DoorOpen = sandbox.IsDoorOpen(1),
+                Boundary2DoorOpen = sandbox.IsDoorOpen(2),
                 UncontainedSystemMask = sandbox.UncontainedSystemMask
             };
         }
