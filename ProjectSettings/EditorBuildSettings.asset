@@ -11,7 +11,4 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/DU02_SoloCourse.unity
     guid: 456f74c8a95c6fe4690918ab5064fa15
-  - enabled: 1
-    path: Assets/Scenes/LAST_SHIFT_SP01.unity
-    guid: 1d01ae1d2f7a63f41a9b04f2b73546d5
   m_configObjects: {}
