@@ -89,15 +89,13 @@ namespace DoodleUp.Tests.PlayMode
             sandbox.ResetPreset(LastShiftPreset.PowerOverloadLooseBattery);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
 
-            // 전력 시계는 <b>미연결 상한(0.40) 위에서만</b> 돈다 — 그 상한까지 끌어내리는 것이
-            // 시계의 일이고, 이미 그 아래면 더 내릴 것이 없다(LastShiftRecovery.cs:472).
+            // 이 검사는 프리셋2 의 실제 초기값으로 전력 시계를 잰다. 그것이 §2.3 "세 계통이
+            // 각자 시계를 갖는다" 를 지키는 자리이고, 프리셋 값이 그 구조를 못 만들면
+            // 여기서 우는 것이 맞다 — 잠시 초기값을 우회해 재도록 고쳤다가 되돌렸다.
             //
-            // 그래서 프리셋 초기값에 기대어 이 시계를 재지 않는다. balance 가 이 프리셋의
-            // BusPower 를 0.40 으로 확정하면서(§2.2 A-3, t=0 에 S-P2 를 켜기 위해) 운석 하강분
-            // 0.1034 까지 겹쳐 시작부터 상한 아래가 됐다. 그 값은 밸런스 판단이고 이 검사가
-            // 지키려는 것은 "미연결이면 상한까지 내려간다" 는 규칙이지 특정 프리셋이 아니므로,
-            // 상한 위 상태를 직접 만들어 재고 프리셋 값과의 결합을 끊는다.
-            sandbox.SetBusPowerForTest(LastShiftRecoveryTuning.UnpoweredBusCeiling + 0.20f);
+            // 전력 시계는 미연결 상한(0.40) <b>위에서만</b> 돈다(LastShiftRecovery.cs:472).
+            // 운석이 bus 를 0.1034 깎으므로 프리셋 초기값이 0.5034 이하면 시작부터 상한
+            // 아래가 되어 잴 것이 없어진다. balance 가 0.55 를 고른 이유가 이것이다.
             var busBefore = sandbox.CurrentState.BusPower;
             sandbox.AdvanceMission(1f);
             Assert.That(sandbox.CurrentState.BusPower, Is.LessThan(busBefore), "bus 미연결 시 전력 시계가 움직여야 한다.");
