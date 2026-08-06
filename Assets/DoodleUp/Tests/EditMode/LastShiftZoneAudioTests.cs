@@ -43,10 +43,10 @@ namespace DoodleUp.Tests.EditMode
             // 호흡: 같은 방 안에서는 들리고, 통로를 건너면 안 들린다. 통로 건너까지 들리면
             // "근처에 누가 있다" 가 "누군가 살아 있다" 가 되어 위치 정보가 사라진다.
             Assert.That(LastShiftZoneAudio.BreathMaxDistance,
-                Is.GreaterThanOrEqualTo(LastShiftShipDimensions.RoomLength),
+                Is.GreaterThanOrEqualTo(LastShiftShipDimensions.EndRoomLength),
                 "호흡이 방을 못 덮으면 같은 방 안에서도 안 들린다.");
             Assert.That(LastShiftZoneAudio.BreathMaxDistance,
-                Is.LessThan(LastShiftShipDimensions.RoomLength + LastShiftShipDimensions.PassageLength),
+                Is.LessThan(LastShiftShipDimensions.EndRoomLength + LastShiftShipDimensions.PassageLength),
                 "호흡이 통로를 건너면 통로의 청각 이점이 방 소리에 묻힌다.");
 
             // 충격: 상황의 시작이라 못 듣는 사람이 있으면 안 된다. 선내 최장 거리를 덮어야 한다.

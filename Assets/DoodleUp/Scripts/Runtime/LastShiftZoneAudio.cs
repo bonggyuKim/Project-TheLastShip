@@ -44,7 +44,9 @@ namespace DoodleUp.Runtime
         /// 통로 건너까지 들리면 "누가 근처에 있다" 가 아니라 "누군가 살아 있다" 가 되어
         /// 위치 정보가 사라진다.
         /// </summary>
-        public static float BreathMaxDistance => LastShiftShipDimensions.RoomLength;
+        // 방 길이가 균등하지 않게 된 뒤(§2.2) 기준을 끝방으로 못박는다. 가운데 방을 쓰면
+        // 전력실·냉각실 분할에서 이 값이 절반이 되어 숨소리가 방 안에서도 안 닿는다.
+        public static float BreathMaxDistance => LastShiftShipDimensions.EndRoomLength;
 
         /// <summary>
         /// 충격음이 들리는 거리. 선내 전 구간이다 — 충격은 상황의 시작이라 못 듣는 사람이

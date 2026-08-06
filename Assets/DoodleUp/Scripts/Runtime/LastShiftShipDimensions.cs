@@ -20,10 +20,16 @@ namespace DoodleUp.Runtime
         public const float HullThickness = 0.2f;
 
         /// <summary>
-        /// 내부 전장(x). 확정 치수 36m — 구역 간 이동 시간을 HoldDuration 8초에서 역산한
-        /// 대역 (2.0, 3.6]초 안에 넣기 위한 값이다.
+        /// 내부 전장(x). 확정 치수 38m — 원래 36m 였고, 구역 간 이동 시간을 HoldDuration
+        /// 8초에서 역산한 대역 (2.0, 3.6]초 안에 넣기 위한 값이었다.
+        ///
+        /// <b>+2m 는 방 증설에서 왔다</b>(<c>docs/corridor-4p-redesign-v1.md</c> §2.2). 엔진실을
+        /// 전력실·냉각실로 쪼갤 때 제자리 분할(성장 0)이면 구역 부피비가 <c>84/24 = 3.5배</c> 로
+        /// <c>RG-1(3)</c> 가드레일(≤3배)을 넘긴다. 늘어난 2m 를 <b>전부 중앙 블록에만</b> 넣으면
+        /// <c>84/30 = 2.8배</c> 로 돌아오고, 조종석·산소실은 좌표만 ±1m 밀릴 뿐 길이가 안 바뀐다.
+        /// 그래서 방 길이가 더 이상 균등하지 않다 — 아래 두 상수가 그 결과다.
         /// </summary>
-        public const float InteriorLength = 36f;
+        public const float InteriorLength = 38f;
 
         /// <summary>
         /// 내부 전폭(z). 확정 치수 6.0m — 36m 에 4.9m 면 종횡비 7.3:1 직선 관이 되어
@@ -71,19 +77,36 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float PassageLength = 6f;
 
-        /// <summary>방 하나의 x 길이. 전장에서 통로 둘을 빼고 셋으로 나눈다 — (36 - 12) / 3 = 8m.</summary>
-        public const float RoomLength = (InteriorLength - 2f * PassageLength) / 3f;
+        /// <summary>
+        /// 양 끝방(조종석·산소실)의 x 길이. <b>36 → 38m 확대에서 안 바뀐 값이다</b>(§2.2) —
+        /// 늘어난 2m 를 전부 중앙에 넣었으므로 이 둘은 좌표만 ±1m 밀렸다. 그래서 두 방의
+        /// 형상·배플·게이지 검증값이 그대로 살아 있다.
+        /// </summary>
+        public const float EndRoomLength = 8f;
+
+        /// <summary>
+        /// 가운데 블록(현재 엔진실, 개정 후 전력실+냉각실)의 x 길이. 8 → 10m 가 §2.2 의 <c>+2m</c> 다.
+        /// 반으로 쪼개면 전력실·냉각실이 각 <c>5m × 6m = 30m²</c> 가 되어 부피비가 <c>2.8배</c> 로 앉는다.
+        /// </summary>
+        public const float MidRoomLength = InteriorLength - 2f * (EndRoomLength + PassageLength);
+
+        /// <summary>
+        /// 방 하나의 x 길이. 방마다 다르므로 상수가 아니다 — 예전 균등 분할
+        /// <c>(36 - 12) / 3 = 8m</c> 을 상수로 두던 자리이고, 그 등식이 §2.2 에서 깨졌다.
+        /// </summary>
+        public static float RoomLengthOf(LastShiftZone zone) =>
+            zone == LastShiftZone.Utility ? MidRoomLength : EndRoomLength;
 
         public static float RoomMinX(LastShiftZone zone) => zone switch
         {
             LastShiftZone.Cockpit => -HalfLength,
-            LastShiftZone.Utility => -RoomLength * 0.5f,
-            _ => HalfLength - RoomLength
+            LastShiftZone.Utility => -MidRoomLength * 0.5f,
+            _ => HalfLength - EndRoomLength
         };
 
-        public static float RoomMaxX(LastShiftZone zone) => RoomMinX(zone) + RoomLength;
+        public static float RoomMaxX(LastShiftZone zone) => RoomMinX(zone) + RoomLengthOf(zone);
 
-        public static float RoomCenterX(LastShiftZone zone) => RoomMinX(zone) + RoomLength * 0.5f;
+        public static float RoomCenterX(LastShiftZone zone) => RoomMinX(zone) + RoomLengthOf(zone) * 0.5f;
 
         /// <summary>통로 x 범위. 0 = 통로 A(조종석↔엔진실), 1 = 통로 B(엔진실↔산소실).</summary>
         public static float PassageMinX(int passage) =>
@@ -116,7 +139,7 @@ namespace DoodleUp.Runtime
         /// <see cref="LastShiftZoneAtlas.CockpitMaxX"/> 가 컴파일 타임 상수를 요구하기 때문이다.
         /// 둘이 어긋나지 않는 것은 테스트로 고정한다.
         /// </summary>
-        public const float ZoneBoundaryX = RoomLength * 0.5f;
+        public const float ZoneBoundaryX = MidRoomLength * 0.5f;
 
         public static float ZoneMinX(LastShiftZone zone) => zone switch
         {

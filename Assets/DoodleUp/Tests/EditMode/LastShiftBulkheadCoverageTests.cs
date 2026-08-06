@@ -107,7 +107,7 @@ namespace DoodleUp.Tests.EditMode
         {
             // 방 셋 + 통로 둘이 전장을 남김없이 채우는가. 하나라도 어긋나면 그 틈에 놓인
             // 좌표가 "어느 형상에도 안 들어감" 이 되어 형상 검사가 통과할 수 없다.
-            Assert.That(LastShiftShipDimensions.RoomLength * 3f + LastShiftShipDimensions.PassageLength * 2f,
+            Assert.That(LastShiftShipDimensions.EndRoomLength * 2f + LastShiftShipDimensions.MidRoomLength + LastShiftShipDimensions.PassageLength * 2f,
                 Is.EqualTo(LastShiftShipDimensions.InteriorLength).Within(0.0001f));
             Assert.That(LastShiftShipDimensions.RoomMinX(LastShiftZone.Cockpit),
                 Is.EqualTo(-LastShiftShipDimensions.HalfLength).Within(0.0001f));
