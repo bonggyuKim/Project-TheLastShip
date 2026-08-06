@@ -133,6 +133,12 @@
 | `PodConsole` | `LSDress_PodConsole` | 상태등 적/녹 포함. `RoomSystemReadout` |
 | `HatchRing` | `LSDress_HatchRing` | |
 
+**이 매핑은 이미 `LastShiftDressingSet.asset` 에 넣어 뒀다.** `90`개 중 `65`개에 `prefab` 을 물렸고, `size` 는 프리팹 실측 바깥 치수로 갈아 끼웠다(경계 검사가 실제 부피를 보게 하려고). 좌표(`anchor`·`bottomY`·`eulerAngles`)는 tech 가 정한 값을 하나도 안 건드렸다.
+
+`GrowLight_*` 여섯 항목만 `semantics` 도 손댔다 — `LightSource`(`1<<6`)를 더하고 `lightIntensity: 1.1` 을 적었다. 발광체인데 안 적으면 `C4`(우회 통로 밝기 합) 와 같은 기준으로 집계되지 않는다.
+
+**씬은 다시 굽지 않았다.** `Rebuild Network Sandbox` 는 씬과 그레이박스 프리팹을 통째로 재직렬화해 `fileID` 가 전부 갈리므로, 빌드 시점은 tech 가 잡는 게 맞다.
+
 ### 4.1 새로 추가하기를 권하는 항목
 
 기존 `90`개에 없지만 브리프가 요구하는 것들이다. 넣을지는 tech 판단이고, 넣는다면 프리팹은 준비돼 있다.
@@ -222,7 +228,8 @@
 - **계층 무결** — 프리팹마다 루트 `Transform` `1`개, `GameObject` 수 = `Transform` 수
 - **`Light` 컴포넌트 `21`개** — 표 §3.3 과 개수 일치
 - **EditMode 테스트 `201`개 전부 통과** (`failed 0`, `5.7s`) — 에셋만 추가했으니 통과가 당연하고, 통과한다는 것이 이 층이 기존 제약·좌표 정본을 안 건드렸다는 증거다
-- **`LastShiftDressingValidation` 은 아직 못 돌렸다** — tech 의 검증기가 `main` 에 안 올라와 있다. 배치가 붙는 시점에 `C1`~`C4` 로 확인해야 한다(§7 은 에셋 쪽에서 미리 막은 것만 적은 것이다)
+- **tech 의 4대 제약 검증기 통과** — `[LAST_SHIFT_DRESSING_VALIDATION] props=90 violations=0 result=PASS`. 프리팹 `65`개를 물리고 `size` 를 실측치로 갈아 끼운 상태에서 `C1`~`C4` 전부 통과했다
+- **물린 참조 `65`개 전부 해석됨** — 끊긴 프리팹 참조 `0`
 
 ### 8.1 남는 수동 확인
 
