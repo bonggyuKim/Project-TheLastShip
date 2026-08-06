@@ -386,8 +386,20 @@ namespace DoodleUp.Tests.PlayMode
             // 테스트에서 슬롯 할당이 어긋나고 sandbox.Players 가 빈 채로 남는다 — 격리로
             // 돌리면 통과하고 전체로 돌리면 실패하는, 원인 찾기 가장 나쁜 형태가 된다.
             if (player != null) Object.Destroy(player.gameObject);
-            var manager = Unity.Netcode.NetworkManager.Singleton;
-            if (manager != null && manager.IsListening) manager.Shutdown();
+
+            // Shutdown 만으로는 부족하다. NGO 는 host 기동 때 NetworkManager 를
+            // DontDestroyOnLoad 로 올리고 Shutdown 은 오브젝트를 지우지 않으므로, 씬을 다시
+            // 로드하면 옛 세션과 새 세션이 함께 존재한다. 그러면
+            // LastShiftNetworkPlayer.OnNetworkSpawn 의 FindFirstObjectByType 가 옛 세션을
+            // 집을 수 있고, 등록이 이미 파괴된 sandbox 로 가서 새 씬의 sandbox.Players 는
+            // 빈 채로 남는다 — 격리로는 통과하고 전체로는 실패하는 형태가 된다.
+            var manager = Object.FindFirstObjectByType<Unity.Netcode.NetworkManager>(FindObjectsInactive.Include);
+            if (manager != null)
+            {
+                if (manager.IsListening) manager.Shutdown();
+                Object.Destroy(manager.gameObject);
+            }
+
             yield return null;
         }
     }
