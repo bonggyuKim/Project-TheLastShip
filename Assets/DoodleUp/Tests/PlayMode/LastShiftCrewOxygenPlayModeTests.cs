@@ -336,5 +336,18 @@ namespace DoodleUp.Tests.PlayMode
             // host 없이 돌아 원인을 알 수 없는 실패가 된다.
             LastShiftNetworkSession.AutoStartHostInEditor = true;
         }
+
+        [UnityTearDown]
+        public IEnumerator ShutDownSessionBetweenTests()
+        {
+            // 레벨이 하나가 되면서 이 파일도 네트워크 씬을 연다. 세션을 안 내리고 나가면
+            // NetworkManager 싱글턴과 직접 세운 승무원이 다음 픽스처까지 살아남아, 네트워크
+            // 테스트에서 슬롯 할당이 어긋나고 sandbox.Players 가 빈 채로 남는다 — 격리로
+            // 돌리면 통과하고 전체로 돌리면 실패하는, 원인 찾기 가장 나쁜 형태가 된다.
+            if (player != null) Object.Destroy(player.gameObject);
+            var manager = Unity.Netcode.NetworkManager.Singleton;
+            if (manager != null && manager.IsListening) manager.Shutdown();
+            yield return null;
+        }
     }
 }
