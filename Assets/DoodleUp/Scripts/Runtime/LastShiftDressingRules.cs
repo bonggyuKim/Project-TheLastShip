@@ -53,6 +53,26 @@ namespace DoodleUp.Runtime
         public const float BypassLightBudget = 2.0f;
 
         /// <summary>
+        /// 제약 4-b. 에어록 발광체 밝기 합. <b>관과 따로 센다</b> — 같은 비상 경로지만
+        /// 요구가 반대다. 관은 어두워야 "여기 있고 싶지 않다" 가 서고, 에어록은 진입 지점이라
+        /// 무엇을 조작하는지 보여야 한다. 관 예산 하나로 묶으면 둘 중 하나가 반드시 진다.
+        ///
+        /// <b>값의 근거는 art §3.3 이 이미 적어 둔 에어록 등기구 둘이다.</b>
+        /// 상시 등 <c>LSDress_Lamp_Airlock</c> 이 <c>4.57</c>(목표 `200 lx`, `2700K` 경고 톤),
+        /// 사고 시 켜지는 <c>LSDress_EmergencyStrobe</c> 가 <c>1.10</c> 이다. 합 <c>5.67</c> 을
+        /// 올려 <c>5.7</c> 로 둔다.
+        ///
+        /// 스트로브가 상시 점등이 아닌데도 합에 넣는 이유는, 그게 켜지는 순간이 곧
+        /// <b>둘이 동시에 켜져 있는 순간</b>이라서다. 예산은 평균이 아니라 최악을 막는 값이다.
+        /// 대신 이 상한은 지금 든 것으로 꽉 찬다 — 여유가 없는 것이 의도다(<see cref="BypassLightBudget"/>
+        /// 와 같은 이유). 경고등을 더 달려면 무엇을 뺄지 먼저 정해야 한다.
+        ///
+        /// <b>쾌적 설비 금지는 이 예산과 별개로 그대로 걸린다</b>(<c>C4_BypassComfort</c> 는
+        /// 관과 에어록 양쪽을 본다). 밝아도 되는 것과 편해도 되는 것은 다른 문제다.
+        /// </summary>
+        public const float AirlockLightBudget = 5.7f;
+
+        /// <summary>
         /// 제약 3의 예외를 쓸 수 있는 방. 브리프 §1.3·§4.2·§4.3·§5.3·§6.2 가 이름을 댄
         /// 넷뿐이다 — 예외를 방 이름으로 못 박아 두지 않으면 "이것도 그 방 고유 시스템"
         /// 이라는 말로 열한 개 전부에 계기가 붙는다.
@@ -72,6 +92,7 @@ namespace DoodleUp.Runtime
 
             var seen = new HashSet<string>();
             var bypassLight = 0f;
+            var airlockLight = 0f;
 
             foreach (var prop in props)
             {
@@ -86,9 +107,13 @@ namespace DoodleUp.Runtime
                 CheckBypassComfort(prop, violations);
                 CheckLightDeclaration(prop, violations);
 
-                if (prop.space.kind == LastShiftDressingSpaceKind.BypassRun &&
-                    Has(prop, LastShiftDressingSemantics.LightSource))
+                if (!Has(prop, LastShiftDressingSemantics.LightSource)) continue;
+
+                // 우회 경로의 두 공간은 밝기를 따로 센다. 근거는 AirlockLightBudget 주석에 있다.
+                if (prop.space.kind == LastShiftDressingSpaceKind.BypassRun)
                     bypassLight += Mathf.Max(0f, prop.lightIntensity);
+                else if (prop.space.kind == LastShiftDressingSpaceKind.AirlockBranch)
+                    airlockLight += Mathf.Max(0f, prop.lightIntensity);
             }
 
             if (bypassLight > BypassLightBudget + Epsilon)
@@ -96,6 +121,13 @@ namespace DoodleUp.Runtime
                     LastShiftDressingSpace.OfBypassRun(),
                     $"우회 통로 발광체 밝기 합이 {bypassLight:0.##} 로 예산 {BypassLightBudget} 을 넘는다 — " +
                     "관이 밝아지면 §5 가 설계한 '불편해서 평소엔 안 쓰는 길' 이 최단경로가 된다."));
+
+            if (airlockLight > AirlockLightBudget + Epsilon)
+                violations.Add(new LastShiftDressingViolation("C4_AirlockLightBudget", "*",
+                    LastShiftDressingSpace.OfAirlock(),
+                    $"에어록 발광체 밝기 합이 {airlockLight:0.##} 로 예산 {AirlockLightBudget} 을 넘는다 — " +
+                    "에어록은 조작을 보여야 하므로 관보다 밝아도 되지만, 상한이 없으면 " +
+                    "비상 경로에서 여기만 생활 공간처럼 밝아진다."));
 
             return violations;
         }
