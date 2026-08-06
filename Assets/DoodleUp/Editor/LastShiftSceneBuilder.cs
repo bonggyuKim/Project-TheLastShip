@@ -113,7 +113,9 @@ namespace DoodleUp.Editor
                 throw new System.InvalidOperationException($"{ShipPrefabPath} failed to save or import.");
             Debug.Log($"[LAST_SHIFT_SHIP_PREFAB] path={ShipPrefabPath} compartments={LastShiftCompartments.Count} " +
                       $"gallery_legs={LastShiftUpperGallery.LegCount} gallery_branches={LastShiftUpperGallery.BranchCount} " +
-                      $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} result=PASS");
+                      $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} " +
+                      $"frame_ribs={LastShiftHullFrames.BuildableRibCount}/{LastShiftHullFrames.RibCount} " +
+                      $"frame_girths={LastShiftHullFrames.BuildableRingSegmentCount}/{LastShiftHullShell.SegmentCount} result=PASS");
             return prefab;
         }
 
@@ -765,6 +767,56 @@ namespace DoodleUp.Editor
                 panel.transform.localRotation =
                     Quaternion.Euler(0f, -Mathf.Atan2(chord.y, chord.x) * Mathf.Rad2Deg, 0f);
             }
+
+            CreateHullFrames(root.transform);
+        }
+
+        /// <summary>
+        /// 방 벽과 외피 사이 자투리를 채우는 격벽 프레임(§27.3). 좌표 정본은 Runtime 의
+        /// <see cref="LastShiftHullFrames"/> 이고, 어느 각에서 프레임이 얼마나 뻗는지는
+        /// 식이 아니라 그쪽 실측이 정한다.
+        ///
+        /// <b>전부 콜라이더 없는 장식이다.</b> 이 바깥에는 갑판이 없어 승무원이 애초에 못
+        /// 가고, 콜라이더를 남기면 저중력에서 뜬 물건이 골조에 끼어 회수가 어려워진다 —
+        /// 배관 장식(<see cref="CreatePipe"/>)에 콜라이더를 뺀 것과 같은 이유다.
+        /// </summary>
+        private static void CreateHullFrames(Transform parent)
+        {
+            var frames = new GameObject("HullFrames");
+            frames.transform.SetParent(parent, false);
+
+            for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
+            {
+                if (!LastShiftHullFrames.RibIsBuildable(rib)) continue;
+                var outer = LastShiftHullFrames.RibOuter(rib);
+                var inner = LastShiftHullFrames.RibInner(rib);
+                CreateFrameMember($"Rib_{rib:00}", frames.transform, inner, outer,
+                    LastShiftHullFrames.BaseY + LastShiftHullFrames.Height * 0.5f,
+                    LastShiftHullFrames.Height);
+            }
+
+            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+            {
+                if (!LastShiftHullFrames.RingSegmentIsBuildable(segment)) continue;
+                var start = LastShiftHullFrames.RingSegmentStart(segment);
+                var end = LastShiftHullFrames.RingSegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
+                CreateFrameMember($"Girth_{segment:00}", frames.transform, start, end,
+                    LastShiftHullFrames.RingBeamY, LastShiftHullFrames.RibSection);
+            }
+        }
+
+        /// <summary>골조 부재 하나. 두 평면 점을 잇는 판·보이고 로컬 +x 를 그 방향에 맞춘다.</summary>
+        private static void CreateFrameMember(string name, Transform parent,
+            Vector2 from, Vector2 to, float centreY, float height)
+        {
+            var span = to - from;
+            var middle = (from + to) * 0.5f;
+            var member = CreateDecorCube(name, parent,
+                new Vector3(middle.x, centreY, middle.y),
+                new Vector3(span.magnitude, height, LastShiftHullFrames.RibSection),
+                discHullMaterial);
+            member.transform.localRotation =
+                Quaternion.Euler(0f, -Mathf.Atan2(span.y, span.x) * Mathf.Rad2Deg, 0f);
         }
 
         /// <summary>

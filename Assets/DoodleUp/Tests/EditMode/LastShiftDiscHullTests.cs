@@ -257,6 +257,79 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(open, Is.EquivalentTo(new[] { LastShiftCompartment.EscapePod }));
         }
 
+        // ── 자투리 구조체(격벽 프레임) ───────────────────────────────────────
+
+        [Test]
+        public void FramesActuallyFillTheGap()
+        {
+            // §27.3 이 요구한 "자투리를 비-게임플레이 구조체로 채운다". 하나도 안 서면
+            // 여유(Clearance)나 최소 길이가 너무 커서 조건이 조용히 전부 걸러진 것이다.
+            Assert.That(LastShiftHullFrames.BuildableRibCount, Is.GreaterThanOrEqualTo(8),
+                "격벽 프레임이 거의 안 선다 — 자투리가 안 채워진 채로 통과한다.");
+            Assert.That(LastShiftHullFrames.BuildableRingSegmentCount, Is.GreaterThanOrEqualTo(8),
+                "거들 링이 거의 안 선다.");
+
+            // 전부 서는 것도 이상하다. 방이 외피에 가까운 각(격납고 어깨)과 창 앞(좌현)에서는
+            // 안 서는 것이 정상이라, 24/24 면 걸러내는 조건 자체가 안 도는 것이다.
+            Assert.That(LastShiftHullFrames.BuildableRibCount,
+                Is.LessThan(LastShiftHullFrames.RibCount),
+                "모든 각에 프레임이 선다 — 방·창 회피가 안 돌고 있다.");
+        }
+
+        [Test]
+        public void NoFrameTouchesARoomACorridorOrTheHull()
+        {
+            for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
+            {
+                if (!LastShiftHullFrames.RibIsBuildable(rib)) continue;
+                AssertMemberIsFree($"Rib_{rib:00}",
+                    LastShiftHullFrames.RibInner(rib), LastShiftHullFrames.RibOuter(rib));
+            }
+
+            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+            {
+                if (!LastShiftHullFrames.RingSegmentIsBuildable(segment)) continue;
+                AssertMemberIsFree($"Girth_{segment:00}",
+                    LastShiftHullFrames.RingSegmentStart(segment),
+                    LastShiftHullFrames.RingSegmentStart((segment + 1) % LastShiftHullShell.SegmentCount));
+            }
+        }
+
+        [Test]
+        public void NoFrameStandsInFrontOfThePortWindows()
+        {
+            // 이 배의 창 너머는 진짜 우주가 아니라 z=-9.1 의 배경막이다. 그 앞에 부재를
+            // 세우면 창에서 회색 보가 우주에 떠 있는 것으로 보인다 — 원반 헐에서 창을
+            // 어떻게 낼지는 §27.7-4 가 art 로 남긴 미결이라, 그 전에 형상을 못 박지 않는다.
+            Assert.That(LastShiftHullFrames.WindowBackdropZ, Is.EqualTo(-9.1f).Within(0.001f),
+                "배경막 z 가 씬 빌더의 SpaceVoid 와 어긋났다 — 두 값이 갈리면 회피가 헛돈다.");
+
+            for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
+            {
+                if (!LastShiftHullFrames.RibIsBuildable(rib)) continue;
+                foreach (var point in Samples(LastShiftHullFrames.RibInner(rib), LastShiftHullFrames.RibOuter(rib)))
+                    Assert.That(LastShiftHullFrames.IsWindowKeepOut(point.x, point.y), Is.False,
+                        $"Rib_{rib:00} 이 좌현 창 앞을 지난다.");
+            }
+        }
+
+        private static void AssertMemberIsFree(string name, Vector2 from, Vector2 to)
+        {
+            foreach (var point in Samples(from, to))
+                Assert.That(LastShiftHullFrames.IsFree(point.x, point.y), Is.True,
+                    $"{name} 이 ({point.x:0.##}, {point.y:0.##}) 에서 방·회랑·선체와 겹친다.");
+        }
+
+        /// <summary>부재 위를 촘촘히 훑는다. 양 끝만 보면 방을 가로지르는 부재가 통과한다.</summary>
+        private static Vector2[] Samples(Vector2 from, Vector2 to)
+        {
+            var count = Mathf.Max(8, Mathf.CeilToInt(Vector2.Distance(from, to) / 0.25f));
+            var result = new Vector2[count + 1];
+            for (var index = 0; index <= count; index++)
+                result[index] = Vector2.Lerp(from, to, (float)index / count);
+            return result;
+        }
+
         private static float CentreZAt(float x, float minX, float maxX, float startZ, float endZ) =>
             Mathf.Lerp(startZ, endZ, (x - minX) / (maxX - minX));
 
