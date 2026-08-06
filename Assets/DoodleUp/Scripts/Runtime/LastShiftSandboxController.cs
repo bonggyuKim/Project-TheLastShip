@@ -72,6 +72,49 @@ namespace DoodleUp.Runtime
         public LastShiftRepairLedger Repairs => repairLedger;
         public LastShiftVerdict Verdict => verdict;
         public bool IsResolved => LastShiftVerdictResolver.IsResolved(verdict);
+        /// <summary>
+        /// N6 상황 평가층. <b>이 카드 전까지 런타임에서 한 번도 만들어진 적이 없었다</b> —
+        /// 클래스는 완성돼 있었고 EditMode 테스트만 그것을 알고 있었다. HUD 가 "무엇이
+        /// 위험한가" 를 못 보여준 근본 원인이 이것이고, 그래서 원시 수치 덤프가 남아 있었다.
+        /// </summary>
+        private readonly LastShiftSituationTracker situationTracker = new();
+
+        /// <summary>§5.4 디버그 층 표시 여부. <b>기본 OFF</b> 이고 <c>F3</c> 으로 토글한다.</summary>
+        private bool debugHudVisible;
+
+        /// <summary>계통별 현재 대표 상황(열·전력·추진). 산소는 구역별이라 아래를 쓴다.</summary>
+        public LastShiftSituation SituationOf(LastShiftSystemChannel channel) =>
+            situationTracker.StatusOf(channel).Situation;
+
+        /// <summary>구역별 산소 대표 상황.</summary>
+        public LastShiftSituation OxygenSituationOf(LastShiftZone zone) =>
+            situationTracker.OxygenStatusOf(zone).Situation;
+
+        /// <summary>
+        /// CT-01 §5.2 구역 칸 하나가 표시할 등급. <b>그 구역 계통과 그 구역 산소 중 높은 쪽</b>이다.
+        /// 산소실은 대응 계통이 없어 산소만 본다.
+        /// </summary>
+        public LastShiftSituationGrade ZoneGradeOf(LastShiftZone zone)
+        {
+            var grade = LastShiftSituationTable.GradeOf(OxygenSituationOf(zone));
+            if (!LastShiftSituationText.TryChannelOfZone(zone, out var channel)) return grade;
+
+            var channelGrade = LastShiftSituationTable.GradeOf(SituationOf(channel));
+            return channelGrade > grade ? channelGrade : grade;
+        }
+
+        /// <summary>그 구역 칸의 등급을 만든 상황. 구역 안에서만 읽히는 원인 1행이 이걸 쓴다.</summary>
+        public LastShiftSituation DominantSituationOf(LastShiftZone zone)
+        {
+            var oxygen = OxygenSituationOf(zone);
+            if (!LastShiftSituationText.TryChannelOfZone(zone, out var channel)) return oxygen;
+
+            var channelSituation = SituationOf(channel);
+            return LastShiftSituationTable.GradeOf(channelSituation) > LastShiftSituationTable.GradeOf(oxygen)
+                ? channelSituation
+                : oxygen;
+        }
+
         public float ThrustCeiling => lastTick.ThrustCeiling;
         public bool HeatProtectionEngaged => lastTick.HeatProtectionEngaged;
         public bool SteeringDelayed => lastTick.SteeringDelayed;
@@ -384,6 +427,12 @@ namespace DoodleUp.Runtime
             else if (sirenActive) EnsureSirenAudioPlaying();
             FirstResult = new LastShiftResolverResult(value.FirstProblem, 0f, 0f, 0f, "server snapshot");
             LastResult = new LastShiftResolverResult(value.CurrentProblem, value.CoolingScore, value.BatteryScore, value.LeakScore, "server snapshot");
+            // 구역 등급도 사이렌과 같은 이유로 여기서 다시 평가한다. 클라이언트는
+            // AdvanceMission 을 안 돌리므로 이 줄이 없으면 HUD 4칸이 영영 "정상" 이다 —
+            // 상황을 스냅샷 필드로 늘리지 않는 것은 이미 동기화되는 상태·압력만으로
+            // 같은 값이 나오기 때문이다(평가는 순수 계산이다).
+            situationTracker.Evaluate(
+                LastShiftSituationInput.From(currentState, zonePressures, BuildContainment()), 0f);
             if (impactAdvanced) PlayImpactFeedback(Meteor);
         }
 
@@ -464,6 +513,10 @@ namespace DoodleUp.Runtime
                     controlChanged = true;
                 }
                 if (controlChanged) ApplyControl(thrust, attitude);
+
+                // §5.4. 원시 수치를 지우지 않고 이 토글 뒤로 옮겼다 — 개발 중에는 계속
+                // 필요하고, 플레이어 화면에 상시로 두면 셋째 층이 다시 새어 나온다.
+                if (keyboard.f3Key.wasPressedThisFrame) debugHudVisible = !debugHudVisible;
             }
 
             AdvanceControlHold(Time.deltaTime);
@@ -478,6 +531,14 @@ namespace DoodleUp.Runtime
         public void AdvanceMission(float deltaTime)
         {
             if (deltaTime <= 0f) return;
+
+            // 상황 평가는 <b>운석 게이트 위</b>에 있다. 아래 조기 반환은 손상 tick 을 막는
+            // 것이지 "아직 볼 것이 없다" 는 뜻이 아니다 — 프리셋은 t=0 에 이미 상황을 켠다
+            // (BadAttitudeHighOxygen 은 S-T1·S-O1 둘이 동시에 첫 활성이다). 이 평가를
+            // 게이트 아래 두면 SP-01 의 승인 기준인 "세 프리셋의 첫 지배 문제가 다르다" 를
+            // 운석을 쏘기 전에는 화면에서 확인할 수 없다.
+            situationTracker.Evaluate(
+                LastShiftSituationInput.From(currentState, zonePressures, BuildContainment()), deltaTime);
 
             if (steeringInputDelayRemaining > 0f)
             {
@@ -911,6 +972,9 @@ namespace DoodleUp.Runtime
             // 시작한다 — 격리는 플레이어가 내리는 판단이지 시작 조건이 아니다(§2.7 자동 격리 금지).
             zonePressures = LastShiftZonePressures.Uniform(currentState.OxygenPressure);
             doorState = LastShiftDoorState.AllOpen;
+            // 래치를 안 지우면 이전 프리셋의 상황이 다음 프리셋 화면에 남는다 — 프리셋마다
+            // 첫 지배 문제가 다른지를 보는 카드에서 그건 곧 오답이다.
+            situationTracker.Reset();
             // 해치는 반대로 전부 닫고 시작한다. 리셋 직후 갑판에 구멍이 남아 있으면 프리셋이
             // 제자리에 놓은 부품이 저중력에서 그리로 빠져 시작 상태가 프리셋과 달라진다.
             hatchState = LastShiftHatchState.AllClosed;
@@ -1159,42 +1223,109 @@ namespace DoodleUp.Runtime
             return item != null ? item.NominalPosition : Vector3.zero;
         }
 
+        /// <summary>
+        /// CT-01 §5 플레이어 HUD. <b>층이 셋이고 층마다 노출 조건이 다르다</b>(§5.6.3).
+        ///
+        /// <list type="number">
+        /// <item>개인·공용 계기 — 목표 줄과 임계선 막대. 상시. 자기 자신과 조종석 계기판
+        /// 값이라 <c>concept-draft.md:166</c> 이 막는 "남의 구역 비밀" 이 아니다</item>
+        /// <item>구역 등급 4칸 — 정상/불안정/고장/위기 <b>카테고리만</b>. 상시·전 구역.
+        /// 이미 있는 전선 사이렌과 같은 층위다</item>
+        /// <item>정확한 수치와 원인 1행 — 거리 조건부. <c>166</c> 이 실제로 막는 지점이 여기다</item>
+        /// </list>
+        ///
+        /// <b>예전 화면이 못 읽혔던 이유는 셋이 안 갈리고 전부 상시였기 때문이다</b>(§5.6.2).
+        /// 원시 수치는 지우지 않고 <c>F3</c> 디버그 층으로 통째로 옮겼다(§5.4).
+        /// </summary>
         private void OnGUI()
         {
             headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
-            // 구역 3칸 + 사이렌 줄이 한 줄 더 차지하므로 박스와 아래 항목을 그만큼 내린다.
-            GUI.Box(new Rect(16f, 16f, 680f, 322f), GUIContent.none);
-            GUI.Label(new Rect(28f, 24f, 650f, 28f), $"LAST SHIFT SP-01 SOLO | Preset {(char)('A' + (int)currentPreset)}: {currentPreset}", headingStyle);
-            GUI.Label(new Rect(28f, 56f, 650f, 48f),
-                $"WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M one-shot meteor | 화살표 조종 (8초)\n" +
-                $"Docking T-{dockingSecondsRemaining:F0}s | Hold {controlHold.RemainingSeconds:F1}s | " +
-                $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}\n" +
-                // CT-06 N3·N4. 연료와 도킹 진행은 제한시간과 나란히 보여야 "시간은 남았는데
-                // 연료가 없다" 는 상태가 화면에서 읽힌다 — 그게 S-T2 가 사건이 되는 자리다.
-                $"Fuel {currentState.FuelReserve:F2} | Dock {currentState.DockProgress:F0}/" +
-                $"{LastShiftRecoveryTuning.DockTargetThrustSeconds:F0} thrust·s", bodyStyle);
-            DrawShipStateLine();
-            GUI.Label(new Rect(28f, 179f, 650f, 52f),
-                HasAppliedImpact
-                    ? $"FIRST DOMINANT: {FirstResult.Problem}\nCURRENT DOMINANT: {LastResult.Problem}"
-                    : "FIRST DOMINANT PROBLEM: pending meteor", headingStyle);
-            GUI.Label(new Rect(28f, 237f, 650f, 84f), HasAppliedImpact ? LastResult.CauseChain : "Preset only configures pre-impact state. Press M to apply the canonical meteor once.", bodyStyle);
+
+            GUI.Box(new Rect(16f, 16f, 680f, 214f), GUIContent.none);
+            DrawObjectiveLine();
+            DrawThresholdBars();
+            DrawZonePressureCells(28f, 150f);
+            DrawLocalDiagnosis();
             DrawSuitOxygenGauges();
+            if (debugHudVisible) DrawDebugHud();
         }
 
         /// <summary>
-        /// 산소 칸만 따로 그린다. N9 사이렌 동안 이 칸이 적색 점멸해야 하는데, 한 줄에 묶어
-        /// 그리면 다른 수치까지 함께 붉어져 "무엇이 위험한가" 가 사라진다.
+        /// 층1-a 목표 줄. 성공 조건 둘과 남은 시간. <b>숫자는 시간만 노출한다</b>(§5.2) —
+        /// 성공 조건의 임계는 아래 막대의 선으로 그려지지 텍스트로 적히지 않는다.
         /// </summary>
-        private void DrawShipStateLine()
+        private void DrawObjectiveLine()
         {
-            sirenStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
-            GUI.Label(new Rect(28f, 106f, 650f, 24f),
-                $"INPUT state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
-                $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}", bodyStyle);
+            var minutes = Mathf.FloorToInt(dockingSecondsRemaining / 60f);
+            var seconds = Mathf.FloorToInt(dockingSecondsRemaining % 60f);
+            GUI.Label(new Rect(28f, 24f, 480f, 28f), "목표 — 추력과 산소를 선 위로 올려 도킹", headingStyle);
+            GUI.Label(new Rect(508f, 24f, 180f, 28f), $"DOCK T-{minutes}:{seconds:00}", headingStyle);
+        }
 
-            DrawZonePressureCells(28f, 130f);
+        /// <summary>
+        /// 층1-b 임계선 막대 둘. <b>임계를 그림으로 보여주는 것이 요점이다</b>(§5.2) —
+        /// <c>thrust=0.28</c> 이라는 숫자보다 "막대가 선 아래다" 가 즉시 읽힌다.
+        /// 산소는 조종석 압력을 쓴다. 도킹 성공 판정이 보는 값이 그것이라서다.
+        /// </summary>
+        private void DrawThresholdBars()
+        {
+            DrawThresholdBar(28f, 62f, "추력", currentState.ThrustDemand,
+                LastShiftRecoveryTuning.DockingSuccessThrust);
+            DrawThresholdBar(28f, 96f, "산소", zonePressures[LastShiftZone.Cockpit],
+                LastShiftRecoveryTuning.DockingSuccessOxygen);
+        }
+
+        private void DrawThresholdBar(float x, float y, string label, float value, float threshold)
+        {
+            const float barWidth = 520f;
+            const float barHeight = 18f;
+            var fill = Mathf.Clamp01(value);
+            var below = fill < threshold;
+
+            GUI.Label(new Rect(x, y, 46f, 22f), label, bodyStyle);
+            var barX = x + 50f;
+            GUI.DrawTexture(new Rect(barX, y + 2f, barWidth, barHeight), Texture2D.grayTexture);
+            // 선 아래면 색이 바뀐다. 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을
+            // 플레이어가 눈대중으로 하게 두면 임계선을 그린 의미가 없다.
+            GUI.color = below ? new Color(1f, 0.45f, 0.2f) : new Color(0.45f, 0.85f, 1f);
+            GUI.DrawTexture(new Rect(barX, y + 2f, barWidth * fill, barHeight), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.DrawTexture(new Rect(barX + barWidth * Mathf.Clamp01(threshold) - 1f, y, 2f, barHeight + 4f),
+                Texture2D.whiteTexture);
+        }
+
+        /// <summary>
+        /// 층3 — <b>구역 안에서만</b> 원인 1행이 나온다(§5.3). 밖에서는 등급 칸까지가 전부다.
+        ///
+        /// 관측자는 로컬 플레이어 하나다. 솔로/호스트에서는 자기 캐릭터가 서 있는 구역이고,
+        /// 아무도 없으면(에디터에서 플레이어를 안 띄운 경우) 아무것도 안 그린다 — 여기서
+        /// 조종석을 기본값으로 삼으면 "구역 안" 조건이 사실상 사라진다.
+        /// </summary>
+        private void DrawLocalDiagnosis()
+        {
+            if (!TryResolveLocalZone(out var zone)) return;
+
+            var situation = DominantSituationOf(zone);
+            var cause = LastShiftSituationText.CauseLine(situation);
+            if (string.IsNullOrEmpty(cause)) return;
+
+            GUI.Label(new Rect(28f, 186f, 650f, 24f),
+                $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}", headingStyle);
+        }
+
+        private bool TryResolveLocalZone(out LastShiftZone zone)
+        {
+            zone = default;
+            if (players == null) return false;
+            foreach (var candidate in players)
+            {
+                if (candidate == null) continue;
+                zone = LastShiftZoneAtlas.Resolve(candidate.transform.position);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>구역 압력 줄 하나의 폭. 클라이언트가 자기 상자를 이 폭에 맞춘다.</summary>
@@ -1223,7 +1354,7 @@ namespace DoodleUp.Runtime
             const float cellWidth = 132f;
             const float doorWidth = 52f;
             var x = originX;
-            GUI.Label(new Rect(x, originY, 34f, 24f), "O2", sirenStyle);
+            GUI.Label(new Rect(x, originY, 34f, 24f), "구역", sirenStyle);
             x += 34f;
 
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
@@ -1231,19 +1362,24 @@ namespace DoodleUp.Runtime
                 var zone = (LastShiftZone)index;
                 if (index > 0)
                 {
-                    // 경계 index-1 이 이 두 칸을 잇는 문이다.
+                    // 경계 index-1 이 이 두 칸을 잇는 문이다. 문 상태는 수치가 아니라
+                    // 격리 여부라 상시로 둔다 — 이게 없으면 "왜 이 칸만 안 떨어지는가" 가
+                    // 안 읽히고, 개구부2(전력실↔냉각실)는 거리 판독 대신 이 문이 차단을
+                    // 전담한다(CT-01 §5.6.4).
                     var open = doorState[index - 1];
                     GUI.Label(new Rect(x, originY, doorWidth, 24f), open ? "─┤├─" : "─┫┣─", bodyStyle);
                     x += doorWidth;
                 }
 
-                var pressure = zonePressures[zone];
-                var vacuum = IsZoneVacuum(zone);
-                var alarming = vacuum || pressure <= LastShiftRecoveryTuning.OxygenSirenTrigger;
-                var style = alarming ? sirenStyle : bodyStyle;
-                var suffix = vacuum ? " 진공" : string.Empty;
+                // <b>등급만 쓴다. 압력 수치를 여기 적지 않는다</b>(§5.2) — 그게 예전 화면이
+                // 셋째 층을 상시로 새어 보내던 자리다. 수치는 개구부 앞에서만 읽힌다(§5.3).
+                var grade = ZoneGradeOf(zone);
+                var style = grade == LastShiftSituationGrade.Crisis ? sirenStyle : bodyStyle;
+                var previous = GUI.color;
+                GUI.color = GradeColor(grade);
                 GUI.Label(new Rect(x, originY, cellWidth, 24f),
-                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {pressure:F2}{suffix}", style);
+                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {LastShiftSituationText.GradeLabel(grade)}", style);
+                GUI.color = previous;
                 x += cellWidth;
             }
 
@@ -1267,6 +1403,60 @@ namespace DoodleUp.Runtime
                 LastShiftCrewOxygen.DrawGauge(crew, targetPlayer.PlayerSlot.ToString(), row, ref sirenStyle);
                 row++;
             }
+        }
+
+        /// <summary>
+        /// 등급 색. <c>concept-draft.md:46</c> 어휘에 CT-01 §5.2 가 붙인 색 그대로다 —
+        /// 정상=무색 / 불안정=노랑 / 고장=주황 / 위기=빨강 점멸.
+        /// </summary>
+        private static Color GradeColor(LastShiftSituationGrade grade) => grade switch
+        {
+            LastShiftSituationGrade.Unstable => new Color(1f, 0.86f, 0.35f),
+            LastShiftSituationGrade.Fault => new Color(1f, 0.58f, 0.2f),
+            LastShiftSituationGrade.Crisis => Color.Lerp(new Color(1f, 0.5f, 0.45f), new Color(1f, 0.2f, 0.15f), BlinkPhase),
+            _ => Color.white
+        };
+
+        /// <summary>
+        /// §5.4 디버그 HUD. <b>기존 정보를 하나도 잃지 않고 전량 이관한 자리다.</b>
+        /// 원시 수치와 <c>CauseChain</c> 은 개발자·QA 도구이지 플레이어 정보가 아니라서
+        /// 여기 있고, 기본은 꺼져 있다.
+        /// </summary>
+        private void DrawDebugHud()
+        {
+            GUI.Box(new Rect(16f, 240f, 680f, 208f), GUIContent.none);
+            GUI.Label(new Rect(28f, 246f, 650f, 24f), "[DEBUG F3]", headingStyle);
+            GUI.Label(new Rect(28f, 274f, 650f, 170f),
+                $"preset={currentPreset}  reset_gen={ResetGeneration}  impact_count={ImpactApplicationCount}  " +
+                $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}\n" +
+                $"state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
+                $"hull={currentState.HullIntegrity:F2} heat={currentState.EngineHeat:F2} " +
+                $"attitude={currentState.ShipAttitudeDegrees:F0} damage={currentState.ExistingDamage:F2}\n" +
+                $"zones: {ZonePressureDebugLine()}\n" +
+                $"situations: heat={SituationOf(LastShiftSystemChannel.Heat)} " +
+                $"power={SituationOf(LastShiftSystemChannel.Power)} " +
+                $"prop={SituationOf(LastShiftSystemChannel.Propulsion)} siren={sirenActive}\n" +
+                $"fuel={currentState.FuelReserve:F2}  dock={currentState.DockProgress:F0}/" +
+                $"{LastShiftRecoveryTuning.DockTargetThrustSeconds:F0} thrust·s  hold={controlHold.RemainingSeconds:F1}s\n" +
+                $"first_dominant={(HasAppliedImpact ? FirstResult.Problem.ToString() : "pending meteor")}  " +
+                $"current_dominant={(HasAppliedImpact ? LastResult.Problem.ToString() : "-")}\n" +
+                $"cause_chain: {(HasAppliedImpact ? LastResult.CauseChain : "-")}\n" +
+                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M 운석 | 화살표 조종(8초) | F3 디버그",
+                bodyStyle);
+        }
+
+        private string ZonePressureDebugLine()
+        {
+            var line = string.Empty;
+            for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+            {
+                var zone = (LastShiftZone)index;
+                line += $"{LastShiftZoneAtlas.ShortLabelOf(zone)}={zonePressures[zone]:F2}";
+                if (IsZoneVacuum(zone)) line += "(진공)";
+                if (index < LastShiftZoneAtlas.ZoneCount - 1) line += "  ";
+            }
+
+            return line;
         }
 
         /// <summary>적색 점멸 위상. 사이렌 칸과 예비 막대가 같은 박자로 뛰어야 같은 사건으로 읽힌다.</summary>

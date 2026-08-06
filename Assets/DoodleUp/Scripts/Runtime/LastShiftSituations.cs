@@ -264,4 +264,62 @@ namespace DoodleUp.Runtime
             return remainingThrustSeconds < needed * FuelMarginFactor;
         }
     }
+
+    /// <summary>
+    /// 화면에 나가는 한국어 표기. <b>여기 있는 문자열은 전부 CT-01 §5.2 의 셋째 층
+    /// (구역 안에서만 읽히는 원인 1행) 이거나 등급 어휘다.</b>
+    ///
+    /// 등급 어휘는 <c>concept-draft.md:46</c> 의 <c>정상 → 불안정 → 고장 → 위기</c> 를
+    /// 그대로 쓴다. CT-01 §5.2 가 "새 용어를 만들지 않는다" 고 못 박아 뒀다.
+    ///
+    /// <b>원인 1행에 수치를 넣지 않는다.</b> 수치는 §5.3 이 거리로 가둔 층이라, 여기에
+    /// 섞으면 구역 등급만 볼 자리에서 수치가 같이 새어 나온다 — 지금 HUD 가 그래서 걸렸다.
+    /// </summary>
+    public static class LastShiftSituationText
+    {
+        public static string GradeLabel(LastShiftSituationGrade grade) => grade switch
+        {
+            LastShiftSituationGrade.Unstable => "불안정",
+            LastShiftSituationGrade.Fault => "고장",
+            LastShiftSituationGrade.Crisis => "위기",
+            _ => "정상"
+        };
+
+        /// <summary>원인 1행. 무엇이 일어났는지만 말하고 무엇을 가져가라는 말은 하지 않는다.</summary>
+        public static string CauseLine(LastShiftSituation situation) => situation switch
+        {
+            LastShiftSituation.HeatCouplingLoose => "냉각 결합부가 빠졌다",
+            LastShiftSituation.HeatRunaway => "엔진 열이 폭주하고 있다",
+            LastShiftSituation.HeatProtectionLock => "엔진 보호 잠금이 걸렸다",
+            LastShiftSituation.BusDetached => "배전 버스가 분리됐다",
+            LastShiftSituation.PowerCascade => "전력이 모자라 계통이 연쇄로 죽는다",
+            LastShiftSituation.PowerBlackout => "배전이 끊겼다",
+            LastShiftSituation.HullLeak => "선체 측면이 새고 있다",
+            LastShiftSituation.ZoneLowPressure => "이 구역 압력이 낮다",
+            LastShiftSituation.DecompressionAlarm => "감압 경보가 울린다",
+            LastShiftSituation.ZoneVacuum => "이 구역이 진공이다",
+            LastShiftSituation.AttitudeDrift => "배가 자세를 잃었다",
+            LastShiftSituation.FuelMarginLost => "남은 연료로는 도킹을 못 채운다",
+            _ => string.Empty
+        };
+
+        /// <summary>
+        /// 구역 칸이 대표하는 계통. <c>ship-elements-and-situations-v1.md</c> 의 HUD 대응
+        /// (구역 칸이 각 계통 최고 등급을 색으로 표시, 추진은 조종석 칸에 병합)을 4구역으로
+        /// 옮긴 것이다 — 방을 쪼갠 이유 자체가 계통:방 대응을 1:1 로 만드는 것이었다
+        /// (<c>corridor-4p-redesign-v1.md</c> §2.1).
+        ///
+        /// 산소는 여기서 안 돌려준다. 구역마다 독립이라 계통 하나로 접히지 않는다.
+        /// </summary>
+        public static bool TryChannelOfZone(LastShiftZone zone, out LastShiftSystemChannel channel)
+        {
+            switch (zone)
+            {
+                case LastShiftZone.Cockpit: channel = LastShiftSystemChannel.Propulsion; return true;
+                case LastShiftZone.Power: channel = LastShiftSystemChannel.Power; return true;
+                case LastShiftZone.Cooling: channel = LastShiftSystemChannel.Heat; return true;
+                default: channel = default; return false;
+            }
+        }
+    }
 }
