@@ -174,7 +174,10 @@ namespace DoodleUp.Runtime
                 LastShiftPreset.PowerOverloadLooseBattery => new LastShiftShipState
                 {
                     ThrustDemand = 0.46f,
-                    BusPower = 0.98f,
+                    // 0.98 -> 0.62 (balance, 기획 §2.2 A-3). 0.98 은 S-P1 발동선 0.65 위라
+                    // 배터리가 bus 에서 빠져 있어도 전력 상황이 하나도 안 켜졌다 — 전력 위기를
+                    // 담당하는 프리셋이 전력으로는 아무 말도 못 하는 상태였다.
+                    BusPower = 0.62f,
                     OxygenPressure = 0.58f,
                     HullIntegrity = 0.84f,
                     EngineHeat = 0.43f,

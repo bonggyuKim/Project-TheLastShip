@@ -18,22 +18,23 @@ namespace DoodleUp.Tests.EditMode
     /// 운석이 부품을 떼어낸 뒤에야 켜진다 — 즉 "첫 지배 문제" 는 원래 운석 이후 개념이고,
     /// 예전 HUD 가 그 줄을 운석 뒤로 막아 둔 것 자체는 틀리지 않았다. 틀린 것은 그 외의
     /// 모든 것(원시 수치 상시 노출, 등급 없음)이었다.</item>
-    /// <item><b><c>PowerOverloadLooseBattery</c> 는 어느 조건에서도 상황을 하나도 안 켠다.</b>
-    /// 전력 위기를 담당해야 할 프리셋인데 <c>BusPower</c> 가 <c>0.98</c> 이라 전력 상황의
-    /// 발동선을 못 넘는다. 이건 HUD 를 고쳐도 안 고쳐진다 — 아래 <see cref="PowerPresetRaisesAPowerSituation"/>
-    /// 참고.</item>
+    /// <item><b><c>PowerOverloadLooseBattery</c> 가 전력 상황을 하나도 안 켜던 시기가 있었다.</b>
+    /// <c>BusPower 0.98</c> 이 S-P1 발동선 <c>0.65</c> 위라, 배터리가 실제로 bus 에서 빠져
+    /// 있는데도(<c>[LAST_SHIFT_DAMAGE] power=True</c>) 전력으로는 아무 말도 못 했다.
+    /// HUD 로는 못 고치는 내용 결함이었고 balance 가 <c>0.62</c> 로 정정했다(§2.2 A-3).</item>
     /// </list>
     /// </summary>
     public sealed class LastShiftPresetSignatureTests
     {
         /// <summary>
-        /// 상황이 실제로 갈리는 두 프리셋. <c>PowerOverloadLooseBattery</c> 는 아직 신호가
-        /// 없어서 여기 없다 — 넣으면 이 검사가 "화면이 망가졌다" 가 아니라 "프리셋 수치가
-        /// 미완이다" 로 울어서 신호가 섞인다. 그 미완은 아래 전용 검사가 따로 든다.
+        /// 세 프리셋 전부. <c>PowerOverloadLooseBattery</c> 는 <c>BusPower</c> 가 <c>0.98</c> 이던
+        /// 동안 상황을 하나도 못 켜서 잠시 빠져 있었고, balance 가 <c>0.62</c> 로 정정한 뒤
+        /// 되돌렸다(기획 §2.2 A-3).
         /// </summary>
         private static readonly LastShiftPreset[] SignallingPresets =
         {
             LastShiftPreset.HighHeatHighThrust,
+            LastShiftPreset.PowerOverloadLooseBattery,
             LastShiftPreset.BadAttitudeHighOxygen
         };
 
@@ -105,18 +106,12 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>미해결 내용 결함.</b> <c>PowerOverloadLooseBattery</c> 는 전력 위기를 담당하는
-        /// 프리셋인데 상황을 하나도 안 켠다. <c>BusPower = 0.98</c> 이라 전력 상황 셋의
-        /// 발동선을 전부 못 넘고, 부품을 떼어내도 마찬가지다(다른 두 프리셋은 같은 조건에서
-        /// <c>BusDetached</c> 가 켜진다).
-        ///
-        /// <b>여기서 수치를 고치지 않는다.</b> 프리셋 초기값은 밸런스 소관이고, 임의로 내리면
-        /// 그 프리셋이 무엇을 가르치는 프리셋인지가 코드에서 바뀐다. 카드 <c>0fb18e77</c> 로
-        /// 보고했으며 값이 정해지면 이 검사를 켜고 위 배열에 프리셋을 되돌린다.
+        /// 전력 프리셋이 전력 상황을 켜는가. <b>한때 안 켰다</b> — <c>BusPower</c> 가
+        /// <c>0.98</c> 이라 S-P1 발동선 <c>0.65</c> 를 못 넘어서, 배터리가 bus 에서 빠져 있어도
+        /// (<c>[LAST_SHIFT_DAMAGE] power=True</c> 로 확인) 전력으로는 아무 말도 못 했다.
+        /// balance 가 <c>0.62</c> 로 정정해 켜졌고, 이 검사가 그 상태를 고정한다.
         /// </summary>
         [Test]
-        [Ignore("미해결: PowerOverloadLooseBattery 가 BusPower 0.98 이라 전력 상황을 하나도 못 켠다. " +
-                "프리셋 수치는 game-balance 소관이라 여기서 고치지 않는다 (카드 0fb18e77 로 보고됨).")]
         public void PowerPresetRaisesAPowerSituation()
         {
             var situations = SituationsOf(LastShiftPreset.PowerOverloadLooseBattery, false);
