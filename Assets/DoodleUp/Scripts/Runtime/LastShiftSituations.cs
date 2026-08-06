@@ -285,6 +285,22 @@ namespace DoodleUp.Runtime
             _ => "정상"
         };
 
+        /// <summary>
+        /// 상시 지배 문제 1행이 쓰는 계통 이름. <b>계통이 아니라 자리로 부른다</b> —
+        /// "추진 이상" 보다 "조종석 이상" 이 어디로 갈지를 바로 말해 주고, 그러면서도
+        /// 원인은 여전히 안 말한다(CT-01 §3.1). 자리 대응은 4구역 분할이 계통:방을 1:1 로
+        /// 맞춘 결과다(corridor-4p-redesign §2.1).
+        ///
+        /// 문구 목록의 최종 확정은 §5.7.6 미결4 로 <c>game-planning</c> 에 남아 있다.
+        /// </summary>
+        public static string ChannelLocationLabel(LastShiftSystemChannel channel) => channel switch
+        {
+            LastShiftSystemChannel.Heat => "냉각실",
+            LastShiftSystemChannel.Power => "전력실",
+            LastShiftSystemChannel.Propulsion => "조종석",
+            _ => "산소"
+        };
+
         /// <summary>원인 1행. 무엇이 일어났는지만 말하고 무엇을 가져가라는 말은 하지 않는다.</summary>
         public static string CauseLine(LastShiftSituation situation) => situation switch
         {

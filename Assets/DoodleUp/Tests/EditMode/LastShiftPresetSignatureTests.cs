@@ -58,31 +58,50 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 구역 등급 4칸이 갈리는가. 상황이 달라도 전부 같은 칸에 몰리면 플레이어는 여전히
-        /// 차이를 못 본다 — CT-01 §5.2 의 4칸이 판정 화면이기 때문이다.
+        /// 화면 전체가 갈리는가. <b>구역 4칸만 보면 안 된다</b> — v0.3(§5.7.3)에서 4칸은
+        /// 산소 전용으로 좁혀졌고, 열·전력·추진은 배 전역 단일값이라 막대와 지배 문제 1행이
+        /// 맡는다. 그래서 화면 서명은 "산소 4칸 + 지배 계통" 을 함께 봐야 한다.
         /// </summary>
         [Test]
-        public void SignallingPresetsProduceDifferentZoneGradePatterns()
+        public void SignallingPresetsProduceDifferentScreenSignatures()
         {
-            var patterns = SignallingPresets.ToDictionary(preset => preset, preset => ZoneGradesOf(preset, false));
+            var signatures = SignallingPresets.ToDictionary(preset => preset, preset => ScreenSignatureOf(preset, false));
 
             for (var a = 0; a < SignallingPresets.Length; a++)
             for (var b = a + 1; b < SignallingPresets.Length; b++)
-                Assert.That(patterns[SignallingPresets[a]], Is.Not.EqualTo(patterns[SignallingPresets[b]]),
-                    $"{SignallingPresets[a]} 와 {SignallingPresets[b]} 의 구역 등급 4칸이 같다 — " +
-                    $"{patterns[SignallingPresets[a]]}. 화면상 두 프리셋이 같은 그림이다.");
+                Assert.That(signatures[SignallingPresets[a]], Is.Not.EqualTo(signatures[SignallingPresets[b]]),
+                    $"{SignallingPresets[a]} 와 {SignallingPresets[b]} 의 화면 서명이 같다 — " +
+                    $"{signatures[SignallingPresets[a]]}. 화면상 두 프리셋이 같은 그림이다.");
         }
 
         /// <summary>
-        /// 등급이 실제로 <c>정상</c> 위로 올라가는가. 상황 집합이 달라도 전부 <c>정상</c> 이면
-        /// 화면은 여전히 아무 말도 안 한다 — 배선이 끊겼을 때 정확히 그 증상이 나온다.
+        /// 화면이 실제로 무언가 말하는가. 상황 집합이 달라도 전부 <c>정상</c> 으로 접히면
+        /// 화면은 여전히 침묵한다 — 배선이 끊겼을 때 정확히 그 증상이 나온다.
         /// </summary>
         [Test]
-        public void SignallingPresetsRaiseAtLeastOneZoneAboveNormal()
+        public void SignallingPresetsRaiseSomethingAboveNormal()
         {
             foreach (var preset in SignallingPresets)
-                Assert.That(ZoneGradesOf(preset, false), Does.Not.EqualTo(AllNormalPattern()),
-                    $"{preset} 이 부품 이탈 상태에서도 전 구역 정상이다 — 화면에 표시할 위험이 없다.");
+                Assert.That(ScreenSignatureOf(preset, false), Does.Not.EqualTo(SilentSignature()),
+                    $"{preset} 이 부품 이탈 상태에서도 전부 정상이다 — 화면에 표시할 위험이 없다.");
+        }
+
+        /// <summary>
+        /// §5.7.5 — <b>상시 요소는 운석 전에도 현재 상황을 반영해야 한다.</b>
+        /// <c>BadAttitudeHighOxygen</c> 은 부품이 제자리에 있는 t=0 에 이미 <c>S-T1</c> 이
+        /// 활성이므로 화면이 그때부터 말해야 한다. 예전처럼 <c>M</c> 을 눌러야 바뀌는 구조면
+        /// 이 검사가 운다.
+        ///
+        /// 나머지 두 프리셋은 t=0 에 발동선을 안 넘으므로 여기서 요구하지 않는다 — 그건
+        /// 화면이 아니라 프리셋 수치의 성질이다.
+        /// </summary>
+        [Test]
+        public void PreMeteorStateIsAlreadyReflected()
+        {
+            var signature = ScreenSignatureOf(LastShiftPreset.BadAttitudeHighOxygen, true);
+            Assert.That(signature, Does.Not.EqualTo(SilentSignature()),
+                "BadAttitudeHighOxygen 이 운석 전 t=0 에 아무것도 안 보여준다 — " +
+                "상시 요소가 사건 이후에만 채워지고 있다(§5.7.5 위반).");
         }
 
         /// <summary>
@@ -120,12 +139,7 @@ namespace DoodleUp.Tests.EditMode
             var tracker = EvaluateAt(preset, intactParts);
             var active = new HashSet<LastShiftSituation>();
 
-            foreach (var channel in new[]
-                     {
-                         LastShiftSystemChannel.Heat,
-                         LastShiftSystemChannel.Power,
-                         LastShiftSystemChannel.Propulsion
-                     })
+            foreach (var channel in Channels)
             {
                 var situation = tracker.StatusOf(channel).Situation;
                 if (situation != LastShiftSituation.None) active.Add(situation);
@@ -140,35 +154,49 @@ namespace DoodleUp.Tests.EditMode
             return active;
         }
 
-        /// <summary>구역 등급 4칸을 화면과 같은 규칙으로 접는다(그 구역 계통과 산소 중 높은 쪽).</summary>
-        private static string ZoneGradesOf(LastShiftPreset preset, bool intactParts)
+        /// <summary>
+        /// 화면 서명 = 산소 4칸 + 계통 3개 등급. <b>화면과 같은 규칙으로 접는다</b> —
+        /// 4칸은 산소만 보고(§5.7.3), 계통값은 칸에 겹치지 않고 따로 선다.
+        /// </summary>
+        private static string ScreenSignatureOf(LastShiftPreset preset, bool intactParts)
         {
             var tracker = EvaluateAt(preset, intactParts);
-            var cells = new List<string>();
+            var parts = new List<string>();
+
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
             {
                 var zone = (LastShiftZone)index;
                 var grade = LastShiftSituationTable.GradeOf(tracker.OxygenStatusOf(zone).Situation);
-                if (LastShiftSituationText.TryChannelOfZone(zone, out var channel))
-                {
-                    var channelGrade = LastShiftSituationTable.GradeOf(tracker.StatusOf(channel).Situation);
-                    if (channelGrade > grade) grade = channelGrade;
-                }
-
-                cells.Add($"{LastShiftZoneAtlas.ShortLabelOf(zone)}={LastShiftSituationText.GradeLabel(grade)}");
+                parts.Add($"{LastShiftZoneAtlas.ShortLabelOf(zone)}={LastShiftSituationText.GradeLabel(grade)}");
             }
 
-            return string.Join(" ", cells);
+            foreach (var channel in Channels)
+            {
+                var grade = LastShiftSituationTable.GradeOf(tracker.StatusOf(channel).Situation);
+                parts.Add($"{LastShiftSituationText.ChannelLocationLabel(channel)}={LastShiftSituationText.GradeLabel(grade)}");
+            }
+
+            return string.Join(" ", parts);
         }
 
-        private static string AllNormalPattern()
+        /// <summary>전부 정상인 서명. 화면이 아무 말도 안 하는 상태다.</summary>
+        private static string SilentSignature()
         {
-            var cells = new List<string>();
+            var parts = new List<string>();
+            var normal = LastShiftSituationText.GradeLabel(LastShiftSituationGrade.Normal);
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
-                cells.Add($"{LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)index)}=" +
-                          $"{LastShiftSituationText.GradeLabel(LastShiftSituationGrade.Normal)}");
-            return string.Join(" ", cells);
+                parts.Add($"{LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)index)}={normal}");
+            foreach (var channel in Channels)
+                parts.Add($"{LastShiftSituationText.ChannelLocationLabel(channel)}={normal}");
+            return string.Join(" ", parts);
         }
+
+        private static readonly LastShiftSystemChannel[] Channels =
+        {
+            LastShiftSystemChannel.Heat,
+            LastShiftSystemChannel.Power,
+            LastShiftSystemChannel.Propulsion
+        };
 
         private static LastShiftSituationTracker EvaluateAt(LastShiftPreset preset, bool intactParts)
         {

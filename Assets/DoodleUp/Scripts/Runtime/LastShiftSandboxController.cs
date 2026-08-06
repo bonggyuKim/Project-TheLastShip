@@ -91,16 +91,40 @@ namespace DoodleUp.Runtime
             situationTracker.OxygenStatusOf(zone).Situation;
 
         /// <summary>
-        /// CT-01 §5.2 구역 칸 하나가 표시할 등급. <b>그 구역 계통과 그 구역 산소 중 높은 쪽</b>이다.
-        /// 산소실은 대응 계통이 없어 산소만 본다.
+        /// CT-01 §5.7.3 구역 칸 하나가 표시할 등급. <b>산소 전용이다.</b>
+        ///
+        /// 열·전력·추진을 여기 겹쳐 걸지 않는 이유가 §5.7.3 에 있다 — 그 셋은 방마다 다른
+        /// 값이 아니라 배 전체에 하나뿐인 상태라, 방 칸에 걸면 "전력실 칸이 나쁘다" 로
+        /// 읽히지만 실제로는 "배 전체 전력이 나쁘다" 다. 방이라는 공간의 속성이 아니다.
+        /// 산소만 구역별로 실제 다른 값을 갖는다(ship-elements §2.2).
         /// </summary>
-        public LastShiftSituationGrade ZoneGradeOf(LastShiftZone zone)
-        {
-            var grade = LastShiftSituationTable.GradeOf(OxygenSituationOf(zone));
-            if (!LastShiftSituationText.TryChannelOfZone(zone, out var channel)) return grade;
+        public LastShiftSituationGrade ZoneOxygenGradeOf(LastShiftZone zone) =>
+            LastShiftSituationTable.GradeOf(OxygenSituationOf(zone));
 
-            var channelGrade = LastShiftSituationTable.GradeOf(SituationOf(channel));
-            return channelGrade > grade ? channelGrade : grade;
+        /// <summary>
+        /// 상시 패널의 지배 문제 1행이 가리킬 계통. 계통 셋 중 등급이 가장 높은 것이며
+        /// 동급이면 먼저 선언된 쪽이 남는다. <b>원인은 말하지 않는다</b> — 어느 계통인지까지다
+        /// (§5.7.3, §3.1). 원인과 인과사슬은 <c>F3</c> 과 구역 안 진단에만 있다.
+        /// </summary>
+        public bool TryResolveDominantChannel(out LastShiftSystemChannel channel,
+            out LastShiftSituationGrade grade)
+        {
+            channel = default;
+            grade = LastShiftSituationGrade.Normal;
+            foreach (var candidate in new[]
+                     {
+                         LastShiftSystemChannel.Heat,
+                         LastShiftSystemChannel.Power,
+                         LastShiftSystemChannel.Propulsion
+                     })
+            {
+                var candidateGrade = LastShiftSituationTable.GradeOf(SituationOf(candidate));
+                if (candidateGrade <= grade) continue;
+                grade = candidateGrade;
+                channel = candidate;
+            }
+
+            return grade > LastShiftSituationGrade.Normal;
         }
 
         /// <summary>그 구역 칸의 등급을 만든 상황. 구역 안에서만 읽히는 원인 1행이 이걸 쓴다.</summary>
@@ -1242,10 +1266,12 @@ namespace DoodleUp.Runtime
             headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
 
-            GUI.Box(new Rect(16f, 16f, 680f, 214f), GUIContent.none);
+            GUI.Box(new Rect(16f, 16f, 680f, 262f), GUIContent.none);
             DrawObjectiveLine();
-            DrawThresholdBars();
-            DrawZonePressureCells(28f, 150f);
+            DrawSystemBars();
+            DrawZonePressureCells(28f, 156f);
+            DrawDominantProblemLine();
+            DrawBatteryState();
             DrawLocalDiagnosis();
             DrawSuitOxygenGauges();
             if (debugHudVisible) DrawDebugHud();
@@ -1264,35 +1290,125 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 층1-b 임계선 막대 둘. <b>임계를 그림으로 보여주는 것이 요점이다</b>(§5.2) —
-        /// <c>thrust=0.28</c> 이라는 숫자보다 "막대가 선 아래다" 가 즉시 읽힌다.
-        /// 산소는 조종석 압력을 쓴다. 도킹 성공 판정이 보는 값이 그것이라서다.
+        /// 층1-b 계통 막대 셋(§5.7.3). <b>배 전역 단일값만 막대로 그린다</b> — 추력·전력·열.
+        /// 산소는 방마다 값이 달라 막대가 아니라 아래 구역 4칸이 맡는다.
+        ///
+        /// <b>임계를 그림으로 보여주는 것이 요점이다</b>(§5.2) — <c>thrust=0.28</c> 이라는
+        /// 숫자보다 "막대가 선 아래다" 가 즉시 읽힌다.
         /// </summary>
-        private void DrawThresholdBars()
+        private void DrawSystemBars()
         {
-            DrawThresholdBar(28f, 62f, "추력", currentState.ThrustDemand,
+            DrawThresholdBar(28f, 62f, "추력", currentState.ThrustDemand, HigherIsBetter,
                 LastShiftRecoveryTuning.DockingSuccessThrust);
-            DrawThresholdBar(28f, 96f, "산소", zonePressures[LastShiftZone.Cockpit],
-                LastShiftRecoveryTuning.DockingSuccessOxygen);
+
+            // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
+            // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
+            DrawThresholdBar(28f, 90f, "전력", currentState.BusPower, HigherIsBetter,
+                LastShiftSituationTable.BusDetachedTrigger,
+                LastShiftSituationTable.PowerCascadeTrigger,
+                LastShiftSituationTable.PowerBlackoutTrigger);
+
+            // 열만 반대다 — 올라가는 것이 나쁘다. 선 셋은 S-H1/H2/H3 등급 경계 그대로이며
+            // 여기서 다시 계산하지 않는다(§5.7.2).
+            DrawThresholdBar(28f, 118f, "열", currentState.EngineHeat, HigherIsWorse,
+                LastShiftSituationTable.HeatCouplingTrigger,
+                LastShiftSituationTable.HeatRunawayTrigger,
+                LastShiftSituationTable.HeatLockTrigger);
         }
 
-        private void DrawThresholdBar(float x, float y, string label, float value, float threshold)
+        private const bool HigherIsBetter = false;
+        private const bool HigherIsWorse = true;
+
+        private void DrawThresholdBar(float x, float y, string label, float value, bool higherIsWorse,
+            params float[] thresholds)
         {
             const float barWidth = 520f;
             const float barHeight = 18f;
             var fill = Mathf.Clamp01(value);
-            var below = fill < threshold;
+
+            // "나쁜 쪽" 판정은 첫 임계선 하나로 한다. 열은 첫 선(S-H1)을 넘는 순간부터
+            // 나쁘고, 추력·전력은 선 아래로 내려가는 순간부터 나쁘다.
+            var first = thresholds.Length > 0 ? thresholds[0] : 0f;
+            var bad = higherIsWorse ? fill >= first : fill < first;
 
             GUI.Label(new Rect(x, y, 46f, 22f), label, bodyStyle);
             var barX = x + 50f;
             GUI.DrawTexture(new Rect(barX, y + 2f, barWidth, barHeight), Texture2D.grayTexture);
-            // 선 아래면 색이 바뀐다. 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을
-            // 플레이어가 눈대중으로 하게 두면 임계선을 그린 의미가 없다.
-            GUI.color = below ? new Color(1f, 0.45f, 0.2f) : new Color(0.45f, 0.85f, 1f);
+            // 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을 플레이어가 눈대중으로 하게
+            // 두면 임계선을 그린 의미가 없다.
+            GUI.color = bad ? new Color(1f, 0.45f, 0.2f) : new Color(0.45f, 0.85f, 1f);
             GUI.DrawTexture(new Rect(barX, y + 2f, barWidth * fill, barHeight), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            GUI.DrawTexture(new Rect(barX + barWidth * Mathf.Clamp01(threshold) - 1f, y, 2f, barHeight + 4f),
-                Texture2D.whiteTexture);
+            foreach (var threshold in thresholds)
+                GUI.DrawTexture(new Rect(barX + barWidth * Mathf.Clamp01(threshold) - 1f, y, 2f, barHeight + 4f),
+                    Texture2D.whiteTexture);
+        }
+
+        /// <summary>
+        /// 상시 지배 문제 1행(§5.7.3·§5.7.5). <b>운석 전에도 채워져 있다</b> — 프리셋이 t=0 에
+        /// 이미 갖고 있는 상황을 그대로 읽는다. 운석 이후 전용인 <c>FIRST DOMINANT</c> 와는
+        /// 다른 값이고, 그쪽은 <c>F3</c> 에만 남겼다.
+        ///
+        /// <b>어느 계통인지까지만 말한다.</b> 원인과 인과사슬은 §3.1 이 금지한 자리다.
+        /// </summary>
+        private void DrawDominantProblemLine()
+        {
+            var line = "계통 이상 없음";
+            var color = Color.white;
+
+            if (TryResolveDominantChannel(out var channel, out var grade))
+            {
+                line = $"{LastShiftSituationText.ChannelLocationLabel(channel)} 이상 · " +
+                       $"{LastShiftSituationText.GradeLabel(grade)}";
+                color = GradeColor(grade);
+            }
+            else if (TryResolveWorstOxygenZone(out var zone, out var oxygenGrade))
+            {
+                line = $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 산소 · " +
+                       $"{LastShiftSituationText.GradeLabel(oxygenGrade)}";
+                color = GradeColor(oxygenGrade);
+            }
+
+            var previous = GUI.color;
+            GUI.color = color;
+            GUI.Label(new Rect(28f, 186f, 430f, 26f), line, headingStyle);
+            GUI.color = previous;
+        }
+
+        private bool TryResolveWorstOxygenZone(out LastShiftZone zone, out LastShiftSituationGrade grade)
+        {
+            zone = default;
+            grade = LastShiftSituationGrade.Normal;
+            for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+            {
+                var candidate = (LastShiftZone)index;
+                var candidateGrade = ZoneOxygenGradeOf(candidate);
+                if (candidateGrade <= grade) continue;
+                grade = candidateGrade;
+                zone = candidate;
+            }
+
+            return grade > LastShiftSituationGrade.Normal;
+        }
+
+        /// <summary>
+        /// 배터리 상태(§5.7.3). <b>막대가 아니다</b> — 장착 여부는 이산값이고, 연속값으로
+        /// 그리면 없는 정보를 지어내는 것이다. 미장착이면 어느 구역에 있는지까지 말한다.
+        /// 그건 원인이 아니라 위치라서 §3.1 에 걸리지 않는다.
+        /// </summary>
+        private void DrawBatteryState()
+        {
+            var battery = FindItem(LastShiftItemRole.Battery);
+            if (battery == null) return;
+
+            var text = battery.Secured
+                ? "배터리 장착됨"
+                : $"배터리 미장착 · {LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.Resolve(battery.transform.position))}";
+
+            var previous = GUI.color;
+            GUI.color = battery.Secured ? Color.white : new Color(1f, 0.86f, 0.35f);
+            GUI.Label(new Rect(466f, 188f, 220f, 24f), text, bodyStyle);
+            GUI.color = previous;
         }
 
         /// <summary>
@@ -1310,8 +1426,8 @@ namespace DoodleUp.Runtime
             var cause = LastShiftSituationText.CauseLine(situation);
             if (string.IsNullOrEmpty(cause)) return;
 
-            GUI.Label(new Rect(28f, 186f, 650f, 24f),
-                $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}", headingStyle);
+            GUI.Label(new Rect(28f, 218f, 650f, 24f),
+                $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}", bodyStyle);
         }
 
         private bool TryResolveLocalZone(out LastShiftZone zone)
@@ -1373,7 +1489,8 @@ namespace DoodleUp.Runtime
 
                 // <b>등급만 쓴다. 압력 수치를 여기 적지 않는다</b>(§5.2) — 그게 예전 화면이
                 // 셋째 층을 상시로 새어 보내던 자리다. 수치는 개구부 앞에서만 읽힌다(§5.3).
-                var grade = ZoneGradeOf(zone);
+                // 그리고 <b>산소만 본다</b> — 계통값을 방 칸에 겹치지 않는 이유는 §5.7.3 이다.
+                var grade = ZoneOxygenGradeOf(zone);
                 var style = grade == LastShiftSituationGrade.Crisis ? sirenStyle : bodyStyle;
                 var previous = GUI.color;
                 GUI.color = GradeColor(grade);
