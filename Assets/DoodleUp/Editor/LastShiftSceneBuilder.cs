@@ -128,6 +128,7 @@ namespace DoodleUp.Editor
             CreateInstrumentPanels(ship.transform);
             CreateDucts(ship.transform);
             CreateCompartments(ship.transform);
+            CreateBypassDuct(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
@@ -496,6 +497,88 @@ namespace DoodleUp.Editor
 
             foreach (var spec in LastShiftCompartments.Specs)
                 CreateCompartment(root.transform, spec);
+        }
+
+        /// <summary>
+        /// 갑판 하부 우회 통로와 에어록(§5, §23). 좌표 정본은 Runtime 의
+        /// <see cref="LastShiftBypassDuct"/> 이고 여기서는 판으로 세우기만 한다.
+        ///
+        /// <b>바닥에 구멍을 안 뚫는다.</b> 갑판 슬래브는 구역 바닥이라 그대로 두고, 승강구는
+        /// 슬래브를 지나는 수직 통이다 — 지금 단계에서 뚫으면 저중력에서 뜬 물건이 전부
+        /// 덕트로 떨어져 회수 불가가 된다. 통행 개통은 승강구 해치를 실제로 구현할 때다.
+        /// 그래서 이 블록이 세우는 것은 <b>형상과 좌표</b>뿐이고, 통행은 아직 안 열린다.
+        /// </summary>
+        private static void CreateBypassDuct(Transform ship)
+        {
+            ductMaterial ??= CreateMaterial("LS_Duct", new Color(0.34f, 0.33f, 0.30f));
+            var root = new GameObject("BypassDuct");
+            root.transform.SetParent(ship, false);
+
+            const float section = LastShiftBypassDuct.Section;
+            const float thickness = LastShiftBypassDuct.PanelThickness;
+            var floor = LastShiftBypassDuct.FloorY;
+            var runZ = LastShiftBypassDuct.RunZ;
+            var foreX = LastShiftBypassDuct.ForeShaftX;
+            var aftX = LastShiftBypassDuct.AftShaftX;
+            var foreZ = LastShiftBypassDuct.ForeShaftZ;
+
+            // 선미로 달리는 긴 구간과, 선수 쪽으로 꺾이는 짧은 다리. 꺾임은 1 회다(§23.4).
+            CreateDuctSegment(root.transform, "Run_Aft",
+                new Vector3((foreX + aftX) * 0.5f, floor + section * 0.5f, runZ),
+                new Vector3(aftX - foreX + section, section, section), thickness);
+            CreateDuctSegment(root.transform, "Run_Fore",
+                new Vector3(foreX, floor + section * 0.5f, (foreZ + runZ) * 0.5f),
+                new Vector3(section, section, Mathf.Abs(runZ - foreZ) + section), thickness);
+
+            // 양 끝 수직 승강구. 갑판까지 올라오며, 바닥의 단은 걸어서 오르는 높이다(§23.6).
+            foreach (var (name, x, z) in new[] { ("Fore", foreX, foreZ), ("Aft", aftX, runZ) })
+            {
+                var shaftHeight = -floor;
+                CreateDuctSegment(root.transform, $"Shaft_{name}",
+                    new Vector3(x, floor + shaftHeight * 0.5f, z),
+                    new Vector3(section, shaftHeight, section), thickness);
+                CreateCube($"Step_{name}", root.transform,
+                    new Vector3(x, floor + LastShiftBypassDuct.StepHeight * 0.5f, z),
+                    new Vector3(section, LastShiftBypassDuct.StepHeight, section * 0.5f), ductMaterial);
+            }
+
+            CreateAirlock(root.transform);
+        }
+
+        /// <summary>
+        /// 덕트 한 구간. 안쪽을 비우려면 판 넷을 세워야 하지만 그레이박스에서는 겉면만
+        /// 세운다 — 안이 보이지 않는 좁은 관이라 내부 면이 화면에 안 나오고, 판 넷을 세우면
+        /// 오브젝트가 네 배가 되면서 씬만 무거워진다. 콜라이더는 뺀다: 지금은 통행이 안
+        /// 열려 있어 승무원이 여기 들어올 수 없고, 남겨 두면 갑판 아래 보이지 않는 벽이 된다.
+        /// </summary>
+        private static void CreateDuctSegment(Transform parent, string name, Vector3 center, Vector3 size, float thickness)
+        {
+            CreateDecorCube(name, parent, center, size, ductMaterial);
+        }
+
+        /// <summary>
+        /// 에어록(§17.4 <c>3x3x3</c>, §23.5). 덕트 바닥에 천장을 붙여 <b>안쪽 해치</b>가 되고,
+        /// 그 <c>3m</c> 아래 바닥이 배 밑면의 <b>바깥 해치</b>다. 같은 층에 뒀다면 이중 해치
+        /// 자리를 따로 만들어야 했는데 갑판 하부에서는 위아래로 나뉜다.
+        ///
+        /// 압력존에는 안 들어간다(§24) — <see cref="LastShiftZoneDoor"/> 를 안 붙이는 것이
+        /// 그 경계를 코드에서 지키는 자리다. 구획 그레이박스와 같은 원칙이다.
+        /// </summary>
+        private static void CreateAirlock(Transform parent)
+        {
+            const float size = LastShiftBypassDuct.AirlockSize;
+            var centre = new Vector3(LastShiftBypassDuct.AirlockCenterX,
+                (LastShiftBypassDuct.AirlockFloorY + LastShiftBypassDuct.AirlockCeilingY) * 0.5f,
+                LastShiftBypassDuct.AirlockCenterZ);
+            CreateDecorCube("Airlock", parent, centre, new Vector3(size, size, size), ductMaterial);
+
+            // 해치 두 짝. 형상으로만 존재하고 아직 열리지 않는다 - 안쪽은 덕트 바닥,
+            // 바깥은 배 밑면이다.
+            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth, 0.08f, LastShiftZoneDoor.OpeningWidth);
+            CreateDecorCube("Hatch_Inner", parent,
+                new Vector3(centre.x, LastShiftBypassDuct.AirlockCeilingY, centre.z), hatch, ductMaterial);
+            CreateDecorCube("Hatch_Outer", parent,
+                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch, ductMaterial);
         }
 
         private static void CreateCompartment(Transform parent, LastShiftCompartmentSpec spec)
