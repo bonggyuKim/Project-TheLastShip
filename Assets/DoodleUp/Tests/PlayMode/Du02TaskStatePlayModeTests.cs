@@ -140,6 +140,12 @@ namespace DoodleUp.Tests.PlayMode
             for (var i = 0; i < 30 && !motor.IsGrounded; i++)
                 yield return new WaitForFixedUpdate();
 
+            // 30 스텝을 다 써도 조용히 통과하던 자리다(game-qa 관측). 아래 검사가
+            // GroundSpeed 를 요구하므로 접지가 안 된 채 넘어가면 AirSpeed 가 잡혀
+            // 원인을 알기 어려운 실패가 난다. 같은 파일 :73 / :101 은 이미 걸려 있다.
+            Assert.That(motor.IsGrounded, Is.True,
+                "30 스텝 안에 접지하지 못했다 — 아래 GroundSpeed 검사의 전제다.");
+
             motor.SetInput(1f, 1f, false, true);
             yield return new WaitForFixedUpdate();
             var horizontalSpeed = new Vector2(body.linearVelocity.x, body.linearVelocity.z).magnitude;
