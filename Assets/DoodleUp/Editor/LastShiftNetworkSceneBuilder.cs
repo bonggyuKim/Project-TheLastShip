@@ -31,16 +31,36 @@ namespace DoodleUp.Editor
             BuildAndSaveSandbox();
         }
 
+        /// <summary>
+        /// 이 프로젝트의 유일한 레벨을 짓는다.
+        ///
+        /// <b>예전에는 SP01 을 열어 변형해 저장하는 파생물이었다.</b> 그래서 같은 배가 두 벌
+        /// 존재했고, SP01 만 다시 굽고 여기를 안 구우면 4인 씬이 조용히 옛 선체로 남았다 —
+        /// 그레이박스 구획 11개가 SP01 에만 들어가고 여기는 0개였던 것이 실제로 그렇게 났다.
+        /// 두 씬 어느 쪽 테스트도 그것을 못 잡았다.
+        ///
+        /// 이제 선체·아이템은 프리팹이고 씬은 하나다. 솔로 플레이는 씬을 따로 두는 대신
+        /// host 1인으로 돈다 — <see cref="LastShiftNetworkSession"/> 이 에디터 Play 에서
+        /// host 를 자동 기동하므로 별도 진입점이 필요 없고, 무엇보다 <b>솔로에서만 도는
+        /// 코드 경로가 사라진다.</b> 4인 co-op 에서 정본은 언제나 host 권위 경로다.
+        /// </summary>
         private static void BuildAndSaveSandbox()
         {
             Directory.CreateDirectory("Assets/DoodleUp/Prefabs");
+            Directory.CreateDirectory("Assets/Scenes");
             var playerPrefab = CreatePlayerPrefab();
-            var scene = EditorSceneManager.OpenScene(LastShiftSceneBuilder.ScenePath, OpenSceneMode.Single);
-            var roots = scene.GetRootGameObjects();
-            var sandbox = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftSandboxController>(true)).Single();
-            var items = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftGrabbable>(true)).ToArray();
-            var soloPlayer = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftPlayerController>(true)).Single();
-            Object.DestroyImmediate(soloPlayer.gameObject);
+
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            scene.name = "LAST_SHIFT_SP02A_NETWORK";
+            LastShiftSceneBuilder.CreateLighting();
+            PrefabUtility.InstantiatePrefab(LastShiftSceneBuilder.RebuildShipPrefab());
+            LastShiftSceneBuilder.RebuildItemPrefabs();
+            var items = LastShiftSceneBuilder.CreateItems();
+            LastShiftSceneBuilder.CreateMeteorStimulus();
+
+            var runtime = new GameObject("LAST_SHIFT_RUNTIME");
+            runtime.AddComponent<LastShiftImpactFeedback>();
+            var sandbox = runtime.AddComponent<LastShiftSandboxController>();
             sandbox.Configure(System.Array.Empty<LastShiftPlayerController>(), items);
             sandbox.gameObject.AddComponent<NetworkObject>();
             sandbox.gameObject.AddComponent<LastShiftNetworkSandbox>().Configure(sandbox);

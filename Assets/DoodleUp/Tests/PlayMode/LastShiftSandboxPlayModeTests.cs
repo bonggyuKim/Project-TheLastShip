@@ -10,7 +10,7 @@ namespace DoodleUp.Tests.PlayMode
 {
     public sealed class LastShiftSandboxPlayModeTests
     {
-        private const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP01.unity";
+        private const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity";
 
         private LastShiftSandboxController sandbox;
         private LastShiftPlayerController player;

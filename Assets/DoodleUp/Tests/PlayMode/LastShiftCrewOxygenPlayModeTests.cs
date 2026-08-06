@@ -17,7 +17,7 @@ namespace DoodleUp.Tests.PlayMode
     /// </summary>
     public sealed class LastShiftCrewOxygenPlayModeTests
     {
-        private const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP01.unity";
+        private const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity";
 
         /// <summary>예비 산소 1.00 을 다 태우는 시간. 상수에서 유도해 튜닝이 바뀌어도 따라온다.</summary>
         private static float SuitOxygenLifetime =>

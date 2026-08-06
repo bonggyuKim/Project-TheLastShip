@@ -15,8 +15,7 @@ namespace DoodleUp.Tests.EditMode
             new GameObject("UnsavedMarker");
             EditorSceneManager.MarkSceneDirty(scene);
 
-            Assert.That(LastShiftSceneBuilder.HasUnsavedActiveSceneChanges(), Is.True);
-            Assert.Throws<InvalidOperationException>(() => LastShiftSceneBuilder.RebuildSandboxForAutomation());
+            Assert.Throws<InvalidOperationException>(() => LastShiftNetworkSceneBuilder.RebuildSandboxForAutomation());
             Assert.That(EditorSceneManager.GetActiveScene(), Is.EqualTo(scene));
             Assert.That(GameObject.Find("UnsavedMarker"), Is.Not.Null);
         }
@@ -24,7 +23,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void SavedSandboxRebuildsReopensAndVerifies()
         {
-            LastShiftSceneVerifier.VerifySavedSandboxLifecycle();
+            LastShiftNetworkSceneVerifier.VerifySavedSandboxLifecycle();
         }
     }
 }

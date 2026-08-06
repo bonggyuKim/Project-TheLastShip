@@ -10,7 +10,8 @@ namespace DoodleUp.Editor
 {
     public static class LastShiftSceneBuilder
     {
-        public const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP01.unity";
+        /// <summary>이 프로젝트의 유일한 레벨. 씬을 짓는 것은 <see cref="LastShiftNetworkSceneBuilder"/> 다.</summary>
+        public const string ScenePath = LastShiftNetworkSceneBuilder.ScenePath;
         // 구역 이름 정본은 Runtime 의 LastShiftSceneZones 다. 런타임 연출(손상 구역 표시)이
         // 같은 문자열로 구역을 찾아야 하므로 여기서는 그것을 재노출만 한다.
         public const string CockpitZoneName = LastShiftSceneZones.CockpitZoneName;
@@ -53,69 +54,6 @@ namespace DoodleUp.Editor
         private const float HullBackZ = SideWallZ;
 
         private const float WindowSillHeight = 0.6f;
-
-        [MenuItem("Last Shift/SP-01/Rebuild Sandbox")]
-        public static void RebuildSandbox()
-        {
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-            {
-                Debug.Log("[LAST_SHIFT_BUILD] cancelled=true reason=active-scene-not-saved");
-                return;
-            }
-
-            BuildAndSaveSandbox();
-        }
-
-        public static void RebuildSandboxForAutomation()
-        {
-            var activeScene = SceneManager.GetActiveScene();
-            if (activeScene.IsValid() && activeScene.isDirty)
-                throw new System.InvalidOperationException("Refusing to replace a dirty active scene during automated SP-01 rebuild.");
-
-            BuildAndSaveSandbox();
-        }
-
-        public static bool HasUnsavedActiveSceneChanges()
-        {
-            var activeScene = SceneManager.GetActiveScene();
-            return activeScene.IsValid() && activeScene.isDirty;
-        }
-
-        private static void BuildAndSaveSandbox()
-        {
-            ResetCachedMaterials();
-            Directory.CreateDirectory("Assets/Scenes");
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            scene.name = "LAST_SHIFT_SP01";
-            CreateLighting();
-            PrefabUtility.InstantiatePrefab(RebuildShipPrefab());
-            RebuildItemPrefabs();
-            var player = CreatePlayer();
-            var items = CreateItems();
-            var runtime = new GameObject("LAST_SHIFT_SP01_Runtime");
-            runtime.AddComponent<LastShiftImpactFeedback>();
-            runtime.AddComponent<LastShiftSandboxController>().Configure(player, items);
-            CreateMeteorStimulus();
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            EnsureSceneInBuildSettings();
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[LAST_SHIFT_BUILD] scene={ScenePath} zones=3 compartments={LastShiftCompartments.Count} players=1 items={items.Length} buildScene=1 result=PASS");
-        }
-
-        private static void EnsureSceneInBuildSettings()
-        {
-            var scenes = EditorBuildSettings.scenes.ToList();
-            var existing = scenes.FirstOrDefault(scene => scene.path == ScenePath);
-            if (existing != null)
-            {
-                existing.enabled = true;
-            }
-            else
-            {
-                scenes.Add(new EditorBuildSettingsScene(ScenePath, true));
-            }
-            EditorBuildSettings.scenes = scenes.ToArray();
-        }
 
         /// <summary>
         /// 선체 프리팹. <b>SP01 과 SP02A 가 같은 배를 두 벌 들고 있던 것이 이 프리팹이 생긴 이유다.</b>
@@ -710,50 +648,12 @@ namespace DoodleUp.Editor
             Object.DestroyImmediate(strip.GetComponent<Collider>());
         }
 
-        private static LastShiftPlayerController CreatePlayer()
-        {
-            var player = new GameObject("PlayerOne");
-            player.transform.position = LastShiftSandboxController.PlayerSpawn;
-            var controller = player.AddComponent<CharacterController>();
-            controller.radius = LastShiftShipPhysics.CrewRadius;
-            controller.height = 1.7f;
-            controller.center = new Vector3(0f, 0.85f, 0f);
-            var cameraObject = new GameObject("PlayerOne Camera");
-            cameraObject.tag = "MainCamera";
-            cameraObject.transform.SetParent(player.transform, false);
-            cameraObject.transform.localPosition = new Vector3(0f, LastShiftShipPhysics.EyeHeight, 0f);
-            var camera = cameraObject.AddComponent<Camera>();
-            camera.rect = new Rect(0f, 0f, 1f, 1f);
-            camera.fieldOfView = 72f;
-            camera.nearClipPlane = 0.05f;
-            camera.farClipPlane = 80f;
-            camera.backgroundColor = new Color(0.025f, 0.035f, 0.055f);
-            var socket = new GameObject("HoldSocket").transform;
-            socket.SetParent(cameraObject.transform, false);
-            socket.localPosition = new Vector3(0.45f, -0.30f, 1.1f);
-            var playerController = player.AddComponent<LastShiftPlayerController>();
-            playerController.Configure(camera, socket);
-            CreatePlayerMarker(player.transform, new Color(0.2f, 0.65f, 1f));
-            return playerController;
-        }
-
-        private static void CreatePlayerMarker(Transform player, Color identityColor)
-        {
-            var marker = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            marker.name = "PlayerOne_Identity";
-            marker.transform.SetParent(player, false);
-            marker.transform.localPosition = new Vector3(0f, 1.05f, 0f);
-            marker.transform.localScale = new Vector3(0.32f, 0.48f, 0.32f);
-            marker.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("LS_PlayerOne", identityColor);
-            Object.DestroyImmediate(marker.GetComponent<Collider>());
-        }
-
         /// <summary>
-        /// Tether 는 어떤 프리셋에서도 loose 로 유지되는 유일한 상시 grab 대상이므로 시작 위치에서
-        /// 보이면서 GrabDistance(2.2m) 안이어야 한다. 예전 (-3.1, 0.25, 1.55) 는 spawn 에서 2.85m 로
-        /// 사거리 밖이었고, 바닥 높이 아이템은 카메라(y≈1.65, 수직 FOV 72°) 기준 사거리 안으로
-        /// 당길수록 화면 밖으로 내려가 조준 자체가 불가능하다. 그래서 받침대(TetherRack) 위에 올린다.
-        /// loose 상태의 Rigidbody 는 kinematic 이 아니므로 공중 배치는 낙하한다.
+        /// Tether 는 어떤 프리셋에서도 loose 로 유지되는 유일한 상시 grab 대상이라 시작 위치에서
+        /// 보이면서 GrabDistance(2.2m) 안이어야 한다. 바닥 높이 아이템은 카메라(y≈1.65, 수직 FOV 72°)
+        /// 기준 사거리 안으로 당길수록 화면 밖으로 내려가 조준 자체가 불가능하다. 그래서
+        /// 받침대(TetherRack) 위에 올린다 — loose 상태의 Rigidbody 는 kinematic 이 아니라
+        /// 공중 배치는 낙하한다.
         /// </summary>
         public static Vector3 TetherRackPosition => LastShiftShipDimensions.TetherRackPosition;
 
@@ -860,7 +760,7 @@ namespace DoodleUp.Editor
             return item;
         }
 
-        private static void CreateMeteorStimulus()
+        public static void CreateMeteorStimulus()
         {
             var meteor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             meteor.name = "CanonicalMeteorStimulus";
@@ -908,7 +808,7 @@ namespace DoodleUp.Editor
         /// 실내가 거의 검게 된다. 그래서 밝은 야외용 ambient/directional 을 낮추고 구역마다
         /// 천장 등을 둔다. 구역별 색을 달리해 어디 있는지 조명만으로도 구분되게 한다.
         /// </summary>
-        private static void CreateLighting()
+        public static void CreateLighting()
         {
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             // 우주 실내라 하늘광이 없다. 형태를 잃지 않을 최소값만 남긴다.

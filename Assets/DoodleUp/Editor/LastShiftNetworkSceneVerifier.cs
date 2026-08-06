@@ -39,10 +39,18 @@ namespace DoodleUp.Editor
             Debug.Log($"[LAST_SHIFT_NETWORK_LIFECYCLE] scene={LastShiftNetworkSceneBuilder.ScenePath} rebuild=PASS reopen=PASS result=PASS");
         }
 
+        /// <summary>
+        /// 씬이 하나가 된 뒤로 이 검사가 선체 지오메트리까지 책임진다.
+        /// <see cref="LastShiftSceneVerifier"/> 의 시선 차단(A3)·통행 여유·카메라 사거리 검사는
+        /// 네트워크와 무관하지만 검사할 씬이 여기밖에 없다 — 안 부르면 배가 잘못 지어져도
+        /// 아무도 안 본다. 예전에는 SP01 검증기가 따로 돌았고, 그래서 두 씬이 어긋난 것을
+        /// 어느 쪽도 못 잡았다.
+        /// </summary>
         public static void VerifyScene(Scene scene)
         {
             Require(scene.IsValid() && scene.isLoaded, "scene must be loaded");
             Require(scene.path == LastShiftNetworkSceneBuilder.ScenePath, "scene path mismatch");
+            LastShiftSceneVerifier.VerifyScene(scene);
             Require(EditorBuildSettings.scenes.Any(entry => entry.enabled && entry.path == LastShiftNetworkSceneBuilder.ScenePath), "network scene must be enabled in build settings");
             var roots = scene.GetRootGameObjects();
             Require(roots.SelectMany(root => root.GetComponentsInChildren<LastShiftPlayerController>(true)).Any() == false, "scene must not contain split-screen players");

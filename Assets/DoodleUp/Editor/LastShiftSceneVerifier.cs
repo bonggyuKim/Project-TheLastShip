@@ -17,23 +17,6 @@ namespace DoodleUp.Editor
             VerifyScene(scene);
         }
 
-        public static void VerifySavedSandboxLifecycle()
-        {
-            var setup = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            Require(setup.IsValid() && setup.isLoaded, "lifecycle setup scene must be loaded");
-            LastShiftSceneBuilder.RebuildSandboxForAutomation();
-            var savedScene = SceneManager.GetActiveScene();
-            Require(savedScene.path == LastShiftSceneBuilder.ScenePath, "rebuilt scene path mismatch");
-            Require(!savedScene.isDirty, "rebuilt scene must be saved");
-            VerifyScene(savedScene);
-
-            var reopened = EditorSceneManager.OpenScene(LastShiftSceneBuilder.ScenePath, OpenSceneMode.Single);
-            Require(reopened.IsValid() && reopened.isLoaded, "saved scene must reopen");
-            Require(!reopened.isDirty, "reopened scene must be clean");
-            VerifyScene(reopened);
-            Debug.Log($"[LAST_SHIFT_LIFECYCLE] scene={LastShiftSceneBuilder.ScenePath} rebuild=PASS reopen=PASS result=PASS");
-        }
-
         public static void VerifyScene(Scene scene)
         {
             Require(scene.IsValid() && scene.isLoaded, "scene must be loaded");
@@ -47,8 +30,6 @@ namespace DoodleUp.Editor
             Require(all.Count(x => x.name == LastShiftSceneBuilder.CockpitZoneName) == 1, "cockpit zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.UtilityZoneName) == 1, "utility zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.LifeSupportZoneName) == 1, "life support zone count must be 1");
-            Require(all.Count(x => x.name == "PlayerOne") == 1, "player one count must be 1");
-            Require(all.All(x => x.name != "PlayerTwo"), "SP-01 must not contain player two");
             Require(all.Count(x => x.name == "CanonicalMeteorStimulus") == 1, "canonical meteor count must be 1");
             var meteorVisual = all.Single(x => x.name == "CanonicalMeteorStimulus");
             var meteor = LastShiftMeteorStimulus.Canonical;
@@ -57,19 +38,11 @@ namespace DoodleUp.Editor
             var sandboxes = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftSandboxController>(true)).ToArray();
             Require(sandboxes.Length == 1, "sandbox controller count must be 1");
             Require(sandboxes[0].isActiveAndEnabled, "sandbox controller must be active and enabled");
-            Require(sandboxes[0].Players != null && sandboxes[0].Players.Length == 1, "sandbox player wiring must contain exactly player one");
+            // 씬에 박힌 플레이어는 없다. 승무원은 접속 시 NGO 가 플레이어 프리팹에서 스폰한다 —
+            // 솔로도 host 1인이라 같은 경로를 탄다. 배열이 비어 있는 것이 정상이고, 여기 뭔가
+            // 들어 있으면 씬에 플레이어가 다시 구워졌다는 뜻이다.
+            Require(sandboxes[0].Players != null && sandboxes[0].Players.Length == 0, "network scene must not bake a player into the scene");
             Require(sandboxes[0].Items != null && sandboxes[0].Items.Length == 4, "sandbox item wiring must contain exactly four items");
-
-            var players = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftPlayerController>(true)).ToArray();
-            Require(players.Length == 1, "player controller count must be 1");
-            var player = players[0];
-            Require(player.isActiveAndEnabled, "player controller must be active and enabled");
-            Require(player.PlayerSlot == LastShiftPlayerSlot.PlayerOne, "solo player must use player one slot");
-            Require(player.GetComponent<CharacterController>() != null, "player CharacterController missing");
-            Require(player.TargetCamera != null && player.TargetCamera.isActiveAndEnabled, "active player camera missing");
-            Require(player.TargetCamera.CompareTag("MainCamera"), "solo camera must be MainCamera");
-            Require(player.TargetCamera.rect == new Rect(0f, 0f, 1f, 1f), "solo camera viewport mismatch");
-            Require(player.HoldSocket != null && player.HoldSocket.IsChildOf(player.TargetCamera.transform), "player hold socket wiring mismatch");
 
             var items = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftGrabbable>(true)).ToArray();
             Require(items.Length == 4, "grabbable item count must be 4");
@@ -82,14 +55,26 @@ namespace DoodleUp.Editor
             Require(items.All(item => item.Body != null), "grabbable Rigidbody cache not configured");
             Require(items.All(item => item.NominalPosition == item.transform.position), "grabbable nominal position must match saved scene position");
             Require(items.All(item => item.Secured == item.Body.isKinematic), "secured/kinematic wiring mismatch");
-            Require(sandboxes[0].Players[0] == player, "sandbox player reference mismatch");
             Require(sandboxes[0].Items.All(item => items.Contains(item)), "sandbox item references must match scene grabbables");
             Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
             VerifyZoneDoors(roots);
-            var sightRange = VerifyCameraCoversTheShip(roots, player.TargetCamera);
+            var sightRange = VerifyCameraCoversTheShip(roots, PlayerPrefabCamera());
             var (rays, gapZ) = VerifyZonesCannotSeeEachOther();
             var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=1 cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={player.TargetCamera.farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones=3 players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors=2 drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
+        }
+
+        /// <summary>
+        /// 승무원 카메라. 씬에 플레이어가 없으므로 프리팹에서 읽는다 — far clip 이 배를 덮는지는
+        /// 여전히 봐야 한다. 배가 길어지면 창밖 우주판이 잘려 실내가 검은 벽으로 끝난다.
+        /// </summary>
+        private static Camera PlayerPrefabCamera()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LastShiftNetworkSceneBuilder.PlayerPrefabPath);
+            Require(prefab != null, $"player prefab missing at {LastShiftNetworkSceneBuilder.PlayerPrefabPath}");
+            var camera = prefab.GetComponentInChildren<Camera>(true);
+            Require(camera != null, "player prefab must carry a camera");
+            return camera;
         }
 
         /// <summary>
