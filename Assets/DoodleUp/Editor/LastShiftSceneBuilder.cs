@@ -27,6 +27,7 @@ namespace DoodleUp.Editor
         private static Material panelMaterial;
         private static Material starMaterial;
         private static Material voidMaterial;
+        private static Material compartmentMaterial;
 
         /// <summary>
         /// 천장 내면 높이. 정본은 Runtime 의 LastShiftShipPhysics 다. 점프 정점이 이 값을
@@ -97,7 +98,7 @@ namespace DoodleUp.Editor
             EditorSceneManager.SaveScene(scene, ScenePath);
             EnsureSceneInBuildSettings();
             AssetDatabase.SaveAssets();
-            Debug.Log($"[LAST_SHIFT_BUILD] scene={ScenePath} zones=3 players=1 items={items.Length} buildScene=1 result=PASS");
+            Debug.Log($"[LAST_SHIFT_BUILD] scene={ScenePath} zones=3 compartments={LastShiftCompartments.Count} players=1 items={items.Length} buildScene=1 result=PASS");
         }
 
         private static void EnsureSceneInBuildSettings()
@@ -127,7 +128,7 @@ namespace DoodleUp.Editor
             // Left/Right 는 전장 축(x)의 두 끝벽이고 Back/Front 는 전폭 축(z)의 긴 벽이다.
             // 이름은 예전 배치에서 굳은 것이라 그대로 두되, 좌표는 전부 치수 정본에서 파생한다.
             CreateCube("OuterHull_Left", ship.transform, new Vector3(-EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f)));
-            CreateCube("OuterHull_Right", ship.transform, new Vector3(EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial);
+            CreateAftEndWall(ship.transform);
             CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, HullBackZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, WindowSillHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreatePassage(ship.transform, 0);
@@ -138,6 +139,7 @@ namespace DoodleUp.Editor
             CreateForwardWindows(ship.transform);
             CreateInstrumentPanels(ship.transform);
             CreateDucts(ship.transform);
+            CreateCompartments(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("TetherRack", ship.transform, TetherRackPosition, TetherRackScale, cockpitMaterial);
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.UtilityCenterX, 0.65f, BackWallInnerZ - 0.55f), new Vector3(1.6f, 1.3f, 0.5f), utilityMaterial);
@@ -456,6 +458,188 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>콜라이더 없는 장식 큐브. 물건이 걸리지 않아야 하는 요소에 쓴다.</summary>
+        // ── 그레이박스 구획 (docs/corridor-4p-redesign-v1.md §17.4) ─────────────
+        // 좌표 정본은 Runtime 의 LastShiftCompartments 다. 여기서 하는 것은 그 표를 판으로
+        // 세우는 일뿐이고, 숫자는 하나도 다시 적지 않는다.
+        //
+        // 면 소유 규칙이 이 블록 전체를 지탱한다: <b>구획은 자기 안쪽 문이 놓인 면을 안 세운다.</b>
+        // 그 면은 부모 구획(또는 선체)이 세우고 구멍도 거기서 뚫는다. 양쪽이 다 세우면 같은
+        // 평면에 판이 두 장 겹쳐 z-fighting 이 나고, 양쪽이 다 안 세우면 구획이 안 닫힌다.
+        // 소유자를 "문을 가진 쪽" 이 아니라 "문이 향하는 쪽" 으로 정한 이유는 선체다 —
+        // 선체 판은 이미 서 있으므로 구획이 그 자리에 또 세울 수 없다.
+
+        /// <summary>
+        /// 선미 끝벽. 통짜 한 장이 아닌 이유는 생활공간(§9)이 여기에 문 하나로 붙기 때문이다.
+        /// 선수 끝벽은 화물칸이 붙지만 그쪽은 잠긴 구획(§15.2)이라 구멍을 안 뚫는다 —
+        /// 잠김은 그레이박스에서 "판으로 메운 자리" 이고, 해치 표식만 붙여 존재를 알린다.
+        /// </summary>
+        private static void CreateAftEndWall(Transform ship)
+        {
+            var doorways = LastShiftCompartments.Specs
+                .Where(spec => LastShiftCompartments.ConnectsToHull(spec) && spec.IsPassable &&
+                               spec.DoorPlane == LastShiftDoorPlane.AlongX &&
+                               Mathf.Abs(spec.DoorPlaneCoordinate - HalfLength) < 0.001f)
+                .Select(spec => spec.DoorCenter)
+                .ToArray();
+
+            const float span = LastShiftShipDimensions.EndWallSpan;
+            CreateWallWithOpenings("OuterHull_Right", ship, true, EndWallX,
+                -span * 0.5f, span * 0.5f, CeilingInnerHeight,
+                LastShiftShipDimensions.HullThickness, hullMaterial, doorways);
+        }
+
+        /// <summary>
+        /// 구획 열한 개(§17.4). 에어록은 없다 — 우회 통로 z 경로가 미결이라 좌표가 안 나온다(§17.5).
+        ///
+        /// 이 지오메트리는 압력존에 안 들어간다(§17.6). <see cref="LastShiftZoneDoor"/> 를 쓰지
+        /// 않는 것이 그 경계를 코드에서 지키는 자리다 — 그 컴포넌트를 여기에 달면 씬 검증기의
+        /// "문 개수 = 구역 경계 수" 가 깨지고, 깨진 것을 고치려다 구획이 압력 위상에 조용히
+        /// 편입된다. 구획 문은 지금 단계에서 <b>판이거나 구멍이거나</b> 둘 중 하나다.
+        /// </summary>
+        private static void CreateCompartments(Transform ship)
+        {
+            compartmentMaterial ??= CreateMaterial("LS_Compartment", new Color(0.31f, 0.29f, 0.33f));
+
+            var root = new GameObject("Compartments");
+            root.transform.SetParent(ship, false);
+
+            foreach (var spec in LastShiftCompartments.Specs)
+                CreateCompartment(root.transform, spec);
+        }
+
+        private static void CreateCompartment(Transform parent, LastShiftCompartmentSpec spec)
+        {
+            const float thickness = LastShiftCompartments.PanelThickness;
+            const float height = LastShiftCompartments.InteriorHeight;
+
+            var root = new GameObject(LastShiftCompartments.NameOf(spec.Compartment));
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = new Vector3(spec.CenterX, 0f, spec.CenterZ);
+
+            var halfX = spec.LengthX * 0.5f;
+            var halfZ = spec.WidthZ * 0.5f;
+            var slabX = spec.LengthX + 2f * thickness;
+            var slabZ = spec.WidthZ + 2f * thickness;
+
+            CreateCube("Floor", root.transform, new Vector3(0f, -thickness * 0.5f, 0f),
+                new Vector3(slabX, thickness, slabZ), floorMaterial);
+            CreateCube("Ceiling", root.transform, new Vector3(0f, height + thickness * 0.5f, 0f),
+                new Vector3(slabX, thickness, slabZ), ceilingMaterial);
+
+            foreach (var alongX in new[] { true, false })
+            foreach (var atMax in new[] { false, true })
+            {
+                if (IsOwnDoorFace(spec, alongX, atMax)) continue;
+
+                var half = alongX ? halfX : halfZ;
+                var freeHalf = alongX ? halfZ : halfX;
+                var plane = (atMax ? half : -half) + (atMax ? thickness * 0.5f : -thickness * 0.5f);
+                var openings = ChildDoorwaysOn(spec, alongX, atMax);
+                CreateWallWithOpenings(
+                    $"Wall_{(alongX ? "X" : "Z")}{(atMax ? "Max" : "Min")}", root.transform,
+                    alongX, plane, -freeHalf - thickness, freeHalf + thickness, height,
+                    thickness, compartmentMaterial, openings);
+            }
+
+            CreateCompartmentLabel(spec, root.transform);
+
+            // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
+            // 잠긴 문틈으로 빛이 새면 §17.7 이 미결로 남긴 "차폐 수준" 을 코드가 먼저 정해 버린다.
+            if (!spec.IsPassable) return;
+            CreateZoneLight($"Light_{LastShiftCompartments.NameOf(spec.Compartment)}",
+                new Vector3(spec.CenterX, height - 0.35f, spec.CenterZ),
+                new Color(0.78f, 0.80f, 0.86f), 2.0f);
+        }
+
+        /// <summary>이 면이 구획 자기 안쪽 문이 놓인 면인가. 그 면은 부모(또는 선체)가 세운다.</summary>
+        private static bool IsOwnDoorFace(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
+        {
+            if (spec.DoorPlane != (alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ)) return false;
+            var face = alongX
+                ? (atMax ? spec.MaxX : spec.MinX)
+                : (atMax ? spec.MaxZ : spec.MinZ);
+            return Mathf.Abs(spec.DoorPlaneCoordinate - face) < 0.001f;
+        }
+
+        private static LastShiftCompartmentSpec[] ChildrenOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
+        {
+            var face = alongX
+                ? (atMax ? spec.MaxX : spec.MinX)
+                : (atMax ? spec.MaxZ : spec.MinZ);
+            return LastShiftCompartments.Specs
+                .Where(child => child.ParentIndex == (int)spec.Compartment &&
+                                child.DoorPlane == (alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ) &&
+                                Mathf.Abs(child.DoorPlaneCoordinate - face) < 0.001f)
+                .ToArray();
+        }
+
+        /// <summary>이 면에 뚫어야 하는 구멍의 자유축 로컬 좌표. 잠긴 자식은 구멍을 안 낸다.</summary>
+        private static float[] ChildDoorwaysOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
+        {
+            var origin = alongX ? spec.CenterZ : spec.CenterX;
+            return ChildrenOn(spec, alongX, atMax)
+                .Where(child => child.IsPassable)
+                .Select(child => child.DoorCenter - origin)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 판 한 장. <paramref name="openings"/> 는 이 면의 자유축 위 문 중심이고, 비어 있으면
+        /// 통짜다. 구멍이 있으면 구간을 잘라 세우고 그 위에 인방을 얹는다 — 인방이 없으면
+        /// 문 높이(2.2)에서 천장까지가 그대로 뚫려 그림과 통행 가능 범위가 어긋난다.
+        /// </summary>
+        private static void CreateWallWithOpenings(string name, Transform parent, bool alongX,
+            float plane, float freeMin, float freeMax, float height, float thickness,
+            Material material, float[] openings)
+        {
+            const float doorWidth = LastShiftZoneDoor.OpeningWidth;
+            const float doorHeight = LastShiftZoneDoor.OpeningHeight;
+
+            var edges = new System.Collections.Generic.List<float> { freeMin };
+            foreach (var opening in openings.OrderBy(value => value))
+            {
+                edges.Add(opening - doorWidth * 0.5f);
+                edges.Add(opening + doorWidth * 0.5f);
+            }
+            edges.Add(freeMax);
+
+            // 짝수 index 로 시작하는 구간이 판, 그 사이가 구멍이다.
+            for (var segment = 0; segment + 1 < edges.Count; segment += 2)
+            {
+                var min = edges[segment];
+                var max = edges[segment + 1];
+                if (max - min <= 0.0001f) continue;
+                CreateSlab($"{name}_{segment / 2}", parent, alongX, plane,
+                    (min + max) * 0.5f, max - min, height, 0f, thickness, material);
+            }
+
+            for (var index = 0; index < openings.Length; index++)
+                CreateSlab($"{name}_Lintel_{index}", parent, alongX, plane,
+                    openings[index], doorWidth, height - doorHeight, doorHeight, thickness, material);
+        }
+
+        private static void CreateSlab(string name, Transform parent, bool alongX, float plane,
+            float freeCenter, float freeSize, float height, float bottom, float thickness, Material material)
+        {
+            var position = alongX
+                ? new Vector3(plane, bottom + height * 0.5f, freeCenter)
+                : new Vector3(freeCenter, bottom + height * 0.5f, plane);
+            var scale = alongX
+                ? new Vector3(thickness, height, freeSize)
+                : new Vector3(freeSize, height, thickness);
+            CreateCube(name, parent, position, scale, material);
+        }
+
+        private static void CreateCompartmentLabel(LastShiftCompartmentSpec spec, Transform root)
+        {
+            var text = spec.Compartment.ToString().ToUpperInvariant();
+            // 라벨은 +z 를 보는 면에 글자를 그린다. 구획 선수 쪽 벽 안쪽에 붙여 문으로 들어오는
+            // 방향에서 읽히게 둔다.
+            CreateZoneLabel(text,
+                new Vector3(spec.CenterX, LastShiftCompartments.InteriorHeight - 0.75f, spec.MinZ + 0.12f),
+                compartmentMaterial.color);
+        }
+
         private static GameObject CreateDecorCube(string name, Transform parent, Vector3 localPosition, Vector3 scale, Material material)
         {
             var cube = CreateCube(name, parent, localPosition, scale, material);
@@ -664,6 +848,7 @@ namespace DoodleUp.Editor
             panelMaterial = null;
             starMaterial = null;
             voidMaterial = null;
+            compartmentMaterial = null;
         }
 
         private static Material CreateMaterial(string name, Color color)
