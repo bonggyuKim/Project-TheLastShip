@@ -84,6 +84,7 @@ namespace DoodleUp.Runtime
                 CheckGaugeAndSiren(prop, violations);
                 CheckReadoutException(prop, violations);
                 CheckBypassComfort(prop, violations);
+                CheckLightDeclaration(prop, violations);
 
                 if (prop.space.kind == LastShiftDressingSpaceKind.BypassRun &&
                     Has(prop, LastShiftDressingSemantics.LightSource))
@@ -232,6 +233,46 @@ namespace DoodleUp.Runtime
                 violations.Add(new LastShiftDressingViolation("C3_ReadoutReason", prop.id, prop.space,
                     "고유 시스템 표시는 사유를 적어야 한다 — 게이지처럼 읽히는지는 씬이 나온 뒤 " +
                     "체감 판정할 항목이라(브리프 §8.2), 그때 무엇을 근거로 넣었는지가 남아 있어야 한다."));
+        }
+
+        /// <summary>
+        /// 제약 4의 보조 — <b>장부와 화면이 갈라지지 않게 한다.</b>
+        ///
+        /// <see cref="LastShiftDressingProp.lightIntensity"/> 는 예산 집계용 숫자이고 실제로
+        /// 화면을 밝히는 것은 프리팹의 <see cref="Light"/> 다. 둘이 따로 놀면 예산은 통과하는데
+        /// 관은 그대로 밝은 상태가 되고, 그때 예산은 설계를 지키는 게 아니라 지킨다고 적힌
+        /// 종이가 된다. 실제로 그런 적이 있다 — 바닥 띠 둘의 합을 1.6 에서 1.4 로 내렸지만
+        /// 그 둘은 발광 재질이라 화면 밝기는 그대로였다.
+        ///
+        /// 그래서 <b>프리팹이 Light 를 들고 있을 때만</b> 두 값을 맞춘다. 재질 발광은 여기서
+        /// 재지 못하므로(셰이더·노출·톤매핑까지 봐야 한다) 규칙으로 만들지 않는다 — 못 재는
+        /// 것을 재는 척하면 오탐이 쌓여 검사 자체가 꺼진다. 재질 발광만으로 밝히는 소품은
+        /// 지금도 여섯 개 있고, 그건 규칙이 아니라 리뷰가 볼 몫이다.
+        /// </summary>
+        private static void CheckLightDeclaration(LastShiftDressingProp prop,
+            List<LastShiftDressingViolation> violations)
+        {
+            if (prop.prefab == null) return;
+
+            var lights = prop.prefab.GetComponentsInChildren<Light>(true);
+            if (lights == null || lights.Length == 0) return;
+
+            var actual = 0f;
+            foreach (var light in lights)
+                if (light != null) actual += Mathf.Max(0f, light.intensity);
+
+            if (!Has(prop, LastShiftDressingSemantics.LightSource))
+            {
+                violations.Add(new LastShiftDressingViolation("C4_LightUndeclared", prop.id, prop.space,
+                    $"프리팹 {prop.prefab.name} 이 Light {lights.Length}개(합 {actual:0.##})를 들고 있는데 " +
+                    "LightSource 로 선언하지 않았다 — 선언이 없으면 밝기 예산이 이 빛을 못 본다."));
+                return;
+            }
+
+            if (Mathf.Abs(prop.lightIntensity - actual) > Epsilon)
+                violations.Add(new LastShiftDressingViolation("C4_LightMismatch", prop.id, prop.space,
+                    $"선언한 밝기 {prop.lightIntensity:0.##} 가 프리팹 실제 합 {actual:0.##} 와 다르다 — " +
+                    "예산은 선언을 세므로, 어긋난 채 두면 장부만 줄이고 화면은 그대로인 상태가 된다."));
         }
 
         /// <summary>제약 4 — 우회 통로는 불편해야 한다(§5).</summary>
