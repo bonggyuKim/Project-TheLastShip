@@ -44,9 +44,13 @@ namespace DoodleUp.Runtime
         /// 제약 4. 우회 통로 발광체 밝기 합. 넘으면 관이 밝아져 "여기 있고 싶지 않다" 가
         /// 사라진다 — §5 는 이 통로를 산소를 태워서라도 쓰는 비상용으로 설계했고,
         /// 쾌적해지는 순간 평상시 최단경로가 되어 갑판 위 통로 설계가 통째로 무의미해진다.
-        /// 바닥 유도띠 한 줄(0.8) + 에어록 진입 표시 약간을 감안한 상한이다.
+        ///
+        /// <b>지금 든 것이 거의 다 찬 값이다.</b> 관 안에는 바닥 유도띠 두 줄(본선·선수 다리,
+        /// 각 0.8)뿐이고 합이 1.6 이라, 남은 0.4 는 에어록 진입 표시 정도만 들어간다.
+        /// 여유를 크게 잡으면 예산이 아니라 장식이 된다 — 이 상한의 목적은 "더 밝히려면
+        /// 무엇을 뺄지 먼저 정하라" 이지 특정 밝기를 맞추는 것이 아니다.
         /// </summary>
-        public const float BypassLightBudget = 1.2f;
+        public const float BypassLightBudget = 2.0f;
 
         /// <summary>
         /// 제약 3의 예외를 쓸 수 있는 방. 브리프 §1.3·§4.2·§4.3·§5.3·§6.2 가 이름을 댄
@@ -108,9 +112,11 @@ namespace DoodleUp.Runtime
                 return;
             }
 
-            // 공간이 달라도 이름은 겹치면 안 된다. 위반 로그가 이름으로만 오기 때문에
-            // 같은 이름이 둘이면 어느 쪽을 고쳐야 하는지가 로그에서 안 갈린다.
-            if (!seen.Add(prop.id))
+            // 유일성은 <b>공간 안에서만</b> 요구한다. 소품은 공간별 루트 아래에 붙으므로
+            // 정비창 Bench_Port 와 휴게실 Bench_Port 는 하이어라키에서 안 겹치고, 위반
+            // 로그도 공간을 같이 찍는다. 전역 유일을 요구하면 방 이름을 접두어로 달아야
+            // 하고, 그러면 씬 하이어라키가 Workshop/Workshop_Bench_Port 로 두 번 말한다.
+            if (!seen.Add($"{prop.space}/{prop.id}"))
                 violations.Add(new LastShiftDressingViolation("R0_Id", prop.id, prop.space,
                     "이름이 중복이다."));
         }

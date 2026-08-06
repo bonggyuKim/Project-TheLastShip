@@ -271,12 +271,23 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void DuplicateIdsAreRejected()
+        public void DuplicateIdsInTheSameSpaceAreRejected()
         {
             var a = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay));
-            var b = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.Hangar));
+            var b = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay));
 
             Assert.That(HasRule(Validate(a, b), "R0_Id"), Is.True);
+        }
+
+        [Test]
+        public void SameIdInDifferentSpacesPasses()
+        {
+            // 소품은 공간별 루트 아래에 붙으므로 하이어라키에서 안 겹친다. 전역 유일을
+            // 요구하면 방 이름을 접두어로 달아야 하고 이름이 두 번 반복된다.
+            var a = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Workshop));
+            var b = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Lounge));
+
+            Assert.That(HasRule(Validate(a, b), "R0_Id"), Is.False);
         }
 
         [Test]
