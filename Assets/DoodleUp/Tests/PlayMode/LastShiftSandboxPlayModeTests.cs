@@ -220,7 +220,11 @@ namespace DoodleUp.Tests.PlayMode
             // 공기를 계속 밀어 넣어 배 전체가 함께 내려갈 뿐, 300초 안에 어느 구역도 진공에
             // 닿지 않는다. 문을 닫아야 파공 구역이 자기 공기만으로 빠져 129초에 진공이 된다.
             player.ResetPlayer(new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 0.1f, -1.6f));
-            sandbox.SetDoorOpen(1, false);
+            // 산소실을 끊는 경계는 언제나 <b>마지막</b> 경계다. 번호 1 은 구역이 셋일 때만
+            // 엔진실-산소실이었고, 넷이 된 뒤로는 전력실-냉각실이다(§2.1) — 그대로 두면
+            // 엉뚱한 문을 닫고도 "격리했다" 고 믿게 되어 진공이 영영 도달하지 않는다.
+            var sternBoundary = LastShiftZoneAtlas.BoundaryCount - 1;
+            sandbox.SetDoorOpen(sternBoundary, false);
             for (var i = 0; i < 2000 && sandbox.PressureOf(sandbox.BreachZone) > LastShiftRecoveryTuning.VacuumOxygenPressure; i++)
                 sandbox.AdvanceMission(1f);
             Assert.That(sandbox.PressureOf(sandbox.BreachZone), Is.EqualTo(0f).Within(0.0001f),

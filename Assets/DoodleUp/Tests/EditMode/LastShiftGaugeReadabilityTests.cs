@@ -121,12 +121,12 @@ namespace DoodleUp.Tests.EditMode
             // 가장 많은 방에서 성립한다. 단면 배치가 그것을 막는 조건이다.
             var centre = new Vector2(LastShiftShipDimensions.PowerCenterX, 0f);
             var count = LastShiftSightlineProbe.SimultaneousZones(centre, out var zones);
-            Assert.That(count, Is.EqualTo(1), $"엔진실 방 중앙에서 읽히는 구역: {string.Join(",", zones)}");
+            Assert.That(count, Is.EqualTo(1), $"전력실 방 중앙에서 읽히는 구역: {string.Join(",", zones)}");
             Assert.That(zones[0], Is.EqualTo(LastShiftZone.Power));
 
             foreach (var opening in LastShiftSightlineProbe.GaugeOpenings)
                 Assert.That(LastShiftSightlineProbe.GaugeReadableFrom(centre, opening), Is.False,
-                    $"엔진실 방에서 개구부 {opening} 게이지 앞면이 보인다 — 게이지가 양면에 달렸다.");
+                    $"전력실 방에서 개구부 {opening} 게이지 앞면이 보인다 — 게이지가 양면에 달렸다.");
         }
 
         [Test]
@@ -141,7 +141,8 @@ namespace DoodleUp.Tests.EditMode
                 ("통로 B", new Vector2(LastShiftShipDimensions.PassageCenterX(1),
                     LastShiftShipDimensions.PassageCenterZ(1)), 2),
                 ("조종석 방", new Vector2(LastShiftShipDimensions.CockpitCenterX, 0f), 1),
-                ("엔진실 방", new Vector2(LastShiftShipDimensions.PowerCenterX, 0f), 1),
+                ("전력실 방", new Vector2(LastShiftShipDimensions.PowerCenterX, 0f), 1),
+                ("냉각실 방", new Vector2(LastShiftShipDimensions.CoolingCenterX, 0f), 1),
                 ("산소실 방", new Vector2(LastShiftShipDimensions.LifeSupportCenterX, 0f), 1)
             };
 
@@ -164,8 +165,14 @@ namespace DoodleUp.Tests.EditMode
                 sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
                 foreach (var opening in LastShiftSightlineProbe.GaugeOpenings)
                 {
-                    Assert.That(sandbox.GaugeReading(opening).Zone, Is.EqualTo(LastShiftZone.Power),
-                        $"개구부 {opening} 게이지가 엔진실이 아닌 구역을 가리킨다.");
+                    // 게이지는 통로에서 방을 본다. 가운데가 둘로 갈린 뒤로 개구부마다 보는 방이
+                    // 다르다 — 개구부 1 은 전력실, 개구부 3 은 냉각실이다. 하나로 적으면 안 된다.
+                    var expectedZone = LastShiftZoneAtlas.Resolve(new Vector3(
+                        LastShiftShipDimensions.GaugeFacingX(opening) > 0f
+                            ? LastShiftShipDimensions.SpaceCenterXBefore(opening)
+                            : LastShiftShipDimensions.SpaceCenterXAfter(opening), 0f, 0f));
+                    Assert.That(sandbox.GaugeReading(opening).Zone, Is.EqualTo(expectedZone),
+                        $"개구부 {opening} 게이지가 통로 건너편 방이 아닌 구역을 가리킨다.");
 
                     // 그리고 관찰자 인자를 남겨 둔 이유 — 범용 함수는 여전히 양쪽을 구분한다.
                     var front = LastShiftShipDimensions.GaugeViewerX(opening);
@@ -186,7 +193,9 @@ namespace DoodleUp.Tests.EditMode
         private static bool IsStandable(Vector2 at)
         {
             var r = LastShiftShipPhysics.CrewRadius;
-            foreach (var zone in new[] { LastShiftZone.Cockpit, LastShiftZone.Power, LastShiftZone.LifeSupport })
+            // 구역을 나열하지 않는다 — 넷이 된 뒤 냉각실만 빠지면 그 방 안 좌표가 전부
+            // "서 있을 수 없음" 이 되어 표본에서 통째로 사라지고, 검사가 조용히 헐거워진다.
+            foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
                 if (at.x >= LastShiftShipDimensions.RoomMinX(zone) + r &&
                     at.x <= LastShiftShipDimensions.RoomMaxX(zone) - r &&
                     Mathf.Abs(at.y) <= LastShiftShipDimensions.HalfWidth - r)

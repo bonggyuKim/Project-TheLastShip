@@ -20,7 +20,11 @@ namespace DoodleUp.Tests.EditMode
             // 산소실만 낮은 상태에서 시작한다. 파공 직후의 모양이다.
             var pressures = new LastShiftZonePressures(1f, 1f, 1f, 0.2f);
             var doors = LastShiftDoorState.AllOpen;
-            doors[1] = false;
+            // 산소실을 끊는 경계는 언제나 마지막 경계다. 번호를 적어 두면 구역이 셋에서 넷이
+            // 되며 경계가 하나 늘었을 때(§2.1) 엉뚱한 경계를 닫고도 "닫았다" 고 믿게 된다 —
+            // 실제로 이 검사가 그렇게 통과 못 하고 0.60 을 봤다.
+            var lastBoundary = LastShiftZoneAtlas.BoundaryCount - 1;
+            doors[lastBoundary] = false;
 
             pressures.Equalize(doors, 60f);
 
@@ -30,7 +34,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(pressures.Power, Is.EqualTo(1f).Within(0.0001f));
 
             // 같은 상태에서 문만 열면 그 자리에서 다시 평준화가 시작된다.
-            doors[1] = true;
+            doors[lastBoundary] = true;
             pressures.Equalize(doors, 60f);
             Assert.That(pressures.LifeSupport, Is.GreaterThan(0.2f),
                 "문을 열면 평준화가 재개돼야 한다.");

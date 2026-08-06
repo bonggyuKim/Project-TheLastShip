@@ -106,7 +106,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void RoomsAndPassagesTileTheHullWithoutGapOrOverlap()
         {
-            // 방 셋 + 통로 둘이 전장을 남김없이 채우는가. 하나라도 어긋나면 그 틈에 놓인
+            // 방 넷 + 통로 둘이 전장을 남김없이 채우는가. 하나라도 어긋나면 그 틈에 놓인
             // 좌표가 "어느 형상에도 안 들어감" 이 되어 형상 검사가 통과할 수 없다.
             Assert.That(LastShiftShipDimensions.EndRoomLength * 2f + LastShiftShipDimensions.MidRoomLength * 2f + LastShiftShipDimensions.PassageLength * 2f,
                 Is.EqualTo(LastShiftShipDimensions.InteriorLength).Within(0.0001f));
@@ -116,7 +116,8 @@ namespace DoodleUp.Tests.EditMode
                 Is.EqualTo(LastShiftShipDimensions.HalfLength).Within(0.0001f));
             for (var passage = 0; passage < 2; passage++)
             {
-                var before = passage == 0 ? LastShiftZone.Cockpit : LastShiftZone.Power;
+                // 통로 B 는 냉각실 뒤에 붙는다 — 가운데가 둘로 갈린 뒤로 앞쪽(전력실)이 아니다.
+                var before = passage == 0 ? LastShiftZone.Cockpit : LastShiftZone.Cooling;
                 var after = passage == 0 ? LastShiftZone.Power : LastShiftZone.LifeSupport;
                 Assert.That(LastShiftShipDimensions.PassageMinX(passage),
                     Is.EqualTo(LastShiftShipDimensions.RoomMaxX(before)).Within(0.0001f));
@@ -124,10 +125,10 @@ namespace DoodleUp.Tests.EditMode
                     Is.EqualTo(LastShiftShipDimensions.RoomMinX(after)).Within(0.0001f));
             }
 
-            // 구역 경계는 엔진실 방의 양 끝과 같은 자리여야 한다. 문이 달리는 자리와 압력
+            // 구역 경계는 방 경계와 같은 자리여야 한다. 문이 달리는 자리와 압력
             // 판정 자리가 갈라지면 문을 닫아도 판정면에 차단물이 없어 압력이 안 끊긴다.
             Assert.That(LastShiftShipDimensions.ZoneBoundaryX,
-                Is.EqualTo(LastShiftShipDimensions.RoomMaxX(LastShiftZone.Power)).Within(0.0001f),
+                Is.EqualTo(LastShiftShipDimensions.RoomMaxX(LastShiftZone.Cooling)).Within(0.0001f),
                 "ZoneBoundaryX 는 const 라 RoomMaxX 와 따로 계산된다 — 둘이 어긋나면 여기서 잡는다.");
         }
 

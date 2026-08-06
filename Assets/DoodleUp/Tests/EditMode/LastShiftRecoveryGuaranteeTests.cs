@@ -211,8 +211,17 @@ namespace DoodleUp.Tests.EditMode
             foreach (var _ in AllCombos()) actual++;
 
             Assert.That(actual, Is.EqualTo(expected));
-            Assert.That(expected, Is.EqualTo(1440),
-                "COMBO_TOTAL 이 기획 §0.2 의 1,440 과 다르다 — 축이 늘었거나 줄었다.");
+
+            // 이 검사가 지키려는 것은 <b>축</b>이다("축이 늘었거나 줄었다"). 총수 리터럴로 두면
+            // 구역 수가 바뀔 때도 같이 걸려서, 의도한 구역 증설(§2.1)과 의도치 않은 축 변화를
+            // 구분할 수 없다. 그래서 축의 곱만 고정한다.
+            //
+            // 기획 §0.2 의 COMBO_TOTAL 1,440 은 이 축 곱(240) x 구역 3 x 2 였다. 구역이 넷이
+            // 되며 같은 식이 1,920 을 낸다 — 축은 그대로다. RG-4(파공 구역 조합 확률)는 이
+            // 개수와 별개로 game-balance 재계산 대상이다(§7).
+            Assert.That(HeatAxis.Length * PowerAxis.Length * OxygenAxis.Length * PropulsionAxis.Length,
+                Is.EqualTo(240), "상황 축이 늘었거나 줄었다 — 구역 수 변화와 구분해서 봐야 한다.");
+            Assert.That(expected, Is.EqualTo(240 * LastShiftZoneAtlas.ZoneCount * 2));
         }
 
         [Test]
@@ -239,7 +248,7 @@ namespace DoodleUp.Tests.EditMode
                     tracker.OxygenStatusOf(combo.BreachZone).Situation, combo.Oxygen);
             }
 
-            Assert.That(checkedCount, Is.EqualTo(1440));
+            Assert.That(checkedCount, Is.EqualTo(240 * LastShiftZoneAtlas.ZoneCount * 2));
             Assert.That(failures.Length, Is.Zero, failures.ToString());
         }
 
@@ -328,7 +337,7 @@ namespace DoodleUp.Tests.EditMode
                       $"(1)repairable={repairable} (2)dockReachable={dockReachable} " +
                       $"(3)dockInTime={dockInTime} (4)survivable={survivable} (6)cockpitHoldable={cockpitHoldable}");
 
-            Assert.That(total, Is.EqualTo(1440));
+            Assert.That(total, Is.EqualTo(240 * LastShiftZoneAtlas.ZoneCount * 2));
             Assert.That(blocked.Length, Is.Zero, $"RG-2 위반\n{blocked}");
             Assert.That(lockStuck.Length, Is.Zero, $"RG-3 위반\n{lockStuck}");
             Assert.That(cockpitLost.Length, Is.Zero, $"RG-4 (6) 위반\n{cockpitLost}");

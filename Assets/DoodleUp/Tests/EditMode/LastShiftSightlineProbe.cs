@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DoodleUp.Runtime;
 using UnityEngine;
 
@@ -135,6 +136,18 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>게이지가 달린 개구부. 통로 쪽 단면이라 가리키는 구역이 자기 구역과 다르다.</summary>
-        public static readonly int[] GaugeOpenings = { 1, 2 };
+        /// <summary>
+        /// 게이지가 붙은 개구부. 번호를 적어 두면 개구부가 넷에서 다섯이 되며 번호가 밀렸을 때
+        /// (§3) 방-방 문(게이지 없음)을 게이지로 세고도 그럴듯한 값이 나온다. 치수 정본에 묻는다.
+        /// </summary>
+        public static readonly int[] GaugeOpenings = BuildGaugeOpenings();
+
+        private static int[] BuildGaugeOpenings()
+        {
+            var list = new List<int>();
+            for (var opening = 0; opening < LastShiftShipDimensions.OpeningCount; opening++)
+                if (LastShiftShipDimensions.HasGauge(opening)) list.Add(opening);
+            return list.ToArray();
+        }
     }
 }

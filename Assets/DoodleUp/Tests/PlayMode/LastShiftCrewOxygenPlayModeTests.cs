@@ -271,8 +271,12 @@ namespace DoodleUp.Tests.PlayMode
         /// </summary>
         private void IsolateBreachZone()
         {
-            sandbox.SetDoorOpen(1, false);
-            Assert.That(sandbox.IsDoorOpen(1), Is.False, "산소실 격리가 걸려야 진공이 도달 가능하다.");
+            // 산소실을 끊는 경계는 언제나 <b>마지막</b> 경계다. 번호 1 은 구역이 셋일 때만
+            // 엔진실-산소실이었고, 넷이 된 뒤로는 전력실-냉각실이다(§2.1) — 그대로 두면
+            // 엉뚱한 문을 닫고도 "격리했다" 고 믿게 되어 진공이 영영 도달하지 않는다.
+            var sternBoundary = LastShiftZoneAtlas.BoundaryCount - 1;
+            sandbox.SetDoorOpen(sternBoundary, false);
+            Assert.That(sandbox.IsDoorOpen(sternBoundary), Is.False, "산소실 격리가 걸려야 진공이 도달 가능하다.");
         }
 
         /// <summary>

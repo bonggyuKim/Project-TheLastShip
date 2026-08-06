@@ -98,19 +98,21 @@ namespace DoodleUp.Runtime
             return zone switch
             {
                 LastShiftZone.Cockpit => "cockpit",
-                LastShiftZone.LifeSupport => "lifeSupport",
-                _ => "utility"
+                LastShiftZone.Power => "power",
+                LastShiftZone.Cooling => "cooling",
+                _ => "lifeSupport"
             };
         }
 
-        /// <summary>HUD 3칸에 쓰는 짧은 이름. 문서 용어(조종석/엔진실/산소실)를 그대로 쓴다.</summary>
+        /// <summary>HUD 칸에 쓰는 짧은 이름. 문서 용어(조종석/전력실/냉각실/산소실)를 그대로 쓴다.</summary>
         public static string ShortLabelOf(LastShiftZone zone)
         {
             return zone switch
             {
                 LastShiftZone.Cockpit => "조종석",
-                LastShiftZone.LifeSupport => "산소실",
-                _ => "엔진실"
+                LastShiftZone.Power => "전력실",
+                LastShiftZone.Cooling => "냉각실",
+                _ => "산소실"
             };
         }
 

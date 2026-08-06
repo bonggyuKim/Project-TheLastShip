@@ -256,7 +256,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PassageEndOpeningsReadTheZoneTheyBelongTo()
         {
-            // 개구부 0·3 은 양쪽이 같은 구역이다 — 통로 A 전체가 조종석 구역이고 통로 B 전체가
+            // 통로의 방 쪽 개구부(문이 없는 끝)는 양쪽이 같은 구역이다 — 통로 A 전체가 조종석 구역이고 통로 B 전체가
             // 산소실 구역이기 때문이다(구역 경계는 통로 안이 아니라 통로 끝에 있다).
             // 이건 결함이 아니라 성질이다. 여기가 조용히 뒤집히면 문 달린 두 개구부의 판독도
             // 같이 어긋난다.
@@ -278,7 +278,12 @@ namespace DoodleUp.Tests.EditMode
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
             sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
 
-            foreach (var opening in new[] { 0, 3 })
+            // 번호를 적지 않는다 — 개구부가 다섯이 되며 통로 B 쪽이 3 에서 4 로 밀렸다(§3).
+            foreach (var opening in new[]
+                     {
+                         LastShiftShipDimensions.BaffleNearOpening(0),
+                         LastShiftShipDimensions.BaffleNearOpening(1)
+                     })
             {
                 var x = LastShiftShipDimensions.OpeningX(opening);
                 Assert.That(sandbox.DistressBeyondOpening(opening, x - 1f).Zone,
