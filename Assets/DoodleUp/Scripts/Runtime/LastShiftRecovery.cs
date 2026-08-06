@@ -59,6 +59,18 @@ namespace DoodleUp.Runtime
         public const float HeatRecoveryPerSecond = 0.030f;
         public const float HeatProtectionTrigger = 1.00f;
 
+        /// <summary>
+        /// 자연 냉각률(기획 §0.2 <c>HEAT_COOL</c>, §2.3 A-1 "자연 회복"). 추력이
+        /// <see cref="HeatRiseThrustThreshold"/> 이하이면 냉각 복구 여부와 무관하게 돈다.
+        ///
+        /// <b>RG-3(잠금은 항상 자연 해제된다)이 이 상수에 걸려 있다.</b> <c>S-H3</c> 엔진 보호
+        /// 잠금은 추력 상한을 <c>0.25</c> 로 눌러 상승 분기를 스스로 끄므로, 하강 경로가
+        /// 냉각 복구뿐이면 냉각통을 못 가져온 팀은 열 <c>1.00</c> 에 영구히 갇힌다.
+        /// <c>1.00 → 0.80</c> 해제선까지 <c>0.20 / 0.008 = 25초</c> 이며, 이 값이 기획이 말한
+        /// "아무것도 하지 않아도 25초 후 풀린다" 를 성립시킨다.
+        /// </summary>
+        public const float HeatNaturalCoolPerSecond = 0.008f;
+
         // ── CT-06 N5 열 폭주 가속 (기획 §3.3 S-H2) ────────────────────────
         /// <summary>
         /// <c>S-H2</c> 엔진 열 폭주 발동선. 냉각 미연결 상태에서 열이 이 값에 닿으면 tick 이
@@ -464,11 +476,20 @@ namespace DoodleUp.Runtime
                     state.BusPower - LastShiftRecoveryTuning.BusDropPerSecond * deltaTime);
             }
 
-            // ── 열 시계 ── 고추력 + 냉각 미복구에서만 오른다. 복구 후에만 내려간다.
-            // 구역을 포기한 경우 악화는 멈추지만 회복도 없다(그 자리에 얼어붙는다).
+            // ── 열 시계 ── 고추력 + 냉각 미복구에서만 오른다.
             //
             // CT-06 N5: 열이 S-H2 발동선을 넘으면 상승률이 갈아탄다(기획 §3.3). 기존 tick 을
             // 대체하는 것이 아니라 분기가 하나 늘 뿐이고, 발동선 아래는 그대로 0.020/s 다.
+            //
+            // CT-07: 추력이 상승선 아래면 냉각 상태와 무관하게 자연 냉각이 돈다(기획 §2.3 A-1
+            // 자연 회복, §0.2 HEAT_COOL). <b>이 항이 RG-3 의 근거다.</b> 예전에는 하강 경로가
+            // 냉각 복구 하나뿐이라, S-H3 (열 1.00, 추력 상한 0.25) 에 걸리면 상승 조건
+            // (추력 > 0.60)도 하강 조건(냉각 복구)도 성립하지 않아 열이 1.00 에 얼어붙었다.
+            // 냉각통을 못 가져오면 영구 잠금이었고, 그건 RG-3 이 "아무것도 하지 않아도 25초
+            // 후 풀린다" 고 보장한 것과 정반대다.
+            //
+            // 구역을 포기(sacrifice)한 경우에도 자연 냉각은 돈다. 포기가 막는 것은 악화이지
+            // 물리적 방열이 아니고, 포기 상태에서만 잠금이 안 풀리면 RG-3 에 구멍이 남는다.
             if (!containment.CoolingContained && state.ThrustDemand > LastShiftRecoveryTuning.HeatRiseThrustThreshold)
             {
                 var rise = IsHeatRunaway(state, containment)
@@ -476,9 +497,15 @@ namespace DoodleUp.Runtime
                     : LastShiftRecoveryTuning.HeatRisePerSecond;
                 state.EngineHeat = Mathf.Clamp01(state.EngineHeat + rise * deltaTime);
             }
-            else if (containment.CoolingRestored)
+            else
             {
-                state.EngineHeat = Mathf.Clamp01(state.EngineHeat - LastShiftRecoveryTuning.HeatRecoveryPerSecond * deltaTime);
+                // 냉각을 복구했으면 능동 냉각률(0.030/s), 아니면 자연 냉각률(0.008/s).
+                // 복구했는데 고추력이라 상승 분기에 안 걸린 경우도 여기로 온다 — 복구가
+                // 자연 냉각보다 느려지는 일은 없어야 한다.
+                var fall = containment.CoolingRestored
+                    ? LastShiftRecoveryTuning.HeatRecoveryPerSecond
+                    : LastShiftRecoveryTuning.HeatNaturalCoolPerSecond;
+                state.EngineHeat = Mathf.Clamp01(state.EngineHeat - fall * deltaTime);
             }
 
             // ── 산소 시계 ── 이제 구역별로 돈다(기획 v0.3 §2.2).
