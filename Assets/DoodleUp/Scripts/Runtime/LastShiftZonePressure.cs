@@ -28,20 +28,51 @@ namespace DoodleUp.Runtime
     /// </summary>
     public static class LastShiftZoneAtlas
     {
+        /// <summary>
+        /// 구역 수. <b>이 값과 <see cref="BoundaryPlanes"/> 가 구역 위상의 정본이고, 나머지는
+        /// 전부 여기서 파생한다.</b>
+        ///
+        /// 통로 재설계 v6(<c>docs/corridor-4p-redesign-v1.md</c> §4)이 "진짜 알고리즘 변경이
+        /// 필요한 것은 <see cref="Resolve"/> 하나" 라고 짚은 자리다. 엔진실을 전력실·냉각실로
+        /// 쪼개면 이 값이 <c>4</c> 가 되는데, 그때 손대야 하는 것이 분기 형태가 아니라 아래
+        /// 경계 배열 하나가 되도록 미리 풀어 둔다 — 구역별 <c>if</c> 사슬로 두면 구역이 늘 때마다
+        /// 사슬을 다시 짜야 하고, 그 과정에서 <see cref="LastShiftZonePressures.Lowest"/> 처럼
+        /// 구역 수를 따로 들고 있는 자리가 조용히 뒤처진다.
+        /// </summary>
         public const int ZoneCount = 3;
 
-        /// <summary>인접 구역 쌍의 수. 구역이 일렬로 셋이므로 경계는 둘이다.</summary>
-        public const int BoundaryCount = 2;
+        /// <summary>인접 구역 쌍의 수. 구역이 일렬이므로 언제나 구역 수보다 하나 적다.</summary>
+        public const int BoundaryCount = ZoneCount - 1;
 
         /// <summary>구역 판정 기준 x 경계. 치수 정본(<see cref="LastShiftShipDimensions"/>)에서 파생한다.</summary>
         public const float CockpitMaxX = -LastShiftShipDimensions.ZoneBoundaryX;
         public const float LifeSupportMinX = LastShiftShipDimensions.ZoneBoundaryX;
 
+        /// <summary>
+        /// 구역 경계 평면을 선수→선미 순으로 늘어놓은 것. index 가 곧 경계 번호이고,
+        /// 경계 <c>b</c> 는 구역 <c>b</c> 와 <c>b+1</c> 을 가른다.
+        ///
+        /// 오름차순이어야 <see cref="Resolve"/> 의 선형 훑기가 성립한다 — 그 조건은
+        /// <c>LastShiftZoneTopologyTests</c> 가 고정한다.
+        /// </summary>
+        private static readonly float[] BoundaryPlanes = { CockpitMaxX, LifeSupportMinX };
+
+        /// <summary>
+        /// 위치 → 구역. 경계를 선수 쪽부터 훑어 처음으로 <c>x ≤ 경계</c> 인 구역을 돌려주고,
+        /// 어느 경계에도 안 걸리면 마지막 구역이다.
+        ///
+        /// <b>경계 평면 위의 점은 낮은 쪽(선수 쪽) 구역에 속한다.</b> 개구부 몇 개는 x 가 구역
+        /// 경계와 <b>같은 값</b>이라 이 동점 규칙이 실제로 관측된다 — 규칙을 정하지 않고 두면
+        /// 분기 순서 같은 우연이 답을 정하고, 구역이 늘 때 조용히 뒤집힌다. 그래서 규칙으로
+        /// 못박고 테스트로 고정한다. 경계 위 좌표를 실제로 쓰지 말라는 요구는 그대로다 —
+        /// 그쪽은 <see cref="LastShiftShipDimensions.SpaceCenterXBefore"/> 가 답이다.
+        /// </summary>
         public static LastShiftZone Resolve(Vector3 position)
         {
-            if (position.x <= CockpitMaxX) return LastShiftZone.Cockpit;
-            if (position.x >= LifeSupportMinX) return LastShiftZone.LifeSupport;
-            return LastShiftZone.Utility;
+            for (var boundary = 0; boundary < BoundaryCount; boundary++)
+                if (position.x <= BoundaryPlanes[boundary])
+                    return (LastShiftZone)boundary;
+            return (LastShiftZone)(ZoneCount - 1);
         }
 
         public static string NameOf(LastShiftZone zone)
@@ -51,6 +82,20 @@ namespace DoodleUp.Runtime
                 LastShiftZone.Cockpit => LastShiftSceneZones.CockpitZoneName,
                 LastShiftZone.LifeSupport => LastShiftSceneZones.LifeSupportZoneName,
                 _ => LastShiftSceneZones.UtilityZoneName
+            };
+        }
+
+        /// <summary>
+        /// 로그에 쓰는 영문 키. <see cref="LastShiftZonePressures.ToString"/> 가 구역을 훑어
+        /// 찍을 때 쓴다 — 구역이 늘면 여기 한 줄만 보태면 로그 형식이 따라온다.
+        /// </summary>
+        public static string KeyOf(LastShiftZone zone)
+        {
+            return zone switch
+            {
+                LastShiftZone.Cockpit => "cockpit",
+                LastShiftZone.LifeSupport => "lifeSupport",
+                _ => "utility"
             };
         }
 
@@ -74,18 +119,36 @@ namespace DoodleUp.Runtime
             return false;
         }
 
-        /// <summary>경계 index 의 낮은 쪽 구역. 0 = 조종석↔엔진실, 1 = 엔진실↔산소실.</summary>
-        public static LastShiftZone LowZoneOf(int boundary) => boundary <= 0 ? LastShiftZone.Cockpit : LastShiftZone.Utility;
+        /// <summary>
+        /// 경계 index 의 낮은 쪽 구역. 0 = 조종석↔엔진실, 1 = 엔진실↔산소실.
+        /// 경계 번호가 곧 낮은 쪽 구역 번호다 — 구역이 일렬이라 그렇고, 구역이 넷이 돼도 같다.
+        /// </summary>
+        public static LastShiftZone LowZoneOf(int boundary) =>
+            (LastShiftZone)Mathf.Clamp(boundary, 0, BoundaryCount - 1);
 
-        public static LastShiftZone HighZoneOf(int boundary) => boundary <= 0 ? LastShiftZone.Utility : LastShiftZone.LifeSupport;
+        public static LastShiftZone HighZoneOf(int boundary) =>
+            (LastShiftZone)(Mathf.Clamp(boundary, 0, BoundaryCount - 1) + 1);
 
         /// <summary>경계가 놓인 x. 벌크헤드/문 배치와 같은 값이어야 한다.</summary>
-        public static float BoundaryX(int boundary) => boundary <= 0 ? CockpitMaxX : LifeSupportMinX;
+        public static float BoundaryX(int boundary) =>
+            BoundaryPlanes[Mathf.Clamp(boundary, 0, BoundaryCount - 1)];
 
-        /// <summary>이 위치에서 가장 가까운 경계. 문 조작 프롬프트의 대상 판정에 쓴다.</summary>
+        /// <summary>
+        /// 이 위치에서 가장 가까운 경계. 문 조작 프롬프트의 대상 판정에 쓴다.
+        /// 동점이면 낮은 번호를 고른다 — 예전 <c>&lt;=</c> 비교의 동작을 그대로 옮긴 것이다.
+        /// </summary>
         public static int NearestBoundary(Vector3 position)
         {
-            return Mathf.Abs(position.x - BoundaryX(0)) <= Mathf.Abs(position.x - BoundaryX(1)) ? 0 : 1;
+            var nearest = 0;
+            var best = Mathf.Abs(position.x - BoundaryX(0));
+            for (var boundary = 1; boundary < BoundaryCount; boundary++)
+            {
+                var distance = Mathf.Abs(position.x - BoundaryX(boundary));
+                if (distance >= best) continue;
+                best = distance;
+                nearest = boundary;
+            }
+            return nearest;
         }
     }
 
@@ -99,8 +162,21 @@ namespace DoodleUp.Runtime
         public bool CockpitUtilityOpen;
         public bool UtilityLifeSupportOpen;
 
-        /// <summary>문이 아직 없는 구성(N0b 이전, EditMode 최소 조립)의 기본값은 전부 열림이다.</summary>
-        public static LastShiftDoorState AllOpen => new() { CockpitUtilityOpen = true, UtilityLifeSupportOpen = true };
+        /// <summary>
+        /// 문이 아직 없는 구성(N0b 이전, EditMode 최소 조립)의 기본값은 전부 열림이다.
+        /// 경계를 훑어 세운다 — 문이 셋이 되는 날 여기 리터럴이 남아 있으면 새 문만 조용히
+        /// 닫힌 채로 시작하고, 압력 평준화가 그 경계에서만 안 일어난다.
+        /// </summary>
+        public static LastShiftDoorState AllOpen
+        {
+            get
+            {
+                var state = new LastShiftDoorState();
+                for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                    state[boundary] = true;
+                return state;
+            }
+        }
 
         public bool this[int boundary]
         {
@@ -112,8 +188,13 @@ namespace DoodleUp.Runtime
             }
         }
 
-        public bool Equals(LastShiftDoorState other) =>
-            CockpitUtilityOpen == other.CockpitUtilityOpen && UtilityLifeSupportOpen == other.UtilityLifeSupportOpen;
+        public bool Equals(LastShiftDoorState other)
+        {
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                if (this[boundary] != other[boundary])
+                    return false;
+            return true;
+        }
     }
 
     /// <summary>
@@ -137,7 +218,17 @@ namespace DoodleUp.Runtime
             LifeSupport = lifeSupport;
         }
 
-        public static LastShiftZonePressures Uniform(float pressure) => new(pressure, pressure, pressure);
+        /// <summary>
+        /// 전 구역 같은 압력. 인자를 나열하지 않고 <see cref="SetAll"/> 을 거친다 — 구역이 늘 때
+        /// 생성자는 인자 개수가 안 맞아 컴파일이 막아 주지만, 여기서 리터럴을 세 번 넘기는
+        /// 형태는 네 번째 구역만 <c>0</c> 으로 남긴 채 조용히 통과한다.
+        /// </summary>
+        public static LastShiftZonePressures Uniform(float pressure)
+        {
+            var pressures = new LastShiftZonePressures();
+            pressures.SetAll(pressure);
+            return pressures;
+        }
 
         /// <summary>
         /// 평준화 적분 한 걸음의 최대 길이. 테스트가 <c>AdvanceMission(80f)</c> 처럼 크게 밀어도
@@ -167,15 +258,26 @@ namespace DoodleUp.Runtime
             }
         }
 
-        /// <summary>가장 낮은 구역 압력. 사이렌은 "어느 구역이든 0.15 이하" 이므로 이 값을 본다(§2.2 A-2 연쇄).</summary>
-        public float Lowest => Mathf.Min(Cockpit, Mathf.Min(Utility, LifeSupport));
+        /// <summary>
+        /// 가장 낮은 구역 압력. 사이렌은 "어느 구역이든 0.15 이하" 이므로 이 값을 본다(§2.2 A-2 연쇄).
+        /// 구역을 훑어 고른다 — 이름을 나열해 두면 구역이 늘 때 새 구역만 사이렌에서 빠지고,
+        /// 그건 "산소실이 0.1 인데 경보가 안 울린다" 로만 드러나는 종류의 누락이다.
+        /// </summary>
+        public float Lowest
+        {
+            get
+            {
+                var lowest = this[(LastShiftZone)0];
+                for (var zone = 1; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                    lowest = Mathf.Min(lowest, this[(LastShiftZone)zone]);
+                return lowest;
+            }
+        }
 
         public void SetAll(float pressure)
         {
-            var clamped = Mathf.Clamp01(pressure);
-            Cockpit = clamped;
-            Utility = clamped;
-            LifeSupport = clamped;
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                this[(LastShiftZone)zone] = pressure;
         }
 
         /// <summary>
@@ -218,9 +320,23 @@ namespace DoodleUp.Runtime
             }
         }
 
-        public bool Equals(LastShiftZonePressures other) =>
-            Cockpit.Equals(other.Cockpit) && Utility.Equals(other.Utility) && LifeSupport.Equals(other.LifeSupport);
+        public bool Equals(LastShiftZonePressures other)
+        {
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                if (!this[(LastShiftZone)zone].Equals(other[(LastShiftZone)zone]))
+                    return false;
+            return true;
+        }
 
-        public override string ToString() => $"cockpit={Cockpit:F2} utility={Utility:F2} lifeSupport={LifeSupport:F2}";
+        public override string ToString()
+        {
+            var text = string.Empty;
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+            {
+                if (zone > 0) text += " ";
+                text += $"{LastShiftZoneAtlas.KeyOf((LastShiftZone)zone)}={this[(LastShiftZone)zone]:F2}";
+            }
+            return text;
+        }
     }
 }
