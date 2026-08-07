@@ -135,7 +135,9 @@ namespace DoodleUp.Editor
                       $"observation_drift={LastShiftObservationGallery.ArcCenterlineDrift:0.##}/{LastShiftObservationGallery.ArcLength:0.##} " +
                       $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} " +
                       $"frame_ribs={LastShiftHullFrames.BuildableRibCount}/{LastShiftHullFrames.RibCount} " +
-                      $"frame_girths={LastShiftHullFrames.BuildableRingSegmentCount}/{LastShiftHullShell.SegmentCount} result=PASS");
+                      $"frame_girths={LastShiftHullFrames.BuildableRingSegmentCount}/{LastShiftHullShell.SegmentCount} " +
+                      $"port_bays={LastShiftHullFrames.WindowBaySegmentCount} " +
+                      $"bow_bays={LastShiftObservatoryWindow.BowBaySegmentCount} result=PASS");
             return prefab;
         }
 
@@ -506,6 +508,67 @@ namespace DoodleUp.Editor
                 var z = starNearZ + (float)(starRandom.NextDouble() * starDepth);
                 var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
                 CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
+            }
+
+            CreateBowBackdrop(ship);
+        }
+
+        /// <summary>
+        /// 관측실 선수 창 밖의 우주(§7-6). 좌현 배경막과 <b>같은 구성이고 다른 면</b>이다 —
+        /// 좌현은 <c>z</c> 평면, 여기는 <c>x</c> 평면이다.
+        ///
+        /// 관측실이 좌현 창보다 배경막에 훨씬 가깝다(약 <c>10.5m</c> 대 <c>25m</c>). 좌현
+        /// 값을 그대로 옮기면 별이 성기고 크게 보이므로, 개수는 <b>각밀도</b>로 판 크기는
+        /// <b>각크기</b>로 옮긴다 — 좌현 필드가 원래 그렇게 잡혀 있다.
+        /// </summary>
+        private static void CreateBowBackdrop(Transform ship)
+        {
+            var backdropX = LastShiftObservatoryWindow.BackdropX;
+            var halfZ = LastShiftObservatoryWindow.BackdropHalfZ;
+            CreateDecorCube("SpaceVoid_Bow", ship, new Vector3(backdropX, 1.6f, 0f),
+                new Vector3(0.2f, 18f, halfZ * 2f), voidMaterial);
+
+            // 관측실 안에서 창까지의 거리. 방 중심에서 재고, 이 값이 각밀도·각크기의 기준이다.
+            var viewDistance = LastShiftCompartments.Of(LastShiftObservatoryWindow.Compartment).CenterX
+                               - backdropX;
+
+            // 별이 흩어지는 상자. z 는 배경막 안쪽으로 물리고(가장자리가 안 보이게), y 는
+            // 창 높이(0.9~2.4)에서 실제로 훑는 만큼만 잡는다 — 좌현처럼 위아래로 넓게 뿌리면
+            // 문턱 판·인방에 가려 안 보이는 별을 그만큼 더 세우게 된다.
+            var spreadZ = halfZ * 0.5f;
+            const float spreadYMin = -1f;
+            const float spreadYMax = 8f;
+
+            // 좌현 필드의 각밀도. 위 계산이 내는 값(약 150개가 0.9sr 를 덮는다)에서 뽑았고,
+            // 개수가 아니라 이 밀도가 두 창을 같은 하늘로 읽히게 한다.
+            const float starsPerSteradian = 170f;
+            var solidAngle = spreadZ * 2f * (spreadYMax - spreadYMin) / (viewDistance * viewDistance);
+            var starCount = Mathf.RoundToInt(solidAngle * starsPerSteradian);
+
+            // 각크기를 좌현과 맞춘다. 좌현은 배경막이 약 25m 밖이라 4.4 였다.
+            const float portViewDistance = 25f;
+            const float portStarScale = 4.4f;
+            var starScale = portStarScale * viewDistance / portViewDistance;
+
+            var stars = new GameObject("StarField_Bow");
+            stars.transform.SetParent(ship, false);
+
+            // 별 판 앞면이 테두리 유리보다 앞으로 나오면 승무원과 유리 사이에 별이 뜬다.
+            // 좌현 WindowStarNearestZ 와 같은 규칙이고 축만 다르다.
+            var starNearX = backdropX + 0.4f;
+            var starMaxHalfSize = 0.24f * starScale * 0.5f;
+            var starDepth = Mathf.Clamp(
+                LastShiftObservatoryWindow.StarNearestX - starMaxHalfSize - starNearX, 0f, 2.4f);
+
+            var starRandom = new System.Random(20260807);
+            for (var index = 0; index < starCount; index++)
+            {
+                var x = starNearX + (float)starRandom.NextDouble() * starDepth;
+                var y = spreadYMin + (float)starRandom.NextDouble() * (spreadYMax - spreadYMin);
+                var z = (float)(starRandom.NextDouble() * (spreadZ * 2.0) - spreadZ);
+                var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
+                CreateDecorCube($"StarBow_{index}", stars.transform, new Vector3(x, y, z),
+                    Vector3.one * size, starMaterial);
             }
         }
 
@@ -1023,6 +1086,12 @@ namespace DoodleUp.Editor
             if (windowBay == null)
                 Debug.LogWarning("[LastShift] LSHull_WindowBay 프리팹이 없다 — 좌현 창 구간을 예전처럼 비운다.");
 
+            // 선수 창은 아트가 전용 부재를 만들기 전까지 좌현 것을 그대로 쓴다. 형태는 art
+            // 몫이고(§7-6) tech 가 정하는 것은 개구부 좌표뿐이라, 없는 프리팹을 기다리며
+            // 구멍을 안 내면 관측실은 계속 창 없는 방이다.
+            var bowBay = LoadHullPrefab("LSHull_BowWindowBay");
+            if (bowBay == null) bowBay = windowBay;
+
             for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
             {
                 var start = LastShiftHullShell.SegmentStart(segment);
@@ -1052,6 +1121,17 @@ namespace DoodleUp.Editor
                     continue;
                 }
 
+                if (LastShiftObservatoryWindow.SegmentIsBowBay(segment) && bowBay != null)
+                {
+                    var bay = (GameObject)PrefabUtility.InstantiatePrefab(bowBay, root.transform);
+                    bay.name = $"BowWindowBay_{segment:00}";
+                    bay.transform.localPosition =
+                        new Vector3(middle.x, LastShiftHullShell.RimBaseY, middle.y);
+                    bay.transform.localScale = new Vector3(chord.magnitude, 1f, 1f);
+                    bay.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                    continue;
+                }
+
                 var panel = CreateCube($"Rim_{segment:00}", root.transform,
                     new Vector3(middle.x,
                         LastShiftHullShell.RimBaseY + LastShiftHullShell.RimHeight * 0.5f,
@@ -1062,7 +1142,8 @@ namespace DoodleUp.Editor
                 panel.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
             }
 
-            CreateWindowMullions(root.transform);
+            CreateWindowMullions(root.transform, "WindowMullions", LastShiftHullFrames.WindowMullionSeams());
+            CreateWindowMullions(root.transform, "BowWindowMullions", LastShiftObservatoryWindow.BowMullionSeams());
             CreateHullFrames(root.transform);
         }
 
@@ -1082,15 +1163,13 @@ namespace DoodleUp.Editor
         /// <b>스케일은 건드리지 않는다.</b> 창 판은 현 길이만큼 <c>x</c> 로 늘이지만 멀리언은
         /// 기둥이라, 같이 늘이면 <c>0.16m</c> 기둥이 <c>0.8m</c> 짜리 벽이 된다(아트 정본 §3.3).
         /// </summary>
-        private static void CreateWindowMullions(Transform parent)
+        private static void CreateWindowMullions(Transform parent, string groupName, int[] seams)
         {
             var prefab = LoadHullPrefab("LSHull_WindowMullion");
             if (prefab == null) return;
-
-            var seams = LastShiftHullFrames.WindowMullionSeams();
             if (seams.Length == 0) return;
 
-            var root = new GameObject("WindowMullions");
+            var root = new GameObject(groupName);
             root.transform.SetParent(parent, false);
 
             foreach (var seam in seams)
@@ -1425,7 +1504,7 @@ namespace DoodleUp.Editor
                 CreateWallWithOpenings(
                     $"Wall_{(alongX ? "X" : "Z")}{(atMax ? "Max" : "Min")}", root.transform,
                     alongX, plane, -freeHalf - thickness, freeHalf + thickness, height,
-                    thickness, compartmentMaterial, openings);
+                    thickness, compartmentMaterial, openings, WindowsOn(spec, alongX, atMax));
             }
 
             CreateCompartmentLabel(spec, root.transform);
@@ -1487,22 +1566,78 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
+        /// 벽에 뚫리는 구멍 하나. 문은 바닥부터라 <see cref="BottomY"/> 가 <c>0</c> 이고,
+        /// 창은 문턱이 있어 그렇지 않다 — 둘을 같은 자료형으로 두는 것은 판을 자르는 규칙이
+        /// 같기 때문이다. 다른 것은 구멍 <b>위아래에 무엇이 남는가</b>뿐이다.
+        /// </summary>
+        private readonly struct WallAperture
+        {
+            public WallAperture(float center, float halfWidth, float bottomY, float topY)
+            {
+                Center = center;
+                HalfWidth = halfWidth;
+                BottomY = bottomY;
+                TopY = topY;
+            }
+
+            public float Center { get; }
+            public float HalfWidth { get; }
+            public float BottomY { get; }
+            public float TopY { get; }
+        }
+
+        /// <summary>
+        /// 이 구획 면에 뚫리는 창. 지금은 관측실 선수 끝벽 하나뿐이고, 좌표 정본은 Runtime 의
+        /// <see cref="LastShiftObservatoryWindow"/> 다 — 같은 상수가 테두리 유리·골조 금지
+        /// 구간도 정하므로 여기 리터럴을 두면 셋이 갈린다.
+        /// </summary>
+        private static WallAperture[] WindowsOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
+        {
+            if (spec.Compartment != LastShiftObservatoryWindow.Compartment) return NoApertures;
+            if (!alongX || atMax) return NoApertures;
+            if (Mathf.Abs(spec.MinX - LastShiftObservatoryWindow.WallX) > 0.001f) return NoApertures;
+
+            // 자유축은 z 이고 좌표는 구획 로컬이다. 창은 방 중심선에 온다.
+            return new[]
+            {
+                new WallAperture(0f - spec.CenterZ,
+                    LastShiftObservatoryWindow.OpeningWidth * 0.5f,
+                    LastShiftObservatoryWindow.SillHeight,
+                    LastShiftObservatoryWindow.HeadHeight)
+            };
+        }
+
+        private static readonly WallAperture[] NoApertures = System.Array.Empty<WallAperture>();
+
+        /// <summary>
         /// 판 한 장. <paramref name="openings"/> 는 이 면의 자유축 위 문 중심이고, 비어 있으면
         /// 통짜다. 구멍이 있으면 구간을 잘라 세우고 그 위에 인방을 얹는다 — 인방이 없으면
         /// 문 높이(2.2)에서 천장까지가 그대로 뚫려 그림과 통행 가능 범위가 어긋난다.
+        ///
+        /// <paramref name="windows"/> 는 바닥에 안 닿는 구멍이다. 판을 자르는 규칙은 문과
+        /// 같고 아래에 문턱 판, 위에 인방이 한 장씩 더 붙는다.
         /// </summary>
         private static void CreateWallWithOpenings(string name, Transform parent, bool alongX,
             float plane, float freeMin, float freeMax, float height, float thickness,
-            Material material, float[] openings)
+            Material material, float[] openings, WallAperture[] windows = null)
         {
             const float doorWidth = LastShiftZoneDoor.OpeningWidth;
             const float doorHeight = LastShiftZoneDoor.OpeningHeight;
+            windows ??= NoApertures;
+
+            // 문과 창을 자유축 위에서 한 줄로 세워 자른다. 둘을 따로 자르면 같은 판을 두 번
+            // 세우게 되고, 그건 씬에서 z-파이팅으로만 드러난다.
+            var spans = openings
+                .Select(opening => (Min: opening - doorWidth * 0.5f, Max: opening + doorWidth * 0.5f))
+                .Concat(windows.Select(window =>
+                    (Min: window.Center - window.HalfWidth, Max: window.Center + window.HalfWidth)))
+                .OrderBy(span => span.Min);
 
             var edges = new System.Collections.Generic.List<float> { freeMin };
-            foreach (var opening in openings.OrderBy(value => value))
+            foreach (var span in spans)
             {
-                edges.Add(opening - doorWidth * 0.5f);
-                edges.Add(opening + doorWidth * 0.5f);
+                edges.Add(span.Min);
+                edges.Add(span.Max);
             }
             edges.Add(freeMax);
 
@@ -1514,6 +1649,20 @@ namespace DoodleUp.Editor
                 if (max - min <= 0.0001f) continue;
                 CreateSlab($"{name}_{segment / 2}", parent, alongX, plane,
                     (min + max) * 0.5f, max - min, height, 0f, thickness, material);
+            }
+
+            // 창은 위아래가 다 남는다. 문턱 판이 없으면 방에서 바닥이 그대로 우주로 이어져
+            // 창이 아니라 발코니가 되고, 인방이 없으면 천장까지 뚫려 방이 반쯤 사라진다.
+            for (var index = 0; index < windows.Length; index++)
+            {
+                var window = windows[index];
+                if (window.BottomY > 0.0001f)
+                    CreateSlab($"{name}_Sill_{index}", parent, alongX, plane,
+                        window.Center, window.HalfWidth * 2f, window.BottomY, 0f, thickness, material);
+                if (height - window.TopY > 0.0001f)
+                    CreateSlab($"{name}_Head_{index}", parent, alongX, plane,
+                        window.Center, window.HalfWidth * 2f, height - window.TopY, window.TopY,
+                        thickness, material);
             }
 
             // 인방은 벽이 문보다 높을 때만 있다. 좌현 문턱 판(높이 0.6)처럼 벽 자체가 문보다
@@ -1540,12 +1689,16 @@ namespace DoodleUp.Editor
 
         private static void CreateCompartmentLabel(LastShiftCompartmentSpec spec, Transform root)
         {
-            var text = spec.Compartment.ToString().ToUpperInvariant();
             // 라벨은 +z 를 보는 면에 글자를 그린다. 구획 선수 쪽 벽 안쪽에 붙여 문으로 들어오는
             // 방향에서 읽히게 둔다. 색은 구획색이다 — 벽이 공통 중성색이라 라벨과 바닥 띠가
             // 이 방의 색을 말하는 유일한 자리다.
-            CreateZoneLabel(root.parent, text,
-                new Vector3(spec.CenterX, LastShiftCompartments.InteriorHeight - 0.75f, spec.MinZ + 0.12f),
+            //
+            // x·y 는 여기서 안 정한다. 이 벽은 문이 뚫리는 벽이기도 해서 "방 중심" 이 곧
+            // "문 한가운데" 인 구획이 다섯이고(아트 정본 §7-5), 그걸 피하는 규칙은 좌표
+            // 문제라 Runtime 이 갖는다 — 여기 두면 EditMode 에서 확인이 안 된다.
+            CreateZoneLabel(root.parent, LastShiftCompartmentLabels.TextOf(spec.Compartment),
+                new Vector3(LastShiftCompartmentLabels.ResolveX(spec),
+                    LastShiftCompartmentLabels.ResolveY(spec), spec.MinZ + 0.12f),
                 LastShiftDressing.TintOf(spec.Compartment));
         }
 

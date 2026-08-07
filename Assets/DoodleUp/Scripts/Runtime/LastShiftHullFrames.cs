@@ -177,6 +177,11 @@ namespace DoodleUp.Runtime
             if (!LastShiftHullShell.InscribedContains(x, z)) return false;
             if (IsWindowKeepOut(x, z)) return false;
 
+            // 관측실 선수 창(§7-6). 좌현 창과 같은 이유로 그 앞에는 아무것도 안 선다.
+            // 판정 자체는 LastShiftObservatoryWindow 가 갖는다 — 창 좌표 셋(개구부·금지
+            // 구간·테두리 유리)이 한 자리에 모여 있어야 하나만 갈리는 일이 안 생긴다.
+            if (LastShiftObservatoryWindow.IsSightKeepOut(x, z)) return false;
+
             // 선체 본체. 판 바깥면에서 다시 여유를 둔다.
             if (Mathf.Abs(x) <= LastShiftShipDimensions.EndWallX + Clearance &&
                 Mathf.Abs(z) <= LastShiftShipDimensions.SideWallZ + Clearance) return false;

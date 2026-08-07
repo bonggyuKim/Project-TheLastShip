@@ -357,12 +357,15 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(bays, Is.LessThan(LastShiftHullShell.SegmentCount / 2),
                 "창 판이 좌현 절반을 넘게 먹었다 — 테두리가 유리 띠로 읽힌다.");
 
-            // 나머지는 전부 불투명 판이다. 둘을 더해 SegmentCount 가 되어야 "48장 전부 선다".
+            // 나머지는 불투명 판과 선수 창(관측실, §7-6)이다. 셋을 더해 SegmentCount 가
+            // 되어야 "48장 전부 선다" — 선수 창도 판이 서는 자리지 비우는 자리가 아니다.
             var opaque = 0;
             for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
-                if (!LastShiftHullFrames.SegmentIsWindowBay(segment)) opaque++;
+                if (!LastShiftHullFrames.SegmentIsWindowBay(segment) &&
+                    !LastShiftObservatoryWindow.SegmentIsBowBay(segment)) opaque++;
 
-            Assert.That(opaque + bays, Is.EqualTo(LastShiftHullShell.SegmentCount),
+            Assert.That(opaque + bays + LastShiftObservatoryWindow.BowBaySegmentCount,
+                Is.EqualTo(LastShiftHullShell.SegmentCount),
                 "테두리 판 수가 세그먼트 수와 다르다 — 실루엣에 구멍이 남았다.");
         }
 
