@@ -129,7 +129,58 @@ namespace DoodleUp.Runtime
                     "에어록은 조작을 보여야 하므로 관보다 밝아도 되지만, 상한이 없으면 " +
                     "비상 경로에서 여기만 생활 공간처럼 밝아진다."));
 
+            CheckDoorwayClearance(props, violations);
+
             return violations;
+        }
+
+        /// <summary>
+        /// 제약 5 — 문 통행 폭. <b>소품 하나씩이 아니라 문 하나씩 본다</b>: 상자 둘이 각각
+        /// 구멍의 반대쪽 끝을 조금씩 물면 하나씩 재서는 둘 다 통과하고, 실제로는 가운데
+        /// 한 토막만 남는다. 그래서 무는 구간을 문마다 모아 합친 뒤 가장 긴 빈 토막을 잰다.
+        ///
+        /// 2026-08-08 플레이테스트가 이 검사를 요구했다(카드 955678c7) — 냉각실
+        /// <c>CrateStack_Aft</c> 가 냉각실↔통로B 문을 통째로 물어 산소실 쪽으로 갈 길이
+        /// 아예 없었고, 선수·선미 끝벽 문도 <c>0.95m</c>·<c>0.80m</c> 로 눌려 있었다.
+        /// 좌표는 전부 맞았고 <b>소품만 잘못 놓여 있었다</b> — 기존 검사 넷 중 어느 것도
+        /// 통행을 안 보고 있었기 때문에 씬 빌드도 테스트도 통과했다.
+        /// </summary>
+        private static void CheckDoorwayClearance(IReadOnlyList<LastShiftDressingProp> props,
+            List<LastShiftDressingViolation> violations)
+        {
+            var spans = new List<Vector2>();
+            var blockers = new List<LastShiftDressingProp>();
+
+            foreach (var door in LastShiftDoorways.All)
+            {
+                spans.Clear();
+                blockers.Clear();
+
+                foreach (var prop in props)
+                {
+                    if (prop == null) continue;
+                    var center = LastShiftDressingSpaces.WorldCenter(prop);
+                    if (!LastShiftDoorways.Intrudes(door, center, prop.Size,
+                            LastShiftDressingSpaces.BottomY(prop), out var span)) continue;
+
+                    spans.Add(span);
+                    blockers.Add(prop);
+                }
+
+                if (blockers.Count == 0) continue;
+
+                var clear = LastShiftDoorways.ClearWidth(door, spans);
+                if (clear >= LastShiftDoorways.MinClearWidth - Epsilon) continue;
+
+                // 위반은 문 하나에 한 줄이다. 소품마다 찍으면 문이 완전히 막힌 사고와
+                // 여럿이 조금씩 좁힌 사고가 로그에서 같은 무게로 보인다.
+                var names = string.Join(", ", blockers.ConvertAll(p => p.id));
+                violations.Add(new LastShiftDressingViolation("C5_DoorwayClearance", names,
+                    blockers[0].space,
+                    $"{door.Name} 문에 남은 통행 폭이 {clear:0.##}m 로 " +
+                    $"최소 {LastShiftDoorways.MinClearWidth}m 아래다 — 소품({names})을 문 앞 " +
+                    $"{LastShiftDoorways.ApproachDepth}m 밖으로 빼야 승무원이 지나간다."));
+            }
         }
 
         private static bool Has(LastShiftDressingProp prop, LastShiftDressingSemantics flag) =>

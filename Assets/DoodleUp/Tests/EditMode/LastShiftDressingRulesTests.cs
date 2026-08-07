@@ -401,5 +401,85 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(HasRule(violations, "C4_BypassLightBudget"), Is.False);
             Assert.That(HasRule(violations, "C4_AirlockLightBudget"), Is.False);
         }
+
+        // ── 제약 5 · 문 통행 폭 ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 냉각실↔통로B 문 앞에 <paramref name="halfWidth"/> 만큼 z 로 뻗은 상자를 세운다.
+        /// 2026-08-08 플레이테스트에서 실제로 그 자리에 있던 <c>CrateStack_Aft</c> 와 같은 배치다.
+        /// </summary>
+        private static LastShiftDressingProp CoolingDoorProp(string id, float centerZ, float sizeZ,
+            float sizeY = 1.55f)
+        {
+            var prop = Prop(id, LastShiftDressingSpace.Of(LastShiftZone.Cooling));
+            prop.size = new Vector3(1f, sizeY, sizeZ);
+            // 냉각실 방 중심에서 문 평면(x = +5) 쪽으로 붙인다.
+            var doorX = LastShiftShipDimensions.OpeningX(3);
+            prop.anchor = new Vector2(doorX - LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling) - 0.5f,
+                centerZ);
+            return prop;
+        }
+
+        [Test]
+        public void PropAcrossADoorwayIsRejected()
+        {
+            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var crate = CoolingDoorProp("CrateStack", door, 0.8f);
+
+            Assert.That(HasRule(Validate(crate), "C5_DoorwayClearance"), Is.True);
+        }
+
+        [Test]
+        public void PropBesideADoorwayIsAllowed()
+        {
+            // 문 구멍 밖으로 완전히 비켜난 상자. 문 앞이라도 구멍을 안 물면 통행이 남는다.
+            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var crate = CoolingDoorProp("CrateStack",
+                door - LastShiftZoneDoor.OpeningWidth * 0.5f - 0.6f, 0.8f);
+
+            Assert.That(HasRule(Validate(crate), "C5_DoorwayClearance"), Is.False);
+        }
+
+        [Test]
+        public void TwoPropsPinchingOppositeEdgesAreRejectedTogether()
+        {
+            // 하나씩 재면 둘 다 통과한다 — 각각 한쪽 끝만 조금 물어 반대쪽에 넓은 토막이
+            // 남기 때문이다. 문 단위로 합쳐야 가운데 한 토막만 남은 것이 보인다.
+            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
+            var fore = CoolingDoorProp("PinchFore", door - half, 0.8f);
+            var aft = CoolingDoorProp("PinchAft", door + half, 0.8f);
+
+            Assert.That(HasRule(Validate(fore), "C5_DoorwayClearance"), Is.False);
+            Assert.That(HasRule(Validate(aft), "C5_DoorwayClearance"), Is.False);
+            Assert.That(HasRule(Validate(fore, aft), "C5_DoorwayClearance"), Is.True);
+        }
+
+        [Test]
+        public void DeckDecalInADoorwayIsAllowed()
+        {
+            // 갑판 띠·격자는 밟고 지나간다. 이걸 세면 문 앞 갑판 표시가 전부 위반이 된다.
+            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var band = CoolingDoorProp("DeckGrate", door, 0.9f, LastShiftDoorways.WalkOverHeight * 0.5f);
+
+            Assert.That(HasRule(Validate(band), "C5_DoorwayClearance"), Is.False);
+        }
+
+        [Test]
+        public void LockedCompartmentDoorsAreNotTracked()
+        {
+            // 잠긴 구획의 문은 구멍이 아니라 메운 판이다(§15.2). 그 앞을 비우라고 요구하면
+            // 서버실·수경재배·의무실 벽 앞이 전부 통행 예약 구역이 된다.
+            var locked = new[]
+            {
+                LastShiftCompartment.ServerRoom,
+                LastShiftCompartment.Hydroponics,
+                LastShiftCompartment.MedBay
+            };
+
+            foreach (var compartment in locked)
+                Assert.That(LastShiftDoorways.All.Any(d => d.Name == LastShiftCompartments.NameOf(compartment)),
+                    Is.False, $"{compartment} 는 잠겨 있는데 통행 문 목록에 들어 있다.");
+        }
     }
 }

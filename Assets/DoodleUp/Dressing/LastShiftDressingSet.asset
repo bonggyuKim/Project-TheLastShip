@@ -1933,7 +1933,7 @@ MonoBehaviour:
       galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
-    anchor: {x: 0.1722, y: -1}
+    anchor: {x: 0.4019, y: -1}
     bottomY: 0
     clearance: 0.16
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1987,7 +1987,7 @@ MonoBehaviour:
       galleryLeg: 0
     size: {x: 1.4, y: 0.905, z: 0.875}
     anchorMode: 0
-    anchor: {x: -0.8951, y: -0.2398}
+    anchor: {x: -0.8951, y: 0.5994}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -2635,7 +2635,7 @@ MonoBehaviour:
       galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
-    anchor: {x: 0.9794, y: -0.8661}
+    anchor: {x: -0.0515, y: 0.9843}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -3139,7 +3139,7 @@ MonoBehaviour:
       galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
-    anchor: {x: 0.9593, y: -0.1575}
+    anchor: {x: 0.2907, y: -0.5906}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
