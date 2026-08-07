@@ -435,23 +435,39 @@ namespace DoodleUp.Editor
                 CreateCube($"WindowMullion_{index}", ship, new Vector3(x, (WindowSillHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(0.35f, windowTop - WindowSillHeight, 0.22f), panelMaterial);
             }
 
-            // 창 밖 우주. 창보다 크게 두어 창틀 사이로 선체 밖 회색이 보이지 않게 한다.
-            var voidWidth = Length + 12f;
-            CreateDecorCube("SpaceVoid", ship, new Vector3(0f, 1.6f, HullFrontZ - 6f), new Vector3(voidWidth, 18f, 0.2f), voidMaterial);
+            // 창 밖 우주. 좌표 정본은 LastShiftHullFrames 다 — 예전에는 여기 리터럴이
+            // 따로 있어서 배경막이 옮겨질 때 프레임만 옛 값을 믿는 구조였다.
+            //
+            // 배경막과 별 판은 <b>원반 외피 바깥</b>(z=-22)에 선다. 예전 -9.1 은 단축 반지름
+            // 20 안쪽이라 외피가 생긴 뒤로는 껍질 속에 갇혀 있었다.
+            const float backdropZ = LastShiftHullFrames.WindowBackdropZ;
+            var voidWidth = LastShiftHullFrames.WindowBackdropHalfX * 2f;
+            CreateDecorCube("SpaceVoid", ship, new Vector3(0f, 1.6f, backdropZ), new Vector3(voidWidth, 18f, 0.2f), voidMaterial);
             var starRandom = new System.Random(20260804);
             var stars = new GameObject("StarField");
             stars.transform.SetParent(ship, false);
-            // 별 개수는 창 면적을 따라간다. 90개로 고정하면 36m 창에서 밀도가 1/3 로 떨어져
-            // 밖이 우주가 아니라 검은 벽으로 읽힌다.
-            var starCount = Mathf.RoundToInt(90f * Length / 12.5f);
             var starSpreadX = voidWidth * 0.44f;
+
+            // 별 개수는 <b>각밀도</b>를 유지하도록 잡는다. 판이 멀어진 만큼 같은 화각 안에
+            // 더 많은 별이 들어오므로 개수를 그대로 두면 조종석에서 촘촘해 보인다.
+            // 각밀도 = 표면밀도 x 거리^2 이므로, 폭이 k배 거리가 d배 커지면 개수는 (k/d)^2 배다.
+            const float previousBackdropZ = -LastShiftShipDimensions.SideWallZ - 6f;   // -9.1
+            const float previousVoidWidth = LastShiftShipDimensions.InteriorLength + 12f;  // 50
+            var widthRatio = voidWidth / previousVoidWidth;
+            var distanceRatio = Mathf.Abs(backdropZ) / Mathf.Abs(previousBackdropZ);
+            var densityScale = (widthRatio / distanceRatio) * (widthRatio / distanceRatio);
+            var starCount = Mathf.RoundToInt(90f * Length / 12.5f * densityScale);
+
+            // 판 크기는 거리 비만큼 키운다. 안 키우면 각크기가 그만큼 작아져 화면에서 사라진다.
+            const float starScale = 4.4f;
             for (var index = 0; index < starCount; index++)
             {
                 var x = (float)(starRandom.NextDouble() * (starSpreadX * 2.0) - starSpreadX);
                 var y = (float)(starRandom.NextDouble() * 14.0 - 4.0);
-                var z = HullFrontZ - 3.2f - (float)(starRandom.NextDouble() * 2.4);
-                // 창까지 거리가 3~6m 라 0.05 짜리는 화면에서 1~2픽셀로 사라진다. 0.10~0.24 로 키운다.
-                var size = 0.10f + (float)starRandom.NextDouble() * 0.14f;
+                // 배경막 앞 0.4~2.8m. 예전 구성의 상대 간격 그대로다 — 이 간격이 두 판을
+                // 같은 무한거리로 읽히게 하는 값이라 절대 z 가 아니라 배경막 기준으로 잡는다.
+                var z = backdropZ + 0.4f + (float)(starRandom.NextDouble() * 2.4);
+                var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
                 CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
             }
         }
@@ -649,7 +665,10 @@ namespace DoodleUp.Editor
         {
             // 구획 회색보다 살짝 푸르고 밝다. 회랑은 방이 아니라 <b>방들을 잇는 길</b>이라
             // 통로(선체 내부)와 구획 중 어느 쪽으로도 안 읽혀야 한다.
-            galleryMaterial ??= CreateMaterial("LS_Gallery", new Color(0.27f, 0.30f, 0.34f));
+            // 중성 백색-그레이(4000K 대). 방 색(청록·주황·시안·초록)을 재사용하지 않는 것이
+            // art 결정이다 — 회랑은 방이 아니라 이동 전용 이면 동선이고, 그 정체성을 색으로도
+            // 분리한다. 우회 통로의 저조도 규칙도 여기엔 안 건다(실사용 동선이라 일반 통행 조도).
+            galleryMaterial ??= CreateMaterial("LS_Gallery", new Color(0.62f, 0.62f, 0.60f));
 
             var root = new GameObject(LastShiftUpperGallery.RootName);
             root.transform.SetParent(ship, false);
@@ -754,6 +773,14 @@ namespace DoodleUp.Editor
                 var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
                 var chord = end - start;
                 var middle = (start + end) * 0.5f;
+
+                // 창 구간은 테두리를 안 세운다. <b>이게 없으면 배경막을 원반 밖으로 밀어도
+                // 창에는 우주가 아니라 이 회색 판이 보인다</b> — 테두리는 눈높이(y -0.2~3.2)를
+                // 통째로 덮는 불투명 판이고 좌현에서 z=-20 에 선다.
+                //
+                // 수평 호라서 렌즈 세로 프로파일(3단 스텝)과 무관하다. 개구부 위아래 마감은
+                // 그 결정이 난 뒤에 얹는다 — 지금은 판을 안 세우는 것까지다.
+                if (LastShiftHullFrames.IsWindowKeepOut(middle.x, middle.y)) continue;
 
                 var panel = CreateCube($"Rim_{segment:00}", root.transform,
                     new Vector3(middle.x,

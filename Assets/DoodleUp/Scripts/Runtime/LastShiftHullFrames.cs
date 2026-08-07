@@ -62,15 +62,36 @@ namespace DoodleUp.Runtime
         // 씬 빌더의 SpaceVoid/StarField 가 쓰는 값과 같아야 한다. 리터럴을 양쪽에 두면
         // 배경막이 넓어질 때 프레임만 옛 폭을 믿고 창 앞으로 밀고 들어온다.
 
-        /// <summary>배경막 반폭. 씬 빌더의 <c>voidWidth = Length + 12</c> 의 절반이다.</summary>
-        public const float WindowBackdropHalfX = (LastShiftShipDimensions.InteriorLength + 12f) * 0.5f;
+        /// <summary>
+        /// 창 앞 구조체 금지 구간의 반폭. <b>배경막 반폭과 다른 값이다</b> — 예전에는 둘이
+        /// 같은 상수였는데, 배경막을 원반 밖으로 밀면서 폭이 <c>45</c> 로 커졌다. 그 값을
+        /// 그대로 금지 구간에 쓰면 좌현 절반의 자투리 구조체가 통째로 사라진다.
+        /// 금지 구간은 배경막 크기가 아니라 <b>창이 실제로 훑는 범위</b>다.
+        /// </summary>
+        public const float WindowKeepOutHalfX = (LastShiftShipDimensions.InteriorLength + 12f) * 0.5f;
 
-        /// <summary>배경막이 선 z. 좌현 긴 벽에서 <c>6m</c> 밖이다.</summary>
-        public const float WindowBackdropZ = -LastShiftShipDimensions.SideWallZ - 6f;
+        /// <summary>
+        /// 배경막 반폭. <c>45m</c> 다. 창에서 비스듬히 보는 시선이 배경막 가장자리를 넘지
+        /// 않으려면 이만큼 필요하다 — 조종석 <c>x=-11, z=+3</c> 에서 창 <c>x=-19</c> 를
+        /// 지나는 시선이 <c>z=-22</c> 평면에서 <c>x=-43.8</c> 에 닿는다. 예전 <c>25</c> 는
+        /// 배경막이 <c>-9.1</c> 에 있을 때도 이미 <c>-26.9</c> 가 필요해 아슬아슬했다.
+        /// </summary>
+        public const float WindowBackdropHalfX = 45f;
 
-        /// <summary>창이 보고 있는 좌현 구간인가. 여기에는 구조체를 안 세운다.</summary>
+        /// <summary>
+        /// 배경막이 선 z. <b>원반 외피 바깥</b>이다 — 단축 반지름 <c>20</c> 에 여유 <c>2</c>.
+        /// 예전에는 좌현 벽에서 <c>6m</c> 밖(<c>-9.1</c>)이었는데, 그 자리는 원반 안쪽이라
+        /// 외피가 생긴 뒤로는 배경막이 껍질 속에 갇혀 있었다.
+        /// </summary>
+        public const float WindowBackdropZ = -LastShiftHullShell.SemiMinorZ - 2f;
+
+        /// <summary>
+        /// 창이 보고 있는 좌현 구간인가. 여기에는 구조체를 안 세우고, <b>원반 테두리도
+        /// 세우지 않는다</b> — 테두리가 닫혀 있으면 배경막을 밖으로 밀어도 창에는 회색 판만
+        /// 보인다. 수평 호라서 렌즈 세로 프로파일 결정과 무관하다.
+        /// </summary>
         public static bool IsWindowKeepOut(float x, float z) =>
-            z < -LastShiftShipDimensions.HalfWidth && Mathf.Abs(x) <= WindowBackdropHalfX;
+            z < -LastShiftShipDimensions.HalfWidth && Mathf.Abs(x) <= WindowKeepOutHalfX;
 
         /// <summary>
         /// 이 평면 좌표에 구조체를 세워도 되는가. 조건 넷을 전부 만족해야 한다 —

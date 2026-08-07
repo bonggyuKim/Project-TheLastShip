@@ -298,10 +298,15 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void NoFrameStandsInFrontOfThePortWindows()
         {
-            // 이 배의 창 너머는 진짜 우주가 아니라 z=-9.1 의 배경막이다. 그 앞에 부재를
-            // 세우면 창에서 회색 보가 우주에 떠 있는 것으로 보인다 — 원반 헐에서 창을
-            // 어떻게 낼지는 §27.7-4 가 art 로 남긴 미결이라, 그 전에 형상을 못 박지 않는다.
-            Assert.That(LastShiftHullFrames.WindowBackdropZ, Is.EqualTo(-9.1f).Within(0.001f),
+            // 이 배의 창 너머는 진짜 우주가 아니라 배경막이다. 그 앞에 부재를 세우면
+            // 창에서 회색 보가 우주에 떠 있는 것으로 보인다.
+            //
+            // 배경막은 <b>원반 외피 바깥</b>에 서야 한다(§28.6 art 결정 (a)). 안쪽에 두면
+            // 껍질에 갇혀서 창에 우주가 아니라 테두리 판이 보인다 — 예전 -9.1 이 그 상태였다.
+            Assert.That(LastShiftHullFrames.WindowBackdropZ,
+                Is.LessThan(-LastShiftHullShell.SemiMinorZ),
+                "배경막이 원반 단축 반지름 안쪽에 있다 — 외피에 가려 창에서 안 보인다.");
+            Assert.That(LastShiftHullFrames.WindowBackdropZ, Is.EqualTo(-22f).Within(0.001f),
                 "배경막 z 가 씬 빌더의 SpaceVoid 와 어긋났다 — 두 값이 갈리면 회피가 헛돈다.");
 
             for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
@@ -311,6 +316,32 @@ namespace DoodleUp.Tests.EditMode
                     Assert.That(LastShiftHullFrames.IsWindowKeepOut(point.x, point.y), Is.False,
                         $"Rib_{rib:00} 이 좌현 창 앞을 지난다.");
             }
+        }
+
+        /// <summary>
+        /// 창에서 배경막까지 <b>테두리에 막히지 않고</b> 닿는가. §28.6 결정 (a)(배경막을
+        /// 원반 밖으로)는 테두리에 창 구간 구멍이 있어야만 성립한다 — 없으면 창에 우주가
+        /// 아니라 <c>LS_DiscHull</c> 회색 판이 보이고, 이건 배경막을 밀기 전보다 나쁘다.
+        ///
+        /// 세그먼트를 하나씩 훑어 "창 구간에 서 있는 판이 없다" 를 본다. 세그먼트 번호를
+        /// 박지 않는 이유는 <c>SegmentCount</c> 가 바뀌면 번호가 통째로 밀리기 때문이다.
+        /// </summary>
+        [Test]
+        public void DiscRimIsOpenAcrossThePortWindowArc()
+        {
+            var openedSegments = 0;
+            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+            {
+                var start = LastShiftHullShell.SegmentStart(segment);
+                var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
+                var middle = (start + end) * 0.5f;
+                if (LastShiftHullFrames.IsWindowKeepOut(middle.x, middle.y)) openedSegments++;
+            }
+
+            Assert.That(openedSegments, Is.GreaterThan(0),
+                "창 구간에 테두리 구멍이 하나도 없다 — 배경막을 원반 밖으로 밀어도 창에서 안 보인다.");
+            Assert.That(openedSegments, Is.LessThan(LastShiftHullShell.SegmentCount / 2),
+                "구멍이 좌현 절반을 넘게 먹었다 — 원반 실루엣이 사라진다.");
         }
 
         private static void AssertMemberIsFree(string name, Vector2 from, Vector2 to)
