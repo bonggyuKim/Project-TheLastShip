@@ -13,13 +13,17 @@ namespace DoodleUp.Runtime
     /// 하는 일은 하나다: 창 너머가 아닌 <b>실내에서 밖을 볼 일이 없는 방향</b>으로도 배가
     /// 속이 빈 껍질이 아니라 골조를 가진 구조물로 읽히게 하는 것.
     ///
-    /// <b>좌현은 비운다.</b> 이 배의 좌현 창 너머는 진짜 우주가 아니라 <c>z = -9.1</c> 에 선
-    /// 배경막(<c>SpaceVoid</c>)과 그 앞의 별 판이다(§21.2 가 서버/통신실을 우현으로 뒤집은
-    /// 것과 같은 제약). 배경막보다 <b>앞</b>에 구조체를 세우면 창에서 회색 보가 우주에 떠
-    /// 있는 것으로 보이고, 뒤에 세우면 어차피 배경막에 가려 안 보인다 — 어느 쪽이든 이득이
-    /// 없다. 그래서 <see cref="IsWindowKeepOut"/> 구간은 통째로 건너뛴다. 원반 헐에서 창을
-    /// 어떻게 낼지는 §27.7-4 가 <c>game-art</c> 로 남긴 미결이고, 그 답이 나오기 전에
-    /// 여기서 형상을 먼저 정하면 아트 결정을 코드가 앞질러 버린다.
+    /// <b>좌현 창 앞은 비운다.</b> 이 배의 좌현 창 너머는 진짜 우주가 아니라
+    /// <see cref="WindowBackdropZ"/> 에 선 배경막(<c>SpaceVoid</c>)과 그 앞의 별 판이다
+    /// (§21.2 가 서버/통신실을 우현으로 뒤집은 것과 같은 제약). 배경막보다 <b>앞</b>에
+    /// 구조체를 세우면 창에서 회색 보가 우주에 떠 있는 것으로 보이고, 뒤에 세우면 어차피
+    /// 배경막에 가려 안 보인다 — 어느 쪽이든 이득이 없다. 그래서 골조는
+    /// <see cref="IsWindowKeepOut"/> 구간을 통째로 건너뛴다.
+    ///
+    /// <b>테두리 판은 이제 예외가 아니다.</b> 예전에는 같은 금지를 테두리에도 걸어 판
+    /// <c>48</c>장 중 <c>10</c>장을 안 세웠는데, 그 근거는 배경막이 원반 <b>안</b>(<c>-9.1</c>)에
+    /// 있던 시절 것이었다. §28.6-4 가 배경막을 <c>-22</c>(원반 밖)로 밀면서 근거가 사라졌고,
+    /// §29.4-(1) 이 그 구간을 <see cref="SegmentIsWindowBay"/> 창 판으로 닫기로 확정했다.
     ///
     /// 축 규약은 선체와 같다 — x = 장축, z = 단축, y = 높이.
     /// </summary>
@@ -86,12 +90,82 @@ namespace DoodleUp.Runtime
         public const float WindowBackdropZ = -LastShiftHullShell.SemiMinorZ - 2f;
 
         /// <summary>
-        /// 창이 보고 있는 좌현 구간인가. 여기에는 구조체를 안 세우고, <b>원반 테두리도
-        /// 세우지 않는다</b> — 테두리가 닫혀 있으면 배경막을 밖으로 밀어도 창에는 회색 판만
-        /// 보인다. 수평 호라서 렌즈 세로 프로파일 결정과 무관하다.
+        /// 별 판 <b>앞면</b>이 넘어서는 안 되는 z. 배경막과 달리 별 판은 두께가 있고 배경막
+        /// 앞으로 흩뿌려지므로 판 앞면이 원반 안으로 들어올 수 있다 — §29.4-(1) 로 좌현
+        /// 테두리에 유리가 생긴 뒤에는 그 별이 <b>창 앞에 떠 있는 것</b>으로 보인다.
+        /// 아트 정본(<c>last-shift-hull-finish-v1.md</c> §5.2)이 "어색하면 별 판 최근접 z 를
+        /// 밀어라, 그건 좌표라 tech 소관" 으로 남긴 자리다.
+        ///
+        /// 단축 반지름 밖 <c>0.5m</c>. 씬 빌더는 여기서 별 판 반두께를 더 뺀 자리를 상한으로
+        /// 쓴다 — 중심이 아니라 앞면이 기준이라야 큰 별이 유리를 뚫지 않는다.
+        /// </summary>
+        public const float WindowStarNearestZ = -LastShiftHullShell.SemiMinorZ - 0.5f;
+
+        /// <summary>
+        /// 창이 보고 있는 좌현 구간인가. <b>구조체 금지에만 쓴다</b> — 골조(늑골·거들)가
+        /// 여기 서면 창에서 회색 보가 우주에 떠 있는 것으로 보인다. 테두리 판은 이 금지를
+        /// 안 받는다(§29.4-(1)); 대신 같은 구간이 <see cref="SegmentIsWindowBay"/> 로 창 판이
+        /// 된다. 수평 호라서 렌즈 세로 프로파일 결정과 무관하다.
         /// </summary>
         public static bool IsWindowKeepOut(float x, float z) =>
             z < -LastShiftShipDimensions.HalfWidth && Mathf.Abs(x) <= WindowKeepOutHalfX;
+
+        /// <summary>
+        /// 이 테두리 세그먼트가 <b>창 판</b>인가. 판을 안 세우는 자리가 아니라, 불투명 판
+        /// 대신 개구부 프리팹(<c>LSHull_WindowBay</c>)이 서는 자리다 — 테두리는 어느 쪽이든
+        /// <see cref="LastShiftHullShell.SegmentCount"/> 장이 전부 선다.
+        ///
+        /// 판정은 세그먼트 <b>중점</b>으로 한다. 씬 빌더가 판을 중점에 놓기 때문에, 끝점으로
+        /// 재면 호 경계에서 판 위치와 판정이 반 칸 어긋난다.
+        /// </summary>
+        public static bool SegmentIsWindowBay(int segment)
+        {
+            var start = LastShiftHullShell.SegmentStart(segment);
+            var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
+            var middle = (start + end) * 0.5f;
+            return IsWindowKeepOut(middle.x, middle.y);
+        }
+
+        /// <summary>창 판 수. 로그·검사·씬 빌더가 같은 값을 봐야 한다.</summary>
+        public static int WindowBaySegmentCount
+        {
+            get
+            {
+                var count = 0;
+                for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+                    if (SegmentIsWindowBay(segment)) count++;
+                return count;
+            }
+        }
+
+        /// <summary>
+        /// 멀리언이 서는 이음매. <b>세그먼트가 아니라 그 경계</b>라서 연속 <c>n</c>장이면
+        /// <c>n+1</c>곳이다(양 끝 포함) — 양 끝 멀리언이 유리와 불투명 판의 경계를 마감한다.
+        ///
+        /// 인덱스를 리터럴로 박지 않는다. <see cref="LastShiftHullShell.SegmentCount"/> 나
+        /// <see cref="WindowKeepOutHalfX"/> 가 바뀌면 번호가 통째로 밀린다.
+        /// </summary>
+        public static int[] WindowMullionSeams()
+        {
+            var count = LastShiftHullShell.SegmentCount;
+            var seam = new bool[count];
+            for (var segment = 0; segment < count; segment++)
+            {
+                if (!SegmentIsWindowBay(segment)) continue;
+                seam[segment] = true;
+                seam[(segment + 1) % count] = true;
+            }
+
+            var total = 0;
+            foreach (var flag in seam)
+                if (flag) total++;
+
+            var result = new int[total];
+            var index = 0;
+            for (var segment = 0; segment < count; segment++)
+                if (seam[segment]) result[index++] = segment;
+            return result;
+        }
 
         /// <summary>
         /// 이 평면 좌표에 구조체를 세워도 되는가. 조건 넷을 전부 만족해야 한다 —

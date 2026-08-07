@@ -309,6 +309,15 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftHullFrames.WindowBackdropZ, Is.EqualTo(-22f).Within(0.001f),
                 "배경막 z 가 씬 빌더의 SpaceVoid 와 어긋났다 — 두 값이 갈리면 회피가 헛돈다.");
 
+            // 별 판도 원반 밖이어야 한다. 배경막과 달리 별은 배경막 <b>앞</b>으로 흩뿌려지므로
+            // 상한을 따로 건다 — 이게 없으면 좌현 테두리 유리(§29.4-(1)) 앞에 별이 뜬다.
+            Assert.That(LastShiftHullFrames.WindowStarNearestZ,
+                Is.LessThan(-LastShiftHullShell.SemiMinorZ),
+                "별 판 상한이 원반 안쪽이다 — 테두리 창 앞에 별이 떠 있는 것으로 보인다.");
+            Assert.That(LastShiftHullFrames.WindowStarNearestZ,
+                Is.GreaterThan(LastShiftHullFrames.WindowBackdropZ),
+                "별 판 상한이 배경막보다 뒤다 — 별이 배경막에 가려 하나도 안 보인다.");
+
             for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
             {
                 if (!LastShiftHullFrames.RibIsBuildable(rib)) continue;
@@ -319,29 +328,94 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 창에서 배경막까지 <b>테두리에 막히지 않고</b> 닿는가. §28.6 결정 (a)(배경막을
-        /// 원반 밖으로)는 테두리에 창 구간 구멍이 있어야만 성립한다 — 없으면 창에 우주가
-        /// 아니라 <c>LS_DiscHull</c> 회색 판이 보이고, 이건 배경막을 밀기 전보다 나쁘다.
+        /// §29.6 판정기준 1 — <b>테두리 판이 전부 선다.</b> 예전에는 좌현 창 구간
+        /// <c>10</c>장을 통째로 비웠고(그래서 §29.3 이 잰 실루엣은 <c>38/48</c>), 그 자리가
+        /// 원반 전장 <c>84m</c> 중 <c>50m</c> 짜리 노치였다.
         ///
-        /// 세그먼트를 하나씩 훑어 "창 구간에 서 있는 판이 없다" 를 본다. 세그먼트 번호를
-        /// 박지 않는 이유는 <c>SegmentCount</c> 가 바뀌면 번호가 통째로 밀리기 때문이다.
+        /// 이 검사가 세그먼트 번호를 안 박는 이유는 <c>SegmentCount</c> 가 바뀌면 번호가
+        /// 통째로 밀리기 때문이다 — 세는 것은 "판이 서는가/창 판인가" 둘뿐이다.
         /// </summary>
         [Test]
-        public void DiscRimIsOpenAcrossThePortWindowArc()
+        public void DiscRimStandsAllTheWayAround()
         {
-            var openedSegments = 0;
+            var bays = LastShiftHullFrames.WindowBaySegmentCount;
+
+            Assert.That(bays, Is.GreaterThan(0),
+                "창 판이 하나도 없다 — 테두리가 닫히기만 하고 창이 사라졌다.");
+            Assert.That(bays, Is.LessThan(LastShiftHullShell.SegmentCount / 2),
+                "창 판이 좌현 절반을 넘게 먹었다 — 테두리가 유리 띠로 읽힌다.");
+
+            // 나머지는 전부 불투명 판이다. 둘을 더해 SegmentCount 가 되어야 "48장 전부 선다".
+            var opaque = 0;
             for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
+                if (!LastShiftHullFrames.SegmentIsWindowBay(segment)) opaque++;
+
+            Assert.That(opaque + bays, Is.EqualTo(LastShiftHullShell.SegmentCount),
+                "테두리 판 수가 세그먼트 수와 다르다 — 실루엣에 구멍이 남았다.");
+        }
+
+        /// <summary>
+        /// 창 판이 <b>끊기지 않은 호 하나</b>이고, 멀리언이 그 호의 이음매마다 선다.
+        /// 창 판이 두 덩어리로 갈리면 그 사이에 불투명 판이 한 장 끼어 조종석에서 보는
+        /// 별 띠가 중간에 잘린다. 멀리언은 세그먼트가 아니라 이음매라 <c>n+1</c> 개다 —
+        /// 양 끝 멀리언이 유리와 불투명 판의 경계를 마감한다(아트 정본 §3.3).
+        /// </summary>
+        [Test]
+        public void WindowBaysFormOneArcWithAMullionAtEverySeam()
+        {
+            var count = LastShiftHullShell.SegmentCount;
+            var runs = 0;
+            for (var segment = 0; segment < count; segment++)
             {
+                var previous = LastShiftHullFrames.SegmentIsWindowBay((segment + count - 1) % count);
+                if (LastShiftHullFrames.SegmentIsWindowBay(segment) && !previous) runs++;
+            }
+
+            Assert.That(runs, Is.EqualTo(1), "창 판이 여러 덩어리로 갈렸다 — 별 띠가 중간에 잘린다.");
+
+            var seams = LastShiftHullFrames.WindowMullionSeams();
+            Assert.That(seams.Length, Is.EqualTo(LastShiftHullFrames.WindowBaySegmentCount + 1),
+                "멀리언 수가 이음매 수와 다르다 — 유리와 불투명 판의 경계가 안 마감된다.");
+            Assert.That(seams.Distinct().Count(), Is.EqualTo(seams.Length),
+                "같은 이음매에 멀리언이 두 번 선다.");
+
+            foreach (var seam in seams)
+            {
+                var point = LastShiftHullShell.SegmentStart(seam);
+                Assert.That(LastShiftHullShell.NormalizedRadiusSquared(point.x, point.y),
+                    Is.EqualTo(1f).Within(0.001f),
+                    $"Mullion_{seam:00} 이 테두리 타원 위가 아니다 — 이음매에서 벗어났다.");
+            }
+        }
+
+        /// <summary>
+        /// §29.6 판정기준 2 의 전제 — 창을 테두리로 옮겨도 <b>발자국은 안 변한다.</b>
+        /// 창 판·멀리언은 테두리 위에 서고 방·회랑 발자국에 관여하지 않는다. 좌현 점유율을
+        /// 실제로 올리는 것은 §29.4-(2) 관측 회랑이고, (1)은 그 숫자를 안 건드려야 한다 —
+        /// 여기서 점유율이 흔들리면 (1)이 발자국을 건드린 것이고 그건 이 카드 범위 밖이다.
+        /// </summary>
+        [Test]
+        public void MovingTheWindowsToTheRimDoesNotChangeAnyFootprint()
+        {
+            foreach (var segment in Enumerable.Range(0, LastShiftHullShell.SegmentCount))
+            {
+                if (!LastShiftHullFrames.SegmentIsWindowBay(segment)) continue;
                 var start = LastShiftHullShell.SegmentStart(segment);
                 var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
                 var middle = (start + end) * 0.5f;
-                if (LastShiftHullFrames.IsWindowKeepOut(middle.x, middle.y)) openedSegments++;
-            }
 
-            Assert.That(openedSegments, Is.GreaterThan(0),
-                "창 구간에 테두리 구멍이 하나도 없다 — 배경막을 원반 밖으로 밀어도 창에서 안 보인다.");
-            Assert.That(openedSegments, Is.LessThan(LastShiftHullShell.SegmentCount / 2),
-                "구멍이 좌현 절반을 넘게 먹었다 — 원반 실루엣이 사라진다.");
+                foreach (var spec in LastShiftCompartments.Specs)
+                    Assert.That(
+                        middle.x >= spec.MinX && middle.x <= spec.MaxX &&
+                        middle.y >= spec.MinZ && middle.y <= spec.MaxZ, Is.False,
+                        $"창 판 {segment:00} 이 구획 {spec.Compartment} 발자국 안에 있다.");
+
+                foreach (var leg in LastShiftUpperGallery.Legs)
+                    Assert.That(
+                        middle.x >= leg.MinX && middle.x <= leg.MaxX &&
+                        middle.y >= leg.MinZ && middle.y <= leg.MaxZ, Is.False,
+                        $"창 판 {segment:00} 이 회랑 다리 {leg.Name} 발자국 안에 있다.");
+            }
         }
 
         private static void AssertMemberIsFree(string name, Vector2 from, Vector2 to)

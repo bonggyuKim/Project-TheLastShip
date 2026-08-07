@@ -460,13 +460,25 @@ namespace DoodleUp.Editor
 
             // 판 크기는 거리 비만큼 키운다. 안 키우면 각크기가 그만큼 작아져 화면에서 사라진다.
             const float starScale = 4.4f;
+
+            // 별 판은 배경막 앞 0.4m 에서 시작한다. 예전 구성의 상대 간격 그대로이고, 이
+            // 간격이 두 판을 같은 무한거리로 읽히게 하는 값이라 절대 z 가 아니라 배경막
+            // 기준으로 잡는다.
+            //
+            // <b>두께는 이제 원반이 정한다.</b> 예전 2.4m 를 그대로 쓰면 앞쪽 별이 z=-19.2 에
+            // 서는데, §29.4-(1) 로 좌현 테두리(단축 -20)에 유리가 생긴 지금 그건 창 <b>앞</b>,
+            // 즉 승무원과 유리 사이다. 큰 별이 유리를 뚫지 않도록 중심이 아니라 판 앞면으로
+            // 상한을 잡는다(아트 정본 §5.2 가 tech 로 넘긴 §6-2).
+            const float starNearZ = backdropZ + 0.4f;
+            const float starMaxHalfSize = 0.24f * starScale * 0.5f;
+            var starDepth = Mathf.Clamp(
+                LastShiftHullFrames.WindowStarNearestZ - starMaxHalfSize - starNearZ, 0f, 2.4f);
+
             for (var index = 0; index < starCount; index++)
             {
                 var x = (float)(starRandom.NextDouble() * (starSpreadX * 2.0) - starSpreadX);
                 var y = (float)(starRandom.NextDouble() * 14.0 - 4.0);
-                // 배경막 앞 0.4~2.8m. 예전 구성의 상대 간격 그대로다 — 이 간격이 두 판을
-                // 같은 무한거리로 읽히게 하는 값이라 절대 z 가 아니라 배경막 기준으로 잡는다.
-                var z = backdropZ + 0.4f + (float)(starRandom.NextDouble() * 2.4);
+                var z = starNearZ + (float)(starRandom.NextDouble() * starDepth);
                 var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
                 CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
             }
@@ -783,6 +795,11 @@ namespace DoodleUp.Editor
         /// 판이 안쪽으로 들어오는 내접 근사라 구획·회랑이 그 다각형 안에 들어가는지는
         /// 이상적인 타원이 아니라 <see cref="LastShiftHullShell.InscribedContains"/> 로
         /// 검사해야 한다 — EditMode 검사가 그 자리를 잡는다.
+        ///
+        /// <b>판은 전부 선다.</b> 예전에는 좌현 창 구간 <c>10</c>장을 통째로 건너뛰었는데,
+        /// 그 근거(배경막이 원반 안에 있어 판을 세우면 창에 회색 판만 보인다)는 §28.6-4 가
+        /// 배경막을 <c>z=-22</c> 로 밀면서 사라졌다. 지금은 그 구간에 art 가 만든 개구부
+        /// 프리팹이 서고(§29.4-(1)), 실루엣이 닫힌 채로 창 너머가 별이다.
         /// </summary>
         private static void CreateDiscHull(Transform ship)
         {
@@ -791,6 +808,10 @@ namespace DoodleUp.Editor
             var root = new GameObject("DiscHull");
             root.transform.SetParent(ship, false);
 
+            var windowBay = LoadHullPrefab("LSHull_WindowBay");
+            if (windowBay == null)
+                Debug.LogWarning("[LastShift] LSHull_WindowBay 프리팹이 없다 — 좌현 창 구간을 예전처럼 비운다.");
+
             for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
             {
                 var start = LastShiftHullShell.SegmentStart(segment);
@@ -798,13 +819,27 @@ namespace DoodleUp.Editor
                 var chord = end - start;
                 var middle = (start + end) * 0.5f;
 
-                // 창 구간은 테두리를 안 세운다. <b>이게 없으면 배경막을 원반 밖으로 밀어도
-                // 창에는 우주가 아니라 이 회색 판이 보인다</b> — 테두리는 눈높이(y -0.2~3.2)를
-                // 통째로 덮는 불투명 판이고 좌현에서 z=-20 에 선다.
-                //
-                // 수평 호라서 렌즈 세로 프로파일(3단 스텝)과 무관하다. 개구부 위아래 마감은
-                // 그 결정이 난 뒤에 얹는다 — 지금은 판을 안 세우는 것까지다.
-                if (LastShiftHullFrames.IsWindowKeepOut(middle.x, middle.y)) continue;
+                // 로컬 +x 를 현 방향에 맞춘다. y 축 회전은 +x 를 (cos, 0, -sin) 으로 보내므로
+                // 부호가 뒤집힌 atan2 다 — 그냥 Atan2(dz, dx) 를 쓰면 판이 거울처럼 반대로 눕는다.
+                var yaw = -Mathf.Atan2(chord.y, chord.x) * Mathf.Rad2Deg;
+
+                if (LastShiftHullFrames.SegmentIsWindowBay(segment))
+                {
+                    // 프리팹이 없으면 불투명 판으로 메우지 않고 비운다. 회색 판이 창을 막는
+                    // 것은 뚫린 실루엣보다 나쁘다 — 그게 애초에 이 구간을 비워 뒀던 이유다.
+                    if (windowBay == null) continue;
+
+                    // 루트가 테두리 <b>밑면</b>이다(아트 정본 §5.1 "루트 = 밑면"). 중심 높이를
+                    // 주면 창이 제 높이의 절반만큼 뜬다. y·z 스케일은 1 로 둔다 — 세로로 늘이면
+                    // 스텝 프로파일 비율이 세그먼트마다 달라진다.
+                    var bay = (GameObject)PrefabUtility.InstantiatePrefab(windowBay, root.transform);
+                    bay.name = $"WindowBay_{segment:00}";
+                    bay.transform.localPosition =
+                        new Vector3(middle.x, LastShiftHullShell.RimBaseY, middle.y);
+                    bay.transform.localScale = new Vector3(chord.magnitude, 1f, 1f);
+                    bay.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                    continue;
+                }
 
                 var panel = CreateCube($"Rim_{segment:00}", root.transform,
                     new Vector3(middle.x,
@@ -813,13 +848,60 @@ namespace DoodleUp.Editor
                     new Vector3(chord.magnitude, LastShiftHullShell.RimHeight, LastShiftHullShell.PanelThickness),
                     discHullMaterial);
 
-                // 로컬 +x 를 현 방향에 맞춘다. y 축 회전은 +x 를 (cos, 0, -sin) 으로 보내므로
-                // 부호가 뒤집힌 atan2 다 — 그냥 Atan2(dz, dx) 를 쓰면 판이 거울처럼 반대로 눕는다.
-                panel.transform.localRotation =
-                    Quaternion.Euler(0f, -Mathf.Atan2(chord.y, chord.x) * Mathf.Rad2Deg, 0f);
+                panel.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
             }
 
+            CreateWindowMullions(root.transform);
             CreateHullFrames(root.transform);
+        }
+
+        /// <summary>원반 외피 프리팹 폴더. art 가 §28.1 에서 만든 개구부 부재가 여기 있다.</summary>
+        private const string HullPrefabFolder = "Assets/DoodleUp/Prefabs/Hull";
+
+        private static GameObject LoadHullPrefab(string name) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>($"{HullPrefabFolder}/{name}.prefab");
+
+        /// <summary>
+        /// 창 구간 멀리언. <b>세그먼트가 아니라 이음매에 선다</b> — 어디가 이음매인지는
+        /// Runtime 의 <see cref="LastShiftHullFrames.WindowMullionSeams"/> 가 정한다.
+        ///
+        /// 회전은 그 점의 접선이다. 한쪽 세그먼트의 현 방향만 쓰면 기둥이 이웃 판과 반 칸
+        /// 틀어져 이음매가 벌어져 보이므로, 인접 두 현 방향의 평균을 쓴다.
+        ///
+        /// <b>스케일은 건드리지 않는다.</b> 창 판은 현 길이만큼 <c>x</c> 로 늘이지만 멀리언은
+        /// 기둥이라, 같이 늘이면 <c>0.16m</c> 기둥이 <c>0.8m</c> 짜리 벽이 된다(아트 정본 §3.3).
+        /// </summary>
+        private static void CreateWindowMullions(Transform parent)
+        {
+            var prefab = LoadHullPrefab("LSHull_WindowMullion");
+            if (prefab == null) return;
+
+            var seams = LastShiftHullFrames.WindowMullionSeams();
+            if (seams.Length == 0) return;
+
+            var root = new GameObject("WindowMullions");
+            root.transform.SetParent(parent, false);
+
+            foreach (var seam in seams)
+            {
+                var point = LastShiftHullShell.SegmentStart(seam);
+                var post = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root.transform);
+                post.name = $"Mullion_{seam:00}";
+                post.transform.localPosition =
+                    new Vector3(point.x, LastShiftHullShell.RimBaseY, point.y);
+                post.transform.localRotation = Quaternion.Euler(0f, SeamYaw(seam), 0f);
+            }
+        }
+
+        /// <summary>이음매의 접선 방향 yaw. 인접 두 현 방향의 평균이다.</summary>
+        private static float SeamYaw(int seam)
+        {
+            var count = LastShiftHullShell.SegmentCount;
+            var here = LastShiftHullShell.SegmentStart(seam);
+            var incoming = (here - LastShiftHullShell.SegmentStart((seam + count - 1) % count)).normalized;
+            var outgoing = (LastShiftHullShell.SegmentStart((seam + 1) % count) - here).normalized;
+            var tangent = incoming + outgoing;
+            return -Mathf.Atan2(tangent.y, tangent.x) * Mathf.Rad2Deg;
         }
 
         /// <summary>
