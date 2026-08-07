@@ -89,7 +89,24 @@ namespace DoodleUp.Runtime
         /// 것이 답이 되어, 이 동사가 만들려던 "한 사람이 동시에 두 자리에 있을 수 없다"
         /// (<c>CT-01</c> §4.1)가 정반대로 뒤집힌다.
         ///
-        /// 회복률 자체의 재계산은 <c>game-balance</c> 에 남아 있다(§7-3).
+        /// <b><c>0.015</c> 는 <c>game-balance</c> 확정값이다(§7-3, 카드 <c>2245af31</c>).</b>
+        /// §7-(나)가 남긴 "<c>14</c>초 왕복이 안 덮인다" 는 <b>이 값을 올려서 풀면 안 된다</b> —
+        /// 결과가 <c>HeatRisePerSecond</c> 와의 <i>차</i>에 매달려 있어서 조금만 올려도
+        /// 밸브가 냉각통의 대체재가 된다.
+        ///
+        /// <code>
+        ///   이 값   §4.3 장면 잠금까지   폭주선 아래 순 상승   열 0.60 → 0.90
+        ///   0.0150       13.2s              0.0050/s              60s
+        ///   0.0155       14.2s              0.0045/s              67s
+        ///   0.0170       19.2s              0.0030/s             100s
+        ///   0.0180       26.2s              0.0020/s             150s
+        /// </code>
+        ///
+        /// <c>14</c>초를 사려면 <c>0.0155</c> 가 필요한데 그건 상승률과의 차가 <c>0.0045</c> 라
+        /// 두 상수 중 하나만 흔들려도 부호가 뒤집히고, <c>0.017</c> 이면 폭주선 아래에서 열이
+        /// 사실상 멎어(<c>0.60 → 0.90</c> 에 <c>100</c>초) §4.3 이 "설계의 핵심" 이라 부른
+        /// 성질 자체가 사라진다. 그래서 이 값은 두고 <b>폭주 증분 쪽</b>을 손봤다 —
+        /// <see cref="LastShiftDeterioration.Tick"/> 의 열 시계 주석을 보라.
         /// </summary>
         public const float SustainedCoolingPerSecond = 0.015f;
 
@@ -109,8 +126,20 @@ namespace DoodleUp.Runtime
         public const float HeatRunawayTrigger = 0.90f;
 
         /// <summary>
-        /// <c>S-H2</c> 활성 중 열 상승률. <b>초안값이며 <c>game-balance</c> 검증 대상이다.</b>
-        /// 0.020 → 0.035 는 1.75배이고, 0.90 에서 보호 발동(1.00)까지 5초가 2.9초로 줄어든다.
+        /// <c>S-H2</c> 활성 중 열 상승률. 0.020 → 0.035 는 1.75배이고, 0.90 에서 보호 발동
+        /// (1.00)까지 5초가 2.9초로 줄어든다.
+        ///
+        /// <b><c>0.035</c> 유지가 <c>game-balance</c> 확정이다(§7-1b, 카드 <c>2245af31</c>).</b>
+        /// 이 값을 내려 §4.3 의 <c>14</c>초 왕복을 덮으려면 <c>0.0317</c> 이 필요한데(밸브 유지
+        /// <c>0.015</c> 기준), 그건 <c>0.035</c> 에서 <c>9%</c> 내린 것뿐이라 왕복 여유를 거의
+        /// 못 사면서 <c>S-H2</c> 의 위협만 흐려진다 — 밸브를 안 잡았을 때 <c>0.90 → 1.00</c> 이
+        /// <c>2.86</c>초에서 <c>3.16</c>초가 되는 정도다. <c>14</c>초를 실제로 사려면 상승률을
+        /// 기본값 <c>0.020</c> 가까이 끌어내려야 하고, 그러면 폭주 분기가 존재할 이유가 없어진다.
+        ///
+        /// 대신 <b>붙잡고 있는 동안 이 증분이 안 실리게</b> 했다(<see cref="LastShiftDeterioration.Tick"/>).
+        /// 상수는 그대로 두고 분기 하나가 늘 뿐이며, <c>S-H2</c> 상황 표시
+        /// (<c>LastShiftSituationTable</c>)는 <c>CoolingConnected</c> 만 보므로 영향받지 않는다 —
+        /// 밸브를 잡은 사람에게 <c>S-H2</c> 는 <b>여전히 켜져 있고</b>, 손을 떼면 즉시 이 값으로 돌아간다.
         /// </summary>
         public const float HeatRiseRunawayPerSecond = 0.035f;
 
@@ -130,25 +159,59 @@ namespace DoodleUp.Runtime
         /// 산소 실패 시계가 P0 타이머 안에서 한 번도 발동하지 않으므로 격리할 이유가 없었고,
         /// 격리할 이유가 없으니 그 격리가 열어 주는 덕트 우회로도 같이 죽어 있었다.
         ///
-        /// <c>0.018</c> 에서 두 시계가 동시에 의미를 얻는다(§4.1 표).
-        /// <list type="bullet">
-        ///   <item>격리를 <b>안 하면</b> 조종석이 <c>285</c>초에 성공선을 잃는다 — 타이머
-        ///         <c>300</c>초 안이고 여유가 <c>15</c>초뿐이라 "나중에 하지" 가 성립하지 않는다</item>
-        ///   <item>격리를 <b>하면</b> 파공 구역이 <c>69</c>초에 진공이 된다 — 봉합하러 들어가는
-        ///         사람이 예비 산소(<see cref="SuitOxygenDrainPerSecond"/> · <c>80</c>초분)를 태운다</item>
+        /// <b><c>0.024</c> 는 <c>game-balance</c> 확정값이다(§7-1, 카드 <c>2245af31</c>).</b>
+        /// 기획이 고정한 판정 조건 둘을 <b>세 프리셋 전부에서</b> 동시에 세운 최소값 부근이다.
+        /// <list type="number">
+        ///   <item>문을 전부 열어 둔 채 방치하면 P0 타이머(<c>300</c>초) 안에 조종석이 성공선을 잃는다</item>
+        ///   <item>격리하면 파공 구역이 예비 산소 지속시간(<c>80</c>초) 안에 진공이 된다</item>
         /// </list>
         ///
+        /// <b>재산정의 입력은 선체 <c>0.60</c> 이 아니라 프리셋이다.</b> §4.1·§7-(가)가 쓴
+        /// "선체 <c>0.60</c> · 모든 구역 <c>1.00</c>" 은 <see cref="LastShiftPresetFactory"/> 의
+        /// 어느 프리셋에서도 나오지 않는 상태다 — 실제 시작 압력은 <c>0.64</c>/<c>0.58</c>/<c>0.96</c>
+        /// 이고, 운석(<see cref="LastShiftMeteorStimulus.Canonical"/> · severity <c>0.9924</c>) 뒤
+        /// 선체는 <c>0.786</c>/<c>0.626</c>/<c>0.396</c> 이다. 그 값으로 적분한 결과가 이렇다.
+        ///
+        /// <code>
+        ///                                   방치·성공선 상실     격리·진공 도달
+        ///   leak   프리셋                    (조건 1, &lt; 300s)    (조건 2, &lt; 80s)
+        ///   0.018  HighHeatHighThrust         292.8s  OK           81.8s  NG   &lt;- 여기서 깨진다
+        ///          PowerOverloadLooseBattery  197.2s  OK           41.8s  OK
+        ///          BadAttitudeHighOxygen      260.8s  OK           43.0s  OK
+        ///   0.024  HighHeatHighThrust         245.0s  OK           61.2s  OK
+        ///          PowerOverloadLooseBattery  182.5s  OK           31.5s  OK
+        ///          BadAttitudeHighOxygen      245.0s  OK           32.2s  OK
+        /// </code>
+        ///
+        /// <b>구속하는 것은 조건 (1)이 아니라 (2)이고, 구속하는 프리셋은 <c>HighHeatHighThrust</c>
+        /// 하나다.</b> 그 프리셋만 선체가 <c>0.786</c> 로 높아 실효 누출이 작고, 그래서 격리해도
+        /// 파공 구역이 <c>80</c>초 예산 안에 진공에 못 닿는다 — 격리에 대가가 없으면 §6-4 의
+        /// "문 닫고 버티기" 가 비용 <c>0</c> 의 지배 전략이 된다. 두 조건 동시 성립의 하한은
+        /// <c>0.0184</c> 이며, <c>0.018</c> 은 <c>1.8</c>초 차이로 못 넘는다.
+        ///
+        /// <b><c>0.021</c> 이 아니라 <c>0.024</c> 인 이유는 프리셋 재조정 내성이다.</b> 구속
+        /// 입력인 <c>HighHeatHighThrust</c> 의 운석 후 선체(<c>0.786</c>)가 얼마나 올라가도 두
+        /// 조건이 버티는지로 재면 <c>0.021</c> 은 <c>0.812</c>(여유 <c>2.6</c>pp), <c>0.024</c> 는
+        /// <c>0.836</c>(여유 <c>5.0</c>pp)이다. 시작 산소 축으로도 <c>0.720</c> 대 <c>0.781</c> 로
+        /// 갈린다. 그 프리셋은 이미 두 상수가 재조정된 이력이 있어(<c>BusPower</c>·
+        /// <c>HullIntegrity</c> 주석 참조) <c>2.6</c>pp 는 한 번의 조정보다 얇다.
+        ///
         /// <b><c>RG-1</c> 영향은 없다.</b> <c>rg1-recalc-cargo-procurement-v1.md</c> §5.1 이
-        /// 직접 답했다 — <c>(1)</c>·<c>(3)</c> 은 좌표만 보고, <c>(2)</c> 의 항목표에는 누출률 항이
+        /// 직접 답했고, 그 논증은 <b>누출률 값과 무관</b>하므로 <c>0.024</c> 에도 그대로 선다 —
+        /// <c>(1)</c>·<c>(3)</c> 은 좌표만 보고, <c>(2)</c> 의 항목표에는 누출률 항이
         /// 없으며(봉합 후 재가압은 <see cref="OxygenPumpRecoveryPerSecond"/> 로만 간다),
         /// <c>SuitOxygen</c> <c>80</c>초 시계도 "그 구역이 <c>0.00</c> 에 닿은 시점부터" 라
         /// 진공 도달이 빨라져도 길이가 안 바뀐다. 누출률은 진공에 닿기까지의 시간을 바꾸지
         /// <c>RG-1</c> 이 재는 구간을 안 바꾼다.
         ///
-        /// 세 프리셋 동시 검증은 <c>game-balance</c> 에 남아 있다(§7-1). 기획이 고정한 것은
-        /// <b>판정 조건</b>이며 그쪽을 테스트가 붙든다 — <c>LastShiftVerbDemandTests</c>.
+        /// <b>승리 가능성도 안 바꾼다.</b> 봉합만 끝나면 펌프
+        /// (<see cref="OxygenPumpRecoveryPerSecond"/>)가 조종석 연결 구역을 되채우므로,
+        /// <c>180</c>초에 봉합해도 타이머 끝 조종석은 세 프리셋 전부 <c>0.43</c> 위다.
+        /// 이 상수가 겨누는 것은 <b>방치의 대가</b>뿐이다.
+        ///
+        /// 판정 조건은 <c>LastShiftVerbDemandTests</c> 가 프리셋으로 직접 붙든다.
         /// </summary>
-        public const float OxygenLeakPerSecond = 0.018f;
+        public const float OxygenLeakPerSecond = 0.024f;
         public const float OxygenLeakHullReference = 0.5f;
 
         /// <summary>봉합 완료 + bus 연결 상태에서만 도는 산소 펌프 회복률.</summary>
@@ -559,9 +622,23 @@ namespace DoodleUp.Runtime
             // (0.020 → 0.005), 하강 중이면 하강을 더한다. 상승 분기 안에만 넣으면 열이 이미
             // 내려가는 국면에서 밸브가 아무것도 안 하게 되고, 그러면 "잡고 있는 동안 계속
             // 효과가 있다" 라는 유지 동사의 정의가 조건부가 된다.
+            //
+            // CT-08 §7-1b (balance, 카드 2245af31): <b>붙잡고 있는 동안에는 S-H2 폭주 증분이
+            // 안 실린다.</b> 폭주(0.035/s)가 성립하는 조건은 "냉각이 연결되지 않음" 이고, 밸브를
+            // 붙잡는 것은 그 순환을 사람이 손으로 돌리는 행위다. 순환이 도는 동안 순환 정지의
+            // 현상인 증분까지 실리면 모델이 스스로와 어긋난다.
+            //
+            // 이 분기가 없으면 §4.3 이 사려던 14초 왕복이 안 덮인다 — 밸브를 잡아도 0.90 은
+            // 지나가므로 그 뒤로 순 0.020/s 가 되어 0.86 에서 13.2초에 잠긴다. 증분을 걷어내면
+            // 유지 중 순 상승이 구간 내내 0.005/s 로 고정되어 28.2초다(냉각실↔화물칸 실측 왕복
+            // 16.3초의 1.7배). 하강 항(0.015)을 대신 올려 같은 시간을 사는 길은 §7-3 이 기각했다.
+            //
+            // <b>유지는 여전히 복구가 아니다.</b> 증분을 걷어내도 상승 자체는 남아 0.86 에서
+            // 28.2초면 잠기고, 냉각 복구(-0.030/s)만이 열을 실제로 내린다. S-H2 상황 표시는
+            // CoolingConnected 만 보므로 잡고 있는 동안에도 켜져 있다 — 손을 떼면 즉시 0.035 다.
             var heatDelta = !containment.CoolingContained &&
                             state.ThrustDemand > LastShiftRecoveryTuning.HeatRiseThrustThreshold
-                ? IsHeatRunaway(state, containment)
+                ? IsHeatRunaway(state, containment) && !containment.CoolingValveHeld
                     ? LastShiftRecoveryTuning.HeatRiseRunawayPerSecond
                     : LastShiftRecoveryTuning.HeatRisePerSecond
                 // 냉각을 복구했으면 능동 냉각률(0.030/s), 아니면 자연 냉각률(0.008/s).

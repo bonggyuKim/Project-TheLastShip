@@ -25,8 +25,20 @@ namespace DoodleUp.Tests.EditMode
         /// <summary>적분 걸음. 압력 평준화가 지수 접근이라 걸음이 크면 결과가 밀린다.</summary>
         private const float Step = 0.25f;
 
-        /// <summary>§2·§4.1 실측이 쓴 선체 무결성. 운석 후 중간값이다.</summary>
+        /// <summary>
+        /// §2·§4.1 실측이 쓴 선체 무결성. <b>프리셋 값이 아니라 문서 산수의 기준선이다</b> —
+        /// 실제 운석 후 선체는 <c>0.786</c>/<c>0.626</c>/<c>0.396</c> 이고, 상수를 구속한 것도
+        /// 그쪽이다(<see cref="EveryPresetPaysForIsolationInsideTheSuitOxygenBudget"/>).
+        /// </summary>
         private const float ReferenceHull = 0.60f;
+
+        /// <summary>
+        /// 냉각실 밸브 자리에서 냉각통이 굴러간 화물칸까지의 왕복. §4.3 은 <c>14</c>초로 적었지만
+        /// <c>rg1-recalc-cargo-procurement-v1.md</c> §5.3 실측은 냉각실 중심 기준 <c>16.34</c>초다.
+        /// <b>더 긴 쪽을 쓴다</b> — 유지 동사가 사야 하는 시간의 하한이므로 짧은 쪽을 쓰면
+        /// 검사가 통과하고도 실플레이에서 왕복이 안 덮인다.
+        /// </summary>
+        private const float CoolantRoundTripSeconds = 16.34f;
 
         private static readonly float SuitBudgetSeconds =
             LastShiftRecoveryTuning.SuitOxygenInitial / LastShiftRecoveryTuning.SuitOxygenDrainPerSecond;
@@ -40,17 +52,17 @@ namespace DoodleUp.Tests.EditMode
         /// 반올림 오차이고 비용만 실재하는 <b>엄격히 나쁜 선택지</b>. 그때 같이 죽는 것이
         /// 갑판 해치 <c>2</c>개와 덕트 전 구간, 에어록이다(§2 마지막 문단).
         ///
-        /// <b>선체 <c>0.30</c> 이하에서 잰다. <c>0.60</c> 은 아직 안 온다.</b> §4.1 표는
-        /// <c>0.018</c> 에서 조종석이 <c>285</c>초에 성공선을 잃는다고 적었지만, 그 값은 평준화를
-        /// "차이가 매초 <c>8%</c> 씩 줄고 각 구역이 <b>그 전부</b>를 움직인다" 로 푼 것이다.
-        /// 코드는 §2.2.1 대로 <b>절반씩</b> 움직이므로(<see cref="LastShiftZonePressures.Equalize"/>)
-        /// 조종석까지의 전파가 그보다 느리고, 실측은 <c>316</c>초 — 타이머 밖이다.
+        /// <b>선체 <c>0.60</c> 이 여기에 들어온 것이 <c>0.024</c> 확정의 눈에 보이는 결과다</b>
+        /// (§7-1, 카드 <c>2245af31</c>). <c>0.018</c> 에서는 <c>316</c>초로 타이머 밖이었다 —
+        /// §4.1 표의 <c>285</c>초는 평준화를 "차이가 매초 <c>8%</c> 줄고 각 구역이 <b>그 전부</b>를
+        /// 움직인다" 로 푼 값이고, 코드는 §2.2.1 대로 <b>절반씩</b> 움직인다
+        /// (<see cref="LastShiftZonePressures.Equalize"/>). <c>0.024</c> 실측은 <c>280</c>초다.
         ///
-        /// 모델이 어긋난 것이지 <c>C-1</c> 이 틀린 것이 아니다. §2 표(<c>0.006</c> · 완파 ·
-        /// <c>300</c>초 후 <c>0.287</c>)는 코드 실측 <c>0.298</c> 과 거의 같다 — 같은 문서 안에서
-        /// §2 와 §4.1 이 다른 모델을 쓴다. <c>0.60</c> 에서도 조건 (1)이 성립하려면
-        /// <c>0.024</c> 가 필요하고(실측 <c>280</c>초), 그 판단은 §7-1 대로 <c>game-balance</c> 것이다.
+        /// <b>다만 이 검사는 참고선이다.</b> "선체 <c>0.60</c> · 모든 구역 <c>1.00</c>" 은 어느
+        /// 프리셋에서도 나오지 않는 상태이고, 상수를 실제로 구속한 것은 프리셋 쪽이다 —
+        /// <see cref="EveryPresetLosesTheOxygenSuccessLineInsideTheDockingTimerIfLeftAlone"/>.
         /// </summary>
+        [TestCase(0.60f)]
         [TestCase(0.30f)]
         [TestCase(0.00f)]
         public void LeavingEveryDoorOpenLosesTheOxygenSuccessLineInsideTheDockingTimer(float hull)
@@ -63,23 +75,87 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 선체 <c>0.60</c>(운석 후 중간값)에서도 <b>여유가 반올림 오차 크기로 줄어야</b> 한다.
+        /// <b>판정 조건 (1)을 실제로 플레이되는 상태에서 잰다.</b> §7-1 이 <c>game-balance</c> 에
+        /// 넘긴 "세 프리셋 전부에서 성립하는지" 가 이 검사다(카드 <c>2245af31</c>).
         ///
-        /// 위 검사가 <c>0.60</c> 을 못 넣는 대신 이 카드가 실제로 바꾼 것을 여기서 잰다 —
-        /// 예전(<c>0.006</c>)에는 타이머 끝에 조종석이 <c>0.714</c> 로, 성공선까지 여유가
-        /// <c>0.51</c> 이었다. §2 가 "격리로 <c>60</c>초에 <c>0.018</c> 을 아낀다" 를 반올림
-        /// 오차라고 부른 근거가 그 여유다. 지금은 그 여유가 한 자릿수 퍼센트다.
+        /// 위 <see cref="LeavingEveryDoorOpenLosesTheOxygenSuccessLineInsideTheDockingTimer"/> 가
+        /// 쓰는 "선체 <c>0.60</c> · 모든 구역 <c>1.00</c>" 은 <see cref="LastShiftPresetFactory"/> 의
+        /// <b>어느 프리셋에서도 나오지 않는다.</b> 실제 시작 압력은 <c>0.64</c>/<c>0.58</c>/<c>0.96</c>
+        /// 이고 운석 뒤 선체는 <c>0.786</c>/<c>0.626</c>/<c>0.396</c> 이다. 상수를 다시 잡을 때
+        /// 봐야 하는 것은 이쪽이다.
+        ///
+        /// 실측(<c>0.024</c>): <c>245.0</c>초 · <c>182.5</c>초 · <c>245.0</c>초.
         /// </summary>
-        [Test]
-        public void AtMidHullTheOxygenMarginAtTheBuzzerIsNoLongerARoundingError()
+        [TestCase(LastShiftPreset.HighHeatHighThrust)]
+        [TestCase(LastShiftPreset.PowerOverloadLooseBattery)]
+        [TestCase(LastShiftPreset.BadAttitudeHighOxygen)]
+        public void EveryPresetLosesTheOxygenSuccessLineInsideTheDockingTimerIfLeftAlone(LastShiftPreset preset)
         {
-            var pressures = Integrate(LastShiftDoorState.AllOpen,
-                LastShiftRecoveryTuning.DockingTimerSeconds, ReferenceHull, out _);
-            var margin = pressures[LastShiftZone.Cockpit] - LastShiftRecoveryTuning.DockingSuccessOxygen;
+            var (state, pressures) = AfterMeteor(preset);
+            var seconds = SecondsUntilCockpitLosesSuccessLine(LastShiftDoorState.AllOpen, state, pressures);
 
-            Assert.That(margin, Is.GreaterThan(0f).And.LessThan(0.05f),
-                "선체 0.60 · 타이머 끝에서 조종석 여유가 0.05 미만이어야 한다 — " +
-                $"실측 여유 {margin:F3}. 예전 상수(0.006)에서는 0.51 이었다.");
+            Assert.That(seconds, Is.LessThan(LastShiftRecoveryTuning.DockingTimerSeconds),
+                $"{preset}(운석 후 선체 {state.HullIntegrity:F3}) 를 방치하면 도킹 타이머 안에 " +
+                "조종석이 산소 성공선을 잃어야 한다 — 안 그러면 그 프리셋에서 격리가 다시 죽는다(§2).");
+        }
+
+        /// <summary>
+        /// <b>판정 조건 (2)를 실제로 플레이되는 상태에서 잰다. 이쪽이 <c>0.024</c> 를 구속했다.</b>
+        ///
+        /// <c>0.018</c> 이 깨지는 자리가 정확히 여기다 — <c>HighHeatHighThrust</c> 는 운석 뒤
+        /// 선체가 <c>0.786</c> 로 셋 중 가장 높아 실효 누출이 작고, 격리해도 파공 구역이
+        /// <c>81.8</c>초에야 진공이 되어 예비 산소 예산(<c>80</c>초)을 <c>1.8</c>초 넘겼다.
+        /// 격리에 대가가 없으면 §6-4 의 "문 닫고 버티기" 가 비용 <c>0</c> 의 지배 전략이 된다.
+        ///
+        /// 실측(<c>0.024</c>): <c>61.2</c>초 · <c>31.5</c>초 · <c>32.2</c>초.
+        /// </summary>
+        [TestCase(LastShiftPreset.HighHeatHighThrust)]
+        [TestCase(LastShiftPreset.PowerOverloadLooseBattery)]
+        [TestCase(LastShiftPreset.BadAttitudeHighOxygen)]
+        public void EveryPresetPaysForIsolationInsideTheSuitOxygenBudget(LastShiftPreset preset)
+        {
+            var doors = LastShiftDoorState.AllOpen;
+            doors[LastShiftZoneAtlas.BoundaryCount - 1] = false;
+
+            var (state, pressures) = AfterMeteor(preset);
+            Integrate(doors, SuitBudgetSeconds, state, pressures, out var breachVacuumSeconds);
+
+            Assert.That(breachVacuumSeconds, Is.GreaterThan(0f).And.LessThan(SuitBudgetSeconds),
+                $"{preset}(운석 후 선체 {state.HullIntegrity:F3}) 에서 격리한 파공 구역은 예비 산소 " +
+                "지속시간 안에 진공이 되어야 한다 — 그게 격리의 대가이고, 없으면 문을 닫고 " +
+                "버티는 것이 공짜가 된다(§6-4).");
+        }
+
+        /// <summary>
+        /// <b>누출률을 올려도 봉합만 하면 이긴다.</b> 이 상수가 겨누는 것은 방치의 대가 하나이고,
+        /// 승리 가능성까지 같이 깎으면 §4.1 이 산 것보다 잃은 것이 커진다.
+        ///
+        /// 봉합이 늦은 쪽(<c>180</c>초)으로 잡는다 — 그때 봉합해도 펌프
+        /// (<see cref="LastShiftRecoveryTuning.OxygenPumpRecoveryPerSecond"/>)가 남은 시간에
+        /// 조종석 연결 구역을 되채워 타이머 끝 조종석이 성공선 위여야 한다. 실측은 세 프리셋
+        /// 전부 <c>0.43</c> 위다.
+        /// </summary>
+        [TestCase(LastShiftPreset.HighHeatHighThrust)]
+        [TestCase(LastShiftPreset.PowerOverloadLooseBattery)]
+        [TestCase(LastShiftPreset.BadAttitudeHighOxygen)]
+        public void PatchingLateStillClearsTheOxygenSuccessLineAtTheBuzzer(LastShiftPreset preset)
+        {
+            const float patchAt = 180f;
+            var (state, pressures) = AfterMeteor(preset);
+            var containment = new LastShiftContainment { CoolingRestored = true, PowerRestored = true };
+
+            for (var elapsed = 0f; elapsed < LastShiftRecoveryTuning.DockingTimerSeconds; elapsed += Step)
+            {
+                if (elapsed >= patchAt) containment.OxygenRestored = true;
+                LastShiftDeterioration.Tick(
+                    ref state, ref pressures, containment,
+                    LastShiftZone.LifeSupport, LastShiftDoorState.AllOpen, Step);
+            }
+
+            Assert.That(pressures[LastShiftZone.Cockpit],
+                Is.GreaterThan(LastShiftRecoveryTuning.DockingSuccessOxygen),
+                $"{preset} 에서 {patchAt:F0}초에 봉합해도 타이머 끝 조종석은 성공선 위여야 한다 — " +
+                $"실측 {pressures[LastShiftZone.Cockpit]:F3}.");
         }
 
         /// <summary>
@@ -186,23 +262,68 @@ namespace DoodleUp.Tests.EditMode
         /// 고정으로 두고 <c>0.86 + 0.005 x 14 = 0.93</c> 이라 적었지만, <c>CT-06 N5</c> 가 열
         /// <c>0.90</c> 이상 · 냉각 미연결에서 상승률을 <c>0.035/s</c> 로 갈아탄다
         /// (<see cref="LastShiftRecoveryTuning.HeatRunawayTrigger"/>). 밸브를 잡아도 <c>0.90</c> 은
-        /// 지나가므로 그 뒤로는 순 <c>0.020/s</c> 다.
+        /// 지나가므로, 폭주 증분을 그대로 두면 그 뒤로 순 <c>0.020/s</c> 가 되어 <c>13.2</c>초에
+        /// 잠겼다 — <c>14</c>초 왕복이 안 덮였다.
         ///
-        /// 그래서 실제로 관측되는 것은 "잠금 회피" 가 아니라 <b>잠금 지연</b>이고, 이 검사는
-        /// 그것을 잰다. §4.3 이 사려던 <c>14</c>초는 밸브 하나로는 안 나온다 — 수치 재조정은
-        /// <c>game-balance</c> 소관이고(§7-3), 여기서는 코드가 실제로 하는 일을 고정한다.
+        /// <b>§7-1b 결정(카드 <c>2245af31</c>): 붙잡고 있는 동안 폭주 증분이 안 실린다.</b>
+        /// 하강 항(<c>0.015</c>)은 그대로다 — 그쪽을 올려 <c>14</c>초를 사려면 <c>0.0155</c> 가
+        /// 필요하고, 그 값은 상승률과의 차가 <c>0.0045</c> 라 밸브가 냉각통의 대체재가 되기
+        /// 직전이다(§7-3). 증분을 걷어내면 유지 중 순 상승이 구간 내내 <c>0.005/s</c> 로 고정되어
+        /// <c>28.2</c>초다.
         /// </summary>
         [Test]
-        public void HoldingTheValveDelaysTheEngineProtectionLock()
+        public void HoldingTheValveCoversTheCoolantRoundTrip()
         {
             var abandoned = SecondsUntilProtectionLock(0.86f, 0.65f, held: false);
             var sustained = SecondsUntilProtectionLock(0.86f, 0.65f, held: true);
 
             Assert.That(abandoned, Is.LessThan(6f),
                 "아무도 밸브를 안 잡으면 몇 초 만에 엔진 보호 잠금이 걸려야 한다.");
-            Assert.That(sustained, Is.GreaterThan(abandoned * 2f),
-                "한 사람이 자리를 지키면 잠금까지의 시간이 최소 두 배가 되어야 한다 — " +
-                "그 지연이 이 동사가 사는 값이다.");
+            Assert.That(sustained, Is.GreaterThan(CoolantRoundTripSeconds),
+                $"한 사람이 자리를 지키면 냉각통 왕복({CoolantRoundTripSeconds:F1}초) 안에 " +
+                $"잠기지 않아야 한다 — 실측 {sustained:F1}초. 안 그러면 밸브를 잡는 선택이 " +
+                "'잠금을 조금 늦춘다' 이상을 못 사고, §4.3 이 만들려던 거래가 성립하지 않는다.");
+        }
+
+        /// <summary>
+        /// <b>폭주 증분을 걷어내도 유지는 복구가 아니다.</b> §7-1b 결정이 §4.3 의 "설계의 핵심"
+        /// (유지가 냉각통 연결을 대체하면 안 된다)을 깨지 않는지 직접 본다.
+        ///
+        /// 잡고 있어도 열은 계속 오르고(<c>0.005/s</c>) 결국 잠긴다. 열을 실제로 <b>내리는</b>
+        /// 것은 냉각 복구뿐이다.
+        /// </summary>
+        [Test]
+        public void SuppressingTheRunawaySurchargeStillLeavesTheHeatRising()
+        {
+            var sustained = SecondsUntilProtectionLock(0.86f, 0.65f, held: true);
+
+            Assert.That(sustained, Is.Not.EqualTo(float.PositiveInfinity),
+                "밸브를 잡고 버티는 것만으로 잠금을 영원히 피할 수 있으면 그건 복구다.");
+
+            var heldPastTheTrigger = TickHeat(
+                LastShiftRecoveryTuning.HeatRunawayTrigger, 0.65f, held: true, seconds: 10f);
+            var expected = LastShiftRecoveryTuning.HeatRunawayTrigger +
+                           (LastShiftRecoveryTuning.HeatRisePerSecond -
+                            LastShiftRecoveryTuning.SustainedCoolingPerSecond) * 10f;
+
+            Assert.That(heldPastTheTrigger, Is.EqualTo(expected).Within(0.002f),
+                "폭주선 위에서 밸브를 잡으면 기본 상승률에서 유지 항만 뺀 값으로 올라야 한다 — " +
+                "폭주 증분이 걷힌 것이지 상승이 멈춘 것이 아니다.");
+        }
+
+        /// <summary>
+        /// <b>손을 떼면 즉시 폭주로 돌아간다.</b> 억제는 붙잡고 있는 동안만이라는 §4.3 의
+        /// 해제 규칙("손을 떼거나 밸브에서 벗어나면 즉시 0")이 폭주 증분에도 그대로 걸린다.
+        /// </summary>
+        [Test]
+        public void ReleasingTheValveRestoresTheRunawaySurchargeImmediately()
+        {
+            var released = TickHeat(
+                LastShiftRecoveryTuning.HeatRunawayTrigger, 0.65f, held: false, seconds: 1f);
+
+            Assert.That(released - LastShiftRecoveryTuning.HeatRunawayTrigger,
+                Is.EqualTo(LastShiftRecoveryTuning.HeatRiseRunawayPerSecond).Within(0.0005f),
+                "밸브에서 손을 뗀 tick 은 폭주 상승률 그대로여야 한다.");
         }
 
         /// <summary>
@@ -287,22 +408,39 @@ namespace DoodleUp.Tests.EditMode
         // ── 조립 ────────────────────────────────────────────────────────────
 
         /// <summary>
+        /// 프리셋을 만들고 표준 운석(<see cref="LastShiftMeteorStimulus.Canonical"/>)을 때린
+        /// 직후 상태. <b>여기가 실제로 플레이가 시작되는 지점이다</b> —
+        /// <c>LastShiftSandboxController.Meteor</c> 가 <c>Canonical</c> 고정이라 severity 는
+        /// <c>0.9924</c> 하나뿐이고, 프리셋별 시작 압력·선체가 이 함수에서 결정된다.
+        ///
+        /// 부품은 넘기지 않는다(<c>items = null</c>). 부품이 굴러가면 <c>patchTravel</c> 이
+        /// 파공 구역 압력을 <b>더</b> 깎아 두 판정 조건이 함께 쉬워지므로, 부품이 제자리인
+        /// 쪽이 상수에 가장 가혹한 경우다.
+        /// </summary>
+        private static (LastShiftShipState, LastShiftZonePressures) AfterMeteor(LastShiftPreset preset)
+        {
+            var state = LastShiftPresetFactory.Create(preset);
+            var pressures = LastShiftZonePressures.Uniform(state.OxygenPressure);
+            state = LastShiftMeteorApplication.Apply(
+                LastShiftMeteorStimulus.Canonical, state, ref pressures, LastShiftZone.LifeSupport, null);
+            return (state, pressures);
+        }
+
+        /// <summary>
         /// 손상 하나(산소)만 남은 배를 <paramref name="seconds"/> 만큼 민다. 파공은 §2·§4.1 실측과
         /// 같은 자리 — 생명유지실이고 조종석에서 경계 <c>3</c>개 거리다.
         /// </summary>
         private static LastShiftZonePressures Integrate(
             LastShiftDoorState doors, float seconds, float hull, out float breachVacuumSeconds)
         {
-            var state = new LastShiftShipState
-            {
-                ThrustDemand = 0.50f,
-                BusPower = 1f,
-                OxygenPressure = 1f,
-                HullIntegrity = hull,
-                EngineHeat = 0.20f,
-                FuelReserve = LastShiftRecoveryTuning.FuelReserveInitial
-            };
-            var pressures = LastShiftZonePressures.Uniform(1f);
+            return Integrate(doors, seconds, ReferenceState(hull), LastShiftZonePressures.Uniform(1f),
+                out breachVacuumSeconds);
+        }
+
+        private static LastShiftZonePressures Integrate(
+            LastShiftDoorState doors, float seconds, LastShiftShipState state,
+            LastShiftZonePressures pressures, out float breachVacuumSeconds)
+        {
             // 열·전력은 봉쇄해 둔다. 이 검사가 겨누는 것은 산소 시계 하나이고, 다른 시계가
             // 같이 돌면 추력 상한이 움직여 압력과 무관한 이유로 결과가 흔들린다.
             var containment = new LastShiftContainment
@@ -327,16 +465,13 @@ namespace DoodleUp.Tests.EditMode
         /// <summary>조종석이 성공선 아래로 내려가는 시각. 안 내려가면 양의 무한대다.</summary>
         private static float SecondsUntilCockpitLosesSuccessLine(LastShiftDoorState doors, float hull)
         {
-            var state = new LastShiftShipState
-            {
-                ThrustDemand = 0.50f,
-                BusPower = 1f,
-                OxygenPressure = 1f,
-                HullIntegrity = hull,
-                EngineHeat = 0.20f,
-                FuelReserve = LastShiftRecoveryTuning.FuelReserveInitial
-            };
-            var pressures = LastShiftZonePressures.Uniform(1f);
+            return SecondsUntilCockpitLosesSuccessLine(
+                doors, ReferenceState(hull), LastShiftZonePressures.Uniform(1f));
+        }
+
+        private static float SecondsUntilCockpitLosesSuccessLine(
+            LastShiftDoorState doors, LastShiftShipState state, LastShiftZonePressures pressures)
+        {
             var containment = new LastShiftContainment
             {
                 CoolingRestored = true,
@@ -351,6 +486,20 @@ namespace DoodleUp.Tests.EditMode
                     return elapsed + Step;
             }
             return float.PositiveInfinity;
+        }
+
+        /// <summary>§2·§4.1 문서가 쓴 참고 상태. 프리셋이 아니라 문서 산수의 기준선이다.</summary>
+        private static LastShiftShipState ReferenceState(float hull)
+        {
+            return new LastShiftShipState
+            {
+                ThrustDemand = 0.50f,
+                BusPower = 1f,
+                OxygenPressure = 1f,
+                HullIntegrity = hull,
+                EngineHeat = 0.20f,
+                FuelReserve = LastShiftRecoveryTuning.FuelReserveInitial
+            };
         }
 
         /// <summary>
