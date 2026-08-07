@@ -309,5 +309,81 @@ namespace DoodleUp.Tests.EditMode
                     $"{compartment} 에서 단위좌표 ({ux}, {uz}) 가 방을 벗어난다.");
             }
         }
+
+        // ── 상부 회랑 ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void GalleryBoundsFollowTheLegFootprint()
+        {
+            // 회랑 좌표 정본이 둘이 되는 것을 막는다. 드레싱이 자기 사본을 들면 구획 하나가
+            // 움직였을 때 회랑은 따라가고 소품만 제자리에 남는다.
+            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
+            {
+                var leg = LastShiftUpperGallery.LegAt(index);
+                var bounds = LastShiftDressingSpaces.BoundsOf(LastShiftDressingSpace.OfGallery(index));
+
+                Assert.That(bounds.MinX, Is.EqualTo(leg.MinX).Within(0.0001f), $"{leg.Name} MinX");
+                Assert.That(bounds.MaxX, Is.EqualTo(leg.MaxX).Within(0.0001f), $"{leg.Name} MaxX");
+                Assert.That(bounds.MinZ, Is.EqualTo(leg.MinZ).Within(0.0001f), $"{leg.Name} MinZ");
+                Assert.That(bounds.MaxZ, Is.EqualTo(leg.MaxZ).Within(0.0001f), $"{leg.Name} MaxZ");
+                Assert.That(bounds.FloorY, Is.EqualTo(0f).Within(0.0001f), $"{leg.Name} FloorY");
+                Assert.That(bounds.CeilingY,
+                    Is.EqualTo(LastShiftUpperGallery.InteriorHeight).Within(0.0001f), $"{leg.Name} CeilingY");
+            }
+        }
+
+        [Test]
+        public void GalleryLegsAreSeparateSpacesForIdUniqueness()
+        {
+            // 다리마다 같은 이름을 쓸 수 있어야 한다 — 등은 어느 다리에서나 Lamp_0 이다.
+            // 반대로 한 다리 안에서 겹치면 걸려야 한다. 이 둘이 같이 성립해야 다리 번호가
+            // 실제로 공간을 가르는 값이 된다.
+            var run = LastShiftDressingSpace.OfGalleryRun();
+            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
+
+            Assert.That(HasRule(Validate(Prop("Lamp_0", run), Prop("Lamp_0", descent)), "R0_Id"), Is.False);
+            Assert.That(HasRule(Validate(Prop("Lamp_0", run), Prop("Lamp_0", run)), "R0_Id"), Is.True);
+        }
+
+        [Test]
+        public void GalleryPropOutsideItsLegIsRejected()
+        {
+            // 강하 다리는 폭이 2m 뿐이다. 긴 구간 좌표를 그대로 적으면 다리 밖으로 나간다.
+            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
+            var stray = Prop("Stray", descent);
+            stray.anchor = new Vector2(LastShiftUpperGallery.Width * 2f, 0f);
+
+            Assert.That(HasRule(Validate(stray), "R1_Bounds"), Is.True);
+        }
+
+        [Test]
+        public void GalleryComfortIsAllowed()
+        {
+            // 유도띠는 Comfort 다. 그 금지는 우회 통로 전용이라(§5) 회랑에 옮겨 붙으면
+            // art §4.3 이 근거를 대고 만든 띠 일곱 장이 통째로 위반이 된다.
+            var band = Prop("Trim", LastShiftDressingSpace.OfGalleryRun(),
+                LastShiftDressingSemantics.Comfort);
+
+            Assert.That(HasRule(Validate(band), "C4_BypassComfort"), Is.False);
+        }
+
+        [Test]
+        public void GalleryLightIsOutsideTheBypassBudget()
+        {
+            // 회랑 등 열둘의 합(15.12)은 우회 통로 예산 2.0 을 한참 넘는다. 회랑이 그
+            // 예산에 섞이면 등을 다는 순간 관 쪽 위반으로 잡힌다.
+            var props = new List<LastShiftDressingProp>();
+            for (var index = 0; index < 12; index++)
+            {
+                var lamp = Prop($"Lamp_{index}", LastShiftDressingSpace.OfGalleryRun(),
+                    LastShiftDressingSemantics.LightSource);
+                lamp.lightIntensity = 1.26f;
+                props.Add(lamp);
+            }
+
+            var violations = LastShiftDressingRules.Validate(props);
+            Assert.That(HasRule(violations, "C4_BypassLightBudget"), Is.False);
+            Assert.That(HasRule(violations, "C4_AirlockLightBudget"), Is.False);
+        }
     }
 }

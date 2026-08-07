@@ -709,6 +709,30 @@ namespace DoodleUp.Editor
             // ── z 로 달리는 다리 넷(분기 셋 + 강하 하나) ─────────────────────────────
             foreach (var leg in mouths)
                 CreateGalleryLegAlongZ(root.transform, leg, nearZ);
+
+            CreateGalleryDressing(root.transform);
+        }
+
+        /// <summary>
+        /// 회랑 소품. <b>다리마다 부모를 따로 준다</b> — 판은 이름에 다리를 달고 있어
+        /// 한 루트 밑에 있어도 안 헷갈리지만, 소품 이름은 art 가 짓고 유일성도 공간
+        /// 안에서만 요구된다(<c>R0_Id</c>). 다리 다섯을 한 부모에 쏟으면 서로 다른
+        /// 다리의 같은 이름이 하이어라키에서 한 자리로 겹쳐 보인다.
+        ///
+        /// 소품이 없는 다리에는 빈 부모를 안 만든다. 분기 셋에는 지금 아무것도 안 붙어서
+        /// (개구부 프레임은 긴 구간 쪽 벽면이다) 빈 노드 셋이 그대로 남는다.
+        /// </summary>
+        private static void CreateGalleryDressing(Transform root)
+        {
+            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
+            {
+                var space = LastShiftDressingSpace.OfGallery(index);
+                if (!HasDressing(space)) continue;
+
+                var legRoot = new GameObject($"Dressing_{LastShiftUpperGallery.LegAt(index).Name}");
+                legRoot.transform.SetParent(root, false);
+                CreateDressingProps(legRoot.transform, space);
+            }
         }
 
         /// <summary>
@@ -1314,9 +1338,13 @@ namespace DoodleUp.Editor
                 LastShiftDressingSpaceKind.Zone => a.zone == b.zone,
                 LastShiftDressingSpaceKind.Compartment => a.compartment == b.compartment,
                 LastShiftDressingSpaceKind.Passage => a.passage == b.passage,
+                LastShiftDressingSpaceKind.UpperGallery => a.galleryLeg == b.galleryLeg,
                 _ => true
             };
         }
+
+        private static bool HasDressing(LastShiftDressingSpace space) =>
+            DressingSet.Props.Any(prop => prop != null && SameSpace(prop.space, space));
 
         /// <summary>
         /// 한 공간의 소품을 세운다. <b>자리 계산은 여기서 안 한다</b> —

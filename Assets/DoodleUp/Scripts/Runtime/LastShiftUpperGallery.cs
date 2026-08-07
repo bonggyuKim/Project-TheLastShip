@@ -165,6 +165,17 @@ namespace DoodleUp.Runtime
         public static LastShiftGalleryLeg[] Legs => legs;
         public static LastShiftGalleryBranch[] Branches => branches;
 
+        /// <summary>
+        /// 다리 하나를 번호로 집는다. 범위를 벗어난 번호는 자르고 던지지 않는다 —
+        /// 부르는 쪽이 드레싱 데이터(<see cref="LastShiftDressingSpace.galleryLeg"/>)이고,
+        /// 거기 든 숫자는 Inspector 에서 손으로 적힌 값이라 언제든 다리 수보다 클 수 있다.
+        /// 그때 예외를 던지면 씬 빌드가 통째로 죽고, 정작 어느 소품이 범인인지는
+        /// 스택에 안 남는다. 잘라서 경계 검사(<c>R1_Bounds</c>)에 걸리게 두는 쪽이
+        /// 그 소품의 이름을 로그에 남긴다.
+        /// </summary>
+        public static LastShiftGalleryLeg LegAt(int index) =>
+            legs[Mathf.Clamp(index, 0, LegCount - 1)];
+
         /// <summary>회랑 오브젝트 이름의 접두. 씬 로그와 검증기가 같은 문자열을 봐야 한다.</summary>
         public const string RootName = "UpperGallery";
 

@@ -113,7 +113,8 @@ namespace DoodleUp.Editor
         }
 
         private static string KeyOf(LastShiftDressingProp prop) =>
-            $"{prop.space.kind}/{prop.space.zone}/{prop.space.compartment}/{prop.space.passage}/{prop.id}";
+            $"{prop.space.kind}/{prop.space.zone}/{prop.space.compartment}/" +
+            $"{prop.space.passage}/{prop.space.galleryLeg}/{prop.id}";
 
         /// <summary>에셋을 만들고(또는 덮어쓰고) 저장한다.</summary>
         public static LastShiftDressingSet Seed()
@@ -150,6 +151,7 @@ namespace DoodleUp.Editor
             AddStateCues(props);
             AddBypassProps(props, lane, hazard);
             AddCeilingLamps(props);
+            AddGalleryProps(props);
             return props;
         }
 
@@ -518,11 +520,11 @@ namespace DoodleUp.Editor
         /// 뺀 값이 곧 밑면 높이다 — 공간마다 천장이 다르므로(구역 3.2 / 구획 3.0 / 관은 더 낮다)
         /// 상수를 적지 않고 그 공간의 실제 높이에서 뽑는다.
         /// </summary>
-        private static void AddLamp(List<LastShiftDressingProp> props, LastShiftDressingSpace space,
-            string id, Vector2 anchor, Vector3 size, GameObject prefab)
+        private static LastShiftDressingProp AddLamp(List<LastShiftDressingProp> props,
+            LastShiftDressingSpace space, string id, Vector2 anchor, Vector3 size, GameObject prefab)
         {
             var bounds = LastShiftDressingSpaces.BoundsOf(space);
-            props.Add(new LastShiftDressingProp
+            var prop = new LastShiftDressingProp
             {
                 id = id,
                 space = space,
@@ -533,7 +535,9 @@ namespace DoodleUp.Editor
                 prefab = prefab,
                 semantics = LastShiftDressingSemantics.LightSource,
                 lightIntensity = LampIntensityOf(prefab)
-            });
+            };
+            props.Add(prop);
+            return prop;
         }
 
         private static float LampIntensityOf(GameObject prefab)
@@ -542,5 +546,174 @@ namespace DoodleUp.Editor
             var light = prefab.GetComponentInChildren<Light>(true);
             return light != null ? light.intensity : 0f;
         }
+
+        // ── 상부 회랑 ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 긴 구간을 뺀 다리 넷. 긴 구간은 다른 넷이 <b>붙는</b> 몸통이라 "입구" 도
+        /// "맞은편 벽" 도 자기 자신에 대해서는 없다.
+        /// </summary>
+        private static IEnumerable<LastShiftGalleryLeg> BranchLegs()
+        {
+            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
+                if (index != LastShiftUpperGallery.RunLeg)
+                    yield return LastShiftUpperGallery.LegAt(index);
+        }
+
+        private static GameObject GalleryPrefab(string name) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>($"{DressingPrefabFolder}/LSDress_{name}.prefab");
+
+        /// <summary>회랑 등기구 외형 치수. 방 등보다 앞뒤로 조금 두껍다(art §4.1).</summary>
+        private static readonly Vector3 GalleryLampSize = new(1.60f, 0.16f, 0.38f);
+
+        private static readonly Vector3 GalleryCeilingRunSize = new(2.40f, 0.12f, 0.62f);
+        private static readonly Vector3 GalleryTrimBandSize = new(2.44f, 0.10f, 0.03f);
+        private static readonly Vector3 GalleryMouthFrameSize = new(2.24f, 3.00f, 0.26f);
+
+        /// <summary>등 간격. art §4.2 가 목표 조도 <c>160 lx</c> 에서 역산한 값이다.</summary>
+        private const float GalleryLampSpacing = 5.1f;
+
+        /// <summary>유도띠 밑면 높이(art §4.4). 손 높이 아래라 통행에 안 걸린다.</summary>
+        private const float GalleryTrimBottomY = 0.45f;
+
+        /// <summary>
+        /// 상부 회랑 드레싱(art <c>last-shift-hull-finish-v1.md</c> §4.4). <b>좌표는 한 줄도
+        /// 안 적는다</b> — 전부 <see cref="LastShiftUpperGallery"/> 에서 뽑는다. 회랑은 구획
+        /// 표에서 파생하는 공간이라 방이 하나만 움직여도 <c>x</c>·<c>z</c> 가 같이 움직이고,
+        /// 리터럴을 적으면 그때 소품만 제자리에 남는다.
+        ///
+        /// <b>넷 다 프리팹이 정본이다.</b> 여기 있는 치수는 스케일이 아니라 경계 검사용
+        /// 바깥 치수이고(art §4.1 표), 밝기 실값은 <see cref="LampIntensityOf"/> 로 프리팹에서
+        /// 읽는다.
+        ///
+        /// 회랑에는 <c>C4</c> 밝기 예산이 안 걸린다 — 그 예산은 "불편해야 하는 길"(우회 통로)
+        /// 의 것이고 회랑은 실사용 이면 동선이다(§27.4, art §4.3). 유도띠에 <c>Comfort</c> 가
+        /// 붙는 것도 같은 이유로 위반이 아니다.
+        /// </summary>
+        private static void AddGalleryProps(List<LastShiftDressingProp> props)
+        {
+            var lamp = GalleryPrefab("Lamp_Gallery");
+            var ceilingRun = GalleryPrefab("GalleryCeilingRun");
+            var trim = GalleryPrefab("GalleryTrimBand");
+            var frame = GalleryPrefab("GalleryMouthFrame");
+
+            var run = LastShiftDressingSpace.OfGalleryRun();
+            var runBounds = LastShiftDressingSpaces.BoundsOf(run);
+            var runLength = runBounds.MaxX - runBounds.MinX;
+
+            // 긴 구간 천장 등. 개수를 간격에서 뽑으므로 회랑이 길어지면 등도 같이 는다.
+            var lampCount = Mathf.Max(1, Mathf.RoundToInt(runLength / GalleryLampSpacing));
+            for (var index = 0; index < lampCount; index++)
+                AddLamp(props, run, $"Lamp_{index}",
+                    new Vector2((index - (lampCount - 1) * 0.5f) * GalleryLampSpacing, 0f),
+                    GalleryLampSize, lamp);
+
+            // 천장 배관. 등과 달리 <b>끊기면 안 되는</b> 줄이라 간격이 곧 부재 길이다.
+            // 남는 자투리는 양 끝에 반씩 두고(가운데 정렬) 개수를 내림으로 잡는다 —
+            // 올림하면 마지막 한 장이 회랑 밖으로 나가 R1_Bounds 에 걸린다.
+            const float ceilingRunPitch = 2.40f;
+            var ceilingRunCount = Mathf.Max(1, Mathf.FloorToInt(runLength / ceilingRunPitch));
+            for (var index = 0; index < ceilingRunCount; index++)
+                props.Add(GalleryProp($"CeilingRun_{index}", run,
+                    new Vector2((index - (ceilingRunCount - 1) * 0.5f) * ceilingRunPitch, 0.5f),
+                    GalleryCeilingRunSize, runBounds.CeilingY - runBounds.FloorY - GalleryCeilingRunSize.y,
+                    0f, ceilingRun));
+
+            // 개구부 프레임 여섯. 다섯은 긴 구간에서 보이는 면이고(격납고 종점 + 다리 넷의
+            // 입구), 하나는 강하 다리 끝의 구명정 면이다. 프레임의 발광 액센트가 로컬 +z 라
+            // 회전이 곧 "어느 쪽에서 보라고 세운 문인가" 다.
+            foreach (var leg in BranchLegs())
+            {
+                // 다리 입구는 긴 구간의 안쪽 벽(z = NearZ)에 뚫린 구멍이다. 프레임을 다리가
+                // 아니라 긴 구간에 다는 것은 이 문들이 <b>긴 구간을 걷는 사람</b>에게 갈림길을
+                // 알리려고 있기 때문이다(art §4.3) — 다리 안에서는 갈림길이 없다.
+                props.Add(GalleryProp($"Mouth_{leg.Name}", run,
+                    new Vector2(leg.CenterX - runBounds.CenterX, runBounds.MinZ - runBounds.CenterZ),
+                    GalleryMouthFrameSize, 0f, 0f, frame));
+            }
+
+            // 격납고 종점. 여기만 문 면이 x 법선이라(§27.4 의 AlongX 분기) 프레임을 돌린다.
+            props.Add(GalleryProp("Mouth_Hangar", run,
+                new Vector2(runBounds.MinX - runBounds.CenterX, 0f),
+                Swizzle(GalleryMouthFrameSize), 0f, 90f, frame));
+
+            // 유도띠. 개구부 맞은편 바깥 벽(z = FarZ)에 붙어 문이 있는 자리를 건너편에서
+            // 비춘다. 긴 구간 양 끝 둘은 문이 아니라 <b>구간이 여기서 끝난다</b> 는 표시다.
+            foreach (var leg in BranchLegs())
+            {
+                props.Add(GalleryProp($"Trim_{leg.Name}", run,
+                    new Vector2(leg.CenterX - runBounds.CenterX, runBounds.MaxZ - runBounds.CenterZ),
+                    GalleryTrimBandSize, GalleryTrimBottomY, 180f, trim,
+                    LastShiftDressingSemantics.Comfort));
+            }
+
+            var halfBand = GalleryTrimBandSize.x * 0.5f;
+            foreach (var (id, x) in new[]
+                     {
+                         ("Trim_ForeEnd", runBounds.MinX + halfBand),
+                         ("Trim_AftEnd", runBounds.MaxX - halfBand)
+                     })
+                props.Add(GalleryProp(id, run,
+                    new Vector2(x - runBounds.CenterX, runBounds.MaxZ - runBounds.CenterZ),
+                    GalleryTrimBandSize, GalleryTrimBottomY, 180f, trim,
+                    LastShiftDressingSemantics.Comfort));
+
+            AddDescentLegProps(props, lamp, trim, frame);
+        }
+
+        /// <summary>
+        /// 강하 다리. 긴 구간과 달리 <b>z 로 달린다</b> — 길쭉한 소품은 전부 90° 돌아가고,
+        /// 그래서 경계 검사에 넣는 치수도 축을 바꿔 적는다(<see cref="Swizzle"/>).
+        /// </summary>
+        private static void AddDescentLegProps(List<LastShiftDressingProp> props,
+            GameObject lamp, GameObject trim, GameObject frame)
+        {
+            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
+            var bounds = LastShiftDressingSpaces.BoundsOf(descent);
+
+            // 등 둘. 8m 다리에 5.1m 간격을 그대로 쓰면 하나뿐이라 끝이 처진다 —
+            // art §4.4 가 4m 간격 둘로 정했다.
+            var index = 0;
+            foreach (var offset in new[] { 2f, 6f })
+                AddLamp(props, descent, $"Lamp_{index++}",
+                    new Vector2(0f, bounds.MinZ + offset - bounds.CenterZ),
+                    Swizzle(GalleryLampSize), lamp).eulerAngles = new Vector3(0f, 90f, 0f);
+
+            // 구명정 종점. 문 면은 구명정 우현(z 법선)이라 긴 구간 쪽 입구들과 같은 방향이고,
+            // 회전이 없다 — art §4.4 표는 여기 90° 로 적었지만, 그 면은 §27.4 의
+            // AlongZ 분기라 돌리면 프레임이 문 면과 직교한다.
+            props.Add(GalleryProp("Mouth_EscapePod", descent,
+                new Vector2(0f, bounds.MinZ - bounds.CenterZ),
+                GalleryMouthFrameSize, 0f, 0f, frame));
+
+            // 유도띠 하나. 다리가 z 로 달리므로 벽은 x 면이고, 띠는 선미 쪽 벽에 붙어
+            // 안쪽(-x)을 향한다.
+            props.Add(GalleryProp("Trim_Wall", descent,
+                new Vector2(bounds.MaxX - bounds.CenterX, 0f),
+                Swizzle(GalleryTrimBandSize), GalleryTrimBottomY, 270f, trim,
+                LastShiftDressingSemantics.Comfort));
+        }
+
+        /// <summary>
+        /// <c>y</c> 로 90° 돌린 소품의 경계 검사용 치수. <c>x</c> 와 <c>z</c> 를 맞바꾼다 —
+        /// <see cref="LastShiftDressingProp.size"/> 는 선체 축 기준이라 회전을 안 따라간다.
+        /// </summary>
+        private static Vector3 Swizzle(Vector3 size) => new(size.z, size.y, size.x);
+
+        private static LastShiftDressingProp GalleryProp(string id, LastShiftDressingSpace space,
+            Vector2 anchor, Vector3 size, float bottomY, float yaw, GameObject prefab,
+            LastShiftDressingSemantics semantics = LastShiftDressingSemantics.None) =>
+            new()
+            {
+                id = id,
+                space = space,
+                anchorMode = LastShiftDressingAnchorMode.MetersFromSpaceCenter,
+                anchor = anchor,
+                size = size,
+                bottomY = bottomY,
+                eulerAngles = new Vector3(0f, yaw, 0f),
+                prefab = prefab,
+                semantics = semantics
+            };
     }
 }
