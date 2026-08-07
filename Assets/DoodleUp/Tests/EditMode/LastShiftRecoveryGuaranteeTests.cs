@@ -344,6 +344,84 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(stranded.Length, Is.Zero, $"RG-4 (5) 위반 — PASS 조건\n{stranded}");
         }
 
+        // ── 진공 스냅 방향 (회귀) ────────────────────────────────────────────
+
+        /// <summary>
+        /// 실제 프레임 간격에서 도는 <c>1</c>회분 tick 이다. 이 회귀는 <see cref="Step"/>(0.5초)
+        /// 걸음에서는 안 보인다 — 걸음이 크면 재가압 증분이 스냅선을 넘어 버린다.
+        /// </summary>
+        private const float FrameStep = 1f / 60f;
+
+        /// <summary>
+        /// <b>회귀:</b> 진공에 닿은 구역이 봉합·전력 복구 후에도 압력을 되찾지 못했다.
+        ///
+        /// 진공 스냅이 방향을 안 보던 동안 <c>0.00</c> 은 흡수 상태였다. 한 프레임의 재가압
+        /// (펌프 <c>0.004/s</c> × <c>1/60s</c> ≈ <c>0.00007</c>, 평준화도 같은 자릿수)이
+        /// 스냅선 <c>0.005</c> 보다 작아, 오른 값이 같은 tick 안에서 곧바로 0 으로 되돌아갔다.
+        /// 그 구역의 승무원에게는 압력이 회복돼도 예비 산소 소모가 멈추지 않는 것으로 보인다
+        /// (<see cref="LastShiftCrewOxygen.Tick"/> 의 유일한 조건이 구역 진공이다).
+        /// </summary>
+        [Test]
+        public void VacuumZoneRepressurizesAtRealFrameSteps()
+        {
+            var state = new LastShiftShipState
+            {
+                ThrustDemand = 0f, BusPower = 1f, HullIntegrity = 0.5f,
+                EngineHeat = 0f, FuelReserve = 1f, OxygenPressure = 0f
+            };
+            var pressures = LastShiftZonePressures.Uniform(0f);
+            var repaired = new LastShiftContainment
+            {
+                CoolingRestored = true, PowerRestored = true, OxygenRestored = true
+            };
+
+            LastShiftDeterioration.Tick(
+                ref state, ref pressures, repaired, LastShiftZone.LifeSupport,
+                LastShiftDoorState.AllOpen, FrameStep);
+
+            Assert.That(pressures[LastShiftZone.LifeSupport],
+                Is.GreaterThan(LastShiftRecoveryTuning.VacuumOxygenPressure),
+                "봉합·전력 복구를 마치고 문이 열려 있으면 진공 구역은 첫 프레임부터 0.00 위로 " +
+                "올라와야 한다 — 여기서 막히면 그 안의 승무원은 예비 산소를 끝까지 태운다.");
+
+            for (var frame = 1; frame < 600; frame++)   // 10초
+                LastShiftDeterioration.Tick(
+                    ref state, ref pressures, repaired, LastShiftZone.LifeSupport,
+                    LastShiftDoorState.AllOpen, FrameStep);
+
+            Assert.That(pressures[LastShiftZone.LifeSupport], Is.GreaterThan(0.03f),
+                "10초면 펌프 정격(0.004/s)에 가까운 0.04 부근이어야 한다 — 프레임마다 되돌려지면 " +
+                $"여기서 0 이 나온다. 실측 {pressures[LastShiftZone.LifeSupport]:F4}.");
+        }
+
+        /// <summary>
+        /// 스냅의 원래 목적은 그대로 남는다. 평준화는 지수 접근이라 이웃 구역이 0 에 정확히
+        /// 닿지 않고, 그러면 진공선이 도달 불가가 되어 <c>RG-1</c> 의 80초 구간이 시작되지 않는다.
+        /// </summary>
+        [Test]
+        public void FallingZoneStillReachesExactVacuum()
+        {
+            var state = new LastShiftShipState
+            {
+                ThrustDemand = 0f, BusPower = 1f, HullIntegrity = 0.5f,
+                EngineHeat = 0f, FuelReserve = 1f, OxygenPressure = 0.01f
+            };
+            // 파공 구역은 이미 진공이고 나머지는 잔압만 남았다. 문이 열려 있으니 잔압은
+            // 파공 구역으로 끌려가지만, 지수 접근이라 스냅이 없으면 0 에 닿지 않는다.
+            var pressures = new LastShiftZonePressures(0.01f, 0.01f, 0.01f, 0f);
+            var leaking = default(LastShiftContainment);
+
+            for (var elapsed = 0f; elapsed < LastShiftRecoveryTuning.DockingTimerSeconds; elapsed += FrameStep)
+                LastShiftDeterioration.Tick(
+                    ref state, ref pressures, leaking, LastShiftZone.LifeSupport,
+                    LastShiftDoorState.AllOpen, FrameStep);
+
+            for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+                Assert.That(pressures[(LastShiftZone)index], Is.EqualTo(0f),
+                    $"{(LastShiftZone)index} 는 정확히 0.00 이어야 한다 — 진공선이 도달 불가가 되면 " +
+                    "RG-1 의 80초 보장 구간 자체가 시작되지 않는다.");
+        }
+
         // ── 시뮬레이션 보조 ──────────────────────────────────────────────────
 
         private static LastShiftSituationInput InputOf(in Scenario scenario) =>

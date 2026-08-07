@@ -243,6 +243,10 @@ namespace DoodleUp.Runtime
         /// 파공 구역이 0 에 고정돼도 이웃 구역은 정확히 0 에 닿지 않는다. 스냅이 없으면
         /// 진공선(0.00)이 사실상 도달 불가가 되어 RG-1 의 "80초 보장" 구간 자체가 시작되지 않는다.
         /// 0.005 는 압력 0.5% 로, 관측·판정 어디에도 의미를 갖지 않는 크기다.
+        ///
+        /// <b>이 스냅은 내려가는 구역에만 걸린다.</b> 이 값이 한 tick 의 재가압 증분보다 크므로
+        /// (60fps 에서 펌프는 0.00007) 방향을 안 보면 0.00 이 흡수 상태가 된다. 자세한 것은
+        /// <see cref="LastShiftDeterioration"/> 의 <c>SnapNearVacuum</c> 주석이다.
         /// </summary>
         public const float ZonePressureVacuumSnap = 0.005f;
 
@@ -678,6 +682,11 @@ namespace DoodleUp.Runtime
             // ── 산소 시계 ── 이제 구역별로 돈다(기획 v0.3 §2.2).
             // 새는 것은 파공이 있는 구역 하나뿐이고, 나머지 구역은 문이 열려 있는 동안 평준화로
             // 끌려 내려간다. 문을 닫으면 그 전파가 그 자리에서 멈추는 것이 격리의 즉시 효과다.
+            //
+            // 아래 세 항(누출·펌프·평준화)이 끝난 뒤 <see cref="SnapNearVacuum"/> 이 "이 tick 에
+            // 오른 구역인가" 를 물어야 하므로 직전 값을 남긴다. 이유는 그 함수 주석에 있다.
+            var beforeOxygen = pressures;
+
             if (!containment.OxygenContained)
             {
                 var leak = LastShiftRecoveryTuning.OxygenLeakPerSecond *
@@ -699,7 +708,7 @@ namespace DoodleUp.Runtime
             }
 
             pressures.Equalize(doors, deltaTime);
-            SnapNearVacuum(ref pressures);
+            SnapNearVacuum(ref pressures, beforeOxygen);
 
             // OxygenPressure 는 조종석 압력의 파생값이다. 도킹 성공 판정·leak 점수·네트워크
             // 스냅샷이 모두 이 필드를 읽고 있고, 판정 기준은 세 구역 평균이 아니라 조종석 하나다.
@@ -772,13 +781,25 @@ namespace DoodleUp.Runtime
         /// <summary>
         /// 평준화는 지수 접근이라 이웃 구역이 0 에 정확히 닿지 않는다. 진공선(0.00)이 도달
         /// 불가가 되면 RG-1 의 80초 보장 구간 자체가 시작되지 않으므로 아주 작은 잔압은 버린다.
+        ///
+        /// <b>내려가는 구역에만 건다.</b> 방향을 안 보고 걸면 <c>0.00</c> 이 빠져나올 수 없는
+        /// 흡수 상태가 된다 — 한 tick 의 재가압 증분은 펌프
+        /// (<see cref="LastShiftRecoveryTuning.OxygenPumpRecoveryPerSecond"/> = 0.004/s)로도
+        /// 평준화로도 스냅선(0.005)보다 훨씬 작아서, 방금 오른 값이 같은 tick 안에서 곧바로
+        /// 0 으로 되돌려진다. 그러면 파공을 봉합하고 문을 열어도 그 구역은 영원히 진공이고,
+        /// 그 안의 승무원은 <see cref="LastShiftCrewOxygen"/> 예비 산소를 끝까지 태운다.
+        /// §2.2.2 가 보장한 되돌리기와 <c>RG-4 (4-a)</c> 가 통째로 사라지는 자리다.
         /// </summary>
-        private static void SnapNearVacuum(ref LastShiftZonePressures pressures)
+        private static void SnapNearVacuum(ref LastShiftZonePressures pressures, in LastShiftZonePressures before)
         {
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
             {
                 var zone = (LastShiftZone)index;
-                if (pressures[zone] < LastShiftRecoveryTuning.ZonePressureVacuumSnap) pressures[zone] = 0f;
+                var pressure = pressures[zone];
+                // 음수는 누출이 0 아래를 뚫고 내려간 것이라 방향과 무관하게 버린다.
+                if (pressure < 0f) pressures[zone] = 0f;
+                else if (pressure < LastShiftRecoveryTuning.ZonePressureVacuumSnap && pressure <= before[zone])
+                    pressures[zone] = 0f;
             }
         }
 
