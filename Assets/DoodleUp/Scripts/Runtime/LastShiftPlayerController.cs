@@ -55,6 +55,14 @@ namespace DoodleUp.Runtime
         public const float GrabAimRadius = 0.22f;
 
         /// <summary>
+        /// 이미 고정된 부품에 "왜 안 잡히는지" 를 알려줄 거리. <see cref="AwarenessDistance"/>
+        /// 보다 훨씬 짧은 이유는 그 안내가 <b>잡으려 다가온 사람</b>에게만 쓸모 있기 때문이다.
+        /// 잡을 수 있는 부품의 접근 안내(8m)와 달리, 고정 부품은 다가가도 결과가 안 바뀌므로
+        /// 멀리서부터 띄우면 화면 중앙이 계속 차 있는 상태로 돌아간다.
+        /// </summary>
+        public const float SecuredNoticeDistance = GrabDistance + 1f;
+
+        /// <summary>
         /// 유령의 부유 속도(기획 §4.4 N11). <see cref="MoveSpeed"/> 와 <b>같은 값이며 일부러
         /// 같다.</b> 기획이 v0.4 에서 "유령의 우위는 속도가 아니라 접근" 으로 근거를 바꿨고,
         /// 여기서 속도를 올리면 폐기된 그 논거를 코드가 되살린다.
@@ -122,7 +130,22 @@ namespace DoodleUp.Runtime
         public string InputLabel => IsGhost
             ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 — 유령: 잡기·수리·문 조작 불가"
             : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / 1·2·3 프리셋 / R 리셋";
-        public string InteractionPrompt => BuildInteractionPrompt();
+        /// <summary>
+        /// 화면 중앙 프롬프트. <b>지금 이 자리에서 누를 것이 있을 때만 문자열이 있고, 없으면
+        /// 빈 문자열이다.</b> 예전에는 아무것도 없는 자리에서도 `+   E 잡기: 대상을 조준하세요`
+        /// 가 상시로 떠 있어, 화면 한가운데 폭 460px 상자가 배 전체를 도는 내내 시야를 덮었다.
+        /// 상시로 떠 있으면 <b>떠 있다는 사실 자체가 정보를 잃는다</b> — 프롬프트가 보인다는
+        /// 것이 곧 "여기서 뭔가 된다" 여야 조준이 신호가 된다(CT-01 §1.1 L3 국소 프롬프트).
+        ///
+        /// null 이 아니라 빈 문자열인 이유는 읽는 쪽이 로그·프로브를 포함해 여럿이고
+        /// (<see cref="LastShiftNetworkLifecycleProbe"/> 는 <c>Contains</c> 로 판정한다),
+        /// 그쪽에 null 검사를 강요하면 이 속성 하나 때문에 매 호출부가 늘어난다.
+        /// 그릴지 말지는 <see cref="HasInteractionPrompt"/> 하나로 판단한다.
+        /// </summary>
+        public string InteractionPrompt => BuildInteractionPrompt() ?? string.Empty;
+
+        /// <summary>지금 화면 중앙에 그릴 것이 있는가. 조준점도 이 값에만 따른다.</summary>
+        public bool HasInteractionPrompt => BuildInteractionPrompt() != null;
         public Vector3 AimOrigin => targetCamera != null ? targetCamera.transform.position : transform.position;
 
         /// <summary>
@@ -754,8 +777,9 @@ namespace DoodleUp.Runtime
             // 동사라 잘못 가려지면 승무원이 갇힌다.
             var repairPrompt = BuildRepairPrompt();
             if (repairPrompt != null) return repairPrompt;
+            // 네트워크가 없는 단독 씬(SP-01)에서도 빈손이면 중앙에 아무것도 그리지 않는다.
             if (networkPlayer == null || !networkPlayer.IsSpawned)
-                return heldItem != null ? "[E] 놓기" : "+";
+                return heldItem != null ? "[E] 놓기" : null;
             if (serverRejectionReason != null)
             {
                 if (Time.unscaledTime <= serverRejectionExpiry)
@@ -776,10 +800,18 @@ namespace DoodleUp.Runtime
             if (!TryGetNetworkTarget(out var item, out var distance))
             {
                 var awarenessItem = FindAwarenessItem(out var awarenessDistance);
+                // 조준선 앞 8m 안에 부품이 하나도 없으면 잡기에 대해 할 말이 없다. 예전에는
+                // 여기서 "대상을 조준하세요" 를 돌려줘 그 문장이 사실상 상시 프롬프트였다.
                 if (awarenessItem == null || awarenessItem.Grabbable == null)
-                    return $"+   E 잡기: 대상을 조준하세요 (사거리 {GrabDistance:F1}m)";
+                    return null;
+                // 고정된 부품은 어느 거리에서도 잡히지 않는다. 그래도 문장을 남기는 것은
+                // "왜 안 되는지" 를 그 자리에서 알려주기 위해서이므로, <b>실제로 잡으려 드는
+                // 거리에서만</b> 남긴다. 8m 까지 띄우면 고정 소품이 널린 방을 지나는 동안
+                // 중앙 상자가 사실상 계속 켜져 있어 이 카드가 지운 상시 UI 가 되돌아온다.
                 if (awarenessItem.IsSecured)
-                    return $"{awarenessItem.Grabbable.Role}: {DescribeSecured(awarenessItem)}";
+                    return awarenessDistance <= SecuredNoticeDistance
+                        ? $"{awarenessItem.Grabbable.Role}: {DescribeSecured(awarenessItem)}"
+                        : null;
                 var approachNeeded = Mathf.Max(0f, awarenessDistance - GrabDistance);
                 return approachNeeded > 0.05f
                     ? $"{awarenessItem.Grabbable.Role}: {awarenessDistance:F1}m / 접근 필요 {approachNeeded:F1}m"
@@ -788,7 +820,7 @@ namespace DoodleUp.Runtime
             // 아직 spawn 되지 않은 아이템은 역할을 신뢰할 수 없다. OnGUI 는 매 프레임 돌기 때문에
             // 여기서 예외가 나면 화면이 아니라 로그가 먼저 무너진다.
             if (item.Grabbable == null)
-                return $"+   E 잡기: 대상 확인 중  {distance:F1}m";
+                return $"E 잡기: 대상 확인 중  {distance:F1}m";
             if (item.IsSecured)
                 return $"{item.Grabbable.Role}: {DescribeSecured(item)}";
             if (item.IsClaimed)
@@ -889,6 +921,19 @@ namespace DoodleUp.Runtime
             heldItem = null;
         }
 
+        /// <summary>
+        /// 화면 중앙은 <b>상호작용이 성립할 때만</b> 그린다 — 조준점도, 상자도, 문장도 같이 뜨고
+        /// 같이 사라진다. 조준점만 남기지 않는 이유는, 조준점이 상시면 "떠 있음" 이 다시
+        /// 무의미해져 이 카드가 지우려는 상시 UI 가 크기만 줄여 그대로 남기 때문이다.
+        /// 조준이 필요한 정밀 상황(<c>조준을 물체 중앙으로</c>)에서는 이미 프롬프트가 떠 있어
+        /// 조준점도 함께 나와 있다 — 조준점이 필요한 순간과 뜨는 순간이 정확히 같다.
+        ///
+        /// 상자 폭도 <c>460</c> 고정에서 문장 폭으로 바꾼다. <c>[E] 놓기</c> 같은 짧은 줄에
+        /// 화면 절반짜리 검은 띠가 깔리면, 프롬프트가 아니라 띠가 먼저 보인다.
+        ///
+        /// 아래 입력 안내 줄은 그대로 상시다 — 화면 가장자리이고 시야를 덮지 않으며,
+        /// 조작 목록은 "지금 여기" 가 아니라 배우는 정보라 조건부로 만들 대상이 아니다.
+        /// </summary>
         private void OnGUI()
         {
             identityStyle ??= new GUIStyle(GUI.skin.label)
@@ -905,9 +950,21 @@ namespace DoodleUp.Runtime
             };
             identityStyle.normal.textColor = identityColor;
             promptStyle.normal.textColor = Color.white;
-            GUI.Label(new Rect(Screen.width * 0.5f - 12f, Screen.height * 0.5f - 18f, 24f, 36f), "+", promptStyle);
-            GUI.Box(new Rect(Screen.width * 0.5f - 230f, Screen.height * 0.5f + 24f, 460f, 34f), GUIContent.none);
-            GUI.Label(new Rect(Screen.width * 0.5f - 224f, Screen.height * 0.5f + 26f, 448f, 30f), InteractionPrompt, promptStyle);
+
+            // 한 이벤트 안에서 한 번만 만든다. 이 속성은 씬 조회를 타므로 조준점·상자·문장이
+            // 각자 부르면 같은 프레임에 같은 탐색이 세 번 돈다.
+            var prompt = BuildInteractionPrompt();
+            if (!string.IsNullOrEmpty(prompt))
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 12f, Screen.height * 0.5f - 18f, 24f, 36f), "+", promptStyle);
+
+                var textWidth = promptStyle.CalcSize(new GUIContent(prompt)).x;
+                var boxWidth = Mathf.Min(Screen.width - 48f, textWidth + 32f);
+                var boxX = (Screen.width - boxWidth) * 0.5f;
+                GUI.Box(new Rect(boxX, Screen.height * 0.5f + 24f, boxWidth, 34f), GUIContent.none);
+                GUI.Label(new Rect(boxX + 6f, Screen.height * 0.5f + 26f, boxWidth - 12f, 30f), prompt, promptStyle);
+            }
+
             GUI.Box(new Rect(8f, Screen.height - 36f, Screen.width - 16f, 28f), GUIContent.none);
             GUI.Label(new Rect(12f, Screen.height - 34f, Screen.width - 24f, 24f), InputLabel, identityStyle);
         }
