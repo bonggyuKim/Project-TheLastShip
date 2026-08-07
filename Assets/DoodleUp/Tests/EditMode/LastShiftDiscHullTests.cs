@@ -418,6 +418,171 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        // ── 좌현 관측 회랑(§29.4-(2)) ────────────────────────────────────────
+
+        /// <summary>
+        /// 경로가 §29.4-(2) 도해 그대로인가 — 조종석 좌현 ↔ 화물칸 좌현이고, 양 끝이 둘 다
+        /// <b>선수 클러스터 안</b>이다. 접속점을 관측실로 옮기면 정비창·화물칸 둘을 건너뛰는
+        /// 우회로가 되므로 그 선택은 여기서 걸려야 한다.
+        /// </summary>
+        [Test]
+        public void ObservationGalleryRunsFromTheCockpitToTheCargoBay()
+        {
+            Assert.That(LastShiftObservationGallery.CockpitLandingCenterX,
+                Is.EqualTo(LastShiftShipDimensions.CockpitCenterX).Within(Tolerance),
+                "조종석 쪽 끝이 조종석 방 중심이 아니다 — 문이 벽 한가운데에 안 온다.");
+
+            var cargo = LastShiftCompartments.Of(LastShiftCompartment.CargoBay);
+            Assert.That(LastShiftObservationGallery.CargoLandingCenterX,
+                Is.EqualTo(cargo.CenterX).Within(Tolerance));
+
+            // 회랑 문은 화물칸에만 요구한다. 다른 구획에 하나라도 나면 국소 고리가 아니다.
+            foreach (var spec in LastShiftCompartments.Specs)
+            {
+                if (spec.Compartment == LastShiftCompartment.CargoBay) continue;
+                foreach (var plane in new[] { LastShiftDoorPlane.AlongX, LastShiftDoorPlane.AlongZ })
+                foreach (var face in new[] { spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ })
+                    Assert.That(LastShiftObservationGallery.DoorwaysOn(spec.Compartment, plane, face), Is.Empty,
+                        $"관측 회랑이 {spec.Compartment} 에도 문을 요구한다 — 선수 클러스터 밖으로 새어 나갔다.");
+            }
+
+            // 화물칸은 아직 잠겨 있다(§15.2). 잠긴 구획은 구멍이 아니라 메운 판이라
+            // 지금은 고리가 안 닫히고, 조종석 쪽 문만 열려 회랑이 막다른 관측 통로다.
+            Assert.That(cargo.IsPassable, Is.False);
+            Assert.That(LastShiftObservationGallery.DoorwaysOn(LastShiftCompartment.CargoBay,
+                LastShiftDoorPlane.AlongZ, LastShiftObservationGallery.CargoDoorwayFaceZ), Is.Empty);
+            Assert.That(LastShiftObservationGallery.CockpitDoorwayIsOpen, Is.True,
+                "조종석 쪽 문까지 닫히면 회랑 전체가 승무원이 못 가는 자리다 — §29.6-4 가 거짓이 된다.");
+        }
+
+        /// <summary>
+        /// 칸들이 <b>빈틈 없이 이어지는가</b>. 계단이 한 칸이라도 어긋나면 그 자리에 바닥이
+        /// 없는 구간이 생기는데, 판이 아니라 좌표라 씬을 굽기 전에는 안 보인다.
+        /// </summary>
+        [Test]
+        public void ObservationBandsTileTheWholeRouteWithoutAGap()
+        {
+            var bands = LastShiftObservationGallery.Bands;
+            Assert.That(bands.Length, Is.GreaterThan(LastShiftObservationGallery.RunCount),
+                "구간 수만큼밖에 안 쪼개졌다 — 계단이 아니라 상자 셋이다.");
+
+            Assert.That(bands[0].MinX, Is.EqualTo(LastShiftObservationGallery.MinX).Within(Tolerance));
+            Assert.That(bands[^1].MaxX, Is.EqualTo(LastShiftObservationGallery.MaxX).Within(Tolerance));
+
+            for (var index = 1; index < bands.Length; index++)
+                Assert.That(bands[index].MinX, Is.EqualTo(bands[index - 1].MaxX).Within(Tolerance),
+                    $"{bands[index].Name} 이 앞 칸과 안 붙는다.");
+
+            // 구간마다 한 칸 이상. 착륙 구간이 0 칸이면 회랑이 테두리에서 끝나 버린다.
+            for (var run = 0; run < LastShiftObservationGallery.RunCount; run++)
+                Assert.That(bands.Count(band => band.Run == run), Is.GreaterThan(0),
+                    $"구간 {run} 에 칸이 하나도 없다.");
+        }
+
+        /// <summary>
+        /// <b>계단 한 칸의 단차가 판 두께를 안 넘는다.</b> 바닥·천장 슬래브는 칸 안에서 가장
+        /// 깊은 테두리 위치까지 나가므로, 단차가 판 두께를 넘는 순간 슬래브가 테두리 판
+        /// 바깥면을 뚫고 나와 원반 실루엣에 혹이 생긴다 — §29.4-(1) 이 방금 닫은 그 실루엣이다.
+        /// </summary>
+        [Test]
+        public void ObservationStepsStayInsideTheRimPanel()
+        {
+            foreach (var band in LastShiftObservationGallery.Bands)
+            {
+                Assert.That(band.OuterZ - band.SlabOuterZ,
+                    Is.InRange(0f, LastShiftObservationGallery.MaxRimStep + Tolerance),
+                    $"{band.Name} 의 단차가 판 두께를 넘는다 — 바닥이 테두리 밖으로 나온다.");
+
+                Assert.That(LastShiftHullShell.InscribedContainsFootprint(
+                        band.MinX, band.MaxX, band.OuterZ, band.InnerZ), Is.True,
+                    $"{band.Name} 의 발자국이 실제로 서는 테두리 다각형 밖이다.");
+            }
+        }
+
+        /// <summary>
+        /// <b>회랑 바깥면이 통째로 창면인가</b>(§29.4-(2) 둘째 항목). 이 성질이 접속점을
+        /// 관측실이 아니라 화물칸으로 정한 근거다 — 창 호는 <c>|x| ≤ 25</c> 구간에만 있고,
+        /// 관측실(<c>x -35~-32</c>)까지 끌면 회랑 절반이 불투명 판을 보고 걷는다.
+        /// </summary>
+        [Test]
+        public void ObservationGalleryLooksThroughRimGlassAllTheWay()
+        {
+            foreach (var band in LastShiftObservationGallery.Bands)
+            foreach (var x in new[] { band.MinX, band.CenterX, band.MaxX })
+            {
+                var segment = PortRimSegmentAt(x);
+                Assert.That(segment, Is.GreaterThanOrEqualTo(0), $"{band.Name} 이 테두리 밖 x 다.");
+                Assert.That(LastShiftHullFrames.SegmentIsWindowBay(segment), Is.True,
+                    $"{band.Name} 앞 테두리({segment:00})가 불투명 판이다 — 별도 창 구조가 필요해진다.");
+            }
+        }
+
+        /// <summary>
+        /// §29.6 판정기준 4 — <b>축 정렬이 아닌 통로가 하나 생겼다.</b> 칸 하나하나는 축
+        /// 정렬이지만(§28.2 의 <c>AABB</c> 제약) 이어 붙인 동선은 아니고, 그 "아님" 의 크기를
+        /// §29.4-(3) 이 상부 회랑에 제안한 곡률(<c>32m</c> 에 <c>5m</c>)과 견준다. 그보다
+        /// 완만하면 이 회랑은 테두리를 따라간 것이 아니라 그냥 비스듬한 복도다.
+        /// </summary>
+        [Test]
+        public void ObservationGalleryIsTheFirstCurvedRoute()
+        {
+            var arc = LastShiftObservationGallery.Bands
+                .Where(band => band.Run == LastShiftObservationGallery.ArcRun)
+                .ToArray();
+
+            Assert.That(arc.Length, Is.GreaterThan(1),
+                "호 구간이 한 칸이다 — 계단이 없으면 곡선도 없다.");
+
+            // 칸마다 실제로 꺾인다. 같은 z 가 이어지면 그만큼은 직선 복도다.
+            for (var index = 1; index < arc.Length; index++)
+                Assert.That(arc[index].OuterZ, Is.LessThan(arc[index - 1].OuterZ - Tolerance),
+                    $"{arc[index].Name} 이 앞 칸과 같은 z 다 — 그 구간은 안 꺾인다.");
+
+            const float proposedCurvature = 5f / 32f;   // §29.4-(3) 의 상부 회랑 호 전환 제안
+            var curvature = LastShiftObservationGallery.ArcCenterlineDrift /
+                            LastShiftObservationGallery.ArcLength;
+            Assert.That(curvature, Is.GreaterThan(proposedCurvature),
+                $"호가 §29.4-(3) 제안보다 완만하다({curvature:0.###} ≤ {proposedCurvature:0.###}).");
+        }
+
+        /// <summary>
+        /// 회랑이 방·선체를 파고들지 않는가. 상부 회랑에 건 것과 같은 검사이고, 계단으로
+        /// 쪼갠 덕에 <c>AABB</c> 비교가 형상과 같은 상자를 본다(§28.2·§29.4-(2)).
+        /// </summary>
+        [Test]
+        public void NoObservationBandOverlapsACompartmentOrTheHullInterior()
+        {
+            foreach (var band in LastShiftObservationGallery.Bands)
+            {
+                foreach (var spec in LastShiftCompartments.Specs)
+                    Assert.That(LastShiftObservationGallery.BandOverlapsCompartment(band, spec), Is.False,
+                        $"{band.Name} 이 구획 {spec.Compartment} 을 파고든다.");
+
+                Assert.That(LastShiftUpperGallery.LegOverlapsHullInterior(band.Footprint), Is.False,
+                    $"{band.Name} 이 선체 내부를 파고든다.");
+
+                foreach (var leg in LastShiftUpperGallery.Legs)
+                    Assert.That(
+                        band.MinX < leg.MaxX - Tolerance && leg.MinX < band.MaxX - Tolerance &&
+                        band.OuterZ < leg.MaxZ - Tolerance && leg.MinZ < band.InnerZ - Tolerance, Is.False,
+                        $"{band.Name} 이 상부 회랑 다리 {leg.Name} 과 겹친다.");
+            }
+        }
+
+        /// <summary>좌현 반쪽에서 이 x 를 덮는 테두리 세그먼트. 없으면 <c>-1</c>.</summary>
+        private static int PortRimSegmentAt(float x)
+        {
+            for (var index = LastShiftHullShell.SegmentCount / 2;
+                 index < LastShiftHullShell.SegmentCount; index++)
+            {
+                var start = LastShiftHullShell.SegmentStart(index);
+                var end = LastShiftHullShell.SegmentStart((index + 1) % LastShiftHullShell.SegmentCount);
+                if (x >= start.x && x <= end.x) return index;
+            }
+
+            return -1;
+        }
+
         private static void AssertMemberIsFree(string name, Vector2 from, Vector2 to)
         {
             foreach (var point in Samples(from, to))

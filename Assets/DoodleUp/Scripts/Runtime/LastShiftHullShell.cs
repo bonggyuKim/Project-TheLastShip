@@ -134,6 +134,30 @@ namespace DoodleUp.Runtime
             return true;
         }
 
+        /// <summary>
+        /// 주어진 <paramref name="x"/> 에서 <b>좌현</b>(<c>z &lt; 0</c>) 테두리의 z. 이상적인
+        /// 타원이 아니라 <b>실제로 서는 내접 다각형(현)</b>의 값이다 — 테두리에 붙여 세우는
+        /// 것(§29.4-(2) 관측 회랑)은 타원이 아니라 판을 기준으로 놓여야 판 뒤로 삐져나오지
+        /// 않는다. <see cref="InscribedContains"/> 가 검사인 것과 같은 자리의 좌표 버전이다.
+        ///
+        /// 좌현 반쪽에서는 매개변수 <c>t</c> 가 커질수록 x 가 단조 증가하므로
+        /// (<c>t=180°</c> 에서 <c>x=-42</c>, <c>t=360°</c> 에서 <c>x=+42</c>) 세그먼트를 훑어
+        /// x 구간을 찾는다. 닫힌 식으로 안 푸는 이유는 <see cref="MaxChordSag"/> 와 같다 —
+        /// 답해야 하는 것이 타원이 아니라 현이다.
+        /// </summary>
+        public static float PortEdgeZ(float x)
+        {
+            var clamped = Mathf.Clamp(x, -SemiMajorX, SemiMajorX);
+            for (var index = SegmentCount / 2; index < SegmentCount; index++)
+            {
+                var start = SegmentStart(index);
+                var end = SegmentStart((index + 1) % SegmentCount);
+                if (clamped < start.x || clamped > end.x) continue;
+                return Mathf.Lerp(start.y, end.y, Mathf.InverseLerp(start.x, end.x, clamped));
+            }
+            return -SemiMinorZ;
+        }
+
         /// <summary>직사각형 발자국 네 모서리가 전부 내접 다각형 안인가.</summary>
         public static bool InscribedContainsFootprint(float minX, float maxX, float minZ, float maxZ) =>
             InscribedContains(minX, minZ) && InscribedContains(minX, maxZ) &&

@@ -190,6 +190,14 @@ namespace DoodleUp.Runtime
                 if (x >= leg.MinX - margin && x <= leg.MaxX + margin &&
                     z >= leg.MinZ - margin && z <= leg.MaxZ + margin) return false;
 
+            // 관측 회랑(§29.4-(2)). 지금은 이 회랑이 통째로 IsWindowKeepOut 안에 있어서 위
+            // 조건에서 이미 걸러지지만, 그 사실에 기대지 않는다 — 창 구간이 좁아지거나
+            // 회랑이 길어지면 골조가 회랑 한가운데를 관통하게 되고, 그때 원인이 여기가
+            // 아니라 창 상수에 있는 것으로 보인다.
+            foreach (var leg in LastShiftObservationGallery.Legs)
+                if (x >= leg.MinX - margin && x <= leg.MaxX + margin &&
+                    z >= leg.MinZ - margin && z <= leg.MaxZ + margin) return false;
+
             return true;
         }
 

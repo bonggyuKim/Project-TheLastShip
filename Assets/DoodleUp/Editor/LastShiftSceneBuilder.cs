@@ -33,6 +33,7 @@ namespace DoodleUp.Editor
         private static Material voidMaterial;
         private static Material compartmentMaterial;
         private static Material galleryMaterial;
+        private static Material observationMaterial;
         private static Material discHullMaterial;
 
         // ── 드레싱 재질 ─────────────────────────────────────────────────────────
@@ -113,6 +114,8 @@ namespace DoodleUp.Editor
                 throw new System.InvalidOperationException($"{ShipPrefabPath} failed to save or import.");
             Debug.Log($"[LAST_SHIFT_SHIP_PREFAB] path={ShipPrefabPath} compartments={LastShiftCompartments.Count} " +
                       $"gallery_legs={LastShiftUpperGallery.LegCount} gallery_branches={LastShiftUpperGallery.BranchCount} " +
+                      $"observation_bands={LastShiftObservationGallery.BandCount} " +
+                      $"observation_drift={LastShiftObservationGallery.ArcCenterlineDrift:0.##}/{LastShiftObservationGallery.ArcLength:0.##} " +
                       $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} " +
                       $"frame_ribs={LastShiftHullFrames.BuildableRibCount}/{LastShiftHullFrames.RibCount} " +
                       $"frame_girths={LastShiftHullFrames.BuildableRingSegmentCount}/{LastShiftHullShell.SegmentCount} result=PASS");
@@ -136,7 +139,7 @@ namespace DoodleUp.Editor
             CreateCube("OuterHull_Left", ship.transform, new Vector3(-EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f)));
             CreateAftEndWall(ship.transform);
             CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, HullBackZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
-            CreateCube("OuterHull_FrontLower", ship.transform, new Vector3(0f, WindowSillHeight * 0.5f, HullFrontZ), new Vector3(LastShiftShipDimensions.SideWallSpan, WindowSillHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
+            CreatePortSill(ship.transform);
             CreatePassage(ship.transform, 0);
             CreatePassage(ship.transform, 1);
             // 경계마다 벌크헤드 한 장. 3 -> 4 구역이 되며 셋이 됐다(§3).
@@ -148,6 +151,7 @@ namespace DoodleUp.Editor
             CreateDucts(ship.transform);
             CreateCompartments(ship.transform);
             CreateUpperGallery(ship.transform);
+            CreateObservationGallery(ship.transform);
             CreateBypassDuct(ship.transform);
             CreateDiscHull(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
@@ -427,12 +431,15 @@ namespace DoodleUp.Editor
             // 창 사이 기둥. 간격을 고정해 두어야 전장이 바뀌어도 창 한 짝의 크기가 유지된다.
             // 기둥이 세 개로 고정돼 있으면 36m 에서는 창 하나가 12m 짜리 통유리가 된다.
             const float mullionSpacing = 3.2f;
+            const float mullionWidth = 0.35f;
             var mullionCount = Mathf.FloorToInt((Length - mullionSpacing) / mullionSpacing);
             var mullionStart = -(mullionCount - 1) * mullionSpacing * 0.5f;
             for (var index = 0; index < mullionCount; index++)
             {
                 var x = mullionStart + index * mullionSpacing;
-                CreateCube($"WindowMullion_{index}", ship, new Vector3(x, (WindowSillHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(0.35f, windowTop - WindowSillHeight, 0.22f), panelMaterial);
+                // 관측 회랑 문 자리는 비운다(§29.4-(2)). 번호가 아니라 겹침으로 거른다.
+                if (OverlapsPortDoorway(x, mullionWidth)) continue;
+                CreateCube($"WindowMullion_{index}", ship, new Vector3(x, (WindowSillHeight + windowTop) * 0.5f, HullFrontZ), new Vector3(mullionWidth, windowTop - WindowSillHeight, 0.22f), panelMaterial);
             }
 
             // 창 밖 우주. 좌표 정본은 LastShiftHullFrames 다 — 예전에는 여기 리터럴이
@@ -642,6 +649,43 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
+        /// 좌현 긴 벽의 문턱 판(창 아래 <see cref="WindowSillHeight"/> 구간). 통짜 한 장이
+        /// 아닌 이유는 관측 회랑(§29.4-(2))이 여기 문 하나로 붙기 때문이다 — 선미 끝벽이
+        /// 생활공간 때문에 갈라진 것과 같은 자리다.
+        ///
+        /// <b>자르는 것은 문턱뿐이다.</b> 창 위 인방(<c>OuterHull_FrontUpper</c>)은 그대로
+        /// 둔다. 문 구멍 높이(<c>2.2</c>)가 창 윗단(<c>2.1</c>)보다 <c>0.1</c> 높아서 인방까지
+        /// 자르면 좌현 창 띠가 이 한 자리에서만 천장까지 뚫린다 — 그레이박스에서 통과 높이가
+        /// <c>0.1</c> 낮은 것보다 전장 <c>38m</c> 짜리 창 띠가 끊기는 쪽이 나쁘다. 실제 통과
+        /// 높이는 창 윗단이 된다.
+        /// </summary>
+        private static void CreatePortSill(Transform ship)
+        {
+            var doorways = LastShiftObservationGallery.CockpitDoorwayIsOpen
+                ? new[] { LastShiftObservationGallery.CockpitLandingCenterX }
+                : System.Array.Empty<float>();
+
+            const float span = LastShiftShipDimensions.SideWallSpan;
+            CreateWallWithOpenings("OuterHull_FrontLower", ship, false, HullFrontZ,
+                -span * 0.5f, span * 0.5f, WindowSillHeight,
+                LastShiftShipDimensions.HullThickness, hullMaterial, doorways);
+        }
+
+        /// <summary>
+        /// 이 x 가 관측 회랑 문 구멍과 겹치는가. 겹치는 창 기둥은 안 세운다 — 세우면 문
+        /// 한가운데 <c>0.35m</c> 기둥이 서서 통행 폭이 갈린다.
+        ///
+        /// 기둥 번호를 박지 않는 이유는 문 x 가 조종석 <b>방 중심</b>에서 나오고 기둥 간격은
+        /// <b>전장</b>에서 나오기 때문이다 — 둘 중 하나만 움직여도 겹치는 번호가 바뀐다.
+        /// </summary>
+        private static bool OverlapsPortDoorway(float x, float width)
+        {
+            if (!LastShiftObservationGallery.CockpitDoorwayIsOpen) return false;
+            var half = (LastShiftZoneDoor.OpeningWidth + width) * 0.5f;
+            return Mathf.Abs(x - LastShiftObservationGallery.CockpitLandingCenterX) < half;
+        }
+
+        /// <summary>
         /// 구획 열한 개(§17.4). 에어록은 없다 — 우회 통로 z 경로가 미결이라 좌표가 안 나온다(§17.5).
         ///
         /// 이 지오메트리는 압력존에 안 들어간다(§17.6). <see cref="LastShiftZoneDoor"/> 를 쓰지
@@ -774,12 +818,108 @@ namespace DoodleUp.Editor
 
         /// <summary>회랑 판 한 장. 덕트와 같은 이유로 세 축 전부 구간으로 받는다.</summary>
         private static void CreateGalleryPlate(Transform parent, string name,
-            float minX, float maxX, float minZ, float maxZ, float minY, float maxY)
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY) =>
+            CreateGalleryPlate(parent, name, minX, maxX, minZ, maxZ, minY, maxY, galleryMaterial);
+
+        private static void CreateGalleryPlate(Transform parent, string name,
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, Material material)
         {
             if (maxX - minX <= 0.0001f || maxZ - minZ <= 0.0001f) return;
             CreateCube(name, parent,
                 new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f),
-                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), galleryMaterial);
+                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), material);
+        }
+
+        /// <summary>
+        /// 좌현 관측 회랑(§29.4-(2)). 좌표 정본은 Runtime 의
+        /// <see cref="LastShiftObservationGallery"/> 이고 여기서는 판으로 세우기만 한다.
+        ///
+        /// <b>바깥 벽을 안 세운다.</b> 회랑 바깥면이 곧 테두리 창면이라는 것이 이 회랑의
+        /// 존재 이유다(§29.4-(2) 둘째 항목) — 여기에 판을 한 장 세우면 걸으면서 별을 보는
+        /// 그 한 가지가 사라지고, 남는 것은 원반 자투리에 낀 관 하나다. 대신 바닥·천장
+        /// 슬래브가 칸 안에서 가장 깊은 테두리 위치까지 나가 틈을 없앤다.
+        ///
+        /// <b>문은 여기서 안 뚫는다.</b> 양 끝 문은 선체 좌현 벽(<see cref="CreatePortSill"/>)과
+        /// 화물칸 좌현 벽(<see cref="ChildDoorwaysOn"/>)에 있고, 면 소유 규칙상 그 면들은
+        /// 선체와 구획이 세운다. 상부 회랑과 같은 규칙이다.
+        /// </summary>
+        private static void CreateObservationGallery(Transform ship)
+        {
+            // 상부 회랑보다 살짝 차고 어둡다. 둘 다 "방이 아닌 길" 이지만 상부 회랑은 배 안쪽
+            // 이면 동선이고 이쪽은 껍질에 붙은 관측 동선이라, 같은 색을 주면 하이어라키에서
+            // 어느 회랑의 판인지가 이름으로만 갈린다.
+            observationMaterial ??= CreateMaterial("LS_ObservationGallery", new Color(0.56f, 0.59f, 0.63f));
+
+            var root = new GameObject(LastShiftObservationGallery.RootName);
+            root.transform.SetParent(ship, false);
+
+            const float thickness = LastShiftObservationGallery.PanelThickness;
+            const float height = LastShiftObservationGallery.InteriorHeight;
+            var bands = LastShiftObservationGallery.Bands;
+
+            for (var index = 0; index < bands.Length; index++)
+            {
+                var band = bands[index];
+                var isArc = band.Run == LastShiftObservationGallery.ArcRun;
+
+                // 슬래브는 회랑 양 끝에서 판 한 장만큼 더 나간다 — 마구리 판이 그 위에 선다.
+                var slabMinX = index == 0 ? band.MinX - thickness : band.MinX;
+                var slabMaxX = index == bands.Length - 1 ? band.MaxX + thickness : band.MaxX;
+
+                // 안쪽 끝: 호 구간은 자기 안쪽 벽 밑까지, 착륙 구간은 선체·구획 바닥이
+                // 이어받는 자리까지다. 착륙 구간에서 한 판 더 나가면 선체 갑판과 겹쳐
+                // 같은 높이에 판 두 장이 포개진다.
+                var slabInnerZ = isArc ? band.InnerZ + thickness : band.InnerZ;
+
+                CreateGalleryPlate(root.transform, $"{band.Name}_Floor",
+                    slabMinX, slabMaxX, band.SlabOuterZ, slabInnerZ, -thickness, 0f, observationMaterial);
+                CreateGalleryPlate(root.transform, $"{band.Name}_Ceiling",
+                    slabMinX, slabMaxX, band.SlabOuterZ, slabInnerZ, height, height + thickness, observationMaterial);
+
+                if (isArc)
+                    CreateGalleryPlate(root.transform, $"{band.Name}_WallInner",
+                        band.MinX, band.MaxX, band.InnerZ, band.InnerZ + thickness, 0f, height, observationMaterial);
+            }
+
+            CreateObservationJunction(root.transform, "Junction_Cargo",
+                LastShiftObservationGallery.ArcMinX,
+                LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.CargoLandingRun),
+                LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.ArcRun));
+            CreateObservationJunction(root.transform, "Junction_Cockpit",
+                LastShiftObservationGallery.ArcMaxX,
+                LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.ArcRun),
+                LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.CockpitLandingRun));
+
+            var first = LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.CargoLandingRun);
+            var last = LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.CockpitLandingRun);
+            CreateGalleryPlate(root.transform, "EndCap_Cargo",
+                first.MinX - thickness, first.MinX, first.SlabOuterZ, first.InnerZ, 0f, height, observationMaterial);
+            CreateGalleryPlate(root.transform, "EndCap_Cockpit",
+                last.MaxX, last.MaxX + thickness, last.SlabOuterZ, last.InnerZ, 0f, height, observationMaterial);
+        }
+
+        /// <summary>
+        /// 두 구간이 만나는 면. <b>구멍을 뚫는 것이 아니라 구멍만 남기고 메운다</b> — 착륙
+        /// 구간은 선체까지 깊고 호 구간은 회랑 폭만큼 얕으므로, 그 차이만큼이 안 메우면
+        /// 통째로 열린 옆구리가 된다.
+        ///
+        /// 아래쪽 판이 필요한 이유는 계단 때문이다. 두 칸의 바깥 끝이 한 칸 단차만큼
+        /// 어긋나 있어서, 깊은 쪽 바닥이 얕은 쪽 벽 없이 그대로 노출된다.
+        /// </summary>
+        private static void CreateObservationJunction(Transform root, string name, float plane,
+            LastShiftObservationBand west, LastShiftObservationBand east)
+        {
+            const float thickness = LastShiftObservationGallery.PanelThickness;
+            const float height = LastShiftObservationGallery.InteriorHeight;
+            var minX = plane - thickness * 0.5f;
+            var maxX = plane + thickness * 0.5f;
+
+            CreateGalleryPlate(root, $"{name}_Outer", minX, maxX,
+                Mathf.Min(west.SlabOuterZ, east.SlabOuterZ),
+                Mathf.Max(west.OuterZ, east.OuterZ), 0f, height, observationMaterial);
+            CreateGalleryPlate(root, $"{name}_Inner", minX, maxX,
+                Mathf.Min(west.InnerZ, east.InnerZ),
+                Mathf.Max(west.InnerZ, east.InnerZ), 0f, height, observationMaterial);
         }
 
         /// <summary>
@@ -1262,13 +1402,15 @@ namespace DoodleUp.Editor
             var face = alongX
                 ? (atMax ? spec.MaxX : spec.MinX)
                 : (atMax ? spec.MaxZ : spec.MinZ);
-            var gallery = LastShiftUpperGallery.DoorwaysOn(spec.Compartment,
-                alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ, face);
+            var plane = alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ;
+            var gallery = LastShiftUpperGallery.DoorwaysOn(spec.Compartment, plane, face);
+            var observation = LastShiftObservationGallery.DoorwaysOn(spec.Compartment, plane, face);
 
             return ChildrenOn(spec, alongX, atMax)
                 .Where(child => child.IsPassable)
                 .Select(child => child.DoorCenter)
                 .Concat(gallery)
+                .Concat(observation)
                 .Select(doorCenter => doorCenter - origin)
                 .ToArray();
         }
@@ -1302,6 +1444,11 @@ namespace DoodleUp.Editor
                 CreateSlab($"{name}_{segment / 2}", parent, alongX, plane,
                     (min + max) * 0.5f, max - min, height, 0f, thickness, material);
             }
+
+            // 인방은 벽이 문보다 높을 때만 있다. 좌현 문턱 판(높이 0.6)처럼 벽 자체가 문보다
+            // 낮은 자리에서는 인방 대신 그 위의 창 띠가 이어받는다 — 여기서 안 걸러 내면
+            // 높이가 음수인 큐브가 서고, 그건 씬에서 안쪽이 뒤집힌 판으로 보인다.
+            if (height - doorHeight <= 0.0001f) return;
 
             for (var index = 0; index < openings.Length; index++)
                 CreateSlab($"{name}_Lintel_{index}", parent, alongX, plane,
