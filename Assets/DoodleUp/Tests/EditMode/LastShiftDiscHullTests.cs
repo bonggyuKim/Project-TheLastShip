@@ -239,7 +239,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void LockedCompartmentsDoNotOpenTheRingYet()
+        public void GalleryDoorsFollowCompartmentAccessAndTheRunIsNowAThroughRoute()
         {
             // §15.2 언락 대상은 그레이박스에서 구멍이 아니라 메운 판이다. 회랑도 같은
             // 규칙을 따라야 언락 하나로 방과 고리가 같이 열린다 — 여기가 어긋나면
@@ -249,12 +249,24 @@ namespace DoodleUp.Tests.EditMode
                     Is.EqualTo(LastShiftCompartments.Of(branch.Compartment).IsPassable),
                     $"{branch.Compartment} 의 회랑 문 통행 여부가 구획 언락 상태와 다르다.");
 
-            // 지금 실제로 뚫리는 것은 구명정 하나뿐이다(공간은 열려 있고 기능만 잠긴다, §15.4).
+            // 뚫리는 것은 양 끝 둘이다. 격납고가 P0 상시 개방(확장 검토 §2)이 되면서
+            // 회랑이 막다른 관에서 <b>격납고 ↔ 구명정 관통로</b>가 됐다. 옆구리 분기 셋은
+            // §2.2 대로 여전히 메운 판이다.
             var open = LastShiftUpperGallery.Branches
                 .Where(branch => LastShiftUpperGallery.IsPassable(branch))
                 .Select(branch => branch.Compartment)
                 .ToArray();
-            Assert.That(open, Is.EquivalentTo(new[] { LastShiftCompartment.EscapePod }));
+            Assert.That(open, Is.EquivalentTo(new[]
+            {
+                LastShiftCompartment.Hangar,
+                LastShiftCompartment.EscapePod
+            }));
+
+            // 입구가 둘이라는 것이 이 카드가 실제로 고친 것이다 — 하나뿐이면 그 하나가
+            // 구명정이라, 회랑에 가려면 §15.4 가 "최후 수단" 이라고 정의한 탈출포드를
+            // 계단실로 쓰게 된다(확장 검토 §1.2).
+            Assert.That(open.Length, Is.GreaterThanOrEqualTo(2),
+                "상부 회랑 출입구가 하나뿐이다 — 구명정이 다시 계단실이 된다.");
         }
 
         // ── 자투리 구조체(격벽 프레임) ───────────────────────────────────────
@@ -446,11 +458,16 @@ namespace DoodleUp.Tests.EditMode
                         $"관측 회랑이 {spec.Compartment} 에도 문을 요구한다 — 선수 클러스터 밖으로 새어 나갔다.");
             }
 
-            // 화물칸은 아직 잠겨 있다(§15.2). 잠긴 구획은 구멍이 아니라 메운 판이라
-            // 지금은 고리가 안 닫히고, 조종석 쪽 문만 열려 회랑이 막다른 관측 통로다.
-            Assert.That(cargo.IsPassable, Is.False);
-            Assert.That(LastShiftObservationGallery.DoorwaysOn(LastShiftCompartment.CargoBay,
-                LastShiftDoorPlane.AlongZ, LastShiftObservationGallery.CargoDoorwayFaceZ), Is.Empty);
+            // 화물칸이 P0 상시 개방(확장 검토 §2)이 되면서 §29.4-(2) 가 "언락되면 그때"
+            // 라고 미뤄 둔 고리가 지금 닫힌다 — 화물칸 쪽 문이 실제로 뚫려 회랑이
+            // 조종석 ↔ 화물칸 고리가 되고, 막다른 관측 통로가 아니게 된다.
+            Assert.That(cargo.IsPassable, Is.True);
+            var cargoDoorways = LastShiftObservationGallery.DoorwaysOn(LastShiftCompartment.CargoBay,
+                LastShiftDoorPlane.AlongZ, LastShiftObservationGallery.CargoDoorwayFaceZ);
+            Assert.That(cargoDoorways.Length, Is.EqualTo(1),
+                "화물칸이 열렸는데 관측 회랑 쪽 문이 안 뚫린다 — 고리가 안 닫혀 회랑이 그대로 막다른 관이다.");
+            Assert.That(cargoDoorways[0],
+                Is.EqualTo(LastShiftObservationGallery.CargoLandingCenterX).Within(Tolerance));
             Assert.That(LastShiftObservationGallery.CockpitDoorwayIsOpen, Is.True,
                 "조종석 쪽 문까지 닫히면 회랑 전체가 승무원이 못 가는 자리다 — §29.6-4 가 거짓이 된다.");
         }

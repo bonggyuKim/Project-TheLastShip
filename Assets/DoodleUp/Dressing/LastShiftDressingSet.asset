@@ -4120,3 +4120,75 @@ MonoBehaviour:
     semantics: 32
     lightIntensity: 0
     justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 0
+      passage: 0
+      galleryLeg: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3569927200902818171, guid: 954c052f1b3e7a565c7acca1c99ca1ba, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 0.57
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+      galleryLeg: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 8448776385375104042, guid: a774f4ad8aa4ac0936d33efaa5bcba61, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 7.74
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 2
+      passage: 0
+      galleryLeg: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3363766123402897167, guid: 4c5cf66b2e2219c8e76160ddcfb4b4ff, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 0.87
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 3
+      passage: 0
+      galleryLeg: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5881032841759203014, guid: 8c4bd2d9286c01f2806a89c8934f6411, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 1.65
+    justification: 

@@ -35,10 +35,17 @@ namespace DoodleUp.Runtime
     /// </summary>
     public enum LastShiftCompartmentAccess
     {
-        /// <summary>처음부터 드나든다. 생활공간 셋(§9)이 여기다.</summary>
+        /// <summary>
+        /// 처음부터 드나든다. 생활공간 셋(§9)과 선수 사슬 넷(화물칸·격납고·정비창·관측실)이
+        /// 여기다 — 뒤 넷은 §15.2 언락 대상이지만 트리거가 P0 이후라 확장 검토 §2 가
+        /// P0 초기값을 열어 두기로 했다.
+        /// </summary>
         Open = 0,
 
-        /// <summary>공간은 있되 문이 안 열린다. §15.2 언락 대상.</summary>
+        /// <summary>
+        /// 공간은 있되 문이 안 열린다. §15.2 언락 대상 중 P0 에서 안 여는 셋
+        /// (서버/통신실·수경재배·의무실)이 여기다.
+        /// </summary>
         Locked = 1,
 
         /// <summary>
@@ -195,29 +202,43 @@ namespace DoodleUp.Runtime
 
             // ── 선수 쪽 사슬 — 조종석 끝벽에서 화물칸 → 정비창 → 관측실 로 뻗고,
             //    격납고만 화물칸 우현으로 갈라진다(§17.3 도해).
+            //
+            //    <b>넷 다 P0 에서 상시 개방이다</b>(확장 검토 §2). §15.2 는 이 넷을 언락
+            //    순서 1·2·3·4 로 두었지만 그 트리거가 메타 진행 백본에 걸려 있고 구현이
+            //    P0 이후(§15.5)라, 잠가 두면 P0 기간 내내 안 열린다 — 지어 놓은 `181m²`
+            //    가 통째로 메운 판이 되고, 폭 `8m` 이상인 방 둘(화물칸·격납고)이 거기
+            //    들어 있어 "열린 공간 중 가장 넓은 방이 폭 `6m`" 가 된다. 회랑 둘도
+            //    같이 죽는다: 관측 회랑은 화물칸 쪽 끝이, 상부 회랑은 격납고 쪽 끝이
+            //    메운 판이라 지어만 놓고 못 쓰는 `195.5m²` 였다.
+            //
+            //    <b>언락 설계를 폐기하는 것이 아니라 "P0 씬 = 언락이 끝난 뒤의 배" 로
+            //    정의하는 것이다</b>(확장 검토 §2.3). §15.2 의 순서 근거는 그대로 살아
+            //    있고, 메타 진행 백본이 붙을 때 여기 초기 <c>Access</c> 값만 되돌리면
+            //    설계가 복원된다 — 그래서 사슬 넷만 바꾸고 §15.2 표는 안 건드린다.
+            //    안 여는 셋(서버/통신실·수경재배·의무실)은 §2.2 대로 <c>Locked</c> 다.
             result[(int)LastShiftCompartment.CargoBay] = new LastShiftCompartmentSpec(
                 LastShiftCompartment.CargoBay,
                 bow - 8f, bow, -4f, 4f,
                 LastShiftDoorPlane.AlongX, bow, 0f,
-                -1, LastShiftCompartmentAccess.Locked);
+                -1, LastShiftCompartmentAccess.Open);
 
             result[(int)LastShiftCompartment.Hangar] = new LastShiftCompartmentSpec(
                 LastShiftCompartment.Hangar,
                 bow - 8f, bow, 4f, 14f,
                 LastShiftDoorPlane.AlongZ, 4f, bow - 4f,
-                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Locked);
+                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Open);
 
             result[(int)LastShiftCompartment.Workshop] = new LastShiftCompartmentSpec(
                 LastShiftCompartment.Workshop,
                 bow - 13f, bow - 8f, -2.5f, 2.5f,
                 LastShiftDoorPlane.AlongX, bow - 8f, 0f,
-                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Locked);
+                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Open);
 
             result[(int)LastShiftCompartment.Observatory] = new LastShiftCompartmentSpec(
                 LastShiftCompartment.Observatory,
                 bow - 16f, bow - 13f, -2f, 2f,
                 LastShiftDoorPlane.AlongX, bow - 13f, 0f,
-                (int)LastShiftCompartment.Workshop, LastShiftCompartmentAccess.Locked);
+                (int)LastShiftCompartment.Workshop, LastShiftCompartmentAccess.Open);
 
             // ── 조종석 분기. §17.4 는 좌현(`z -9~-3`)이라고 적었지만 <b>이 선체의 좌현은 벽이
             //    아니라 창이다</b> — `OuterHull_Front*` 는 전장 전체에 걸쳐 눈높이 구간이 비어

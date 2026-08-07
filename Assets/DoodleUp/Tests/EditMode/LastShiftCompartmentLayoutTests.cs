@@ -179,10 +179,14 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void LivingBlockAndEscapePodStayReachableWhileTheNineStayLocked()
+        public void LivingBlockAndTheBowChainAreOpenWhileTheOtherThreeStayLocked()
         {
             // §15.2 는 아홉 개를 언락 대상으로 두었고, 그 중 구명정만 "공간은 열려 있고 기능만
             // 잠긴다"(§15.4). 생활공간 셋(§9)은 애초에 언락 목록에 없다.
+            //
+            // 선수 사슬 넷은 확장 검토 §2 로 P0 초기값이 Open 이다 — 언락 순서(§15.2)를
+            // 지우는 것이 아니라 "P0 씬 = 언락이 끝난 뒤의 배" 로 정의하는 것이라, 이 넷이
+            // 다시 Locked 로 돌아가는 것은 메타 진행 백본이 붙을 때다(§2.3).
             var open = LastShiftCompartments.Specs
                 .Where(spec => spec.Access == LastShiftCompartmentAccess.Open)
                 .Select(spec => spec.Compartment)
@@ -191,8 +195,26 @@ namespace DoodleUp.Tests.EditMode
             {
                 LastShiftCompartment.Lavatory,
                 LastShiftCompartment.Quarters,
-                LastShiftCompartment.Lounge
-            }), "처음부터 드나드는 것은 생활공간 셋(§9)뿐이다. 의무실은 §15.2 순서 8 의 언락 대상이다.");
+                LastShiftCompartment.Lounge,
+                LastShiftCompartment.CargoBay,
+                LastShiftCompartment.Hangar,
+                LastShiftCompartment.Workshop,
+                LastShiftCompartment.Observatory
+            }), "생활공간 셋(§9) + 선수 사슬 넷(확장 검토 §2)이다.");
+
+            // 안 여는 셋. 확장 검토 §2.2 가 각각 "정보 우위 접근 비용"·"새 시간 축"·
+            // "두 번째 개인 상태 축" 이 전제라 P0 밖이라고 판정했다 — 이 셋이 같이 열리면
+            // 그 판정이 코드에서 조용히 뒤집힌다.
+            var locked = LastShiftCompartments.Specs
+                .Where(spec => spec.Access == LastShiftCompartmentAccess.Locked)
+                .Select(spec => spec.Compartment)
+                .ToArray();
+            Assert.That(locked, Is.EquivalentTo(new[]
+            {
+                LastShiftCompartment.ServerRoom,
+                LastShiftCompartment.Hydroponics,
+                LastShiftCompartment.MedBay
+            }), "P0 에서 안 여는 것은 서버/통신실·수경재배·의무실 셋이다(확장 검토 §2.2).");
 
             Assert.That(LastShiftCompartments.Of(LastShiftCompartment.EscapePod).Access,
                 Is.EqualTo(LastShiftCompartmentAccess.SpaceOpenFunctionLocked),

@@ -136,8 +136,9 @@ namespace DoodleUp.Editor
             //
             // Left/Right 는 전장 축(x)의 두 끝벽이고 Back/Front 는 전폭 축(z)의 긴 벽이다.
             // 이름은 예전 배치에서 굳은 것이라 그대로 두되, 좌표는 전부 치수 정본에서 파생한다.
-            CreateCube("OuterHull_Left", ship.transform, new Vector3(-EndWallX, CeilingInnerHeight * 0.5f, 0f), new Vector3(LastShiftShipDimensions.HullThickness, CeilingInnerHeight, LastShiftShipDimensions.EndWallSpan), hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f)));
-            CreateAftEndWall(ship.transform);
+            hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f));
+            CreateEndWall(ship.transform, "OuterHull_Left", -EndWallX, -HalfLength);
+            CreateEndWall(ship.transform, "OuterHull_Right", EndWallX, HalfLength);
             CreateCube("OuterHull_Back", ship.transform, new Vector3(0f, CeilingInnerHeight * 0.5f, HullBackZ), new Vector3(LastShiftShipDimensions.SideWallSpan, CeilingInnerHeight, LastShiftShipDimensions.HullThickness), hullMaterial);
             CreatePortSill(ship.transform);
             CreatePassage(ship.transform, 0);
@@ -629,22 +630,39 @@ namespace DoodleUp.Editor
         // 선체 판은 이미 서 있으므로 구획이 그 자리에 또 세울 수 없다.
 
         /// <summary>
-        /// 선미 끝벽. 통짜 한 장이 아닌 이유는 생활공간(§9)이 여기에 문 하나로 붙기 때문이다.
-        /// 선수 끝벽은 화물칸이 붙지만 그쪽은 잠긴 구획(§15.2)이라 구멍을 안 뚫는다 —
-        /// 잠김은 그레이박스에서 "판으로 메운 자리" 이고, 해치 표식만 붙여 존재를 알린다.
+        /// 끝벽 한 장. 통짜가 아닌 이유는 선체에 직접 붙는 구획(<c>ParentIndex &lt; 0</c>)의
+        /// 문이 이 면에 놓이기 때문이다 — 선미는 생활공간(§9), 선수는 화물칸이다.
+        ///
+        /// <b>구멍을 뚫을지는 <see cref="LastShiftCompartmentSpec.IsPassable"/> 이 정한다.</b>
+        /// 잠긴 구획은 그레이박스에서 구멍이 아니라 메운 판이고(§15.2), 화물칸은 확장 검토
+        /// §2 로 P0 상시 개방이 되어 선수 끝벽에도 구멍이 하나 난다. 선수/선미를 한 함수로
+        /// 합쳐 둔 것은 그 규칙이 양쪽에서 갈리지 않게 하기 위해서다 — 한쪽만 리터럴로
+        /// 통짜를 세우면 초기 <c>Access</c> 를 되돌릴 때 그 자리가 같이 안 돌아온다.
         /// </summary>
-        private static void CreateAftEndWall(Transform ship)
+        private static void CreateEndWall(Transform ship, string name, float plane, float doorPlaneX)
         {
-            var doorways = LastShiftCompartments.Specs
-                .Where(spec => LastShiftCompartments.ConnectsToHull(spec) && spec.IsPassable &&
+            var attached = LastShiftCompartments.Specs
+                .Where(spec => LastShiftCompartments.ConnectsToHull(spec) &&
                                spec.DoorPlane == LastShiftDoorPlane.AlongX &&
-                               Mathf.Abs(spec.DoorPlaneCoordinate - HalfLength) < 0.001f)
+                               Mathf.Abs(spec.DoorPlaneCoordinate - doorPlaneX) < 0.001f)
+                .ToArray();
+
+            // 끝벽은 <b>선체 폭보다 넓어질 수 있다.</b> 이 면에 붙는 구획은 자기 문이 놓인
+            // 면을 안 세우므로(IsOwnDoorFace) 그 면 전체를 여기서 닫아야 하는데, 화물칸은
+            // 폭 `8m` 로 선체 폭 `6m` 보다 넓다 — 선체 폭만 세우면 양 끝에 `0.8m` 짜리
+            // 세로 틈이 남고, P0 개방 뒤에는 그 틈으로 걸어 나가 원반 껍질 안쪽 빈 공간에
+            // 선다. 생활공간(선미)은 선체 폭과 같아 이 항이 아무것도 안 바꾼다.
+            var half = LastShiftShipDimensions.EndWallSpan * 0.5f;
+            foreach (var spec in attached)
+                half = Mathf.Max(half, Mathf.Max(Mathf.Abs(spec.MinZ), Mathf.Abs(spec.MaxZ)));
+
+            var doorways = attached
+                .Where(spec => spec.IsPassable)
                 .Select(spec => spec.DoorCenter)
                 .ToArray();
 
-            const float span = LastShiftShipDimensions.EndWallSpan;
-            CreateWallWithOpenings("OuterHull_Right", ship, true, EndWallX,
-                -span * 0.5f, span * 0.5f, CeilingInnerHeight,
+            CreateWallWithOpenings(name, ship, true, plane,
+                -half, half, CeilingInnerHeight,
                 LastShiftShipDimensions.HullThickness, hullMaterial, doorways);
         }
 

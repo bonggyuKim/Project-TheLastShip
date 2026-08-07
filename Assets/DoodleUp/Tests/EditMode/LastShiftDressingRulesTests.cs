@@ -96,12 +96,28 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void HatchMarkerOnALockedCompartmentIsRejected()
         {
-            var marker = Prop("Placard", LastShiftDressingSpace.Of(LastShiftCompartment.Observatory),
+            // 관측실이 아니라 서버/통신실을 쓴다 — 관측실은 확장 검토 §2 로 P0 상시 개방이
+            // 됐고, 서버/통신실은 §2.2 가 "정보 우위에 접근 비용" 설계 전이라 P0 밖으로
+            // 남긴 셋 중 하나다.
+            var marker = Prop("Placard", LastShiftDressingSpace.Of(LastShiftCompartment.ServerRoom),
                 LastShiftDressingSemantics.HatchMarker);
 
-            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.Observatory).Access,
+            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.ServerRoom).Access,
                 Is.EqualTo(LastShiftCompartmentAccess.Locked));
             Assert.That(HasRule(Validate(marker), "C2_HatchMarker"), Is.True);
+        }
+
+        [Test]
+        public void HatchMarkerOnAnOpenedBowCompartmentPasses()
+        {
+            // 선수 사슬 넷은 P0 에서 열려 있으므로 표식이 흘릴 언락 상태가 없다(§21.4 는
+            // "언락 전 구획" 에만 걸린다). 이 넷을 다시 잠글 때 이 테스트가 같이 뒤집힌다.
+            var marker = Prop("CargoPlacard", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay),
+                LastShiftDressingSemantics.HatchMarker);
+
+            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.CargoBay).Access,
+                Is.EqualTo(LastShiftCompartmentAccess.Open));
+            Assert.That(HasRule(Validate(marker), "C2_HatchMarker"), Is.False);
         }
 
         [Test]
