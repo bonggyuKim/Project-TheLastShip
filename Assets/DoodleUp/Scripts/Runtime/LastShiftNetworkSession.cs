@@ -144,7 +144,7 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 에디터 Play 자동 host 를 끈다.
+        /// 모드 인자가 없을 때의 자동 host 를 끈다.
         ///
         /// 레벨이 하나가 되면서 <b>모든 PlayMode 테스트가 이 씬을 연다.</b> 그러면 테스트마다
         /// host 가 자동으로 떠서 같은 UDP 포트를 잡으려 하고, 앞 테스트의 host 가 아직 안 내려간
@@ -153,9 +153,14 @@ namespace DoodleUp.Runtime
         ///
         /// 그래서 <b>씬을 로드하기 전에</b> 이 값을 <c>false</c> 로 두면 자동 host 를 건너뛴다.
         /// 명시적 <c>-lastShiftNetworkMode</c> 인자 경로와 <see cref="StartHost"/> 직접 호출은
-        /// 영향받지 않는다 — 끄는 것은 "에디터 Play 라서 알아서 뜨는" 편의 경로 하나뿐이다.
+        /// 영향받지 않는다 — 끄는 것은 "인자가 없어서 알아서 뜨는" 편의 경로 하나뿐이다.
+        ///
+        /// 한때 이 분기가 <c>#if UNITY_EDITOR</c> 안에 있었다. 그래서 인자 없이 띄운 standalone
+        /// 빌드는 host 가 뜨지 않아 player 가 spawn 되지 않았고, 카메라는 player 프리팹에만 있으므로
+        /// <b>화면에 HUD 만 남고 3D 가 통째로 안 보였다.</b> 에디터에서는 재현되지 않는 종류의 실패라
+        /// 가드를 걷어내고 에디터와 빌드가 같은 경로를 타게 한다.
         /// </summary>
-        public static bool AutoStartHostInEditor = true;
+        public static bool AutoStartHost = true;
 
         private void Start()
         {
@@ -170,14 +175,15 @@ namespace DoodleUp.Runtime
                 networkManager.OnClientConnectedCallback += OnClientConnected;
                 if (!StartClient()) Debug.LogError($"[LAST_SHIFT_NETWORK_FAILED] mode=client address={address} port={port}");
             }
-#if UNITY_EDITOR
-            else if (AutoStartHostInEditor && StartHost())
+            else if (AutoStartHost)
             {
-                // 에디터 Play 는 -lastShiftNetworkMode 인자를 받을 수 없다. host 가 켜지지 않으면
-                // player 가 spawn 되지 않고 preset 도 적용되지 않아 잡을 물건이 하나도 없는 상태로 보인다.
-                Debug.Log($"[LAST_SHIFT_NETWORK_READY] mode=host-editor address={address} port={port} localClient={networkManager.LocalClientId}");
+                // 인자가 없는 경로. host 가 켜지지 않으면 player 가 spawn 되지 않아 카메라도 없고
+                // preset 도 적용되지 않아, 잡을 물건 하나 없는 검은 화면으로 보인다.
+                if (StartHost())
+                    Debug.Log($"[LAST_SHIFT_NETWORK_READY] mode=host-auto address={address} port={port} localClient={networkManager.LocalClientId}");
+                else
+                    Debug.LogError($"[LAST_SHIFT_NETWORK_FAILED] mode=host-auto address={address} port={port}");
             }
-#endif
         }
 
         /// <summary>

@@ -22,7 +22,7 @@ namespace DoodleUp.Tests.PlayMode
             // 이 파일은 네트워크가 아니라 시계를 잰다. 씬이 하나가 되면서 이 씬을 열기만 해도
             // host 가 자동으로 뜨는데, 테스트마다 같은 UDP 포트를 잡으면 앞 테스트의 host 가
             // 내려가기 전에 다음이 떠서 SetUp 부터 죽는다. 로드 전에 꺼 둔다.
-            LastShiftNetworkSession.AutoStartHostInEditor = false;
+            LastShiftNetworkSession.AutoStartHost = false;
             var load = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
             Assert.That(load, Is.Not.Null, $"Failed to start loading {ScenePath}");
             while (!load.isDone) yield return null;
@@ -390,7 +390,7 @@ namespace DoodleUp.Tests.PlayMode
         {
             // 껐던 것을 되돌린다. 정적 값이라 안 되돌리면 같은 Play 세션의 네트워크 테스트가
             // host 없이 돌아 원인을 알 수 없는 실패가 된다.
-            LastShiftNetworkSession.AutoStartHostInEditor = true;
+            LastShiftNetworkSession.AutoStartHost = true;
         }
 
         [UnityTearDown]
