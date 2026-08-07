@@ -44,6 +44,25 @@ namespace DoodleUp.Runtime
         private int damagedSystemMask;
         private bool sirenActive;
         private AudioSource sirenAudio;
+
+        /// <summary>
+        /// 엔진 보호 잠금이 걸려 있던 누적 시간. <c>추력 부족</c> 판정의 원인 줄이 유일한
+        /// 소비자다 — "도착 시점 추력 0.25" 만 적으면 플레이어가 <b>왜</b> 0.25 였는지를
+        /// 못 읽고, 그 답이 열 잠금이다(<c>docs/game-feel-loop-review-v1.md</c> §3.1-a).
+        /// </summary>
+        private float heatProtectionSeconds;
+
+        /// <summary>
+        /// 마지막으로 승무원이 죽은 구역. 질식 판정의 원인 줄 <c>○○실</c> 자리다.
+        /// 죽은 자리를 그때 기록해 두지 않으면 판정 시점에는 이미 시신 위치밖에 없고,
+        /// 그 사이에 압력이 평준화되면 "어느 방이 문제였는가" 가 사라진다.
+        /// </summary>
+        private LastShiftZone lastCrewDeathZone;
+        private bool hasCrewDeathZone;
+
+        /// <summary>판정 순간에 얼린 런 요약과 그 실시간 시각. 결과 화면 모션이 여기 걸려 있다.</summary>
+        private LastShiftRunSummary runSummary;
+        private float verdictRealtime;
         private LastShiftDoorState doorState = LastShiftDoorState.AllOpen;
 
         /// <summary>
@@ -159,6 +178,36 @@ namespace DoodleUp.Runtime
         public bool OxygenPumpRunning => lastTick.OxygenPumpRunning;
         public int SacrificeCount => repairLedger.SacrificeCount;
         public int BypassLapseCount => repairLedger.BypassLapseCount;
+
+        /// <summary>판정 순간에 얼린 런 요약(<c>G-1</c>). 판정 전에는 <c>Pending</c> 요약이다.</summary>
+        public LastShiftRunSummary RunSummary => runSummary;
+
+        /// <summary>
+        /// 결과 화면의 <c>다음 판</c> 이 가리키는 프리셋. enum 순환이며 새 상수를 두지 않는다
+        /// (<c>docs/last-shift-preset-names-v1.md</c> §4.3).
+        /// </summary>
+        public LastShiftPreset NextPreset => PresetCycle[((int)currentPreset + 1) % PresetCycle.Length];
+
+        /// <summary>enum 순서가 곧 순환 순서다. 개수를 리터럴로 적으면 프리셋이 늘 때 조용히 빠진다.</summary>
+        private static readonly LastShiftPreset[] PresetCycle =
+            (LastShiftPreset[])System.Enum.GetValues(typeof(LastShiftPreset));
+
+        /// <summary>
+        /// 남은 시간 안에 도킹을 채우려면 지금부터 유지해야 하는 추력(<c>G-2</c>).
+        /// HUD 추력 막대 위의 움직이는 선이 읽는 값이다.
+        /// </summary>
+        public float RequiredThrust =>
+            LastShiftVerdictResolver.RequiredThrust(currentState, dockingSecondsRemaining);
+
+        /// <summary>판정 이후 경과한 실시간. 결과 화면 모션과 입력 지연이 읽는다.</summary>
+        public float SecondsSinceVerdict => IsResolved ? Mathf.Max(0f, Time.unscaledTime - verdictRealtime) : 0f;
+
+        /// <summary>
+        /// 다음 판 입력을 받아도 되는가. <b>줄이 보이는 시각부터 받는다</b>(아트 §7) —
+        /// 보이지 않는 입력을 먼저 받으면 결과를 못 읽고 넘어간 판이 생긴다.
+        /// </summary>
+        public bool CanAdvanceToNextRun =>
+            IsResolved && SecondsSinceVerdict >= LastShiftResultScreen.NextRunInputDelay;
 
         /// <summary>S-O3 전선 사이렌(N9). 모든 구역에서 들리는 P0 유일의 국소 정보 예외다.</summary>
         public bool SirenActive => sirenActive;
@@ -444,6 +493,10 @@ namespace DoodleUp.Runtime
             ResetGeneration = value.ResetGeneration;
             ImpactApplicationCount = value.ImpactApplicationCount;
             HasAppliedImpact = value.HasAppliedImpact;
+            // 판정이 스냅샷으로 처음 도착한 순간이 곧 이 화면에서의 판정 시각이다. 여기서
+            // 찍지 않으면 결과 화면 모션이 t=0 을 잃고 첫 프레임부터 완성된 상태로 뜬다.
+            if (verdict != value.Verdict && LastShiftVerdictResolver.IsResolved(value.Verdict))
+                verdictRealtime = Time.unscaledTime;
             verdict = value.Verdict;
             repairLedger.ApplyReplicatedSacrificeMask(value.SacrificedSystemMask);
             replicatedUncontainedSystemMask = value.UncontainedSystemMask;
@@ -515,7 +568,12 @@ namespace DoodleUp.Runtime
             var networkSandbox = GetComponent<LastShiftNetworkSandbox>();
             if (keyboard != null && (networkSandbox == null || !networkSandbox.IsSpawned))
             {
-                if (keyboard.digit1Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.HighHeatHighThrust);
+                // G-1(c) 다음 판. <b>결과 화면에 입력 하나만 둔다</b> — 1·2·3 은 디버그로
+                // 남고, 프리셋 순환이 여기 붙어야 세 판에 세 가지 사고를 겪는다(§3.1-c).
+                // wasPressedThisFrame 이라 판정 순간 눌려 있던 키는 결과를 넘기지 못한다.
+                if (IsResolved && CanAdvanceToNextRun && keyboard.spaceKey.wasPressedThisFrame)
+                    RequestPresetReset(NextPreset);
+                else if (keyboard.digit1Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.HighHeatHighThrust);
                 else if (keyboard.digit2Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
                 else if (keyboard.digit3Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
                 else if (keyboard.rKey.wasPressedThisFrame) RequestPresetReset(currentPreset);
@@ -609,6 +667,7 @@ namespace DoodleUp.Runtime
             lastTick = LastShiftDeterioration.Tick(
                 ref currentState, ref zonePressures, BuildContainment(), BreachZone, doorState, deltaTime);
             RefreshResultAfterImpact();
+            if (lastTick.HeatProtectionEngaged) heatProtectionSeconds += deltaTime;
 
             dockingSecondsRemaining = Mathf.Max(0f, dockingSecondsRemaining - deltaTime);
 
@@ -623,6 +682,15 @@ namespace DoodleUp.Runtime
                 SettleVerdict(continuous, continuous == LastShiftVerdict.FailureAdrift
                     ? "fuel-exhausted-dock-progress-short"
                     : "all-crew-suit-oxygen-depleted");
+                return;
+            }
+
+            // G-2(c). 필요 추력이 상한을 넘으면 최대로 밀어도 진척이 안 차므로 여기서 끝낸다.
+            // 연료 소진 표류와 판정이 같고 트리거 문자열만 다르다 — 로그만 보고 어느 쪽으로
+            // 끝났는지가 갈려야 하고, 이 경로는 연료가 남았는데도 시간이 모자란 경우다.
+            if (LastShiftVerdictResolver.IsDockUnreachable(currentState, dockingSecondsRemaining))
+            {
+                SettleVerdict(LastShiftVerdict.FailureAdrift, "dock-progress-unreachable");
                 return;
             }
 
@@ -649,10 +717,37 @@ namespace DoodleUp.Runtime
         {
             if (value == LastShiftVerdict.Pending || IsResolved) return;
             verdict = value;
+            CaptureRunSummary();
             Debug.Log($"[LAST_SHIFT_VERDICT] generation={ResetGeneration} verdict={value} trigger={trigger} " +
                       $"thrust={currentState.ThrustDemand:F2} O2={currentState.OxygenPressure:F2} heat={currentState.EngineHeat:F2} " +
                       $"bus={currentState.BusPower:F2} fuel={currentState.FuelReserve:F3} dock={currentState.DockProgress:F1} " +
                       $"T-{dockingSecondsRemaining:F0}s sacrifices={repairLedger.SacrificeCount} bypassLapses={repairLedger.BypassLapseCount}");
+        }
+
+        /// <summary>
+        /// 판정 순간의 값을 얼린다(<c>G-1</c>). <b>얼리는 것이 요점이다</b> — 결과 화면이 떠
+        /// 있는 동안 배경 상태가 계속 변하면(판정 후에도 tick 은 멈추지만 승무원·아이템은
+        /// 움직인다) 원인 줄의 숫자가 같이 흔들린다.
+        ///
+        /// 새로 계산하는 값은 하나도 없다. 경과 시간은 제한시간에서 남은 시간을 뺀 것이고,
+        /// 평균 추력은 <c>DockProgress</c>(=추력적분)를 그 경과로 나눈 것뿐이다.
+        /// </summary>
+        private void CaptureRunSummary()
+        {
+            var elapsed = LastShiftRecoveryTuning.DockingTimerSeconds - dockingSecondsRemaining;
+            runSummary = new LastShiftRunSummary(
+                verdict,
+                currentState.DockProgress,
+                elapsed,
+                currentState.ThrustDemand,
+                heatProtectionSeconds,
+                repairLedger.SacrificeCount,
+                repairLedger.QuickBypassCount,
+                repairLedger.BypassLapseCount,
+                // 죽은 자리가 기록되지 않은 경로(승무원 없는 최소 조립 등)에서는 가장 낮은
+                // 구역을 쓴다. 질식 판정이 났다면 그 구역이 곧 원인이다.
+                hasCrewDeathZone ? lastCrewDeathZone : zonePressures.LowestZone);
+            verdictRealtime = Time.unscaledTime;
         }
 
         /// <summary>
@@ -692,8 +787,15 @@ namespace DoodleUp.Runtime
                 var wasAlive = !crew.IsDead;
                 crew.Tick(IsZoneVacuum(targetPlayer.transform.position), deltaTime);
                 if (wasAlive && crew.IsDead)
+                {
+                    // 죽은 자리를 그때 잡는다. 결과 화면 원인 줄의 ○○실 자리이고, 판정
+                    // 시점에 다시 찾으면 이미 압력이 평준화돼 어느 방이었는지가 사라진다.
+                    lastCrewDeathZone = LastShiftZoneAtlas.Resolve(targetPlayer.transform.position);
+                    hasCrewDeathZone = true;
                     Debug.Log($"[LAST_SHIFT_CREW_DEATH] generation={ResetGeneration} crew={targetPlayer.PlayerSlot} " +
+                              $"zone={LastShiftZoneAtlas.KeyOf(lastCrewDeathZone)} " +
                               $"livingCrew={LivingCrewCount} O2={currentState.OxygenPressure:F2} T-{dockingSecondsRemaining:F0}s");
+                }
             }
         }
 
@@ -1189,6 +1291,13 @@ namespace DoodleUp.Runtime
             repairLedger.Reset();
             damagedSystemMask = 0;
             verdict = LastShiftVerdict.Pending;
+            // 결과 화면이 읽는 것도 전부 새 항해로 되돌린다. 안 지우면 다음 판 결과 화면이
+            // 지난 판의 열 잠금 시간과 죽은 자리를 그대로 원인 줄에 적는다.
+            heatProtectionSeconds = 0f;
+            hasCrewDeathZone = false;
+            lastCrewDeathZone = default;
+            runSummary = default;
+            verdictRealtime = 0f;
             lastTick = LastShiftTickReport.Idle;
             steeringInputDelayRemaining = 0f;
             hasPendingControl = false;
@@ -1444,14 +1553,25 @@ namespace DoodleUp.Runtime
             headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
 
-            GUI.Box(new Rect(16f, 16f, 680f, 262f), GUIContent.none);
-            DrawObjectiveLine();
-            DrawSystemBars();
-            DrawZonePressureCells(28f, 156f);
-            DrawDominantProblemLine();
-            DrawBatteryState();
-            DrawLocalDiagnosis();
-            DrawSuitOxygenGauges();
+            // 판정이 나면 상시 패널을 숨긴다(아트 §8). 시뮬레이션이 멎어 있어서 막대가
+            // 살아 있는 값처럼 오독되고, 결과 화면과 같은 무게로 읽히면 위계가 무너진다.
+            // F3 디버그 층은 QA 도구라 그대로 둔다.
+            if (!IsResolved)
+            {
+                GUI.Box(new Rect(16f, 16f, 680f, 290f), GUIContent.none);
+                DrawObjectiveLine();
+                DrawSystemBars();
+                DrawZonePressureCells(28f, 184f);
+                DrawDominantProblemLine();
+                DrawBatteryState();
+                DrawLocalDiagnosis();
+                DrawSuitOxygenGauges();
+            }
+            else
+            {
+                LastShiftResultScreen.Draw(runSummary, NextPreset, SecondsSinceVerdict);
+            }
+
             if (debugHudVisible) DrawDebugHud();
         }
 
@@ -1493,6 +1613,7 @@ namespace DoodleUp.Runtime
         {
             DrawThresholdBar(28f, 62f, "추력", currentState.ThrustDemand, HigherIsBetter,
                 LastShiftRecoveryTuning.DockingSuccessThrust);
+            DrawRequiredThrustMarker(28f, 62f);
 
             // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
             // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
@@ -1507,17 +1628,54 @@ namespace DoodleUp.Runtime
                 LastShiftSituationTable.HeatCouplingTrigger,
                 LastShiftSituationTable.HeatRunawayTrigger,
                 LastShiftSituationTable.HeatLockTrigger);
+
+            // G-2(a) 넷째 막대. 승리 조건 셋 중 하나가 F3 뒤에만 있어서 아무도 못 보던 자리다.
+            // <b>숫자는 안 적는다</b> — 세 막대와 같은 문법으로 채워지는 길이만 보여준다(§3.2-a).
+            // 임계선도 없다. 목표는 막대가 가득 차는 것 자체이고, "지금 충분한가" 는 위의
+            // 필요 추력선이 답한다.
+            DrawThresholdBar(28f, 146f, "도킹",
+                currentState.DockProgress / LastShiftRecoveryTuning.DockTargetThrustSeconds, HigherIsBetter);
         }
 
         private const bool HigherIsBetter = false;
         private const bool HigherIsWorse = true;
 
+        private const float BarWidth = 520f;
+        private const float BarHeight = 18f;
+        private const float BarLabelWidth = 50f;
+
+        /// <summary>
+        /// G-2(b) 필요 추력선. <c>(150 − DockProgress) / 남은 초</c> 를 추력 막대 위에 그린다.
+        ///
+        /// <b>고정 임계선(흰색)과 다른 색인 것이 요점이다</b> — 0.30 은 도킹 순간의 조건이라
+        /// 안 움직이고, 이 선은 내가 추력을 어떻게 썼는지에 따라 매 초 움직인다. 같은 색이면
+        /// 둘이 같은 종류의 약속으로 읽힌다.
+        ///
+        /// 운석 전에는 그리지 않는다 — 그 구간에는 타이머가 흐르지 않아 선이 멈춰 있고,
+        /// 멈춘 선은 "지금 이만큼 내면 된다" 가 아니라 그냥 또 하나의 고정 임계로 읽힌다.
+        /// </summary>
+        private void DrawRequiredThrustMarker(float x, float y)
+        {
+            if (!HasAppliedImpact || IsResolved) return;
+
+            var required = RequiredThrust;
+            if (required <= 0f) return;
+
+            var barX = x + BarLabelWidth;
+            var previous = GUI.color;
+            GUI.color = new Color(0.45f, 1f, 0.75f);
+            GUI.DrawTexture(
+                new Rect(barX + BarWidth * Mathf.Clamp01(required) - 1f, y - 2f, 3f, BarHeight + 8f),
+                Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
         private void DrawThresholdBar(float x, float y, string label, float value, bool higherIsWorse,
             params float[] thresholds)
         {
-            const float barWidth = 520f;
-            const float barHeight = 18f;
-            var fill = Mathf.Clamp01(value);
+            const float barWidth = BarWidth;
+            const float barHeight = BarHeight;
+            var fill = Mathf.Clamp01(float.IsNaN(value) ? 0f : value);
 
             // "나쁜 쪽" 판정은 첫 임계선 하나로 한다. 열은 첫 선(S-H1)을 넘는 순간부터
             // 나쁘고, 추력·전력은 선 아래로 내려가는 순간부터 나쁘다.
@@ -1525,7 +1683,7 @@ namespace DoodleUp.Runtime
             var bad = higherIsWorse ? fill >= first : fill < first;
 
             GUI.Label(new Rect(x, y, 46f, 22f), label, bodyStyle);
-            var barX = x + 50f;
+            var barX = x + BarLabelWidth;
             GUI.DrawTexture(new Rect(barX, y + 2f, barWidth, barHeight), Texture2D.grayTexture);
             // 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을 플레이어가 눈대중으로 하게
             // 두면 임계선을 그린 의미가 없다.
@@ -1564,7 +1722,7 @@ namespace DoodleUp.Runtime
 
             var previous = GUI.color;
             GUI.color = color;
-            GUI.Label(new Rect(28f, 186f, 430f, 26f), line, headingStyle);
+            GUI.Label(new Rect(28f, 214f, 430f, 26f), line, headingStyle);
             GUI.color = previous;
         }
 
@@ -1600,7 +1758,7 @@ namespace DoodleUp.Runtime
 
             var previous = GUI.color;
             GUI.color = battery.Secured ? Color.white : new Color(1f, 0.86f, 0.35f);
-            GUI.Label(new Rect(466f, 188f, 220f, 24f), text, bodyStyle);
+            GUI.Label(new Rect(466f, 216f, 220f, 24f), text, bodyStyle);
             GUI.color = previous;
         }
 
@@ -1619,7 +1777,7 @@ namespace DoodleUp.Runtime
             var cause = LastShiftSituationText.CauseLine(situation);
             if (string.IsNullOrEmpty(cause)) return;
 
-            GUI.Label(new Rect(28f, 218f, 650f, 24f),
+            GUI.Label(new Rect(28f, 246f, 650f, 24f),
                 $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}", bodyStyle);
         }
 
@@ -1734,9 +1892,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void DrawDebugHud()
         {
-            GUI.Box(new Rect(16f, 240f, 680f, 208f), GUIContent.none);
-            GUI.Label(new Rect(28f, 246f, 650f, 24f), "[DEBUG F3]", headingStyle);
-            GUI.Label(new Rect(28f, 274f, 650f, 170f),
+            GUI.Box(new Rect(16f, 268f, 680f, 208f), GUIContent.none);
+            GUI.Label(new Rect(28f, 274f, 650f, 24f), "[DEBUG F3]", headingStyle);
+            GUI.Label(new Rect(28f, 302f, 650f, 170f),
                 $"preset={currentPreset}  reset_gen={ResetGeneration}  impact_count={ImpactApplicationCount}  " +
                 $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}\n" +
                 $"state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
@@ -1747,11 +1905,13 @@ namespace DoodleUp.Runtime
                 $"power={SituationOf(LastShiftSystemChannel.Power)} " +
                 $"prop={SituationOf(LastShiftSystemChannel.Propulsion)} siren={sirenActive}\n" +
                 $"fuel={currentState.FuelReserve:F2}  dock={currentState.DockProgress:F0}/" +
-                $"{LastShiftRecoveryTuning.DockTargetThrustSeconds:F0} thrust·s  hold={controlHold.RemainingSeconds:F1}s\n" +
+                $"{LastShiftRecoveryTuning.DockTargetThrustSeconds:F0} thrust·s  req_thrust={RequiredThrust:F2}  " +
+                $"heat_lock={heatProtectionSeconds:F0}s  hold={controlHold.RemainingSeconds:F1}s\n" +
                 $"first_dominant={(HasAppliedImpact ? FirstResult.Problem.ToString() : "pending meteor")}  " +
                 $"current_dominant={(HasAppliedImpact ? LastResult.Problem.ToString() : "-")}\n" +
                 $"cause_chain: {(HasAppliedImpact ? LastResult.CauseChain : "-")}\n" +
-                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M 운석 | 화살표 조종(8초) | F3 디버그",
+                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M 운석 | 화살표 조종(8초) | " +
+                "판정 후 Space 다음 판 | F3 디버그",
                 bodyStyle);
         }
 

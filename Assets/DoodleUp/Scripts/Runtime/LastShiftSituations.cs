@@ -301,6 +301,20 @@ namespace DoodleUp.Runtime
             _ => "산소"
         };
 
+        /// <summary>
+        /// 프리셋의 플레이어용 이름(<c>docs/last-shift-preset-names-v1.md</c> §4).
+        ///
+        /// <b>쓰는 자리는 결과 화면 <c>다음 판</c> 줄 하나뿐이다</b> — 방금 끝난 판의 이름은
+        /// 적지 않는다. 이름의 기능은 예고와 호칭인데 끝난 판은 둘 다 해당이 없다(§4.2).
+        /// 로그·<c>F3</c>·테스트 실패 메시지는 계속 enum 이름을 쓴다.
+        /// </summary>
+        public static string PresetDisplayName(LastShiftPreset preset) => preset switch
+        {
+            LastShiftPreset.HighHeatHighThrust => "엔진 과열",
+            LastShiftPreset.PowerOverloadLooseBattery => "전력 상실",
+            _ => "선체 파손"
+        };
+
         /// <summary>원인 1행. 무엇이 일어났는지만 말하고 무엇을 가져가라는 말은 하지 않는다.</summary>
         public static string CauseLine(LastShiftSituation situation) => situation switch
         {

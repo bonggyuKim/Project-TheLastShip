@@ -297,6 +297,21 @@ namespace DoodleUp.Runtime
             }
         }
 
+        /// <summary>
+        /// <see cref="Lowest"/> 인 구역. 결과 화면의 질식 원인 줄이 죽은 자리를 모를 때
+        /// 대신 쓰는 값이다. 동률이면 먼저 선언된 구역이 남는다.
+        /// </summary>
+        public LastShiftZone LowestZone
+        {
+            get
+            {
+                var lowestZone = (LastShiftZone)0;
+                for (var zone = 1; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                    if (this[(LastShiftZone)zone] < this[lowestZone]) lowestZone = (LastShiftZone)zone;
+                return lowestZone;
+            }
+        }
+
         public void SetAll(float pressure)
         {
             for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)

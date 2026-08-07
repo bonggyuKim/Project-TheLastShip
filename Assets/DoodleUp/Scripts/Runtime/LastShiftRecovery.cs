@@ -292,6 +292,17 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float DockTargetThrustSeconds = 150f;
 
+        /// <summary>
+        /// 추력 명령의 구조적 상한. <c>ThrustDemand</c> 가 <c>Clamp01</c> 이라는 사실을 상수로
+        /// 올린 것이며, <see cref="LastShiftVerdictResolver.IsDockUnreachable"/> 이 "필요 추력이
+        /// 낼 수 있는 값을 넘었다" 를 판정하는 기준이다.
+        ///
+        /// <b>현재 추력 천장(<see cref="ProtectedThrustCeiling"/> 등)이 아니다.</b> 그쪽은
+        /// 일시적이고 <c>RG-3</c> 으로 반드시 풀리므로, 잠긴 동안의 천장으로 도달 가능성을
+        /// 판정하면 아직 이길 수 있는 판을 실패로 끝낸다.
+        /// </summary>
+        public const float MaxThrustDemand = 1.00f;
+
         // ── R3 판정 ───────────────────────────────────────────────────────
         /// <summary>CT-01 §2.4 권고. 6분은 "다 고치고 기다리기" 가 되어 압박이 사라졌다.</summary>
         public const float DockingTimerSeconds = 300f;
@@ -377,6 +388,17 @@ namespace DoodleUp.Runtime
 
         public int SacrificeCount { get; private set; }
         public int BypassLapseCount { get; private set; }
+
+        /// <summary>
+        /// 임시 결속을 완성한 횟수. 결과 화면 요약 <c>4</c>칸의 <c>임시 수리</c> 칸이 유일한
+        /// 소비자다(<c>CT-01</c> §5.5).
+        ///
+        /// <b><see cref="BypassLapseCount"/> 와 짝이어야 의미가 선다</b> — "임시 수리 3회 ·
+        /// 재이탈 2회" 가 한 화면에 같이 있어야 플레이어가 다음 판에서 <c>4</c>초를 내고
+        /// 안전 복구로 끝낼 근거가 된다. 재이탈만 세면 분모가 없다.
+        /// </summary>
+        public int QuickBypassCount { get; private set; }
+
         public bool SacrificeUsed => SacrificeCount > 0;
 
         public Entry this[LastShiftShipSystem system] => entries[(int)system];
@@ -403,6 +425,7 @@ namespace DoodleUp.Runtime
             for (var index = 0; index < entries.Length; index++) entries[index] = default;
             SacrificeCount = 0;
             BypassLapseCount = 0;
+            QuickBypassCount = 0;
         }
 
         /// <summary>클라이언트 표시용. 서버 장부를 스냅샷 마스크로 되살린다.</summary>
@@ -498,6 +521,7 @@ namespace DoodleUp.Runtime
             }
 
             entries[index].HasCompletedRepair = true;
+            if (mode == LastShiftRepairMode.QuickBypass) QuickBypassCount++;
             entries[index].BypassRemainingSeconds = mode == LastShiftRepairMode.QuickBypass
                 ? LastShiftRecoveryTuning.QuickBypassLifetimeSeconds
                 : 0f;
@@ -868,6 +892,41 @@ namespace DoodleUp.Runtime
             var lowest = pressures.Lowest;
             if (lowest <= LastShiftRecoveryTuning.OxygenSirenTrigger) return true;
             return sirenActive && lowest < LastShiftRecoveryTuning.OxygenSirenRelease;
+        }
+
+        /// <summary>
+        /// 남은 시간 안에 도킹 진척을 채우려면 지금부터 유지해야 하는 추력
+        /// (<c>docs/game-feel-loop-review-v1.md</c> §3.2-b). HUD 추력 막대 위의 움직이는 선이
+        /// 이 값이고, 런 시작 시 <c>(150-0)/300 = 0.50</c> 이다.
+        ///
+        /// <b>이 값이 HUD 가 가르치는 <see cref="LastShiftRecoveryTuning.DockingSuccessThrust"/>
+        /// (0.30)과 다르다는 것이 요점이다.</b> 0.30 은 도킹 <b>순간</b>의 조건이고 이 값은
+        /// 도킹을 <b>채우는</b> 조건이라, 0.30 만 보고 맞춘 배는 5분 뒤 138/150 으로 표류한다.
+        ///
+        /// 진척이 이미 목표에 닿았으면 더 낼 것이 없으므로 <c>0</c> 이다.
+        /// </summary>
+        public static float RequiredThrust(in LastShiftShipState state, float secondsRemaining)
+        {
+            var shortfall = LastShiftRecoveryTuning.DockTargetThrustSeconds - state.DockProgress;
+            if (shortfall <= 0f) return 0f;
+            if (secondsRemaining <= 0f) return float.PositiveInfinity;
+            return shortfall / secondsRemaining;
+        }
+
+        /// <summary>
+        /// 남은 시간에 도킹이 물리적으로 불가능한가(§3.2-c). 필요 추력이 추력 상한을 넘으면
+        /// 최대로 밀어도 진척이 안 차므로 <b>타이머를 기다리지 않고 즉시 판정한다</b> —
+        /// 연료 소진 표류(<see cref="IsStrandedWithoutFuel"/>)와 같은 논리이고, 기획 §4.3
+        /// <c>RG-3</c> 이 금지한 "아무것도 할 수 없는 채로 시계만 보는" 구간을 없앤다.
+        ///
+        /// 판정은 <see cref="LastShiftVerdict.FailureAdrift"/> 로 같고 트리거 문자열만 다르다.
+        /// </summary>
+        public static bool IsDockUnreachable(in LastShiftShipState state, float secondsRemaining)
+        {
+            // 남은 시간 0 은 여기서 다루지 않는다 — 그 시점은 타이머 만료 판정의 자리이고,
+            // 여기서 가로채면 추력 부족(FailureInsufficientThrust)이 영영 안 나온다.
+            return secondsRemaining > 0f &&
+                   RequiredThrust(state, secondsRemaining) > LastShiftRecoveryTuning.MaxThrustDemand;
         }
 
         /// <summary>타이머 0. 추력이 성공선 아래면 추력 부족, 그 외에는 표류다.</summary>
