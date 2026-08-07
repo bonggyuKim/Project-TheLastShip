@@ -146,12 +146,15 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(setup.sandbox.ApplyMeteorImpact(), Is.True);
             Assert.That(setup.sandbox.BreachZone, Is.EqualTo(LastShiftZone.LifeSupport));
 
-            // 격리하지 않으면 나머지 두 구역이 계속 공기를 밀어 넣어 배 전체가 함께 내려간다.
-            // 300초(도킹 타이머) 안에 진공에 닿지 않는 것이 이 경로의 성질이다.
-            for (var i = 0; i < 300; i++) setup.sandbox.AdvanceMission(1f);
-            Assert.That(setup.sandbox.PressureOf(LastShiftZone.LifeSupport),
-                Is.GreaterThan(LastShiftRecoveryTuning.VacuumOxygenPressure),
-                "문이 열려 있으면 300초 안에 어느 구역도 진공이 되지 않는다.");
+            // 격리하지 않으면 나머지 구역이 계속 공기를 밀어 넣어 배 전체가 함께 내려간다.
+            // 파공 구역은 결국 진공에 닿지만 <b>배 전체를 끌고</b> 내려간 뒤다.
+            //
+            // 예전에는 여기서 "300초 안에 어느 구역도 진공이 되지 않는다" 를 고정하고 있었다.
+            // 그 성질이 곧 격리를 죽인 것이었다 — 방치의 대가가 타이머 안에 안 오면 문을 닫을
+            // 이유가 없다(interaction-verb-diversification-v1.md §2). C-1 이 그 전제를 뒤집었다.
+            var openSeconds = AdvanceUntilBreachVacuum(setup.sandbox, 300);
+            Assert.That(openSeconds, Is.LessThan(300),
+                "방치해도 파공 구역은 타이머 안에 진공이 된다 — 그 시계가 있어야 격리가 판단이 된다.");
 
             // 격리하면 파공 구역이 자기 공기만으로 빠지므로 훨씬 빨리 진공에 닿는다.
             setup.sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
@@ -160,20 +163,29 @@ namespace DoodleUp.Tests.EditMode
                 LastShiftZoneAtlas.BoundaryX(1) - 1f, 0.1f, LastShiftZoneDoor.CenterZOf(1));
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
 
-            var seconds = 0;
-            while (seconds < 300 &&
-                   setup.sandbox.PressureOf(LastShiftZone.LifeSupport) > LastShiftRecoveryTuning.VacuumOxygenPressure)
-            {
-                setup.sandbox.AdvanceMission(1f);
-                seconds++;
-            }
+            var seconds = AdvanceUntilBreachVacuum(setup.sandbox, 300);
             Assert.That(seconds, Is.LessThan(300),
                 "격리하면 파공 구역이 도킹 타이머 안에 진공에 닿는다(수용 기준 9).");
+            Assert.That(seconds, Is.LessThan(openSeconds),
+                "격리한 쪽이 더 빨라야 한다 — 파공 구역이 이웃에게서 공기를 못 받기 때문이다.");
             Assert.That(setup.sandbox.PressureOf(LastShiftZone.Cockpit), Is.GreaterThan(0.5f),
                 "격리한 구역 너머의 조종석은 공기를 지킨다 — 이것이 격리를 누르는 이유다.");
 
             Object.DestroyImmediate(patch.gameObject);
             Teardown(setup);
+        }
+
+        /// <summary>파공 구역이 진공에 닿기까지 몇 초인가. 예산 안에 안 닿으면 예산을 돌려준다.</summary>
+        private static int AdvanceUntilBreachVacuum(LastShiftSandboxController sandbox, int budgetSeconds)
+        {
+            var seconds = 0;
+            while (seconds < budgetSeconds &&
+                   sandbox.PressureOf(LastShiftZone.LifeSupport) > LastShiftRecoveryTuning.VacuumOxygenPressure)
+            {
+                sandbox.AdvanceMission(1f);
+                seconds++;
+            }
+            return seconds;
         }
 
         private struct DoorSetup

@@ -82,6 +82,17 @@ namespace DoodleUp.Runtime
         private bool quickBypassPressed;
         private bool sacrificePressed;
         private bool doorPressed;
+
+        /// <summary>
+        /// 지금 이 승무원이 냉각실 밸브를 붙잡고 있는가(<c>C-3</c>, §4.3).
+        ///
+        /// <b>서버 목록의 사본이 아니라 로컬 입력 상태다.</b> 판정 정본은
+        /// <see cref="LastShiftSandboxController.IsCoolingValveHeld"/> 이고 클라이언트에서는 그
+        /// 컴포넌트가 꺼져 있어 읽을 수 없다. 이 플래그가 담당하는 것은 <b>이 화면에서 즉시
+        /// 반응해야 하는 둘</b>뿐이다 — 이동 잠금과 프롬프트. 그 둘을 서버 왕복 뒤로 미루면
+        /// 붙잡는 순간 한 프레임 동안 미끄러지고, 그게 "붙잡음" 이라는 시간 형태를 흐린다.
+        /// </summary>
+        private bool sustainingValve;
         private bool presetOnePressed;
         private bool presetTwoPressed;
         private bool presetThreePressed;
@@ -110,7 +121,7 @@ namespace DoodleUp.Runtime
 
         public string InputLabel => IsGhost
             ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 — 유령: 잡기·수리·문 조작 불가"
-            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / Q 문 / 1·2·3 프리셋 / R 리셋";
+            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / 1·2·3 프리셋 / R 리셋";
         public string InteractionPrompt => BuildInteractionPrompt();
         public Vector3 AimOrigin => targetCamera != null ? targetCamera.transform.position : transform.position;
 
@@ -252,21 +263,32 @@ namespace DoodleUp.Runtime
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
             var reset = ConsumePress(keyboard.rKey.isPressed, ref resetPressed);
             var meteor = ConsumePress(keyboard.mKey.isPressed, ref meteorPressed);
+            // 냉각실 밸브 유지(T). <b>ConsumePress 를 안 쓴다</b> — 나머지 전부가 순간 동사라
+            // "눌린 프레임" 을 세지만, 이 동사는 "눌려 있는 동안" 자체가 효과다(§4.3 시간 형태).
+            // §4.3 표는 R 을 적었으나 R 은 이미 프리셋 리셋이라 T 로 옮겼다.
+            UpdateValveSustain(keyboard.tKey.isPressed);
 
             ApplyLook(look, deltaTime);
-            ApplyMovement(move, jump, deltaTime);
+            // 붙잡고 있는 동안은 이동이 없다(§4.3 제약). 이 한 줄이 이 동사가 채우려던 문법 축
+            // "소비 대상 = 사람" 그 자체다 — 효과만 있고 자리에 안 묶이면 걸어 두는 동사가 되고,
+            // 그건 조종석 hold 가 이미 하고 있다.
+            ApplyMovement(sustainingValve ? Vector2.zero : move, jump && !sustainingValve, deltaTime);
             // 유령은 배를 만질 수 없다(기획 §4.4 N11 구현물 2 — 잡기·수리·문·조종 전면 차단).
             // 서버도 같은 판정을 각 진입점에서 다시 하지만, 요청 자체가 나가지 않는 것이
             // 정상 상태다. 프리셋·리셋(1·2·3·R)은 조작 동사가 아니라 검증 도구이므로 남긴다 —
             // 막으면 2인 모두 죽은 뒤 아무도 씬을 되돌릴 수 없다.
-            if (!IsGhost)
+            //
+            // 붙잡고 있는 동안은 다른 동사도 못 쓴다(§4.3 제약). 유령 차단과 같은 자리에 거는
+            // 것은 이유가 같아서다 — 두 경우 모두 "요청 자체가 나가지 않는 것" 이 정상이고,
+            // 서버는 어차피 각 진입점에서 자기 조건을 다시 본다.
+            if (!IsGhost && !sustainingValve)
             {
                 if (grab) ToggleGrab();
                 if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
                 if (door && (networkPlayer == null || !networkPlayer.IsSpawned)) TryOperateNearestDoor();
             }
             if (networkPlayer == null || !networkPlayer.IsSpawned) return;
-            if (!IsGhost)
+            if (!IsGhost && !sustainingValve)
             {
                 if (door) networkPlayer.RequestDoorToggle();
                 if (safeRestore) networkPlayer.RequestRepair(LastShiftRepairMode.SafeRestore);
@@ -646,6 +668,34 @@ namespace DoodleUp.Runtime
             return TryResolveGrabTarget(AimOrigin, AimDirection, out item, out distance);
         }
 
+        /// <summary>지금 이 승무원이 냉각실 밸브를 붙잡고 있는가. 이동 잠금·프롬프트가 읽는다.</summary>
+        public bool IsSustainingValve => sustainingValve;
+
+        /// <summary>
+        /// 밸브 유지 입력 한 프레임(<c>C-3</c>, §4.3). <b>상태가 바뀔 때만</b> 아래로 내려보낸다 —
+        /// 매 프레임 RPC 를 쏘면 붙잡고 있는 <c>14</c>초가 초당 수십 개의 서버 호출이 된다.
+        ///
+        /// 사거리를 여기서도 보는 것은 예측이지 판정이 아니다. 서버는
+        /// <see cref="LastShiftSandboxController.SetCoolingValveHeld"/> 에서 같은 검사를 다시 하고,
+        /// 붙잡은 뒤 위치가 밖에서 바뀌는 경우는 서버의 매 tick 정리가 잡는다.
+        /// </summary>
+        private void UpdateValveSustain(bool pressed)
+        {
+            var wanted = pressed && !IsGhost &&
+                         (sustainingValve || LastShiftCoolingValve.IsWithinReach(transform.position));
+            if (wanted == sustainingValve) return;
+            sustainingValve = wanted;
+
+            if (networkPlayer != null && networkPlayer.IsSpawned)
+            {
+                networkPlayer.RequestCoolingValveHold(wanted);
+                return;
+            }
+
+            // 네트워크가 없는 경로는 샌드박스가 자기 Update 에서 같은 키를 직접 읽는다
+            // (수리 3종·문과 같은 분담). 여기서 또 부르면 같은 프레임에 잡고 놓는다.
+        }
+
         /// <summary>
         /// 서버가 grab 을 거부했을 때 그 사유를 소유자 화면 프롬프트에 그대로 노출한다.
         /// </summary>
@@ -689,10 +739,21 @@ namespace DoodleUp.Runtime
             // "조작 불가" 를 보여 주던 것과 같은 이유다).
             if (IsGhost) return "유령 — 이동만 가능 (잡기·수리·문 조작 불가)";
 
+            // 밸브가 가장 먼저다. 붙잡고 있는 동안은 다른 동사가 아예 막혀 있으므로(§4.3 제약),
+            // 그 상태에서 잡기·문 안내를 띄우면 눌러도 안 되는 것을 알려주는 꼴이다.
+            var valvePrompt = BuildValvePrompt();
+            if (valvePrompt != null) return valvePrompt;
+
             // 문 프롬프트가 아이템 프롬프트보다 먼저다. 문 앞에서만 뜨는 안내이고, 그 자리에서
             // 아이템을 조준하고 있을 확률보다 문을 조작하려 할 확률이 높다.
             var doorPrompt = BuildDoorPrompt();
             if (doorPrompt != null) return doorPrompt;
+
+            // 수리 프롬프트는 문 다음이다. 손상 지점은 방 안이고 문은 경계에 있어 사거리가
+            // 겹치지 않지만, 겹치는 배치가 생기면 문 쪽을 남긴다 — 문은 그 자리를 떠나는
+            // 동사라 잘못 가려지면 승무원이 갇힌다.
+            var repairPrompt = BuildRepairPrompt();
+            if (repairPrompt != null) return repairPrompt;
             if (networkPlayer == null || !networkPlayer.IsSpawned)
                 return heldItem != null ? "[E] 놓기" : "+";
             if (serverRejectionReason != null)
@@ -734,6 +795,55 @@ namespace DoodleUp.Runtime
                 return $"{item.Grabbable.Role}: 다른 플레이어가 잡는 중";
             return $"[E] {item.Grabbable.Role} 잡기  {distance:F1}m";
         }
+
+        /// <summary>
+        /// 냉각실 밸브 안내(<c>C-3</c>, §4.3). 사거리 밖이면 null 이다.
+        ///
+        /// 붙잡고 있는 동안 <b>무엇을 내주고 있는지</b>를 문장에 넣는다. 이 동사의 비용은 시간이
+        /// 아니라 사람이고(§3 문법 축 "소비 대상 = 사람"), 화면이 그걸 말하지 않으면 잡은 사람은
+        /// 자기가 조종석을 비우고 있다는 사실을 열 막대에서 역산해야 한다.
+        /// </summary>
+        private string BuildValvePrompt()
+        {
+            if (sustainingValve) return "[T] 유지 중 — 냉각 순환 밸브 (이동·다른 조작 불가)";
+            if (!LastShiftCoolingValve.IsWithinReach(transform.position)) return null;
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead) return "냉각 순환 밸브: 조작 불가";
+            return "[T] 냉각 순환 밸브 유지 (누르고 있는 동안 · 그 자리에 묶인다)";
+        }
+
+        /// <summary>
+        /// 수리 동사 안내(<c>C-2</c>, §4.2). 판정은 전부
+        /// <see cref="LastShiftSandboxController.TryResolveRepairPrompt"/> 에 있고 여기는 문장만 만든다.
+        ///
+        /// <b>물건이 없을 때 <c>G</c> 만 남기는 것이 이 카드의 <c>C-2</c> 다.</b> 지금까지 셋이
+        /// 같은 무게로 나열조차 되지 않았고(수리 프롬프트가 아예 없었다), 물건이 정위치에 없으면
+        /// <c>C</c>·<c>V</c> 는 조용히 실패했다. 실패가 조용하면 플레이어는 그 자리에서
+        /// <c>G</c> 라는 답이 있다는 것을 배울 방법이 없다.
+        /// </summary>
+        private string BuildRepairPrompt()
+        {
+            var sandbox = Sandbox;
+            if (sandbox == null) return null;
+            if (!sandbox.TryResolveRepairPrompt(transform.position, out _, out var subjectInPlace)) return null;
+            var crew = GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead) return null;
+
+            return subjectInPlace
+                ? "[C] 안전 복구 4.0s   [V] 임시 결속 0.8s   [G] 성능 포기"
+                : "[G] 이 구역 포기 — 악화는 멈추고 회복은 없다";
+        }
+
+        /// <summary>
+        /// 씬의 샌드박스. 지연 조회하는 이유는 <see cref="LastShiftDeckHatch"/> 와 같다 —
+        /// EditMode 조립·씬 빌드에서 Awake 순서가 보장되지 않고, 그때 캐시가 null 로 굳으면
+        /// 프롬프트가 영영 안 뜬다. 클라이언트에서는 이 컴포넌트가 <c>enabled = false</c> 지만
+        /// 오브젝트는 살아 있어 조회되고, 프롬프트가 읽는 값은 전부 스냅샷으로 들어온다.
+        /// </summary>
+        private LastShiftSandboxController Sandbox =>
+            cachedSandbox != null ? cachedSandbox : cachedSandbox = FindFirstObjectByType<LastShiftSandboxController>();
+
+        private LastShiftSandboxController cachedSandbox;
 
         /// <summary>
         /// 문 앞 안내. 사거리 밖이면 null 이라 아이템 프롬프트가 그대로 나온다.

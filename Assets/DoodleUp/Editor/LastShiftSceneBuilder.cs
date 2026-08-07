@@ -101,6 +101,23 @@ namespace DoodleUp.Editor
         /// <c>NetworkObject</c> 가 없으므로 그쪽 프리팹이 겪은 <c>GlobalObjectIdHash 0</c> 함정은
         /// 여기 해당하지 않는다. 나중에 선체에 네트워크 오브젝트가 붙으면 그 검사도 같이 와야 한다.
         /// </summary>
+        /// <summary>
+        /// <c>-executeMethod DoodleUp.Editor.LastShiftSceneBuilder.RebuildShipPrefabForAutomation</c>
+        ///
+        /// <b>선체 프리팹만 굽는다 — 씬은 안 건드린다.</b> 이 진입점이 따로 있는 이유가 그것이다.
+        /// <see cref="LastShiftNetworkSceneBuilder.RebuildSandboxForAutomation"/> 는 씬을 통째로
+        /// 다시 짓는데, <c>-nographics</c> 배치에서 그렇게 저장된 씬은 선체가 <b>프리팹 인스턴스가
+        /// 아니라 평범한 GameObject 로 풀려서</b> 들어간다. 그 상태를 커밋하면 다음에 프리팹을
+        /// 구워도 씬이 안 따라오고, 씬과 프리팹이 조용히 갈라진다.
+        ///
+        /// 선체 지오메트리만 바뀐 카드는 이쪽을 쓴다. 씬 구조(런타임 오브젝트·NetworkManager·
+        /// 아이템 배치)가 바뀌었을 때만 열린 에디터에서 씬 빌더를 돌린다.
+        /// </summary>
+        public static void RebuildShipPrefabForAutomation()
+        {
+            RebuildShipPrefab();
+        }
+
         public static GameObject RebuildShipPrefab()
         {
             Directory.CreateDirectory("Assets/DoodleUp/Prefabs");
@@ -549,6 +566,42 @@ namespace DoodleUp.Editor
                 CreateDecorCube($"CoolingStack_Fin_{index}", ship,
                     new Vector3(centerX - 0.8f + index * 0.4f, 1.85f, BackWallInnerZ - 0.60f),
                     new Vector3(0.14f, 0.5f, 0.7f), EnsureFixtureMaterial());
+
+            CreateCoolingValve(ship);
+        }
+
+        /// <summary>
+        /// 냉각실 수동 순환 밸브(<c>C-3</c> 유지 동사, <c>interaction-verb-diversification-v1.md</c> §4.3).
+        ///
+        /// <b>손잡이가 눈에 띄어야 한다.</b> 이 배에서 "누르고 있는 동안" 이라는 시간 형태를 갖는
+        /// 조작물은 이것 하나뿐이라, 다른 벽 설비와 같은 회색 상자로 두면 승무원은 그 앞에
+        /// 서 봐야만 존재를 안다. 경고 황색은 안 쓴다 — 그 색이 붙은 자리 셋(배플 모서리,
+        /// 승강구, 격납고 발진 구역)은 전부 "부딪히거나 빠지는 곳" 이고, 밸브는 반대로
+        /// 가야 하는 곳이다.
+        /// </summary>
+        private static void CreateCoolingValve(Transform ship)
+        {
+            var anchor = LastShiftCoolingValve.Position;
+
+            var root = new GameObject("CoolingValve");
+            root.transform.SetParent(ship, false);
+            root.transform.localPosition = anchor;
+
+            // 벽에 박히는 대좌. 로컬 z 로 벽 쪽에 물려 손잡이 회전축이 벽면에 붙어 보인다.
+            CreateDecorCube("CoolingValve_Body", root.transform,
+                new Vector3(0f, 0f, LastShiftCoolingValve.WallStandoffZ * 0.5f),
+                new Vector3(0.5f, 0.5f, LastShiftCoolingValve.WallStandoffZ), coolingMaterial);
+
+            // 손잡이. LastShiftCoolingValve 가 매 프레임 이 Transform 의 localRotation 만 쓰므로
+            // 자식으로 살(spoke)을 달아 두면 돌아가는 것이 그대로 읽힌다.
+            var lever = new GameObject("CoolingValve_Lever");
+            lever.transform.SetParent(root.transform, false);
+            CreateDecorCube("CoolingValve_Spoke", lever.transform, Vector3.zero,
+                new Vector3(0.62f, 0.09f, 0.09f), EnsureFixtureMaterial());
+            CreateDecorCube("CoolingValve_Hub", lever.transform, Vector3.zero,
+                new Vector3(0.18f, 0.18f, 0.22f), EnsureFixtureMaterial());
+
+            root.AddComponent<LastShiftCoolingValve>().Configure(lever.transform);
         }
 
         /// <summary>

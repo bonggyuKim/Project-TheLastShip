@@ -52,6 +52,20 @@ namespace DoodleUp.Runtime
         /// </summary>
         private LastShiftHatchState hatchState = LastShiftHatchState.AllClosed;
 
+        /// <summary>
+        /// 냉각실 수동 순환 밸브를 지금 붙잡고 있는 승무원들(<c>C-3</c>, §4.3).
+        ///
+        /// <b>불리언 하나가 아니라 목록인 이유가 §6-3 의 검사 항목 둘이다.</b> "두 사람이 같은
+        /// 밸브를 동시에 잡는 경우" 는 목록이면 자명하게 풀리고(둘 다 들어가고, 한 명이 놓아도
+        /// 다른 한 명이 남는다), "잡은 사람이 연결을 잃는 경우" 는 매 tick 파괴된 참조를
+        /// 걷어내는 것으로 풀린다. 불리언이면 후자에서 밸브가 <b>영구히 잡힌 채로</b> 남아
+        /// 아무도 없는 배의 열이 계속 내려간다.
+        ///
+        /// 효과 자체는 홀더 수와 무관하게 <see cref="LastShiftRecoveryTuning.SustainedCoolingPerSecond"/>
+        /// 하나다 — 근거는 그 상수 주석에 있다.
+        /// </summary>
+        private readonly System.Collections.Generic.List<LastShiftPlayerController> coolingValveHolders = new();
+
         // 판독(T2)이 읽는 미억제 계통 마스크. 클라이언트에서는 손상 판정과 수리 장부가 없어
         // 같은 식을 다시 계산할 수 없으므로 서버가 접은 값을 그대로 받는다.
         private byte replicatedUncontainedSystemMask;
@@ -513,6 +527,12 @@ namespace DoodleUp.Runtime
                 else if (keyboard.vKey.wasPressedThisFrame) TryBeginRepair(LastShiftRepairMode.QuickBypass);
                 else if (keyboard.gKey.wasPressedThisFrame) TryBeginRepair(LastShiftRepairMode.PerformanceSacrifice);
 
+                // 냉각실 밸브 유지(T). 누르고 <b>있는 동안</b>이라 wasPressedThisFrame 이 아니고,
+                // 그래서 위의 else-if 사슬 밖에 있다 — 사슬 안에 두면 같은 프레임의 다른 키가
+                // 밸브 상태를 삼킨다. §4.3 이 지정한 R 은 이미 프리셋 리셋이다(§4.3 표의
+                // "기존 hold 입력 재사용" 은 조종석 hold 를 가리키고 키 이름이 아니다).
+                SetLocalCoolingValveHeld(keyboard.tKey.isPressed);
+
                 var thrust = currentState.ThrustDemand;
                 var attitude = currentState.ShipAttitudeDegrees;
                 var controlChanged = false;
@@ -561,6 +581,10 @@ namespace DoodleUp.Runtime
             // (BadAttitudeHighOxygen 은 S-T1·S-O1 둘이 동시에 첫 활성이다). 이 평가를
             // 게이트 아래 두면 SP-01 의 승인 기준인 "세 프리셋의 첫 지배 문제가 다르다" 를
             // 운석을 쏘기 전에는 화면에서 확인할 수 없다.
+            // 밸브 홀더 정리도 운석 게이트 <b>위</b>다. 아래로 내리면 손상 전에 잡은 사람이
+            // 죽거나 사라져도 목록에 남고, 운석이 떨어지는 순간 아무도 없는 배의 열이 내려간다.
+            PruneCoolingValveHolders();
+
             situationTracker.Evaluate(
                 LastShiftSituationInput.From(currentState, zonePressures, BuildContainment()), deltaTime);
 
@@ -766,8 +790,115 @@ namespace DoodleUp.Runtime
                 PowerRestored = IsSystemRestored(LastShiftShipSystem.Power),
                 PowerSacrificed = repairLedger.IsSacrificed(LastShiftShipSystem.Power),
                 OxygenRestored = IsSystemRestored(LastShiftShipSystem.Oxygen),
-                OxygenSacrificed = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen)
+                OxygenSacrificed = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen),
+                CoolingValveHeld = IsCoolingValveHeld
             };
+        }
+
+        /// <summary>
+        /// 냉각실 수동 순환 밸브가 지금 붙잡혀 있는가(<c>C-3</c>, §4.3). 열 tick 의 하강 항
+        /// 하나가 이 값에 걸린다.
+        /// </summary>
+        public bool IsCoolingValveHeld => coolingValveHolders.Count > 0;
+
+        /// <summary>표시·검증용. 지금 밸브를 잡고 있는 사람 수이며 효과 크기와는 무관하다.</summary>
+        public int CoolingValveHolderCount => coolingValveHolders.Count;
+
+        /// <summary>
+        /// 네트워크가 없는 경로(솔로 씬·EditMode)의 밸브 입력. 누를 때는 <b>사거리 안에 있는</b>
+        /// 승무원을 고르고, 뗄 때는 지금 잡고 있는 사람을 전부 놓는다.
+        ///
+        /// 누를 때 <c>players[0]</c> 을 쓰지 않는 것이 요점이다 — 로컬 경로도 승무원이 둘 이상일
+        /// 수 있고(<c>Configure</c> 가 배열을 받는다), 그러면 밸브 앞에 서 있지 않은 사람이
+        /// 대표로 잡히면서 <see cref="PruneCoolingValveHolders"/> 가 같은 프레임에 그를 떼어낸다.
+        /// </summary>
+        public void SetLocalCoolingValveHeld(bool held)
+        {
+            if (players == null) return;
+            if (!held)
+            {
+                foreach (var targetPlayer in players)
+                    if (targetPlayer != null) SetCoolingValveHeld(targetPlayer, false);
+                return;
+            }
+
+            var crewMember = players.FirstOrDefault(targetPlayer =>
+                targetPlayer != null && LastShiftCoolingValve.IsWithinReach(targetPlayer.transform.position));
+            if (crewMember != null) SetCoolingValveHeld(crewMember, true);
+        }
+
+        /// <summary>
+        /// 밸브 잡기·놓기. <b>유일한 진입점이다</b> — 로컬 키 입력과 서버 RPC 가 둘 다 여기로
+        /// 모여야 "누가 잡고 있는가" 가 한 벌로 남는다.
+        ///
+        /// 거절 조건 셋을 여기서 본다: 사망한 승무원, 사거리 밖, 그리고 판정이 끝난 뒤다.
+        /// <b>운석 이전은 막지 않는다</b> — 열 tick 자체가 운석 게이트 아래에 있어 효과가 없고,
+        /// 여기서 한 번 더 막으면 같은 규칙이 두 곳에 적히기만 한다. 손잡이는 돌아가고 열은
+        /// 안 움직이는 그림이 되지만, 그건 손상 전에는 세 시계가 전부 멎어 있는 것과 같은 사실이다.
+        /// </summary>
+        public bool SetCoolingValveHeld(LastShiftPlayerController crewMember, bool held)
+        {
+            if (crewMember == null) return false;
+            var wasHeld = IsCoolingValveHeld;
+
+            if (!held)
+            {
+                if (!coolingValveHolders.Remove(crewMember)) return false;
+                LogValve(crewMember, "RELEASE", "input", wasHeld);
+                return true;
+            }
+
+            if (IsResolved) return false;
+            var crew = crewMember.GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead)
+            {
+                Debug.Log($"[LAST_SHIFT_VALVE] generation={ResetGeneration} action=GRAB result=REJECT reason=crew-dead");
+                return false;
+            }
+            if (!LastShiftCoolingValve.IsWithinReach(crewMember.transform.position)) return false;
+            if (coolingValveHolders.Contains(crewMember)) return false;
+
+            coolingValveHolders.Add(crewMember);
+            LogValve(crewMember, "GRAB", "input", wasHeld);
+            return true;
+        }
+
+        /// <summary>
+        /// 잡고 있을 자격을 잃은 홀더를 걷어낸다. 매 tick 도는 자리이며 §6-3 의 두 검사 항목
+        /// (동시 홀더 · 연결 상실)이 여기서 닫힌다.
+        ///
+        /// 사거리를 <b>매 tick 다시 보는 것</b>이 §4.3 의 "밸브에서 벗어나면 즉시 0" 이다.
+        /// 붙잡은 사람은 이동이 막히지만(<see cref="LastShiftPlayerController"/>), 충격 넉백·
+        /// 리스폰·프리셋 리셋처럼 위치가 밖에서 바뀌는 경로가 있고 그때 손이 떨어져야 한다.
+        /// </summary>
+        private void PruneCoolingValveHolders()
+        {
+            for (var index = coolingValveHolders.Count - 1; index >= 0; index--)
+            {
+                var holder = coolingValveHolders[index];
+                var reason = ResolveValveDropReason(holder);
+                if (reason == null) continue;
+
+                coolingValveHolders.RemoveAt(index);
+                if (holder != null) LogValve(holder, "RELEASE", reason, true);
+                else Debug.Log($"[LAST_SHIFT_VALVE] generation={ResetGeneration} action=RELEASE reason={reason} held={IsCoolingValveHeld}");
+            }
+        }
+
+        /// <summary>홀더가 손을 놓아야 하는 사유. 자격이 남아 있으면 <c>null</c> 이다.</summary>
+        private static string ResolveValveDropReason(LastShiftPlayerController holder)
+        {
+            if (holder == null) return "holder-lost";
+            var crew = holder.GetComponent<LastShiftCrewOxygen>();
+            if (crew != null && crew.IsDead) return "crew-dead";
+            return LastShiftCoolingValve.IsWithinReach(holder.transform.position) ? null : "out-of-reach";
+        }
+
+        private void LogValve(LastShiftPlayerController crewMember, string action, string reason, bool wasHeld)
+        {
+            Debug.Log($"[LAST_SHIFT_VALVE] generation={ResetGeneration} crew={crewMember.PlayerSlot} " +
+                      $"action={action} reason={reason} holders={coolingValveHolders.Count} " +
+                      $"heldBefore={wasHeld} heldAfter={IsCoolingValveHeld} heat={currentState.EngineHeat:F2}");
         }
 
         /// <summary>
@@ -965,6 +1096,49 @@ namespace DoodleUp.Runtime
             return found;
         }
 
+        /// <summary>
+        /// 지금 서 있는 자리에서 어떤 수리 프롬프트가 떠야 하는가(<c>C-2</c>, §4.2).
+        ///
+        /// <b><c>G</c> 는 코드가 멀쩡한데 아무도 안 쓴다.</b> §4.2 가 실측한 이유는 <c>G</c> 를
+        /// 누를 수 있는 자리에 서 있으면 대개 <c>C</c> 도 누를 수 있고, <c>C</c> 는 <c>4</c>초에
+        /// 계통을 되돌리는데 포기는 악화만 멈추고 회복이 없기 때문이다 — <b>구조적으로 열등</b>하다.
+        /// 열등하지 <i>않은</i> 자리가 딱 하나 있다: <b>물건을 못 가져왔을 때</b>. 그때
+        /// <c>C</c>·<c>V</c> 는 <see cref="IsRepairSubjectInPlace"/> 에서 조용히 실패하고 <c>G</c> 만
+        /// 남는다. 지금까지 화면이 그 사실을 한 번도 말하지 않았다.
+        ///
+        /// <b>정답 아이콘 금지(<c>concept-draft.md:164</c>)에 안 걸린다.</b> 어느 물건을 가져와야
+        /// 하는지는 여전히 말하지 않는다. 바뀌는 것은 "지금 여기서 누를 수 있는 것" 뿐이다.
+        ///
+        /// 대상 계통은 <see cref="UncontainedSystemMask"/> 로 고른다 — 서버는 계산하고 클라이언트는
+        /// 스냅샷으로 받는 값이라 양쪽 화면이 같은 프롬프트를 띄운다.
+        /// </summary>
+        public bool TryResolveRepairPrompt(Vector3 crewPosition, out LastShiftShipSystem system, out bool subjectInPlace)
+        {
+            system = LastShiftShipSystem.Cooling;
+            subjectInPlace = false;
+            if (!HasAppliedImpact || IsResolved) return false;
+
+            var mask = UncontainedSystemMask;
+            var best = float.PositiveInfinity;
+            var found = false;
+            for (var index = 0; index < LastShiftSystemMap.SystemCount; index++)
+            {
+                if ((mask & (1 << index)) == 0) continue;
+                var candidate = (LastShiftShipSystem)index;
+                var item = FindItem(LastShiftSystemMap.RoleFor(candidate));
+                if (item == null) continue;
+                var distance = Vector3.Distance(crewPosition, item.NominalPosition);
+                if (distance > SacrificeReachDistance || distance >= best) continue;
+                best = distance;
+                system = candidate;
+                found = true;
+            }
+            if (!found) return false;
+
+            subjectInPlace = IsRepairSubjectInPlace(system);
+            return true;
+        }
+
         /// <summary>부품이 제자리(nominal) 반경 안에 있는가. 들고 있는 상태도 포함한다.</summary>
         private bool IsRepairSubjectInPlace(LastShiftShipSystem system)
         {
@@ -1002,6 +1176,10 @@ namespace DoodleUp.Runtime
             // 해치는 반대로 전부 닫고 시작한다. 리셋 직후 갑판에 구멍이 남아 있으면 프리셋이
             // 제자리에 놓은 부품이 저중력에서 그리로 빠져 시작 상태가 프리셋과 달라진다.
             hatchState = LastShiftHatchState.AllClosed;
+            // 밸브도 놓은 상태로 시작한다. 붙잡음은 상태가 아니라 그 순간의 입력이므로
+            // 리셋을 넘겨 살아남으면 안 된다 — 승무원은 스폰 지점으로 돌아가는데 목록에는
+            // 냉각실 밸브를 잡고 있는 것으로 남는다.
+            coolingValveHolders.Clear();
             dockingSecondsRemaining = LastShiftRecoveryTuning.DockingTimerSeconds;
             ResetGeneration++;
             HasAppliedImpact = false;

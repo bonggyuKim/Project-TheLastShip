@@ -71,6 +71,28 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float HeatNaturalCoolPerSecond = 0.008f;
 
+        /// <summary>
+        /// 냉각실 수동 순환 밸브를 붙잡고 있는 동안 더해지는 <b>하강</b> 항
+        /// (<c>interaction-verb-diversification-v1.md</c> §4.3 <c>C-3</c>).
+        ///
+        /// <b>냉각 복구(<see cref="HeatRecoveryPerSecond"/> <c>0.030</c>)의 절반인 것이 설계의
+        /// 핵심이다.</b> 유지 동사가 냉각통 연결을 <i>대체</i>할 수 있게 되는 순간 "밸브만 잡고
+        /// 버티기" 가 최적해가 되어, 동사를 늘리려던 카드가 오히려 동사를 다시 하나로 수렴시킨다.
+        /// 이 값은 <b>복구까지 시간을 버는</b> 것이지 복구가 아니다.
+        ///
+        /// 상승 분기에서의 산수가 §4.3 이 든 예다 — <c>HighHeatHighThrust</c> 프리셋의 상승률
+        /// <c>0.020/s</c> 에 이 항이 걸리면 순 상승이 <c>0.005/s</c> 가 되고, 냉각통 왕복
+        /// <c>14</c>초 동안 열이 <c>0.86 → 0.93</c> 에 머물러 엔진 보호 잠금(<c>1.00</c>)을 피한다.
+        /// 아무도 안 잡으면 <c>1.14</c> 로 잠기고 자연 해제까지 <c>25</c>초다.
+        ///
+        /// <b>동시에 둘이 잡아도 이 값 하나다.</b> 홀더 수로 곱하면 <c>2</c>인이 밸브 앞에 모이는
+        /// 것이 답이 되어, 이 동사가 만들려던 "한 사람이 동시에 두 자리에 있을 수 없다"
+        /// (<c>CT-01</c> §4.1)가 정반대로 뒤집힌다.
+        ///
+        /// 회복률 자체의 재계산은 <c>game-balance</c> 에 남아 있다(§7-3).
+        /// </summary>
+        public const float SustainedCoolingPerSecond = 0.015f;
+
         // ── CT-06 N5 열 폭주 가속 (기획 §3.3 S-H2) ────────────────────────
         /// <summary>
         /// <c>S-H2</c> 엔진 열 폭주 발동선. 냉각 미연결 상태에서 열이 이 값에 닿으면 tick 이
@@ -99,7 +121,34 @@ namespace DoodleUp.Runtime
         public const float SacrificedThrustCeiling = 0.35f;
 
         // ── R2 산소 시계 ──────────────────────────────────────────────────
-        public const float OxygenLeakPerSecond = 0.006f;
+        /// <summary>
+        /// 파공 구역의 기준 누출률(<c>interaction-verb-diversification-v1.md</c> §4.1 <c>C-1</c>).
+        ///
+        /// <b>이 값이 문 격리(<c>Q</c>)·해치·덕트 세 동사의 존재 이유다.</b> 예전 값 <c>0.006</c>
+        /// 에서는 선체를 완전히 부수고 문을 전부 열어 둔 채 방치해도 <c>300</c>초 타이머 안에
+        /// 조종석이 성공선 <c>0.20</c> 에 닿지 않았다(§2 실측: 완파 · <c>300</c>초 후 <c>0.287</c>).
+        /// 산소 실패 시계가 P0 타이머 안에서 한 번도 발동하지 않으므로 격리할 이유가 없었고,
+        /// 격리할 이유가 없으니 그 격리가 열어 주는 덕트 우회로도 같이 죽어 있었다.
+        ///
+        /// <c>0.018</c> 에서 두 시계가 동시에 의미를 얻는다(§4.1 표).
+        /// <list type="bullet">
+        ///   <item>격리를 <b>안 하면</b> 조종석이 <c>285</c>초에 성공선을 잃는다 — 타이머
+        ///         <c>300</c>초 안이고 여유가 <c>15</c>초뿐이라 "나중에 하지" 가 성립하지 않는다</item>
+        ///   <item>격리를 <b>하면</b> 파공 구역이 <c>69</c>초에 진공이 된다 — 봉합하러 들어가는
+        ///         사람이 예비 산소(<see cref="SuitOxygenDrainPerSecond"/> · <c>80</c>초분)를 태운다</item>
+        /// </list>
+        ///
+        /// <b><c>RG-1</c> 영향은 없다.</b> <c>rg1-recalc-cargo-procurement-v1.md</c> §5.1 이
+        /// 직접 답했다 — <c>(1)</c>·<c>(3)</c> 은 좌표만 보고, <c>(2)</c> 의 항목표에는 누출률 항이
+        /// 없으며(봉합 후 재가압은 <see cref="OxygenPumpRecoveryPerSecond"/> 로만 간다),
+        /// <c>SuitOxygen</c> <c>80</c>초 시계도 "그 구역이 <c>0.00</c> 에 닿은 시점부터" 라
+        /// 진공 도달이 빨라져도 길이가 안 바뀐다. 누출률은 진공에 닿기까지의 시간을 바꾸지
+        /// <c>RG-1</c> 이 재는 구간을 안 바꾼다.
+        ///
+        /// 세 프리셋 동시 검증은 <c>game-balance</c> 에 남아 있다(§7-1). 기획이 고정한 것은
+        /// <b>판정 조건</b>이며 그쪽을 테스트가 붙든다 — <c>LastShiftVerbDemandTests</c>.
+        /// </summary>
+        public const float OxygenLeakPerSecond = 0.018f;
         public const float OxygenLeakHullReference = 0.5f;
 
         /// <summary>봉합 완료 + bus 연결 상태에서만 도는 산소 펌프 회복률.</summary>
@@ -418,6 +467,20 @@ namespace DoodleUp.Runtime
         public bool OxygenRestored;
         public bool OxygenSacrificed;
 
+        /// <summary>
+        /// 지금 누군가 냉각실 수동 순환 밸브를 붙잡고 있는가(§4.3 <c>C-3</c>).
+        ///
+        /// <b>봉쇄가 아니라 <see cref="LastShiftRecoveryTuning.SustainedCoolingPerSecond"/> 항의
+        /// on/off 다.</b> <c>CoolingContained</c> 에 넣지 않는 것이 요점이다 — 넣으면 밸브를 잡은
+        /// 동안 열 상승이 통째로 멎어 냉각통 연결과 구분이 사라지고, "유지는 복구가 아니다" 라는
+        /// §4.3 의 설계 전제가 코드에서 무너진다.
+        ///
+        /// 이 플래그가 <c>LastShiftContainment</c> 에 붙는 것은 세 시계가 이미 이 구조체 하나로
+        /// 조건을 받고 있기 때문이다. tick 인자를 늘리면 <see cref="LastShiftDeterioration.Tick"/>
+        /// 의 두 오버로드와 호출부 전부가 따라오고, 그러면 기존 호출 경로가 기본값을 각자 적는다.
+        /// </summary>
+        public bool CoolingValveHeld;
+
         public bool CoolingContained => CoolingRestored || CoolingSacrificed;
         public bool PowerContained => PowerRestored || PowerSacrificed;
         public bool OxygenContained => OxygenRestored || OxygenSacrificed;
@@ -490,23 +553,26 @@ namespace DoodleUp.Runtime
             //
             // 구역을 포기(sacrifice)한 경우에도 자연 냉각은 돈다. 포기가 막는 것은 악화이지
             // 물리적 방열이 아니고, 포기 상태에서만 잠금이 안 풀리면 RG-3 에 구멍이 남는다.
-            if (!containment.CoolingContained && state.ThrustDemand > LastShiftRecoveryTuning.HeatRiseThrustThreshold)
-            {
-                var rise = IsHeatRunaway(state, containment)
+            //
+            // CT-08 C-3: 냉각실 수동 순환 밸브를 붙잡고 있으면 하강 항이 하나 더 붙는다(§4.3).
+            // <b>분기를 늘리지 않고 두 분기 <i>바깥</i>에서 뺀다</b> — 상승 중이면 순 상승을 깎고
+            // (0.020 → 0.005), 하강 중이면 하강을 더한다. 상승 분기 안에만 넣으면 열이 이미
+            // 내려가는 국면에서 밸브가 아무것도 안 하게 되고, 그러면 "잡고 있는 동안 계속
+            // 효과가 있다" 라는 유지 동사의 정의가 조건부가 된다.
+            var heatDelta = !containment.CoolingContained &&
+                            state.ThrustDemand > LastShiftRecoveryTuning.HeatRiseThrustThreshold
+                ? IsHeatRunaway(state, containment)
                     ? LastShiftRecoveryTuning.HeatRiseRunawayPerSecond
-                    : LastShiftRecoveryTuning.HeatRisePerSecond;
-                state.EngineHeat = Mathf.Clamp01(state.EngineHeat + rise * deltaTime);
-            }
-            else
-            {
+                    : LastShiftRecoveryTuning.HeatRisePerSecond
                 // 냉각을 복구했으면 능동 냉각률(0.030/s), 아니면 자연 냉각률(0.008/s).
                 // 복구했는데 고추력이라 상승 분기에 안 걸린 경우도 여기로 온다 — 복구가
                 // 자연 냉각보다 느려지는 일은 없어야 한다.
-                var fall = containment.CoolingRestored
+                : -(containment.CoolingRestored
                     ? LastShiftRecoveryTuning.HeatRecoveryPerSecond
-                    : LastShiftRecoveryTuning.HeatNaturalCoolPerSecond;
-                state.EngineHeat = Mathf.Clamp01(state.EngineHeat - fall * deltaTime);
-            }
+                    : LastShiftRecoveryTuning.HeatNaturalCoolPerSecond);
+
+            if (containment.CoolingValveHeld) heatDelta -= LastShiftRecoveryTuning.SustainedCoolingPerSecond;
+            state.EngineHeat = Mathf.Clamp01(state.EngineHeat + heatDelta * deltaTime);
 
             // ── 산소 시계 ── 이제 구역별로 돈다(기획 v0.3 §2.2).
             // 새는 것은 파공이 있는 구역 하나뿐이고, 나머지 구역은 문이 열려 있는 동안 평준화로

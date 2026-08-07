@@ -252,6 +252,32 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 냉각실 밸브 유지의 네트워크 경로(<c>C-3</c>, §4.3). 사거리·생사 판정은 전부
+        /// <see cref="LastShiftSandboxController.SetCoolingValveHeld"/> 안에 있다.
+        ///
+        /// <b>스냅샷을 안 올린다.</b> 밸브는 상태를 남기지 않는 동사라 클라이언트가 복원할 것이
+        /// 없고, 결과는 이미 동기화되는 <c>EngineHeat</c> 로 매 tick 관측된다. 여기서
+        /// <c>PublishSnapshot</c> 을 부르면 누르고 뗄 때마다 전체 상태가 한 번 더 날아간다.
+        ///
+        /// <b>놓기는 유령도 통과시킨다.</b> 잡은 채로 죽는 경우가 있고, 그때 놓기 요청까지 막으면
+        /// 서버 매 tick 정리(<c>crew-dead</c>)만이 유일한 해제 경로가 된다 — 그건 동작하지만,
+        /// 같은 사실을 두 곳이 다르게 판정하게 두는 자리다.
+        /// </summary>
+        [Rpc(SendTo.Server, RequireOwnership = false)]
+        public void RequestCoolingValveHoldRpc(bool held, RpcParams rpcParams = default)
+        {
+            var sender = rpcParams.Receive.SenderClientId;
+            if (!IsConnectedSender(sender) || sandbox == null) return;
+            if (!NetworkManager.ConnectedClients.TryGetValue(sender, out var client)) return;
+            var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<LastShiftNetworkPlayer>() : null;
+            if (player == null || player.OwnerClientId != sender) return;
+            if (held && IsGhostCrew(player, sender, "cooling-valve")) return;
+
+            var crew = player.GetComponent<LastShiftPlayerController>();
+            if (crew != null) sandbox.SetCoolingValveHeld(crew, held);
+        }
+
+        /// <summary>
         /// 요청자가 유령인가(기획 §4.4 — 수리 동사 3종 불가). 문은
         /// <see cref="LastShiftZoneDoor.TryOperate"/> 가, 잡기는
         /// <see cref="LastShiftNetworkPlayer.TryGrabFromServer"/> 가 각자 같은 판정을 하고,

@@ -267,6 +267,17 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 냉각실 밸브 유지 상태 전환(<c>C-3</c>, §4.3). 호출자가 <b>상태가 바뀔 때만</b> 부르는
+        /// 것이 계약이다 — 누르고 있는 <c>14</c>초 내내 부르면 초당 수십 개의 RPC 가 된다.
+        /// </summary>
+        public void RequestCoolingValveHold(bool held)
+        {
+            if (!IsOwner) return;
+            var networkSandbox = FindFirstObjectByType<LastShiftNetworkSandbox>();
+            if (networkSandbox != null) networkSandbox.RequestCoolingValveHoldRpc(held);
+        }
+
+        /// <summary>
         /// 운석 1회 적용 요청(M). <b>서버 RPC 는 있었는데 부르는 곳이 없었다</b> —
         /// M 은 <see cref="LastShiftSandboxController.Update"/> 에만 배선돼 있고, 그 블록은
         /// 네트워크 샌드박스가 스폰되면 통째로 꺼진다. 씬이 하나가 되면서 에디터에서도
