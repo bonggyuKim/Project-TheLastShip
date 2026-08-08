@@ -22,8 +22,19 @@ namespace DoodleUp.Tests.EditMode
     /// </summary>
     public sealed class LastShiftRg1GuardrailTests
     {
-        /// <summary>가드레일 (1). 한 구역 내부 최장 횡단 한도.</summary>
+        /// <summary>가드레일 (1). 한 구역에서 구역 밖으로 나가는 최악 시간의 한도.</summary>
         private const float TraverseLimitSeconds = 10f;
+
+        /// <summary>
+        /// 압력문(구역 경계) 통과 시간. <b>가드레일 (1) 판정에 상수로 들어간다 — 조건부 가산이
+        /// 아니다.</b> 구역을 벗어난다는 것은 정의상 구역 경계를 통과하는 것이고 그 경계에 있는
+        /// 것이 압력문이므로, 이 문을 안 지나고 구역을 나가는 경로가 없다. 그리고 정확히 한
+        /// 번이다 — 첫 경계를 넘는 순간 이탈이 끝난다.
+        ///
+        /// 구획 문은 압력문이 아니므로 <c>0</c> 이다.
+        /// 측정법 정본은 <c>docs/rg1-1-measurement-definition-v1.md</c> §1 (M-5).
+        /// </summary>
+        private const float PressureDoorSeconds = 0.8f;
 
         /// <summary>가드레일 (3). 압력존 부피비 한도.</summary>
         private const float VolumeRatioLimit = 3f;
@@ -63,9 +74,9 @@ namespace DoodleUp.Tests.EditMode
 
             foreach (var (zone, meters, source) in worst)
             {
-                var seconds = meters / LastShiftPlayerController.MoveSpeed;
+                var seconds = EgressSeconds(meters);
                 Assert.That(seconds, Is.LessThan(TraverseLimitSeconds),
-                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 횡단 {seconds:F2}초 — 가드레일 {TraverseLimitSeconds}초 초과. " +
+                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 이탈 {seconds:F2}초 — 가드레일 {TraverseLimitSeconds}초 초과. " +
                     $"최악 출발점은 {source} 다. RG-1 을 다시 계산해야 한다(docs/rg1-recalc-cargo-procurement-v1.md).");
             }
         }
@@ -82,10 +93,13 @@ namespace DoodleUp.Tests.EditMode
                 if (meters > longestMeters) (thinnestZone, longestMeters) = (zone, meters);
 
             Assert.That(thinnestZone, Is.EqualTo(LastShiftZone.Cockpit),
-                "최장 횡단 최악이 조종석이 아니다 — 선수 사슬이나 선미 사슬 중 하나가 바뀌었다.");
+                "최장 이탈 최악이 조종석이 아니다 — 선수 사슬이나 선미 사슬 중 하나가 바뀌었다.");
             Assert.That(longestMeters, Is.EqualTo(30.61f).Within(Tolerance),
-                "조종석 구역 최장 횡단 거리가 30.61m 에서 움직였다. RG-1(1) 여유는 1.31배뿐이라 " +
+                "조종석 구역 최장 이탈 거리가 30.61m 에서 움직였다. RG-1(1) 여유는 1.18배뿐이라 " +
                 "구획을 하나 더 잇기 전에 game-balance 재계산이 선행이다.");
+            Assert.That(EgressSeconds(longestMeters), Is.EqualTo(8.45f).Within(Tolerance),
+                "RG-1(1) 판정값이 8.45초에서 움직였다. 한도 10초까지 남은 보행 거리는 6.19m 뿐이다 " +
+                "(docs/rg1-1-measurement-definition-v1.md §3).");
         }
 
         [Test]
@@ -132,9 +146,9 @@ namespace DoodleUp.Tests.EditMode
             var source = string.Empty;
             foreach (var (zone, meters, from) in worst)
             {
-                var seconds = meters / LastShiftPlayerController.MoveSpeed;
+                var seconds = EgressSeconds(meters);
                 Assert.That(seconds, Is.LessThan(TraverseLimitSeconds),
-                    $"기항 개방 상태에서 {LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 횡단이 {seconds:F2}초다 — " +
+                    $"기항 개방 상태에서 {LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 이탈이 {seconds:F2}초다 — " +
                     $"가드레일 {TraverseLimitSeconds}초 초과. 최악 출발점은 {from} 다.");
                 if (meters > longestMeters) (thinnestZone, longestMeters, source) = (zone, meters, from);
             }
@@ -144,8 +158,50 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(thinnestZone, Is.EqualTo(LastShiftZone.Cockpit),
                 $"기항 개방으로 최장 횡단 최악이 조종석에서 {thinnestZone} 로 옮겨갔다 (출발점 {source}).");
             Assert.That(longestMeters, Is.EqualTo(30.61f).Within(Tolerance),
-                $"기항 개방 상태의 최장 횡단이 {longestMeters:F2}m 다 — 잠금 상태와 같은 30.61m 여야 한다. " +
+                $"기항 개방 상태의 최장 이탈이 {longestMeters:F2}m 다 — 잠금 상태와 같은 30.61m 여야 한다. " +
                 "잠긴 방 하나가 사슬 연장이 됐다는 뜻이고, RG-1(1) 재계산이 선행이다.");
+        }
+
+        [Test]
+        public void LongestPairInAZoneStaysWhereItIs()
+        {
+            // 쌍 읽기 — "같은 구역 안 두 점 사이 최장 거리". <b>RG-1(1) 판정 대상이 아니다.</b>
+            // (1) 이 보장하는 것은 SuitOxygen 소모가 멈추는 시점까지의 시간이고 그건 구역
+            // 경계에서 멈추므로, 종점이 구역 안인 이 값은 (1) 이 재는 양이 아니다 —
+            // docs/rg1-1-measurement-definition-v1.md §2.
+            //
+            // 그래도 고정하는 이유는 이 값이 커지면 RG-1(2) 최악 복구 경로(33.2초, 여유
+            // 1.21배)를 다시 뽑아야 하기 때문이다(§2.1 조항). 한도를 안 걸고 이동만 잡는다.
+            var expected = new (LastShiftZone Zone, float Meters)[]
+            {
+                (LastShiftZone.Cockpit, 33.03f),      // 관측실 ↔ 격납고. 화물칸 문 하나를 공유하며 반대로 뻗는다
+                (LastShiftZone.LifeSupport, 28.47f)   // 구명정 안쪽 구석 → 구역 끝. 이탈 읽기와 같은 지점이다
+            };
+
+            foreach (var includeUnlockable in new[] { false, true })
+            {
+                var pairs = LongestPairPerZone(includeUnlockable);
+                foreach (var (zone, meters) in expected)
+                    Assert.That(pairs[(int)zone], Is.EqualTo(meters).Within(Tolerance),
+                        $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 구역 내 최장 쌍이 " +
+                        $"{pairs[(int)zone]:F2}m 다 (기항 개방 {includeUnlockable}). 관측값 {meters:F2}m 에서 " +
+                        "움직였으면 RG-1(2) 최악 복구 경로를 다시 뽑아야 한다.");
+            }
+
+            // 이탈 판정(8.45초)이 쌍 최악(8.26초)보다 커야 조문 선택이 보수적인 쪽으로
+            // 성립한다(측정법 §2.2). 이 부등식이 뒤집히면 (1) 을 쌍으로 다시 논의해야 한다.
+            var worstPairSeconds = 0f;
+            foreach (var meters in LongestPairPerZone(includeUnlockable: true))
+                worstPairSeconds = Mathf.Max(worstPairSeconds, meters / LastShiftPlayerController.MoveSpeed);
+
+            var worstEgressSeconds = 0f;
+            foreach (var (_, meters, _) in WorstTraversePerZone(includeUnlockable: true))
+                worstEgressSeconds = Mathf.Max(worstEgressSeconds, EgressSeconds(meters));
+
+            Assert.That(worstEgressSeconds, Is.GreaterThan(worstPairSeconds),
+                $"이탈 판정 {worstEgressSeconds:F2}초가 쌍 최악 {worstPairSeconds:F2}초보다 작아졌다 — " +
+                "RG-1(1) 을 이탈로 고정한 근거 하나가 무너졌다" +
+                "(docs/rg1-1-measurement-definition-v1.md §2.2).");
         }
 
         [Test]
@@ -301,9 +357,64 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
+        /// 이탈 거리 → 가드레일 <c>(1)</c> 판정 시간. 압력문 한 번을 상수로 더한다 —
+        /// <see cref="PressureDoorSeconds"/> 와 <c>docs/rg1-1-measurement-definition-v1.md</c> §1.1.
+        /// </summary>
+        private static float EgressSeconds(float meters) =>
+            meters / LastShiftPlayerController.MoveSpeed + PressureDoorSeconds;
+
+        /// <summary>
+        /// 구역별 "같은 구역 안 두 점 사이 최장 거리". <b>가드레일 <c>(1)</c> 판정이 아니라
+        /// <c>(2)</c> 재계산 트리거다</b> — 측정법 정본 §2.1.
+        ///
+        /// 후보 셋 중 최대다. (가) 구역 자체의 x 길이, (나) 구획 안쪽 구석 → 구역 끝
+        /// (= <see cref="EgressMeters"/>), (다) 같은 구역에 붙은 구획 둘의 안쪽 구석끼리 —
+        /// 각자의 사슬에 두 선체 문 사이 스파인을 더한다.
+        /// </summary>
+        private static float[] LongestPairPerZone(bool includeUnlockable)
+        {
+            var longest = new float[LastShiftZoneAtlas.ZoneCount];
+            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                longest[(int)zone] = LastShiftShipDimensions.ZoneLength(zone);
+
+            var open = new List<(LastShiftZone Zone, float Chain, Vector3 HullDoor, float Egress)>();
+            foreach (var spec in LastShiftCompartments.Specs)
+            {
+                if (!spec.IsPassable && !includeUnlockable) continue;
+                var (chain, hullDoor) = ChainToHull(spec);
+                var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+                open.Add((zone, chain, hullDoor, EgressMeters(spec)));
+            }
+
+            for (var i = 0; i < open.Count; i++)
+            {
+                var a = open[i];
+                longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Egress);
+
+                // 같은 방 안의 두 점은 쌍이 아니다 — 자기 자신과 짝지으면 사슬을 두 번 세서
+                // 실제로 걸을 수 없는 거리가 나온다(관측실이면 33.21m).
+                for (var j = i + 1; j < open.Count; j++)
+                {
+                    var b = open[j];
+                    if (b.Zone != a.Zone) continue;
+                    var spine = Mathf.Abs(a.HullDoor.x - b.HullDoor.x);
+                    longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Chain + spine + b.Chain);
+                }
+            }
+
+            return longest;
+        }
+
+        /// <summary>
         /// 구획 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 사슬 거리에 선체 문에서
         /// 그 구역 반대쪽 끝까지의 스파인을 더한다. 가드레일 <c>(1)</c> 이 실제로 재는 것은
         /// 구역 소속이 아니라 이 값이다 — <c>(4-b)</c> 탈출 보장의 최악 시간이다.
+        ///
+        /// <b>스파인의 <c>max()</c> 는 조종석·산소실에서만 정확하다.</b> 두 구역은 바깥쪽 끝이
+        /// 선체 끝벽이라 출구가 하나뿐이고 그 하나가 곧 먼 쪽이다. 전력실·냉각실은 양쪽이 다
+        /// 출구라 이 근사가 실제보다 길게 나오는데, 둘 다 <c>5m</c> 라 지금은 영향이 없다.
+        /// 최악이 그쪽으로 옮겨가면 <c>max()</c> 를 출구 중 최소로 바꿔야 한다 —
+        /// <c>docs/rg1-1-measurement-definition-v1.md</c> §1.2.
         /// </summary>
         private static float EgressMeters(LastShiftCompartmentSpec spec)
         {
