@@ -95,7 +95,9 @@ namespace DoodleUp.Tests.EditMode
         public readonly struct Footprint
         {
             public Footprint(string name, float minX, float maxX, float minZ, float maxZ,
-                bool openInP0 = true, bool protrudes = false)
+                bool openInP0 = true, bool protrudes = false,
+                float doorX = float.NaN, float doorZ = float.NaN,
+                string parent = null, string attaches = null)
             {
                 Name = name;
                 MinX = minX;
@@ -104,6 +106,10 @@ namespace DoodleUp.Tests.EditMode
                 MaxZ = maxZ;
                 OpenInP0 = openInP0;
                 Protrudes = protrudes;
+                DoorX = doorX;
+                DoorZ = doorZ;
+                Parent = parent;
+                Attaches = attaches;
             }
 
             public string Name { get; }
@@ -117,6 +123,25 @@ namespace DoodleUp.Tests.EditMode
 
             /// <summary>원반 밖으로 나가는 것이 의도인가. 조종석 방 하나뿐이다(§2.1).</summary>
             public bool Protrudes { get; }
+
+            /// <summary>
+            /// 문 좌표. 압력 스파인(방·통로·광장)은 <c>NaN</c> 이다 — 스파인은 개구부로 이어지고
+            /// 그 좌표는 정본 <see cref="LastShiftShipDimensions"/> 가 이미 갖고 있다.
+            /// </summary>
+            public float DoorX { get; }
+
+            public float DoorZ { get; }
+
+            /// <summary>부모 구획 이름. 뿌리는 <c>null</c> 이고 그때 붙는 곳은 <see cref="Attaches"/> 다.</summary>
+            public string Parent { get; }
+
+            /// <summary>뿌리가 문을 내는 상대. 스파인 발자국 이름이거나 <c>선체 좌현벽</c> 이다.</summary>
+            public string Attaches { get; }
+
+            /// <summary>사슬에 참여하는 부속 구획인가. 스파인 여섯은 <c>false</c> 다.</summary>
+            public bool IsAttached => !float.IsNaN(DoorX);
+
+            public Vector3 Door => new(DoorX, 0f, DoorZ);
 
             public float LengthX => MaxX - MinX;
 
@@ -132,10 +157,24 @@ namespace DoodleUp.Tests.EditMode
         /// <summary>
         /// 도안 §2.4 표 + 압력 스파인. 통로 A 는 여기 없다 — 광장이 흡수했다(§2.3).
         /// 통로 B 는 남으므로 폭 <c>3.6m</c> 그대로 들어간다.
+        ///
+        /// <b>문 좌표·부모 사슬은 재계산 §3 표다</b>(<c>docs/rg1-recalc-bow-cockpit-plaza-v1.md</c>).
+        /// 도안 §2.4 는 발자국만 정했는데 <c>RG-1(1)</c> 은 발자국이 아니라 사슬의 함수라,
+        /// 같은 발자국으로도 문을 자유 배치하면 <c>10.20초</c> 위반이 만들어진다(재계산 §5).
+        /// 그래서 §3 은 권고가 아니라 요구이고, 이 표가 그 요구를 코드로 세운 자리다.
+        ///
+        /// <b>화물칸·수경재배 두 줄은 재계산 §2 의 정정본이다</b>(§9-7). 화물칸이 <c>z -13~-5</c>
+        /// 면 좌현 벽에서 <c>2m</c> 떠 부모가 없고, 수경재배가 <c>Locked</c> 면 그 유일한 이웃인
+        /// 격납고 <c>80m2</c> 가 통째로 못 들어가는 방이 된다.
+        ///
+        /// <b>격벽 넷의 문은 자기 면으로 당겼다</b>(§9-8 결정). 도안의 <c>1m</c> 간극 위에 문을
+        /// 놓으면 <c>LastShiftCompartments.DoorSitsOnOwnBoundary</c> 를 통과 못 한다 —
+        /// 자세한 것은 <c>LastShiftPlazaRg1Tests</c> 의 격벽 절이다.
         /// </summary>
         public static readonly Footprint[] Footprints =
         {
-            // 압력 스파인. 좌표 변경 없음(§2.4 마지막 단락).
+            // 압력 스파인. 좌표 변경 없음(§2.4 마지막 단락). 문이 아니라 개구부로 이어지므로
+            // 사슬 표에는 안 들어간다 — DoorX 가 NaN 인 것이 그 뜻이다.
             new("조종석 방", -19f, -11f, -3f, 3f, protrudes: true),
             new("중앙 광장", PlazaMinX, PlazaMaxX, PlazaMinZ, PlazaMaxZ),
             new("전력실 방", -5f, 0f, -3f, 3f),
@@ -143,22 +182,45 @@ namespace DoodleUp.Tests.EditMode
             new("통로 B", 5f, 11f, -3f, 0.6f),
             new("산소실 방", 11f, 19f, -3f, 3f),
 
-            // FORE 클러스터 — 부모는 전부 광장.
-            new("관측실", -8f, -5f, -14f, -9f),
-            new("서버/통신실", -8f, -5f, 9f, 14f, openInP0: false),
-            new("정비창", -11f, -8f, -13f, -9f),
-            new("에어록", -14f, -11f, -9f, -6f),
+            // FORE 클러스터 — 넷 다 광장에 직결하는 뿌리다(사슬 깊이 1). 조종석 구역 최장 이탈이
+            // 30.61 -> 17.72m 로 내려간 것의 본질이 여기다 — 앞을 비운 것이 아니라 사슬을 폈다.
+            new("관측실", -8f, -5f, -14f, -9f,
+                doorX: -6.5f, doorZ: -9f, attaches: "중앙 광장"),
+            new("서버/통신실", -8f, -5f, 9f, 14f, openInP0: false,
+                doorX: -6.5f, doorZ: 9f, attaches: "중앙 광장"),
+            new("정비창", -11f, -8f, -13f, -9f,
+                doorX: -9.5f, doorZ: -9f, attaches: "중앙 광장"),
+            new("에어록", -14f, -11f, -9f, -6f,
+                doorX: -11f, doorZ: -7.5f, attaches: "중앙 광장"),
 
-            // AFT 클러스터 — 부모는 산소실 방 또는 그 사슬.
-            new("격납고", 7f, 17f, 10f, 18f),
-            new("수경재배·산소재생실", 11f, 17f, 3f, 9f, openInP0: false),
-            new("화물칸", 7f, 15f, -13f, -5f),
-            new("화장실", 19f, 21f, -3f, 3f),
-            new("구명정", 21f, 25f, -2f, 2f),
-            new("숙소", 19f, 25f, 4f, 10f),
-            new("휴게실", 19f, 25f, -10f, -4f),
-            new("의무실", 19f, 23f, 11f, 15f, openInP0: false)
+            // AFT 클러스터 — 뿌리 셋(화장실·수경재배·화물칸)이 전부 벽에 직결하고, 나머지는
+            // 그 뒤에 붙는다. 의무실이 깊이 3 이고 그것이 §5 최장 쌍의 원인이다.
+            new("격납고", 7f, 17f, 10f, 18f,
+                doorX: 13f, doorZ: 10f, parent: "수경재배·산소재생실"),
+            new("수경재배·산소재생실", 11f, 17f, 3f, 9f,
+                doorX: 13f, doorZ: 3f, attaches: "산소실 방"),
+            new("화물칸", 7f, 15f, -13f, -3f,
+                doorX: 11f, doorZ: -3f, attaches: "선체 좌현벽"),
+            new("화장실", 19f, 21f, -3f, 3f,
+                doorX: 19f, doorZ: 0f, attaches: "산소실 방"),
+            new("구명정", 21f, 25f, -2f, 2f,
+                doorX: 21f, doorZ: 0f, parent: "화장실"),
+            new("숙소", 19f, 25f, 4f, 10f,
+                doorX: 20f, doorZ: 4f, parent: "화장실"),
+            new("휴게실", 19f, 25f, -10f, -4f,
+                doorX: 20f, doorZ: -4f, parent: "화장실"),
+            new("의무실", 19f, 23f, 11f, 15f, openInP0: false,
+                doorX: 21f, doorZ: 11f, parent: "숙소")
         };
+
+        /// <summary>이름으로 발자국 하나. 사슬을 타는 코드가 전부 이걸 쓴다.</summary>
+        public static Footprint Of(string name)
+        {
+            foreach (var footprint in Footprints)
+                if (footprint.Name == name)
+                    return footprint;
+            throw new System.ArgumentException($"발자국 {name} 이 표에 없다.", nameof(name));
+        }
 
         // ── 원반 기하 ────────────────────────────────────────────────────────
         // 정본(LastShiftHullShell)을 못 쓰는 이유는 중심 x 하나뿐이다 — 그쪽은 원점 대칭을

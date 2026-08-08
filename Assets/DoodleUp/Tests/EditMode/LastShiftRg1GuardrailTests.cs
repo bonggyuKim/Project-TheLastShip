@@ -19,6 +19,24 @@ namespace DoodleUp.Tests.EditMode
     ///
     /// 그래서 여기서 검사하는 것은 문서에 적힌 숫자가 아니라 <b>좌표에서 다시 뽑은 숫자</b>다.
     /// 구획이 하나 더 붙거나 사슬이 한 칸 깊어지면 이 테스트가 먼저 걸린다.
+    ///
+    /// <b>선수 조종석 + 중앙 광장 도안은 이 파일의 값을 전부 갈아 끼운다.</b> 다만 그 좌표는 아직
+    /// <see cref="LastShiftCompartments"/> 에 안 들어갔고, 지금 값을 미리 바꾸면 이 파일이 <b>지금
+    /// 서 있는 배</b>를 아무것도 안 재게 된다. 그래서 새 값은 <see cref="LastShiftPlazaRg1Tests"/>
+    /// 가 제안표 위에서 지키고, 채택 카드가 옮겨 온다 —
+    /// <c>docs/rg1-recalc-bow-cockpit-plaza-v1.md</c> §9-2·§9-5 의 목록이 이것이다.
+    ///
+    /// <code>
+    ///   AttachedVolumeRatioRatchet            8.5   ->  12.1     (재계산 §7, balance 승인)
+    ///   UnlockedAttachedVolumeRatioRatchet    9.25  ->  12.6
+    ///   ...StaysUnderTheRaisedRatchet 고정값  9.21  ->  12.55
+    ///   TheThinnestTraverse... 30.61m/8.45s/Cockpit -> 29.67m/8.22s/LifeSupport
+    ///   UnlockableCompartments... 개방 전후 동일 -> 25.93 -> 29.67m 로 움직이므로 단언을 다시 쓴다
+    ///   LongestPairInAZone...(W-1) 33.03/28.47 -> 28.44/39.37
+    /// </code>
+    ///
+    /// <c>W-1</c> 산소실 값이 재계산 §5 의 <c>39.25m</c> 가 아니라 <c>39.37m</c> 인 것은 §9-8 을
+    /// "문을 자기 면으로 당긴다" 로 닫았기 때문이다(<see cref="LastShiftPlazaRg1Tests"/> 의 격벽 절).
     /// </summary>
     public sealed class LastShiftRg1GuardrailTests
     {
@@ -51,6 +69,9 @@ namespace DoodleUp.Tests.EditMode
         /// 값이 문서의 <c>7.98배</c> 가 아니라 <c>8.46배</c> 인 것은 근사 방식 차이다 — 여기서는
         /// 구역 전 길이에 선체 폭을 곱하는 상한 근사를 쓰고, 문서는 방·통로 발자국을 따로 잰다.
         /// 부속 구획 쪽이 압도적이라 어느 쪽으로 재도 결론이 같아서 테스트는 싼 쪽을 쓴다.
+        ///
+        /// <b>도안 채택 시 <c>12.1</c> 이 된다</b> — 재계산 §7 이 <c>8.46 → 12.05배</c> 를 재고
+        /// 명시적으로 승인한 값이고, <see cref="LastShiftPlazaRg1Tests"/> 가 그때까지 지킨다.
         /// </summary>
         private const float AttachedVolumeRatioRatchet = 8.5f;
 
@@ -62,6 +83,10 @@ namespace DoodleUp.Tests.EditMode
         /// 잠긴 셋 중 이 값을 올리는 것은 서버/통신실 하나다. 수경재배·의무실은 이미 작은 쪽
         /// (산소실)에 붙어서 최대/최소를 안 건드린다 —
         /// <c>docs/rg1-recalc-voyage-port-unlock-v1.md</c> §3.2.
+        ///
+        /// <b>도안 채택 시 <c>12.6</c> 이 된다</b>(재계산 §7). 두 래칫의 간격이 <c>0.75 → 0.5</c> 로
+        /// 좁아지는 것도 의도다 — 도안에서는 잠긴 셋 중 큰 쪽을 올리는 것이 서버/통신실 하나뿐이고
+        /// 그 발자국이 <c>15m2</c> 라, 개방이 비율에 미치는 영향 자체가 줄어든다.
         /// </summary>
         private const float UnlockedAttachedVolumeRatioRatchet = 9.25f;
 
