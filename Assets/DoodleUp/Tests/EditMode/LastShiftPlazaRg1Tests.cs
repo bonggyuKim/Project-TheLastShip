@@ -407,13 +407,47 @@ namespace DoodleUp.Tests.EditMode
 
         // ── 재는 자 ─────────────────────────────────────────────────────────
         //
-        // 정의는 LastShiftRg1GuardrailTests 와 같다. 표만 정본 대신 제안표를 쓴다.
+        // <b>자는 더 이상 여기 없다.</b> 정본(LastShiftPlacementRules)이 재고, 이 절이 하는 일은
+        // 제안표를 그 자가 읽는 형태로 옮기는 것뿐이다. 승격 전에는 이탈 계산이 이 파일과
+        // LastShiftRg1GuardrailTests 에 독립 사본으로 있었고 둘 다 Editor 전용 어셈블리 안이라
+        // 런타임에서 부를 방법이 없었다 —
+        // docs/tech/free-placement-runtime-chain-estimate-v1.md §5.1.
 
         private static IEnumerable<LastShiftPlazaProposal.Footprint> Attached() =>
             LastShiftPlazaProposal.Footprints.Where(footprint => footprint.IsAttached);
 
-        private static float EgressSeconds(float meters) =>
-            meters / LastShiftPlayerController.MoveSpeed + PressureDoorSeconds;
+        /// <summary>
+        /// 제안표를 판정기 입력으로 옮긴다. <b>사슬에 참여하는 발자국만 들어간다</b> — 압력
+        /// 스파인 여섯은 문이 아니라 개구부로 이어지므로 사슬의 마디가 아니다(<c>IsAttached</c>).
+        ///
+        /// 이 함수가 하는 일은 <b>부모를 이름으로 가리키는 표를 인덱스로 바꾸는 것</b>이 전부다.
+        /// 정본 구획표는 이미 인덱스라 이 단계가 없다 — 두 표의 유일한 구조적 차이가 여기다.
+        /// </summary>
+        private static (LastShiftPlacement[] Placements, string[] Names) Chain(
+            LastShiftPlazaProposal.Footprint[] table)
+        {
+            var attached = table.Where(footprint => footprint.IsAttached).ToArray();
+            var index = new Dictionary<string, int>(attached.Length);
+            for (var i = 0; i < attached.Length; i++)
+                index[attached[i].Name] = i;
+
+            var placements = new LastShiftPlacement[attached.Length];
+            var names = new string[attached.Length];
+            for (var i = 0; i < attached.Length; i++)
+            {
+                var footprint = attached[i];
+                placements[i] = new LastShiftPlacement(
+                    footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ,
+                    footprint.Door,
+                    footprint.Parent == null ? -1 : index[footprint.Parent],
+                    footprint.OpenInP0);
+                names[i] = footprint.Name;
+            }
+
+            return (placements, names);
+        }
+
+        private static float EgressSeconds(float meters) => LastShiftPlacementRules.EgressSeconds(meters);
 
         private static List<(LastShiftZone Zone, float Meters, string Source)> WorstEgressPerZone(
             bool includeUnlockable) =>
@@ -422,30 +456,13 @@ namespace DoodleUp.Tests.EditMode
         private static List<(LastShiftZone Zone, float Meters, string Source)> WorstEgressPerZone(
             LastShiftPlazaProposal.Footprint[] table, bool includeUnlockable)
         {
+            var (placements, names) = Chain(table);
             var worst = new List<(LastShiftZone, float, string)>();
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                worst.Add((zone, LastShiftShipDimensions.ZoneLength(zone), "구역 자체"));
-
-            foreach (var footprint in table.Where(f => f.IsAttached))
-            {
-                if (!footprint.OpenInP0 && !includeUnlockable) continue;
-                var (meters, zone) = Egress(table, footprint);
-                if (meters > worst[(int)zone].Item2)
-                    worst[(int)zone] = (zone, meters, footprint.Name);
-            }
+            foreach (var (zone, meters, index) in
+                     LastShiftPlacementRules.WorstEgressPerZone(placements, includeUnlockable))
+                worst.Add((zone, meters, index < 0 ? "구역 자체" : names[index]));
 
             return worst;
-        }
-
-        private static (float Meters, LastShiftZone Zone) Egress(
-            LastShiftPlazaProposal.Footprint[] table, in LastShiftPlazaProposal.Footprint footprint)
-        {
-            var (chain, hullDoor) = ChainToHull(table, footprint);
-            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
-            var spine = Mathf.Max(
-                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
-                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
-            return (chain + spine, zone);
         }
 
         /// <summary>
@@ -458,7 +475,16 @@ namespace DoodleUp.Tests.EditMode
         /// </summary>
         private static float EscapeMeters(LastShiftPlazaProposal.Footprint footprint)
         {
-            var (chain, hullDoor) = ChainToHull(LastShiftPlazaProposal.Footprints, footprint);
+            var (placements, names) = Chain(LastShiftPlazaProposal.Footprints);
+            var index = System.Array.IndexOf(names, footprint.Name);
+            Assert.That(index, Is.GreaterThanOrEqualTo(0),
+                $"{footprint.Name} 이 사슬 표에 없다 — 문 좌표가 NaN 인 스파인 발자국이라는 뜻이다.");
+
+            Assert.That(
+                LastShiftPlacementRules.TryChainToHull(
+                    placements, placements[index], out var chain, out var hullDoor, out _),
+                Is.True, $"{footprint.Name} 사슬이 선체에 안 닿는다 — 부모 사슬이 끊겼거나 순환이다.");
+
             var zone = LastShiftZoneAtlas.Resolve(hullDoor);
             return chain + Vector3.Distance(hullDoor, BoundaryOpening(zone));
         }
@@ -483,57 +509,15 @@ namespace DoodleUp.Tests.EditMode
         /// 후보 셋 중 최대 — (가) 구역 x 길이, (나) 이탈값, (다) 같은 구역 구획 둘의 구석끼리.
         /// (다) 의 스파인 항이 정본과 다르다: <c>x</c> 차가 아니라 두 선체 문 사이 실거리다.
         /// 광장·선미 클러스터가 <c>z</c> 로 벌어져 <c>x</c> 근사가 과소평가로 뒤집히기 때문이다.
+        ///
+        /// <b>승격에서 두 사본이 유일하게 갈렸던 항이 이것이고, 갈린 것이 의도였다.</b> 그래서
+        /// 합치지 않고 <see cref="LastShiftPairSpine"/> 로 남겼다 — 합쳤으면 정본 쪽 고정값
+        /// 둘(<c>33.03</c>·<c>28.47</c>)이 조용히 움직였을 것이다.
         /// </summary>
         private static float[] LongestPairPerZone(
-            LastShiftPlazaProposal.Footprint[] table, bool includeUnlockable)
-        {
-            var longest = new float[LastShiftZoneAtlas.ZoneCount];
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                longest[(int)zone] = LastShiftShipDimensions.ZoneLength(zone);
-
-            var open = new List<(LastShiftZone Zone, float Chain, Vector3 HullDoor, float Egress)>();
-            foreach (var footprint in table.Where(f => f.IsAttached))
-            {
-                if (!footprint.OpenInP0 && !includeUnlockable) continue;
-                var (chain, hullDoor) = ChainToHull(table, footprint);
-                var (egress, zone) = Egress(table, footprint);
-                open.Add((zone, chain, hullDoor, egress));
-            }
-
-            for (var i = 0; i < open.Count; i++)
-            {
-                var a = open[i];
-                longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Egress);
-                for (var j = i + 1; j < open.Count; j++)
-                {
-                    var b = open[j];
-                    if (b.Zone != a.Zone) continue;
-                    var spine = Vector3.Distance(a.HullDoor, b.HullDoor);
-                    longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Chain + spine + b.Chain);
-                }
-            }
-
-            return longest;
-        }
-
-        private static (float Meters, Vector3 HullDoor) ChainToHull(
-            LastShiftPlazaProposal.Footprint[] table, in LastShiftPlazaProposal.Footprint footprint)
-        {
-            var meters = 0f;
-            foreach (var x in new[] { footprint.MinX, footprint.MaxX })
-            foreach (var z in new[] { footprint.MinZ, footprint.MaxZ })
-                meters = Mathf.Max(meters, Vector3.Distance(new Vector3(x, 0f, z), footprint.Door));
-
-            var current = footprint;
-            while (current.Parent != null)
-            {
-                var parent = Find(table, current.Parent);
-                meters += Vector3.Distance(current.Door, parent.Door);
-                current = parent;
-            }
-
-            return (meters, current.Door);
-        }
+            LastShiftPlazaProposal.Footprint[] table, bool includeUnlockable) =>
+            LastShiftPlacementRules.LongestPairPerZone(
+                Chain(table).Placements, includeUnlockable, LastShiftPairSpine.StraightLine);
 
         private static float AttachedVolumeRatio(bool includeUnlockable)
         {
@@ -556,11 +540,12 @@ namespace DoodleUp.Tests.EditMode
                                   * LastShiftShipDimensions.InteriorWidth
                                   * LastShiftShipPhysics.CeilingInnerHeight;
 
-            foreach (var footprint in Attached())
+            var (placements, names) = Chain(LastShiftPlazaProposal.Footprints);
+            for (var index = 0; index < placements.Length; index++)
             {
+                var footprint = LastShiftPlazaProposal.Of(names[index]);
                 if (!footprint.OpenInP0 && !includeUnlockable) continue;
-                var (_, hullDoor) = ChainToHull(LastShiftPlazaProposal.Footprints, footprint);
-                var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+                if (!LastShiftPlacementRules.TryZoneOf(placements, placements[index], out var zone)) continue;
                 hull[(int)zone] += footprint.Area * LastShiftCompartments.InteriorHeight;
             }
 
@@ -568,15 +553,6 @@ namespace DoodleUp.Tests.EditMode
         }
 
         // ── 잔손 ────────────────────────────────────────────────────────────
-
-        private static LastShiftPlazaProposal.Footprint Find(
-            LastShiftPlazaProposal.Footprint[] table, string name)
-        {
-            foreach (var footprint in table)
-                if (footprint.Name == name)
-                    return footprint;
-            throw new System.ArgumentException($"발자국 {name} 이 표에 없다.", nameof(name));
-        }
 
         private static LastShiftPlazaProposal.Footprint RootOf(LastShiftPlazaProposal.Footprint footprint)
         {

@@ -348,6 +348,20 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
+        /// 정본 구획표를 판정기 입력으로 옮긴 것. 인덱스가 <see cref="LastShiftCompartments.Specs"/>
+        /// 와 같으므로 <c>ParentIndex</c> 가 그대로 산다.
+        ///
+        /// <b>이 파일이 자를 직접 들고 있지 않은 것이 이 카드의 요점이다.</b> 이탈 거리 계산이
+        /// 여기와 <see cref="LastShiftPlazaRg1Tests"/> 에 독립 사본으로 있었고, 둘 다 Editor 전용
+        /// 어셈블리 안이라 런타임에서 부를 방법이 없었다. 지금 재는 것은
+        /// <see cref="LastShiftPlacementRules"/> 하나이고, <b>이 파일의 고정값이 하나도 안 움직이는
+        /// 것이 그 승격이 값을 안 바꿨다는 증거다</b> —
+        /// <c>docs/tech/free-placement-runtime-chain-estimate-v1.md</c> §5.3.
+        /// </summary>
+        private static readonly LastShiftPlacement[] Table =
+            LastShiftPlacementRules.TableOf(LastShiftCompartments.Specs);
+
+        /// <summary>
         /// 구역별 최장 횡단 거리. 부속 구획의 가장 먼 구석에서 자기 문 → 부모 문 → … → 선체
         /// 문까지의 사슬 거리에, 선체 문에서 그 구역 반대쪽 끝까지의 스파인 거리를 더한다.
         ///
@@ -359,18 +373,11 @@ namespace DoodleUp.Tests.EditMode
             bool includeUnlockable = false)
         {
             var worst = new List<(LastShiftZone, float, string)>();
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                worst.Add((zone, LastShiftShipDimensions.ZoneLength(zone), "구역 자체"));
-
-            foreach (var spec in LastShiftCompartments.Specs)
-            {
-                if (!spec.IsPassable && !includeUnlockable) continue;
-
-                var zone = LastShiftZoneAtlas.Resolve(ChainToHull(spec).HullDoor);
-                var total = EgressMeters(spec);
-                if (total > worst[(int)zone].Item2)
-                    worst[(int)zone] = (zone, total, spec.Compartment.ToString());
-            }
+            foreach (var (zone, meters, index) in
+                     LastShiftPlacementRules.WorstEgressPerZone(Table, includeUnlockable))
+                worst.Add((zone, meters, index < 0
+                    ? "구역 자체"
+                    : LastShiftCompartments.Specs[index].Compartment.ToString()));
 
             return worst;
         }
@@ -379,93 +386,32 @@ namespace DoodleUp.Tests.EditMode
         /// 이탈 거리 → 가드레일 <c>(1)</c> 판정 시간. 압력문 한 번을 상수로 더한다 —
         /// <see cref="PressureDoorSeconds"/> 와 <c>docs/rg1-1-measurement-definition-v1.md</c> §1.1.
         /// </summary>
-        private static float EgressSeconds(float meters) =>
-            meters / LastShiftPlayerController.MoveSpeed + PressureDoorSeconds;
+        private static float EgressSeconds(float meters) => LastShiftPlacementRules.EgressSeconds(meters);
 
         /// <summary>
         /// 구역별 "같은 구역 안 두 점 사이 최장 거리". <b>가드레일 <c>(1)</c> 판정이 아니라
         /// <c>(2)</c> 재계산 트리거다</b> — 측정법 정본 §2.1.
         ///
-        /// 후보 셋 중 최대다. (가) 구역 자체의 x 길이, (나) 구획 안쪽 구석 → 구역 끝
-        /// (= <see cref="EgressMeters"/>), (다) 같은 구역에 붙은 구획 둘의 안쪽 구석끼리 —
-        /// 각자의 사슬에 두 선체 문 사이 스파인을 더한다.
+        /// 스파인 자는 <see cref="LastShiftPairSpine.AlongLength"/> 다. 이 배는 부속 구획이 전부
+        /// <c>z</c> 얕은 자리에 붙어 있어 <c>x</c> 차 근사가 성립하고, 그 자로 잰 값이 여기
+        /// 고정돼 있다. 도안 쪽은 <c>z</c> 로 벌어져서 다른 자를 쓴다 —
+        /// <see cref="LastShiftPlazaRg1Tests"/>.
         /// </summary>
-        private static float[] LongestPairPerZone(bool includeUnlockable)
-        {
-            var longest = new float[LastShiftZoneAtlas.ZoneCount];
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                longest[(int)zone] = LastShiftShipDimensions.ZoneLength(zone);
-
-            var open = new List<(LastShiftZone Zone, float Chain, Vector3 HullDoor, float Egress)>();
-            foreach (var spec in LastShiftCompartments.Specs)
-            {
-                if (!spec.IsPassable && !includeUnlockable) continue;
-                var (chain, hullDoor) = ChainToHull(spec);
-                var zone = LastShiftZoneAtlas.Resolve(hullDoor);
-                open.Add((zone, chain, hullDoor, EgressMeters(spec)));
-            }
-
-            for (var i = 0; i < open.Count; i++)
-            {
-                var a = open[i];
-                longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Egress);
-
-                // 같은 방 안의 두 점은 쌍이 아니다 — 자기 자신과 짝지으면 사슬을 두 번 세서
-                // 실제로 걸을 수 없는 거리가 나온다(관측실이면 33.21m).
-                for (var j = i + 1; j < open.Count; j++)
-                {
-                    var b = open[j];
-                    if (b.Zone != a.Zone) continue;
-                    var spine = Mathf.Abs(a.HullDoor.x - b.HullDoor.x);
-                    longest[(int)a.Zone] = Mathf.Max(longest[(int)a.Zone], a.Chain + spine + b.Chain);
-                }
-            }
-
-            return longest;
-        }
+        private static float[] LongestPairPerZone(bool includeUnlockable) =>
+            LastShiftPlacementRules.LongestPairPerZone(
+                Table, includeUnlockable, LastShiftPairSpine.AlongLength);
 
         /// <summary>
-        /// 구획 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 사슬 거리에 선체 문에서
-        /// 그 구역 반대쪽 끝까지의 스파인을 더한다. 가드레일 <c>(1)</c> 이 실제로 재는 것은
-        /// 구역 소속이 아니라 이 값이다 — <c>(4-b)</c> 탈출 보장의 최악 시간이다.
-        ///
-        /// <b>스파인의 <c>max()</c> 는 조종석·산소실에서만 정확하다.</b> 두 구역은 바깥쪽 끝이
-        /// 선체 끝벽이라 출구가 하나뿐이고 그 하나가 곧 먼 쪽이다. 전력실·냉각실은 양쪽이 다
-        /// 출구라 이 근사가 실제보다 길게 나오는데, 둘 다 <c>5m</c> 라 지금은 영향이 없다.
-        /// 최악이 그쪽으로 옮겨가면 <c>max()</c> 를 출구 중 최소로 바꿔야 한다 —
-        /// <c>docs/rg1-1-measurement-definition-v1.md</c> §1.2.
+        /// 구획 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 가드레일 <c>(1)</c> 이 실제로
+        /// 재는 것은 구역 소속이 아니라 이 값이다. 정의와 근사의 한계는
+        /// <see cref="LastShiftPlacementRules.TryEgress"/> 가 들고 있다.
         /// </summary>
         private static float EgressMeters(LastShiftCompartmentSpec spec)
         {
-            var (chain, hullDoor) = ChainToHull(spec);
-            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
-            var spine = Mathf.Max(
-                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
-                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
-
-            return chain + spine;
+            Assert.That(
+                LastShiftPlacementRules.TryEgress(Table, Table[(int)spec.Compartment], out var meters, out _),
+                Is.True, $"{spec.Compartment} 사슬이 선체에 안 닿는다 — 부모 사슬이 끊겼거나 순환이다.");
+            return meters;
         }
-
-        /// <summary>가장 먼 구석에서 선체에 붙는 문까지의 사슬 거리와, 그 선체 문 좌표.</summary>
-        private static (float Meters, Vector3 HullDoor) ChainToHull(LastShiftCompartmentSpec spec)
-        {
-            var door = Flatten(spec.DoorPosition);
-            var meters = 0f;
-            foreach (var x in new[] { spec.MinX, spec.MaxX })
-            foreach (var z in new[] { spec.MinZ, spec.MaxZ })
-                meters = Mathf.Max(meters, Vector3.Distance(new Vector3(x, 0f, z), door));
-
-            var current = spec;
-            while (current.ParentIndex >= 0)
-            {
-                var parent = LastShiftCompartments.Specs[current.ParentIndex];
-                meters += Vector3.Distance(Flatten(current.DoorPosition), Flatten(parent.DoorPosition));
-                current = parent;
-            }
-
-            return (meters, Flatten(current.DoorPosition));
-        }
-
-        private static Vector3 Flatten(Vector3 position) => new(position.x, 0f, position.z);
     }
 }

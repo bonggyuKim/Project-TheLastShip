@@ -300,15 +300,29 @@ namespace DoodleUp.Runtime
         /// 사슬로 이어 붙인 구획은 언제나 한 면을 공유하므로 열린 구간 비교를 써야 한다.
         /// </summary>
         public static bool VolumesOverlap(in LastShiftCompartmentSpec a, in LastShiftCompartmentSpec b) =>
-            a.MinX < b.MaxX - Epsilon && b.MinX < a.MaxX - Epsilon &&
-            a.MinZ < b.MaxZ - Epsilon && b.MinZ < a.MaxZ - Epsilon;
+            VolumesOverlap(a.MinX, a.MaxX, a.MinZ, a.MaxZ, b.MinX, b.MaxX, b.MinZ, b.MaxZ);
+
+        /// <summary>
+        /// 발자국 좌표만 받는 같은 판정. <see cref="LastShiftPlacementRules"/> 가 구획표 밖의
+        /// 배치 후보를 잴 때 쓴다 — 자유 배치 후보는 아직 <see cref="LastShiftCompartmentSpec"/>
+        /// 가 아니지만 겹침 규약은 같아야 한다.
+        /// </summary>
+        public static bool VolumesOverlap(
+            float aMinX, float aMaxX, float aMinZ, float aMaxZ,
+            float bMinX, float bMaxX, float bMinZ, float bMaxZ) =>
+            aMinX < bMaxX - Epsilon && bMinX < aMaxX - Epsilon &&
+            aMinZ < bMaxZ - Epsilon && bMinZ < aMaxZ - Epsilon;
 
         /// <summary>구획 볼륨이 선체 내부(방·통로가 타일링한 영역)를 침범하는가.</summary>
         public static bool OverlapsHullInterior(in LastShiftCompartmentSpec spec) =>
-            spec.MinX < LastShiftShipDimensions.HalfLength - Epsilon &&
-            -LastShiftShipDimensions.HalfLength < spec.MaxX - Epsilon &&
-            spec.MinZ < LastShiftShipDimensions.HalfWidth - Epsilon &&
-            -LastShiftShipDimensions.HalfWidth < spec.MaxZ - Epsilon;
+            OverlapsHullInterior(spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ);
+
+        /// <summary>발자국 좌표만 받는 같은 판정. <see cref="VolumesOverlap(float,float,float,float,float,float,float,float)"/> 와 같은 이유로 있다.</summary>
+        public static bool OverlapsHullInterior(float minX, float maxX, float minZ, float maxZ) =>
+            minX < LastShiftShipDimensions.HalfLength - Epsilon &&
+            -LastShiftShipDimensions.HalfLength < maxX - Epsilon &&
+            minZ < LastShiftShipDimensions.HalfWidth - Epsilon &&
+            -LastShiftShipDimensions.HalfWidth < maxZ - Epsilon;
 
         /// <summary>
         /// 문이 <b>자기 구획의 경계면 위</b>에 있고, 구멍 폭이 그 면 안에 다 들어가는가.
