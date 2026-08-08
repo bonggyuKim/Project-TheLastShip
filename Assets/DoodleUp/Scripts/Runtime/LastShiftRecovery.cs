@@ -616,17 +616,29 @@ namespace DoodleUp.Runtime
                 return ReportOnly(ref state, containment);
             }
 
+            // ── 확장 모듈 효과 ── docs/module-effect-coefficients-v1.md.
+            // 배에 선 모듈에서 세 계수(산소 감속 · 열 감속 · bus 하한)를 걷는다. 모듈이 없으면
+            // 전부 항등이라 이 아래 세 시계가 이전과 한 글자도 다르지 않게 돈다.
+            //
+            // <b>tick 인자를 안 늘린다.</b> 이 함수는 호출부가 29곳이고, 그중 절반이 구역 압력도
+            // 문 상태도 없는 최소 조립 경로다(호환 진입점). 모듈은 이미 정적 오버레이
+            // (LastShiftPlacedModules)로 매 tick 조회되는 물건이므로 같은 자리에서 같은 방식으로 읽는다.
+            var effects = LastShiftModuleEffects.Collect(pressures);
+
             // ── 전력 시계 ── bus 미연결이면 0.40 을 넘지 못한다. 다른 두 복구의 속도를 뺏는 자리.
             // 구역을 포기하면 하강이 멈춘다(회복은 없다). 열·산소와 같은 규칙이어야 세 계통에서
             // "포기" 의 의미가 같다. 단 조향 지연은 남는다 — 포기는 bus 를 연결해주지 않는다.
+            //
+            // 예비 전력실이 서 있으면 그 하한이 0.45 다(BusFloorBonus). 하강이 멎는 선만 오르므로
+            // 이미 하한 아래인 bus 는 안 오른다 — 모듈은 전력을 만들지 않는다.
             if (containment.PowerRestored)
             {
                 state.BusPower = Mathf.Clamp01(state.BusPower + LastShiftRecoveryTuning.BusRecoveryPerSecond * deltaTime);
             }
-            else if (!containment.PowerContained && state.BusPower > LastShiftRecoveryTuning.UnpoweredBusCeiling)
+            else if (!containment.PowerContained && state.BusPower > effects.BusFloor)
             {
                 state.BusPower = Mathf.Max(
-                    LastShiftRecoveryTuning.UnpoweredBusCeiling,
+                    effects.BusFloor,
                     state.BusPower - LastShiftRecoveryTuning.BusDropPerSecond * deltaTime);
             }
 
@@ -676,6 +688,12 @@ namespace DoodleUp.Runtime
                     ? LastShiftRecoveryTuning.HeatRecoveryPerSecond
                     : LastShiftRecoveryTuning.HeatNaturalCoolPerSecond);
 
+            // 방열 라디에이터실은 <b>상승항에만</b> 걸린다(HeatRiseReduction). 하강항에 걸면
+            // 냉각통을 연결한 배가 더 빨리 식는 물건이 되고, 그건 잃은 기능을 다시 세우는 것이
+            // 아니라 증폭기다. 밸브를 빼기 <b>전에</b> 곱해야 §4.3 의 산수(0.020×0.9 - 0.015)가
+            // 그대로 선다 — 뒤에 곱하면 밸브 몫까지 같이 깎여 유지 동사가 약해진다.
+            if (heatDelta > 0f) heatDelta *= effects.HeatRiseMultiplier;
+
             if (containment.CoolingValveHeld) heatDelta -= LastShiftRecoveryTuning.SustainedCoolingPerSecond;
             state.EngineHeat = Mathf.Clamp01(state.EngineHeat + heatDelta * deltaTime);
 
@@ -689,8 +707,12 @@ namespace DoodleUp.Runtime
 
             if (!containment.OxygenContained)
             {
+                // 산소 재생기실이 <b>파공 구역에</b> 붙어 있을 때만 이 항이 줄어든다
+                // (OxygenLeakReduction). 다른 구역에 붙은 재생기는 이번 파공에 아무 말도 안 한다 —
+                // 그것이 카탈로그 §7-C 가 "위치가 처음으로 결정이 되는 자리" 라고 부른 것이다.
                 var leak = LastShiftRecoveryTuning.OxygenLeakPerSecond *
-                           (1f - state.HullIntegrity) / LastShiftRecoveryTuning.OxygenLeakHullReference;
+                           (1f - state.HullIntegrity) / LastShiftRecoveryTuning.OxygenLeakHullReference *
+                           effects.OxygenLeakMultiplierFor(breachZone);
                 pressures[breachZone] -= leak * deltaTime;
             }
             else if (containment.OxygenRestored && containment.PowerRestored)

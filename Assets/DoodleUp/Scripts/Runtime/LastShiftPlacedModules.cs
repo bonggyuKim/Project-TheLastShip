@@ -13,7 +13,8 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftPlacedModule
     {
         public LastShiftPlacedModule(
-            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, LastShiftZone zone)
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, LastShiftZone zone,
+            int catalogIndex = NoCatalogIndex)
         {
             MinX = Mathf.Min(minX, maxX);
             MaxX = Mathf.Max(minX, maxX);
@@ -22,8 +23,12 @@ namespace DoodleUp.Runtime
             MinY = Mathf.Min(minY, maxY);
             MaxY = Mathf.Max(minY, maxY);
             Zone = zone;
+            CatalogIndex = catalogIndex;
             Registered = true;
         }
+
+        /// <summary>카탈로그를 안 거치고 등록된 칸. 효과가 하나도 안 붙는다.</summary>
+        public const int NoCatalogIndex = -1;
 
         public float MinX { get; }
         public float MaxX { get; }
@@ -36,6 +41,17 @@ namespace DoodleUp.Runtime
 
         /// <summary>배치 시점에 정해진 구역. <b>여기서 다시 계산하지 않는다</b>(조항 F-1).</summary>
         public LastShiftZone Zone { get; }
+
+        /// <summary>
+        /// 어느 카탈로그 항목으로 세웠는가(<see cref="LastShiftModuleCatalog"/> 인덱스).
+        /// <see cref="NoCatalogIndex"/> 면 카탈로그 밖 등록이다.
+        ///
+        /// <b>효과가 이 값 하나에 매달린다</b>(<see cref="LastShiftModuleEffects"/>). 종류와 구역을
+        /// 한 칸에 같이 두는 것이 요지다 — 종류를 다른 장부(여력 원장)에서 읽고 구역을 여기서
+        /// 읽으면, 두 장부의 자리 번호가 한 번이라도 어긋나는 날 <b>남의 모듈 효과가 남의 구역에</b>
+        /// 붙는다. 그 어긋남은 화면 어디에도 안 보인다.
+        /// </summary>
+        public int CatalogIndex { get; }
 
         /// <summary>
         /// 이 칸이 살아 있는가. <c>default</c> 구조체가 <c>false</c> 가 되도록 이 방향으로 든다 —
@@ -131,11 +147,14 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>배치 하나를 등록하고 핸들을 돌려준다. 층고는 기본값을 쓴다.</summary>
-        public static int Register(float minX, float maxX, float minZ, float maxZ, LastShiftZone zone) =>
-            Register(minX, maxX, minZ, maxZ, DefaultFloorY, DefaultCeilingY, zone);
+        public static int Register(
+            float minX, float maxX, float minZ, float maxZ, LastShiftZone zone,
+            int catalogIndex = LastShiftPlacedModule.NoCatalogIndex) =>
+            Register(minX, maxX, minZ, maxZ, DefaultFloorY, DefaultCeilingY, zone, catalogIndex);
 
         public static int Register(
-            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, LastShiftZone zone)
+            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, LastShiftZone zone,
+            int catalogIndex = LastShiftPlacedModule.NoCatalogIndex)
         {
             var handle = Count;
             for (var index = 0; index < Count; index++)
@@ -157,7 +176,7 @@ namespace DoodleUp.Runtime
                 Count++;
             }
 
-            modules[handle] = new LastShiftPlacedModule(minX, maxX, minZ, maxZ, minY, maxY, zone);
+            modules[handle] = new LastShiftPlacedModule(minX, maxX, minZ, maxZ, minY, maxY, zone, catalogIndex);
             return handle;
         }
 
@@ -165,9 +184,11 @@ namespace DoodleUp.Runtime
         /// 판정기 입력을 그대로 등록한다. <paramref name="zone"/> 은 <b>후보 자기 좌표가 아니라</b>
         /// <see cref="LastShiftPlacementVerdict.Zone"/> — 사슬 뿌리가 정한 값이다(조항 F-1).
         /// </summary>
-        public static int Register(in LastShiftPlacement placement, LastShiftZone zone) => Register(
+        public static int Register(
+            in LastShiftPlacement placement, LastShiftZone zone,
+            int catalogIndex = LastShiftPlacedModule.NoCatalogIndex) => Register(
             placement.MinX, placement.MaxX, placement.MinZ, placement.MaxZ,
-            DefaultFloorY, DefaultCeilingY, zone);
+            DefaultFloorY, DefaultCeilingY, zone, catalogIndex);
 
         /// <summary>
         /// 이미 등록된 모듈을 옮긴다. 핸들이 살아 있어야 한다 — 해제한 칸을 되살리면 그 사이에
@@ -178,8 +199,10 @@ namespace DoodleUp.Runtime
         {
             if (handle < 0 || handle >= Count || !modules[handle].Registered) return false;
 
+            // 종류는 안 바뀐다 — 옮기는 것은 자리이지 산 물건이 아니다. 여기서 기본값으로
+            // 덮으면 모듈을 옮긴 순간 효과만 조용히 사라진다.
             modules[handle] = new LastShiftPlacedModule(
-                minX, maxX, minZ, maxZ, DefaultFloorY, DefaultCeilingY, zone);
+                minX, maxX, minZ, maxZ, DefaultFloorY, DefaultCeilingY, zone, modules[handle].CatalogIndex);
             return true;
         }
 

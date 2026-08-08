@@ -508,9 +508,15 @@ namespace DoodleUp.Runtime
         /// 문을 닫아도 격리가 안 되는 배가 그것이다(타당성 검토 §11-1). 넘기는 구역은 후보
         /// 자기 좌표가 아니라 <see cref="LastShiftPlacementVerdict.Zone"/>, 즉 사슬 뿌리의
         /// 선체 문이 정한 값이다(조항 F-1).
+        ///
+        /// <paramref name="catalogIndex"/> 는 오버레이로 그대로 흘러가 <b>효과의 정본</b>이 된다
+        /// (<see cref="LastShiftModuleEffects"/>). 안 넘기면 발자국만 있고 효과가 없는 방이 서는데,
+        /// 그건 표를 직접 쓰는 테스트·조립 경로에서 맞는 기본값이다 — 카탈로그를 안 거친 칸에
+        /// 산소 감속이 붙으면 그 배는 아무도 안 산 효과를 갖는다.
         /// </summary>
         public static bool TryRegister(
-            in LastShiftCompartmentSpec candidate, out int index, out LastShiftPlacementVerdict verdict)
+            in LastShiftCompartmentSpec candidate, out int index, out LastShiftPlacementVerdict verdict,
+            int catalogIndex = LastShiftPlacedModule.NoCatalogIndex)
         {
             if (candidate.Index != specs.Length)
                 throw new ArgumentException(
@@ -528,7 +534,7 @@ namespace DoodleUp.Runtime
             var handles = new int[moduleHandles.Length + 1];
             Array.Copy(moduleHandles, handles, moduleHandles.Length);
             handles[moduleHandles.Length] = LastShiftPlacedModules.Register(
-                candidate.MinX, candidate.MaxX, candidate.MinZ, candidate.MaxZ, verdict.Zone);
+                candidate.MinX, candidate.MaxX, candidate.MinZ, candidate.MaxZ, verdict.Zone, catalogIndex);
 
             index = specs.Length;
             specs = grown;

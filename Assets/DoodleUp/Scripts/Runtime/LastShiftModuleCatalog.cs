@@ -76,6 +76,29 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float GridMeters = 1f;
 
+        // ── 항목 번호 ───────────────────────────────────────────────────────
+        // 효과(LastShiftModuleEffects)가 종류를 번호로 가른다. 이름 문자열로 가르면 화면
+        // 문구를 고치는 날 효과가 조용히 꺼지고, 그건 테스트가 이름을 같이 안 보면 안 잡힌다.
+        // 순서는 가격 오름차순이므로 번호도 가격 오름차순이다.
+
+        /// <summary>`0` 연결 통로 — 효과 없음.</summary>
+        public const int Corridor = 0;
+
+        /// <summary>`1` 산소 재생기실 — 편입 구역 누출 감속.</summary>
+        public const int OxygenRecycler = 1;
+
+        /// <summary>`2` 방열 라디에이터실 — <c>EngineHeat</c> 상승 감속.</summary>
+        public const int Radiator = 2;
+
+        /// <summary>`3` 예비 전력실 — 미연결 <c>BusPower</c> 하한 상향 + 예비 배터리.</summary>
+        public const int ReservePower = 3;
+
+        /// <summary>`4` 보급 저장고 — 세 계통 예비 아이템 비치.</summary>
+        public const int SupplyDepot = 4;
+
+        /// <summary>`5` 정거장 골조 — 효과 없음. 종착 정산 전용.</summary>
+        public const int StationFrame = 5;
+
         /// <summary>
         /// <c>docs/port-module-catalog-v1.md</c> §3.3 표 그대로. <c>LengthX</c> 는 문에서
         /// 멀어지는 깊이이고 <c>WidthZ</c> 는 접면 폭이다.

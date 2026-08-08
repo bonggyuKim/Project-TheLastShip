@@ -176,7 +176,8 @@ namespace DoodleUp.Runtime
             index = -1;
             result = verdict;
             if (faults != LastShiftPlacementFault.None) return false;
-            if (!LastShiftCompartments.TryRegister(candidate, out index, out result)) return false;
+            // 종류를 같이 넘긴다 — 효과가 이 값에 매달린다(LastShiftModuleEffects).
+            if (!LastShiftCompartments.TryRegister(candidate, out index, out result, catalogIndex)) return false;
 
             dirty = true;
             return true;
