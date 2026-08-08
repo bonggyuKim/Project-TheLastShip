@@ -313,17 +313,19 @@ namespace DoodleUp.Tests.EditMode
         public void SweepsThatMustStayFixedDoNotSeeModules()
         {
             // §3.2 가 축 B 작업량의 실체라고 한 부분이다 — foreach 로 도는 자리마다 "고정만"
-            // 인지 "전부" 인지를 정해야 한다. 선체 골조·문틀은 배와 함께 태어난 것만 본다.
+            // 인지 "전부" 인지를 정해야 한다. 선체 골조는 배와 함께 구워지므로 고정만 본다.
+            //
+            // 문틀 표는 이제 반대쪽이다 — 모듈 문도 승무원이 지나는 자리라
+            // LastShiftDoorways 는 Revision 으로 다시 짓는다(LastShiftBakedDoorwayTests).
             var candidate = CoolingSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: -1);
-            var doorwaysBefore = LastShiftDoorways.All.Length;
+            var fixedBefore = LastShiftCompartments.FixedSpecs.Length;
             var framesBefore = LastShiftHullFrames.IsFree(candidate.CenterX, candidate.CenterZ);
 
             var spec = LastShiftCompartments.At(Register(candidate));
 
-            Assert.That(LastShiftDoorways.All.Length, Is.EqualTo(doorwaysBefore),
-                "문틀 표가 모듈을 먹었다 — 이 표는 정적 생성자가 한 번 짓는 것이라 그럴 수 없다.");
-            Assert.That(LastShiftDoorways.All.Any(d => d.Name == LastShiftCompartments.NameOf(spec)),
-                Is.False);
+            Assert.That(LastShiftCompartments.FixedSpecs.Length, Is.EqualTo(fixedBefore),
+                "고정 표가 모듈을 먹었다 — 선체 골조·드레싱처럼 배와 함께 태어난 것만 훑는 자리가 여기다.");
+            Assert.That(LastShiftCompartments.FixedSpecs.Any(s => s.Index == spec.Index), Is.False);
             Assert.That(LastShiftHullFrames.IsFree(spec.CenterX, spec.CenterZ), Is.EqualTo(framesBefore),
                 "모듈을 등록하니 골조 자리 판정이 바뀌었다 — 골조는 씬을 세울 때 이미 구워졌으므로 " +
                 "답만 바뀌고 씬은 안 바뀐다.");

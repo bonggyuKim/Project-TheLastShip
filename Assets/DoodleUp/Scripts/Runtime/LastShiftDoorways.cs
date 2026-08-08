@@ -62,6 +62,13 @@ namespace DoodleUp.Runtime
     /// <b>잠긴 문은 안 넣는다.</b> 그레이박스에서 잠긴 구획의 문은 구멍이 아니라 메운 판이라
     /// (§15.2) 그 앞을 비워 둘 이유가 없다 — 넣으면 서버실·수경재배·의무실 벽 앞이 전부
     /// 통행 예약 구역이 되어, 정작 열린 문 앞을 비우라는 요구가 소음에 묻힌다.
+    ///
+    /// <b>정적 표가 아니다.</b> 예전에는 정적 생성자가 한 번 짓고 말았고, 그래서 배치된
+    /// 모듈의 문이 이 표에 영영 안 들어왔다(축 B 가
+    /// <c>docs/tech/free-placement-compartment-table-v1.md</c> §6 에 남긴 항목).
+    /// 지금은 <see cref="LastShiftCompartments.Revision"/> 이 오르면 다시 짓는다 —
+    /// 표를 캐시해 두고 그 캐시가 낡았는지 묻는 방식이고, 매번 다시 짓지 않는 이유는
+    /// 드레싱 검사가 소품 하나마다 이 배열을 훑기 때문이다.
     /// </summary>
     public static class LastShiftDoorways
     {
@@ -81,9 +88,50 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float MinClearWidth = 1.1f;
 
-        private static readonly LastShiftDoorway[] all = BuildAll();
+        private static LastShiftDoorway[] all;
 
-        public static LastShiftDoorway[] All => all;
+        /// <summary>
+        /// <see cref="all"/> 을 지을 때의 표 판본. <c>-1</c> 은 "아직 한 번도 안 지었다" 다 —
+        /// <see cref="LastShiftCompartments.Revision"/> 은 <c>0</c> 에서 시작하므로 그 값을
+        /// 초기값으로 쓰면 첫 접근이 빈 표를 옳다고 본다.
+        /// </summary>
+        private static int builtRevision = -1;
+
+        /// <summary>
+        /// 문 전부. 표가 바뀌었으면 여기서 다시 짓는다.
+        ///
+        /// <b>돌려주는 배열을 들고 있지 말 것.</b> 다음 배치 확정에서 새 배열로 갈리므로,
+        /// 사본을 캐시하는 쪽은 <see cref="Revision"/> 을 같이 들어야 한다 —
+        /// <see cref="LastShiftCompartments.Specs"/> 와 같은 규약이다.
+        /// </summary>
+        public static LastShiftDoorway[] All
+        {
+            get
+            {
+                if (all != null && builtRevision == LastShiftCompartments.Revision) return all;
+                all = BuildAll();
+                builtRevision = LastShiftCompartments.Revision;
+                return all;
+            }
+        }
+
+        /// <summary>이 표가 어느 <see cref="LastShiftCompartments.Revision"/> 에서 지어졌는가.</summary>
+        public static int Revision
+        {
+            get
+            {
+                _ = All;
+                return builtRevision;
+            }
+        }
+
+        /// <summary>
+        /// 구획 한 칸의 <b>안쪽 문</b>. 고정이든 모듈이든 규약이 같다 — 문은 자기 발자국
+        /// 경계 위에 있고(<see cref="LastShiftCompartments.DoorSitsOnOwnBoundary"/>) 그 면은
+        /// 부모가 소유한다. 잠긴 칸인지는 부르는 쪽이 본다.
+        /// </summary>
+        public static LastShiftDoorway Of(in LastShiftCompartmentSpec spec) =>
+            new(LastShiftCompartments.NameOf(spec), spec.DoorPlane, spec.DoorPlaneCoordinate, spec.DoorCenter);
 
         private static LastShiftDoorway[] BuildAll()
         {
@@ -97,15 +145,14 @@ namespace DoodleUp.Runtime
 
             // 구획 문. 잠긴 구획은 구멍이 아니므로 뺀다.
             //
-            // <b>고정 구획만이다.</b> 이 표는 정적 생성자가 한 번 짓고 그 뒤로 안 다시 짓는데,
-            // 그 시점에는 배치된 모듈이 하나도 없다 — 여기서 Specs 를 훑으면 "모듈까지 본다" 는
-            // 모양만 갖추고 실제로는 언제나 열하나만 담긴다. 모듈 문이 필요해지면 이 표를
-            // Revision 으로 다시 짓는 것이 먼저다(free-placement-compartment-table-v1.md §6).
-            foreach (var spec in LastShiftCompartments.FixedSpecs)
+            // <b>고정 + 모듈 전부다.</b> 배치된 모듈의 문도 승무원이 지나다니는 자리이고,
+            // 그 앞에 구운 드레싱이 서 있으면 고정 구획 문과 똑같이 막힌다 — 모듈을 빼면
+            // 드레싱 검사가 "새로 생긴 문 앞" 만 못 보는 표가 된다. Specs 는 앞쪽
+            // FixedCount 개가 고정이므로 한 번 훑으면 둘 다 담긴다.
+            foreach (var spec in LastShiftCompartments.Specs)
             {
                 if (!spec.IsPassable) continue;
-                result.Add(new LastShiftDoorway(LastShiftCompartments.NameOf(spec.Compartment),
-                    spec.DoorPlane, spec.DoorPlaneCoordinate, spec.DoorCenter));
+                result.Add(Of(spec));
             }
 
             // 관측 회랑 양 끝. 화물칸 쪽은 구획 면에, 조종석 쪽은 선체 좌현 벽에 뚫린다.

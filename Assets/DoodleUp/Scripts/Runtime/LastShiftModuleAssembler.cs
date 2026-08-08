@@ -42,12 +42,11 @@ namespace DoodleUp.Runtime
     /// 그레이박스는 <b>추정 §4.1 의 절차적 생성 경로가 아니다</b>: 판·문 구멍·인방까지이고 창·
     /// 라벨·드레싱·등은 없다. 프리팹이 들어오면 이 경로는 안 돈다.
     ///
-    /// <b>안 하는 것 하나를 여기 적어 둔다.</b> 모듈이 <see cref="LastShiftCompartmentSpec.ParentIndex"/>
-    /// 로 가리키는 상대가 선체이거나 고정 구획이면, 그 벽은 배 프리팹에 이미 구워져 있고 구멍이
-    /// 없다 — 그래서 <b>지금 세운 모듈은 문 자리까지 이어지되 그 벽을 뚫고 들어갈 수는 없다.</b>
-    /// 구운 벽을 뚫는 일("모듈 문틀")은 축 B 가 <c>docs/tech/free-placement-compartment-table-v1.md</c>
-    /// §6 에 안 한 것으로 남긴 항목이고 이 카드에서도 안 열었다. 모듈끼리 잇는 사슬은 선다 —
-    /// 부모가 모듈이면 그 벽은 여기서 세우므로 구멍이 같이 뚫린다.
+    /// <b>구운 벽은 여기서 안 뚫고 <see cref="LastShiftBakedDoorways"/> 가 뚫는다.</b> 모듈이
+    /// <see cref="LastShiftCompartmentSpec.ParentIndex"/> 로 가리키는 상대가 선체이거나 고정
+    /// 구획이면 그 벽은 배 프리팹에 이미 구워져 있고 구멍이 없다 — <see cref="Rebuild"/> 가
+    /// 방을 다 세운 뒤 그 절단기를 부른다. 갈라 둔 이유는 되돌림이다: 조립기는 방을 지우고
+    /// 다시 세우면 그만이지만, 남의 벽을 자른 것은 원래 판을 기억하고 있어야 메울 수 있다.
     /// </summary>
     public static class LastShiftModuleAssembler
     {
@@ -191,7 +190,13 @@ namespace DoodleUp.Runtime
         /// (<see cref="LastShiftCompartments.TryRemove"/>) 칸과 씬 오브젝트를 짝지어 두면 그 당김을
         /// 씬에서 한 번 더 풀어야 하고, 그 두 벌이 갈리면 이름과 자리가 어긋난 방이 남는다.
         /// 배치 해제는 기항에서만 일어난다는 전제(추정 §8)에서 다시 세우는 값이 싸다.
+        ///
+        /// <b>문틀을 마지막에 뚫는다.</b> <see cref="LastShiftBakedDoorways.Open"/> 는 부모 쪽
+        /// 벽 판을 찾아 자르는데, 부모가 모듈이면 그 판이 이 루프에서 방금 선 것이다 —
+        /// 먼저 뚫으면 자른 판을 그 뒤에 다시 세우게 되고 구멍이 도로 메워진다.
+        /// <paramref name="parent"/> 가 선체 판과 구획 루트를 담은 칸이어야 하는 이유가 이것이다.
         /// </summary>
+        /// <returns>세운 모듈 수. 뚫은 문 수는 <see cref="LastShiftBakedDoorways.Open"/> 이 돌려준다.</returns>
         public static int Rebuild(Transform parent, LastShiftModulePalette palette)
         {
             if (parent == null) throw new System.ArgumentNullException(nameof(parent));
@@ -206,16 +211,23 @@ namespace DoodleUp.Runtime
                 built++;
             }
 
+            LastShiftBakedDoorways.Open(parent);
             return built;
         }
 
         /// <summary>
         /// 세워 둔 모듈을 전부 지우고 빈 칸을 돌려준다. 칸 자체는 남긴다 — 씬에서 누가 그
         /// <c>Transform</c> 을 참조로 물고 있을 수 있고, 매번 새로 만들면 그 참조가 끊긴다.
+        ///
+        /// <b>모듈을 지우기 전에 문틀을 메운다.</b> 순서가 뒤집히면 모듈 안에서 자른 판이
+        /// 모듈과 함께 사라진 뒤에 메우려 들고, 그 기록은 허공을 가리킨다. 그리고 메우지
+        /// 않으면 방을 걷어낸 자리의 선체 벽에 구멍만 남는다 — 우주로 걸어 나가는 구멍이다.
         /// </summary>
         public static Transform Clear(Transform parent)
         {
             if (parent == null) throw new System.ArgumentNullException(nameof(parent));
+
+            LastShiftBakedDoorways.Restore();
 
             var yard = parent.Find(YardName);
             if (yard == null)
