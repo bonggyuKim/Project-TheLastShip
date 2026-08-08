@@ -69,8 +69,29 @@ namespace DoodleUp.Runtime
         /// 분기 순서 같은 우연이 답을 정하고, 구역이 늘 때 조용히 뒤집힌다. 그래서 규칙으로
         /// 못박고 테스트로 고정한다. 경계 위 좌표를 실제로 쓰지 말라는 요구는 그대로다 —
         /// 그쪽은 <see cref="LastShiftShipDimensions.SpaceCenterXBefore"/> 가 답이다.
+        ///
+        /// <b>자유 배치로 확정된 모듈을 먼저 본다</b>(<see cref="LastShiftPlacedModules"/>).
+        /// 선체 밴드는 <c>x</c> 하나로만 가르므로 선체 옆으로 뻗은 모듈을 구분하지 못한다 —
+        /// 그대로 두면 산소실에 붙인 모듈이 조종석 압력을 받는다. 오버레이가 비어 있으면
+        /// 아래 훑기와 한 글자도 다르지 않고, 그것이 자유 배치가 안 붙은 배에서 이 변경이
+        /// 무해한 이유다. 같은 모양의 선례가 이미 매 tick 경로에 있다 —
+        /// <see cref="LastShiftSandboxController.IsZoneVacuum(Vector3)"/> 의 덕트 선행 판정.
         /// </summary>
         public static LastShiftZone Resolve(Vector3 position)
+        {
+            if (LastShiftPlacedModules.TryResolve(position, out var moduleZone)) return moduleZone;
+            return ResolveHull(position);
+        }
+
+        /// <summary>
+        /// 선체 밴드만 보는 구역 판정. <b>배치 오버레이를 안 본다.</b>
+        ///
+        /// 이것이 따로 있는 이유는 조항 F-1 이다 — 모듈의 구역은 사슬 뿌리의 <b>선체 문</b>이
+        /// 정한다. 그 귀속을 <see cref="Resolve"/> 로 물으면 이미 등록된 모듈이 뿌리 좌표를 덮는
+        /// 순간 구역이 자기 자신을 참조하게 되고, 등록 순서가 배의 격리 구조를 정하게 된다.
+        /// 그래서 <see cref="LastShiftPlacementRules"/> 는 언제나 이쪽을 부른다.
+        /// </summary>
+        public static LastShiftZone ResolveHull(Vector3 position)
         {
             for (var boundary = 0; boundary < BoundaryCount; boundary++)
                 if (position.x <= BoundaryPlanes[boundary])

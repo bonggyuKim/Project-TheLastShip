@@ -293,7 +293,14 @@ namespace DoodleUp.Runtime
         public static int DoorDepth(IReadOnlyList<LastShiftPlacement> table, in LastShiftPlacement placement) =>
             TryChainToHull(table, placement, out _, out _, out var depth) ? depth : -1;
 
-        /// <summary>사슬 뿌리의 선체 문이 속한 압력 구역. 사슬이 끊겼으면 <c>false</c> 다.</summary>
+        /// <summary>
+        /// 사슬 뿌리의 선체 문이 속한 압력 구역. 사슬이 끊겼으면 <c>false</c> 다.
+        ///
+        /// <b><see cref="LastShiftZoneAtlas.ResolveHull"/> 를 부른다 —
+        /// <see cref="LastShiftZoneAtlas.Resolve"/> 가 아니다.</b> 후자는 이미 등록된 모듈을
+        /// 먼저 보므로, 뿌리 좌표가 어느 모듈에 덮이면 새 배치의 구역이 그 모듈에서 나온다.
+        /// 조항 F-1 이 말하는 뿌리는 언제나 <b>선체</b>이고, 판정기 안의 다섯 자리가 전부 같다.
+        /// </summary>
         public static bool TryZoneOf(
             IReadOnlyList<LastShiftPlacement> table, in LastShiftPlacement placement, out LastShiftZone zone)
         {
@@ -303,7 +310,7 @@ namespace DoodleUp.Runtime
                 return false;
             }
 
-            zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            zone = LastShiftZoneAtlas.ResolveHull(hullDoor);
             return true;
         }
 
@@ -328,7 +335,7 @@ namespace DoodleUp.Runtime
 
             if (!TryChainToHull(table, placement, out var chain, out var hullDoor, out _)) return false;
 
-            zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            zone = LastShiftZoneAtlas.ResolveHull(hullDoor);
             meters = chain + SpineToZoneEnd(hullDoor, zone);
             return true;
         }
@@ -408,7 +415,7 @@ namespace DoodleUp.Runtime
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (!TryChainToHull(table, candidate, out var chain, out var hullDoor, out _)) return 0f;
 
-            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            var zone = LastShiftZoneAtlas.ResolveHull(hullDoor);
             var open = CollectOpen(table, includeImpassable, ignoreIndex);
             if (candidate.Passable || includeImpassable)
                 open.Add((zone, chain, hullDoor, chain + SpineToZoneEnd(hullDoor, zone)));
@@ -433,7 +440,7 @@ namespace DoodleUp.Runtime
                 if (!placement.Passable && !includeImpassable) continue;
                 if (!TryChainToHull(table, placement, out var chain, out var hullDoor, out _)) continue;
 
-                var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+                var zone = LastShiftZoneAtlas.ResolveHull(hullDoor);
                 open.Add((zone, chain, hullDoor, chain + SpineToZoneEnd(hullDoor, zone)));
             }
 
@@ -510,7 +517,7 @@ namespace DoodleUp.Runtime
             if (depth > maxDoorDepth) rejection |= LastShiftPlacementRejection.ChainTooDeep;
 
             // 구역 귀속 — 사슬 뿌리의 선체 문이 정한다(자유 배치 확장 검토 조항 F-1).
-            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            var zone = LastShiftZoneAtlas.ResolveHull(hullDoor);
 
             // RG-1(1) 이탈 — O(깊이).
             var egress = chain + SpineToZoneEnd(hullDoor, zone);
