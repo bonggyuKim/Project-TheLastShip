@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEngine;
@@ -314,7 +315,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(cursor.ParentIndex, Is.EqualTo(-1));
         }
 
-        /// <summary>목록의 다섯이 전부 실제로 놓이는 치수인가 — 못 놓을 것을 목록에 두면 안 된다.</summary>
+        /// <summary>목록의 여섯이 전부 실제로 놓이는 치수인가 — 못 놓을 것을 목록에 두면 안 된다.</summary>
         [Test]
         public void EveryCatalogEntryCanActuallyBePlaced()
         {
@@ -325,6 +326,64 @@ namespace DoodleUp.Tests.EditMode
                 var cursor = HullAttachedCursor(index);
                 Assert.That(cursor.CanCommit, Is.True,
                     $"{LastShiftModuleCatalog.At(index).Name} — {LastShiftPlacementUi.Reason(cursor.Verdict, cursor.Faults)}");
+            }
+        }
+
+        // ── 카탈로그 정본 (docs/port-module-catalog-v1.md) ──────────────────
+
+        /// <summary>
+        /// 조항 C-1 — 카탈로그 이름이 고정 구획 열하나와 안 겹친다. 겹치면 기항 화면에서
+        /// 산 것과 배에 이미 있는 것이 같은 이름으로 뜬다(정본 §3.1).
+        /// </summary>
+        [Test]
+        public void CatalogNamesDoNotCollideWithFixedCompartments()
+        {
+            var fixedNames = new List<string>();
+            for (var index = 0; index < LastShiftCompartments.FixedCount; index++)
+                fixedNames.Add(LastShiftCompartments.NameOf((LastShiftCompartment)index));
+
+            for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
+            {
+                var name = LastShiftModuleCatalog.At(index).Name;
+                Assert.That(name, Is.Not.Empty, $"kind {index} 에 이름이 없다");
+                Assert.That(fixedNames, Has.None.EqualTo($"Compartment_{name}"), $"{name} 이 고정 구획과 겹친다");
+            }
+        }
+
+        /// <summary>
+        /// 목록은 가격 오름차순이다. 첫 칸이 화면이 열릴 때 커서가 물고 있는 것이므로
+        /// 가장 싼 것이 와야 한다(정본 §3.3). 그리고 가격은 전부 <c>1</c> 이상이다 —
+        /// 공짜 모듈이 하나라도 있으면 "재료 모아서" 게이트가 통째로 새 나간다.
+        /// </summary>
+        [Test]
+        public void CatalogIsOrderedByMaintenanceCost()
+        {
+            var previous = 0;
+            for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
+            {
+                var kind = LastShiftModuleCatalog.At(index);
+                Assert.That(kind.MaintenanceCost, Is.GreaterThanOrEqualTo(1), $"{kind.Name} 이 공짜다");
+                Assert.That(kind.MaintenanceCost, Is.GreaterThanOrEqualTo(previous),
+                    $"{kind.Name} 이 앞 칸보다 싸다 — 목록이 가격 오름차순이 아니다");
+                previous = kind.MaintenanceCost;
+            }
+        }
+
+        /// <summary>
+        /// 한 기항 최대 여력은 <c>래치 4 + 최소 보장 1 = 5</c> 다(정본 §4.1). 그보다 비싼
+        /// 모듈이 목록에 있으면 <b>한 기항 수입만으로는 절대 못 사는 칸</b>이 되고, 그건
+        /// 이월(조항 M-1)이 고장 나 있을 때 영영 안 열린다.
+        /// </summary>
+        [Test]
+        public void NoCatalogEntryCostsMoreThanOnePortsFullIncome()
+        {
+            const int maxPortIncome = 5;
+
+            for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
+            {
+                var kind = LastShiftModuleCatalog.At(index);
+                Assert.That(kind.MaintenanceCost, Is.LessThanOrEqualTo(maxPortIncome),
+                    $"{kind.Name} 이 한 기항 최대 수입 {maxPortIncome} 을 넘는다");
             }
         }
 

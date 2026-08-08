@@ -273,7 +273,7 @@ namespace DoodleUp.Runtime
             GUI.Box(new Rect(16f, 320f, 520f, 214f), GUIContent.none);
             GUI.Label(new Rect(28f, 328f, 480f, 24f),
                 $"기항 배치 — {cursor.Kind.Name} {cursor.Kind.LengthX:0.#}×{cursor.Kind.WidthZ:0.#}m " +
-                $"· 회전 {cursor.QuarterTurns * 90}°", headingStyle);
+                $"· 여력 {cursor.Kind.MaintenanceCost} · 회전 {cursor.QuarterTurns * 90}°", headingStyle);
 
             var candidate = cursor.Candidate;
             var verdict = cursor.Verdict;

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 기항에서 고를 수 있는 확장 모듈 한 종류. <b>발자국과 문뿐이다</b> — 값도, 잠금 조건도,
-    /// 아이콘도 없다. 그 셋은 기항 화면(<c>docs/voyage-run-structure-v1.md</c> §4.2)이 정할
-    /// 것이고, 그 화면이 아직 없다.
+    /// 기항에서 고를 수 있는 확장 모듈 한 종류. <b>발자국과 문과 가격이다</b> — 효과도, 잠금
+    /// 조건도, 아이콘도 없다. 효과는 <c>docs/port-module-catalog-v1.md</c> §3.3 이 종류마다
+    /// 적어 두었고 수치는 <c>game-balance</c> 몫이라 아직 코드에 없다(같은 문서 §6 의 P-2).
     ///
     /// <b>기준 자세는 "문이 <c>MinX</c> 면 한가운데" 다.</b> 배치 커서가 이 자세에서
     /// <c>90°</c> 4단으로 돌린다(<see cref="LastShiftModuleFootprint.Rotated"/>). 종류마다
@@ -14,11 +14,12 @@ namespace DoodleUp.Runtime
     /// </summary>
     public readonly struct LastShiftModuleKind
     {
-        public LastShiftModuleKind(string name, float lengthX, float widthZ, float doorOffset = 0f)
+        public LastShiftModuleKind(string name, float lengthX, float widthZ, int maintenanceCost, float doorOffset = 0f)
         {
             Name = name;
             LengthX = lengthX;
             WidthZ = widthZ;
+            MaintenanceCost = maintenanceCost;
             DoorOffset = doorOffset;
         }
 
@@ -29,6 +30,15 @@ namespace DoodleUp.Runtime
 
         public float LengthX { get; }
         public float WidthZ { get; }
+
+        /// <summary>
+        /// 이 모듈을 세우는 데 드는 <b>정비 여력</b>(<c>docs/port-module-catalog-v1.md</c> §4.3).
+        /// 한 기항의 여력 수입은 <c>래치 수 + 1</c> 이라 최대 <c>5</c> 이고, 쓰지 않은 것은
+        /// 다음 기항으로 넘어간다(조항 M-1) — <b>그래서 가격 <c>5</c> 짜리를 사려면 한 기항을
+        /// 통째로 쓰거나 두 기항에 걸쳐 모아야 한다.</b> 잔액을 들고 이 값을 빼는 쪽은 아직
+        /// 없다(같은 문서 §6 의 P-1, <c>game-tech-director</c> 별도 카드).
+        /// </summary>
+        public int MaintenanceCost { get; }
 
         /// <summary>기준 자세에서 문이 <c>MinX</c> 면 어디에 오는가. <c>0</c> 이 면 한가운데다.</summary>
         public float DoorOffset { get; }
@@ -41,9 +51,16 @@ namespace DoodleUp.Runtime
     /// 기항 고정 목록. <b>랜덤 상점이 아니다</b> — 목록은 매 기항 같고 달라지는 것은
     /// "내가 몇 개를 놓을 수 있는가" 다(<c>docs/voyage-run-structure-v1.md</c> §4.2).
     ///
-    /// <b>여기 다섯은 tech 가 고른 그레이박스 치수이고 기획 정본이 아니다.</b> 배치 흐름이
-    /// 끝까지 도는 것을 보려면 고를 것이 있어야 해서 넣은 값이다 — 종류·크기·가격은
-    /// <c>game-planning</c> 이 정한다. 지금 지켜야 하는 제약은 둘뿐이다:
+    /// <b>여섯은 기획 정본이다</b> — <c>docs/port-module-catalog-v1.md</c> §3.3. 앞서 있던
+    /// 그레이박스 다섯(연결칸·저장고·작업칸·관측칸·거주칸)은 치수 이전에 <b>이름이 고정 구획과
+    /// 부딪혀서</b> 통째로 갈렸다(같은 문서 §3.1): 배에 이미 정비창·관측실·숙소가 있는데
+    /// 카탈로그가 작업칸·관측칸·거주칸을 팔면 플레이어가 자기가 무엇을 샀는지 모른다.
+    /// <b>조항 C-1 — 카탈로그 이름은 <see cref="LastShiftCompartment"/> 열하나와 안 겹친다.</b>
+    ///
+    /// 목록 순서는 <b>가격 오름차순</b>이다. 첫 칸이 화면이 열릴 때 커서가 물고 있는 것이고
+    /// 사슬 표본이 쓰는 것이므로, 가장 싸고 가장 안 위험한 것이 와야 한다.
+    ///
+    /// 지켜야 하는 제약은 둘이다:
     /// <list type="number">
     /// <item>치수가 <see cref="GridMeters"/> 의 배수여야 커서 스냅이 경계를 격자에 얹는다.</item>
     /// <item>문이 놓이는 면의 자유축이 <c>LastShiftZoneDoor.OpeningWidth</c> 보다 넓어야
@@ -59,13 +76,22 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float GridMeters = 1f;
 
+        /// <summary>
+        /// <c>docs/port-module-catalog-v1.md</c> §3.3 표 그대로. <c>LengthX</c> 는 문에서
+        /// 멀어지는 깊이이고 <c>WidthZ</c> 는 접면 폭이다.
+        ///
+        /// <b>효과가 없는 둘(연결 통로 · 정거장 골조)이 일부러 들어 있다.</b> 여섯 중 넷만
+        /// 시뮬레이션 훅을 요구하므로, 훅이 하나도 안 붙은 상태에서도 목록이 성립한다 —
+        /// 같은 문서 §6 이 P-1(여력 잔액)을 재미 판정 지점으로 잡은 근거다.
+        /// </summary>
         private static readonly LastShiftModuleKind[] entries =
         {
-            new("연결칸", 2f, 2f),
-            new("저장고", 3f, 3f),
-            new("작업칸", 4f, 4f),
-            new("관측칸", 3f, 5f),
-            new("거주칸", 6f, 4f)
+            new("연결 통로", 4f, 2f, 1),
+            new("산소 재생기실", 5f, 4f, 2),
+            new("방열 라디에이터실", 3f, 6f, 2),
+            new("예비 전력실", 4f, 4f, 2),
+            new("보급 저장고", 6f, 6f, 3),
+            new("정거장 골조", 8f, 10f, 5)
         };
 
         public static IReadOnlyList<LastShiftModuleKind> Entries => entries;
