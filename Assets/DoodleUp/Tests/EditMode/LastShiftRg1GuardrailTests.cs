@@ -43,6 +43,17 @@ namespace DoodleUp.Tests.EditMode
         /// </summary>
         private const float AttachedVolumeRatioRatchet = 8.5f;
 
+        /// <summary>
+        /// 기항 개방(<c>docs/voyage-run-structure-v1.md</c> §4.2)이 끝난 상태의 실 체적비 래칫.
+        /// <b><see cref="AttachedVolumeRatioRatchet"/> 와 합치지 않는다</b> — 합치면 초기 상태가
+        /// 조용히 벌어지는 것을 못 잡는다. 초기값은 저쪽이, 개방 후는 이쪽이 지킨다.
+        ///
+        /// 잠긴 셋 중 이 값을 올리는 것은 서버/통신실 하나다. 수경재배·의무실은 이미 작은 쪽
+        /// (산소실)에 붙어서 최대/최소를 안 건드린다 —
+        /// <c>docs/rg1-recalc-voyage-port-unlock-v1.md</c> §3.2.
+        /// </summary>
+        private const float UnlockedAttachedVolumeRatioRatchet = 9.25f;
+
         private const float Tolerance = 0.01f;
 
         [Test]
@@ -98,17 +109,123 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void AttachedVolumeRatioDoesNotGrowFurther()
         {
+            var ratio = AttachedVolumeRatio(includeUnlockable: false);
+
+            Assert.That(ratio, Is.LessThanOrEqualTo(AttachedVolumeRatioRatchet),
+                $"부속 구획을 포함한 실 기밀 체적비가 {ratio:F2}배로 재계산 시점(7.98배)보다 벌어졌다. " +
+                "판정값(가드레일 3)은 압력존 x 길이비라 이것만으로 위반은 아니지만, 조문 취지와의 " +
+                "격차가 커지는 것은 game-balance 가 봐야 한다.");
+        }
+
+        // ── 기항 개방 재계산 (docs/rg1-recalc-voyage-port-unlock-v1.md) ──────────────
+        //
+        // 위 넷은 전부 <b>초기 Access 값만</b> 본다. 기항 개방(voyage-run-structure-v1.md §4.2)이
+        // 들어오면 잠긴 셋은 "이번 항해 동안" 열리는 가변 상태가 되고, 그러면 초기값만 세는
+        // 것으로는 실제로 플레이되는 최악을 못 잡는다. 아래 넷이 그 열린 상태를 고정한다.
+
+        [Test]
+        public void UnlockableCompartmentsDoNotMoveTheWorstTraverse()
+        {
+            var worst = WorstTraversePerZone(includeUnlockable: true);
+            var thinnestZone = (LastShiftZone)0;
+            var longestMeters = 0f;
+            var source = string.Empty;
+            foreach (var (zone, meters, from) in worst)
+            {
+                var seconds = meters / LastShiftPlayerController.MoveSpeed;
+                Assert.That(seconds, Is.LessThan(TraverseLimitSeconds),
+                    $"기항 개방 상태에서 {LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 횡단이 {seconds:F2}초다 — " +
+                    $"가드레일 {TraverseLimitSeconds}초 초과. 최악 출발점은 {from} 다.");
+                if (meters > longestMeters) (thinnestZone, longestMeters, source) = (zone, meters, from);
+            }
+
+            // 셋이 전부 열려도 최악은 안 바뀐다. 셋 다 사슬 연장이 아니라 분기이기 때문이다
+            // (재계산 §2.2) — 이 등식이 깨지면 개방이 사슬을 잇는 방식으로 구현된 것이다(§5.2).
+            Assert.That(thinnestZone, Is.EqualTo(LastShiftZone.Cockpit),
+                $"기항 개방으로 최장 횡단 최악이 조종석에서 {thinnestZone} 로 옮겨갔다 (출발점 {source}).");
+            Assert.That(longestMeters, Is.EqualTo(30.61f).Within(Tolerance),
+                $"기항 개방 상태의 최장 횡단이 {longestMeters:F2}m 다 — 잠금 상태와 같은 30.61m 여야 한다. " +
+                "잠긴 방 하나가 사슬 연장이 됐다는 뜻이고, RG-1(1) 재계산이 선행이다.");
+        }
+
+        [Test]
+        public void EveryUnlockableCompartmentEgressIsPinned()
+        {
+            // 방별 이탈 거리. 셋 다 현행 최악(관측실 30.61m)보다 짧다는 것이 개방 승인의 근거다.
+            var expected = new (LastShiftCompartment Compartment, float Meters)[]
+            {
+                (LastShiftCompartment.ServerRoom, 16.32f),
+                (LastShiftCompartment.Hydroponics, 14.71f),
+                (LastShiftCompartment.MedBay, 25.44f)
+            };
+
+            foreach (var (compartment, meters) in expected)
+            {
+                var spec = LastShiftCompartments.Of(compartment);
+                Assert.That(spec.Access, Is.EqualTo(LastShiftCompartmentAccess.Locked),
+                    $"{compartment} 이 더 이상 기항 개방 대상이 아니다 — 이 테스트가 세는 대상이 바뀌었다.");
+
+                var actual = EgressMeters(spec);
+                Assert.That(actual, Is.EqualTo(meters).Within(Tolerance),
+                    $"{compartment} 이탈 거리가 {actual:F2}m 로 재계산값 {meters:F2}m 에서 움직였다 " +
+                    "(docs/rg1-recalc-voyage-port-unlock-v1.md §2.1).");
+                Assert.That(actual, Is.LessThan(30.61f),
+                    $"{compartment} 이탈 거리 {actual:F2}m 가 현행 최악 30.61m 를 넘었다 — " +
+                    "개방 목록에서 빼거나 RG-1(1) 을 다시 계산해야 한다.");
+            }
+        }
+
+        [Test]
+        public void UnlockedAttachedVolumeRatioStaysUnderTheRaisedRatchet()
+        {
+            var ratio = AttachedVolumeRatio(includeUnlockable: true);
+
+            Assert.That(ratio, Is.LessThanOrEqualTo(UnlockedAttachedVolumeRatioRatchet),
+                $"기항 개방 상태의 실 기밀 체적 근사비가 {ratio:F2}배로 재계산값 9.21배보다 벌어졌다. " +
+                "판정값(가드레일 3, 압력존 x 길이비 2.80배)은 그대로지만 조문 취지와의 격차가 커진다.");
+            Assert.That(ratio, Is.EqualTo(9.21f).Within(Tolerance),
+                "개방 후 근사비가 9.21 에서 움직였다 — 잠긴 셋 중 하나의 발자국이나 문 위치가 바뀌었다.");
+        }
+
+        [Test]
+        public void OnlyTheServerRoomWidensTheVolumeGap()
+        {
+            // 최소가 전력실(96m³)로 고정돼 있어 최대/최소는 조종석이 커질 때만 커진다.
+            // 수경재배·의무실은 작은 쪽(산소실)에 붙으므로 선수/선미 격차를 오히려 좁힌다 —
+            // voyage-run-structure-v1.md §7 이 반대로 적어 둔 자리다(재계산 §4).
+            var baseline = AttachedVolumeRatio(includeUnlockable: false);
+
+            foreach (var compartment in new[] { LastShiftCompartment.Hydroponics, LastShiftCompartment.MedBay })
+                Assert.That(AttachedVolumeRatio(compartment), Is.EqualTo(baseline).Within(Tolerance),
+                    $"{compartment} 개방이 실 체적비를 움직였다 — 이 방이 붙는 구역이 최대 구역으로 바뀌었다.");
+
+            Assert.That(AttachedVolumeRatio(LastShiftCompartment.ServerRoom), Is.GreaterThan(baseline),
+                "서버/통신실 개방이 실 체적비를 안 움직인다 — 이 방이 조종석 구역에서 떨어져 나갔다.");
+        }
+
+        /// <summary>
+        /// 부속 구획을 포함한 실 기밀 체적의 최대/최소비. 통로는 구역 x 범위에 이미 들어 있지만
+        /// 폭이 좁다 — 여기서는 구역 전 길이를 선체 폭으로 재는 상한 근사를 쓴다. 부속 구획
+        /// 쪽이 압도적이라 어느 쪽으로 재도 결론이 안 바뀐다.
+        /// </summary>
+        private static float AttachedVolumeRatio(bool includeUnlockable) =>
+            AttachedVolumeRatio(spec => spec.IsPassable || includeUnlockable);
+
+        /// <summary>잠긴 방 하나만 추가로 연 경우의 체적비.</summary>
+        private static float AttachedVolumeRatio(LastShiftCompartment unlocked) =>
+            AttachedVolumeRatio(spec => spec.IsPassable || spec.Compartment == unlocked);
+
+        private static float AttachedVolumeRatio(System.Func<LastShiftCompartmentSpec, bool> isOpen)
+        {
             var hull = new float[LastShiftZoneAtlas.ZoneCount];
             for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
                 hull[(int)zone] = LastShiftShipDimensions.ZoneLength(zone)
                                   * LastShiftShipDimensions.InteriorWidth
                                   * LastShiftShipPhysics.CeilingInnerHeight;
 
-            // 통로는 구역 x 범위에 이미 들어 있지만 폭이 좁다. 여기서는 구역 전 길이를 선체
-            // 폭으로 재는 상한 근사를 쓴다 — 부속 구획 쪽이 압도적이라 결론이 안 바뀐다.
             foreach (var spec in LastShiftCompartments.Specs)
             {
-                if (!spec.IsPassable) continue;
+                if (!isOpen(spec)) continue;
                 var zone = LastShiftZoneAtlas.Resolve(spec.DoorPosition);
                 hull[(int)zone] += spec.LengthX * spec.WidthZ * LastShiftCompartments.InteriorHeight;
             }
@@ -121,10 +238,7 @@ namespace DoodleUp.Tests.EditMode
                 max = Mathf.Max(max, volume);
             }
 
-            Assert.That(max / min, Is.LessThanOrEqualTo(AttachedVolumeRatioRatchet),
-                $"부속 구획을 포함한 실 기밀 체적비가 {max / min:F2}배로 재계산 시점(7.98배)보다 벌어졌다. " +
-                "판정값(가드레일 3)은 압력존 x 길이비라 이것만으로 위반은 아니지만, 조문 취지와의 " +
-                "격차가 커지는 것은 game-balance 가 봐야 한다.");
+            return max / min;
         }
 
         [Test]
@@ -162,10 +276,12 @@ namespace DoodleUp.Tests.EditMode
         /// 구역별 최장 횡단 거리. 부속 구획의 가장 먼 구석에서 자기 문 → 부모 문 → … → 선체
         /// 문까지의 사슬 거리에, 선체 문에서 그 구역 반대쪽 끝까지의 스파인 거리를 더한다.
         ///
-        /// 잠긴 구획은 그레이박스에서 문이 아니라 메운 판이라(<c>IsPassable</c>) 빠진다 —
-        /// 언락 설계가 되살아나면 그때 이 테스트가 자동으로 다시 센다.
+        /// 잠긴 구획은 그레이박스에서 문이 아니라 메운 판이라(<c>IsPassable</c>) 기본값에서
+        /// 빠진다. <paramref name="includeUnlockable"/> 가 기항 개방이 끝난 상태다 —
+        /// <c>docs/rg1-recalc-voyage-port-unlock-v1.md</c> §2.
         /// </summary>
-        private static List<(LastShiftZone Zone, float Meters, string Source)> WorstTraversePerZone()
+        private static List<(LastShiftZone Zone, float Meters, string Source)> WorstTraversePerZone(
+            bool includeUnlockable = false)
         {
             var worst = new List<(LastShiftZone, float, string)>();
             for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
@@ -173,20 +289,31 @@ namespace DoodleUp.Tests.EditMode
 
             foreach (var spec in LastShiftCompartments.Specs)
             {
-                if (!spec.IsPassable) continue;
+                if (!spec.IsPassable && !includeUnlockable) continue;
 
-                var (chain, hullDoor) = ChainToHull(spec);
-                var zone = LastShiftZoneAtlas.Resolve(hullDoor);
-                var spine = Mathf.Max(
-                    Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
-                    Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
-
-                var total = chain + spine;
+                var zone = LastShiftZoneAtlas.Resolve(ChainToHull(spec).HullDoor);
+                var total = EgressMeters(spec);
                 if (total > worst[(int)zone].Item2)
                     worst[(int)zone] = (zone, total, spec.Compartment.ToString());
             }
 
             return worst;
+        }
+
+        /// <summary>
+        /// 구획 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 사슬 거리에 선체 문에서
+        /// 그 구역 반대쪽 끝까지의 스파인을 더한다. 가드레일 <c>(1)</c> 이 실제로 재는 것은
+        /// 구역 소속이 아니라 이 값이다 — <c>(4-b)</c> 탈출 보장의 최악 시간이다.
+        /// </summary>
+        private static float EgressMeters(LastShiftCompartmentSpec spec)
+        {
+            var (chain, hullDoor) = ChainToHull(spec);
+            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            var spine = Mathf.Max(
+                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
+                Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
+
+            return chain + spine;
         }
 
         /// <summary>가장 먼 구석에서 선체에 붙는 문까지의 사슬 거리와, 그 선체 문 좌표.</summary>
