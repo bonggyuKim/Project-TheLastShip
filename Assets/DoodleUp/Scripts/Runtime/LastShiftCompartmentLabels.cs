@@ -20,17 +20,23 @@ namespace DoodleUp.Runtime
     ///   <item>방 중심이 비어 있으면 <b>안 옮긴다</b>. 여섯 구획은 지금 자리가 맞고,
     ///         "겹칠 때만 움직인다" 라야 좌표가 안 흔들린다.</item>
     ///   <item>겹치면 그 벽에서 <b>가장 넓은 빈 구간</b>의 중심으로 옮긴다. 그래도 글자가
-    ///         안 들어가는 좁은 방(서버실 <c>4m</c>, 수경재배 <c>6m</c>)은 <c>x</c> 를 두고
-    ///         <b>문 인방 위로 올린다</b> — 문 위 이름표는 실제 배에서도 하는 것이라
-    ///         읽히는 자리가 되지, 글자가 잘리는 자리가 되지 않는다.</item>
+    ///         안 들어가는 좁은 방은 <c>x</c> 를 두고 <b>문 인방 위로 올린다</b> — 문 위
+    ///         이름표는 실제 배에서도 하는 것이라 읽히는 자리가 되지, 글자가 잘리는 자리가
+    ///         되지 않는다.</item>
     /// </list>
+    ///
+    /// <b>지금 배에서 인방으로 올라가는 방은 없다.</b> 이름표가 한글 정본 명칭이 되면서
+    /// (<see cref="TextOf"/>) 가장 긴 문구가 <c>서버·통신실</c> 여섯 칸이고, 그 방은 잠겨
+    /// 있어 라벨 벽에 구멍이 아예 없다. 규칙 2 의 뒷단을 남겨 두는 것은 전장(§2.2 의
+    /// <c>36 → 38</c>)이나 문 자리가 움직이면 다시 걸리기 때문이다 — 지금 안 쓰인다고 빼면
+    /// 그때 글자가 조용히 문틀에 잘린다.
     /// </summary>
     public static class LastShiftCompartmentLabels
     {
         private const float Epsilon = 0.001f;
 
         /// <summary>
-        /// 글자 한 칸의 폭. 씬 빌더 <c>CreateZoneLabel</c> 의 <c>TextMesh</c> 설정
+        /// 라틴 글자 한 칸의 폭. 씬 빌더 <c>CreateZoneLabel</c> 의 <c>TextMesh</c> 설정
         /// (<c>fontSize 48</c> · <c>characterSize 0.08</c>)에서 나오는 값이다 — 줄 높이가
         /// <c>48 x 0.08 / 10 = 0.384</c> 이고 대문자 한 칸이 그 <c>0.55</c> 배쯤이다.
         ///
@@ -42,6 +48,14 @@ namespace DoodleUp.Runtime
 
         /// <summary>줄 높이. <c>fontSize 48 x characterSize 0.08 / 10</c> 이다.</summary>
         public const float LineHeight = 0.384f;
+
+        /// <summary>
+        /// 한글 글자 한 칸의 폭. 한글 음절은 전각이라 <b>진행 폭이 곧 em</b> 이고, em 은
+        /// 이 설정에서 <see cref="LineHeight"/> 와 같은 값이다 — 라틴 <c>0.55</c> em 을
+        /// 그대로 쓰면 폭을 절반 가까이 작게 잡아, 문을 피해 놓은 계산이 실제로는 문에
+        /// 걸친 자리를 내놓는다. 이름표가 한글이 되면서 생긴 자리다.
+        /// </summary>
+        public const float FullWidthGlyphAdvance = LineHeight;
 
         /// <summary>글자 끝과 문 구멍 사이 여유. 이만큼은 벽이 보여야 "비켜 놓았다" 로 읽힌다.</summary>
         public const float DoorClearance = 0.25f;
@@ -56,12 +70,57 @@ namespace DoodleUp.Runtime
         /// <summary>겹치지 않을 때의 글자 중심 높이. 예전 값 그대로다.</summary>
         public static float WallLabelY => LastShiftCompartments.InteriorHeight - 0.75f;
 
-        public static string TextOf(LastShiftCompartment compartment) =>
-            compartment.ToString().ToUpperInvariant();
+        /// <summary>
+        /// 벽에 붙는 이름표 문구. 기획 정본 <c>docs/corridor-4p-redesign-v1.md</c> §9·§14·§17.4
+        /// 의 한글 명칭 그대로다.
+        ///
+        /// <b>enum 이름을 대문자로 펼치던 예전 규칙을 버린 자리다.</b> 그 규칙은 표시 문구를
+        /// 공짜로 얻는 대신 <c>CARGOBAY</c>·<c>HYDROPONICS</c> 처럼 문서에 한 번도 안 나온
+        /// 말을 화면에 올렸고, 그래서 배 안에서 읽는 이름과 기획서에서 읽는 이름이 서로
+        /// 달랐다. 여기서 <b>식별자와 표시 문구를 갈라 놓는다</b> — enum·오브젝트 이름
+        /// (<see cref="LastShiftCompartments.NameOf"/>)은 영문 그대로 두고, 사람이 읽는
+        /// 자리만 정본 한글을 쓴다.
+        ///
+        /// 서버/통신실은 <c>·</c> 로 잇는다. 문서 표기는 <c>서버/통신실</c> 이지만 이 문자열은
+        /// 라벨 오브젝트 이름(<c>Label_…</c>)으로도 쓰여서, <c>/</c> 가 들어가면 하이어라키
+        /// 경로 구분자와 겹친다.
+        /// </summary>
+        public static string TextOf(LastShiftCompartment compartment) => compartment switch
+        {
+            LastShiftCompartment.Observatory => "관측실",
+            LastShiftCompartment.Workshop => "정비창",
+            LastShiftCompartment.CargoBay => "화물칸",
+            LastShiftCompartment.Hangar => "격납고",
+            LastShiftCompartment.ServerRoom => "서버·통신실",
+            LastShiftCompartment.Lavatory => "화장실",
+            LastShiftCompartment.Quarters => "숙소",
+            LastShiftCompartment.Lounge => "휴게실",
+            LastShiftCompartment.Hydroponics => "수경재배",
+            LastShiftCompartment.MedBay => "의무실",
+            _ => "구명정"
+        };
+
+        /// <summary>
+        /// 글자 폭의 합. 한글은 전각이라 라틴과 진행 폭이 다르므로 글자 수에 상수 하나를
+        /// 곱하는 것으로는 안 되고, 한 글자씩 어느 폭인지를 봐야 한다.
+        /// </summary>
+        public static float WidthOf(string text)
+        {
+            var width = 0f;
+            foreach (var glyph in text)
+                width += IsFullWidth(glyph) ? FullWidthGlyphAdvance : GlyphAdvance;
+            return width;
+        }
 
         /// <summary>이름표 반폭. <see cref="TextAnchor.MiddleCenter"/> 라 중심에서 이만큼씩 뻗는다.</summary>
         public static float HalfWidthOf(LastShiftCompartment compartment) =>
-            TextOf(compartment).Length * GlyphAdvance * 0.5f;
+            WidthOf(TextOf(compartment)) * 0.5f;
+
+        /// <summary>
+        /// 전각으로 그려지는 글자인가. 지금 쓰는 문구는 한글 음절과 <c>·</c> 뿐이라 한글
+        /// 음절 구간만 본다 — 가운뎃점은 반각이라 라틴 쪽 폭이 오히려 넉넉한 값이다.
+        /// </summary>
+        private static bool IsFullWidth(char glyph) => glyph >= '가' && glyph <= '힣';
 
         /// <summary>
         /// 라벨이 붙는 벽에 실제로 뚫리는 구멍들의 <c>x</c>. 셋을 합친다 —
@@ -120,9 +179,8 @@ namespace DoodleUp.Runtime
 
             var span = WidestClearSpan(spec, doorways);
 
-            // 글자가 안 들어가는 좁은 방(서버실 4m, 수경재배 6m)은 <b>안 옮긴다</b>. 억지로
-            // 밀면 글자 끝이 방 밖으로 나가 벽 없는 자리에 뜬다 — 그 방들은 x 를 두고
-            // 인방 위로 올라간다.
+            // 글자가 안 들어가는 좁은 방은 <b>안 옮긴다</b>. 억지로 밀면 글자 끝이 방 밖으로
+            // 나가 벽 없는 자리에 뜬다 — 그런 방은 x 를 두고 인방 위로 올라간다.
             if (span.Width < half * 2f - Epsilon) return (spec.CenterX, true);
             return (span.Center, false);
         }

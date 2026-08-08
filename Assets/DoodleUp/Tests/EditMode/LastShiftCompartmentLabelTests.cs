@@ -18,6 +18,56 @@ namespace DoodleUp.Tests.EditMode
         private const float Tolerance = 0.0001f;
 
         /// <summary>
+        /// 이름표가 기획 정본의 한글 명칭인가. 예전 규칙(<c>enum.ToString().ToUpperInvariant()</c>)
+        /// 은 문서에 한 번도 안 나오는 <c>CARGOBAY</c> 를 벽에 올려, 같은 방이 문서와 화면에서
+        /// 다른 이름을 갖게 했다 — 사용자가 SP-05 실플레이에서 잡아낸 증상이다.
+        ///
+        /// 개별 문구를 다시 적어 두는 것이 의도다. 표시 문구를 <c>TextOf</c> 에서 다시 읽어
+        /// 비교하면 그 함수가 무엇을 돌려주든 통과한다.
+        /// </summary>
+        [Test]
+        public void EveryLabelUsesTheKoreanNameFromTheDesignDoc()
+        {
+            var expected = new (LastShiftCompartment Compartment, string Text)[]
+            {
+                (LastShiftCompartment.Observatory, "관측실"),
+                (LastShiftCompartment.Workshop, "정비창"),
+                (LastShiftCompartment.CargoBay, "화물칸"),
+                (LastShiftCompartment.Hangar, "격납고"),
+                (LastShiftCompartment.ServerRoom, "서버·통신실"),
+                (LastShiftCompartment.Lavatory, "화장실"),
+                (LastShiftCompartment.Quarters, "숙소"),
+                (LastShiftCompartment.Lounge, "휴게실"),
+                (LastShiftCompartment.Hydroponics, "수경재배"),
+                (LastShiftCompartment.MedBay, "의무실"),
+                (LastShiftCompartment.EscapePod, "구명정")
+            };
+
+            Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.Count),
+                "구획이 늘었는데 표시 문구 표가 안 따라왔다.");
+
+            foreach (var (compartment, text) in expected)
+                Assert.That(LastShiftCompartmentLabels.TextOf(compartment), Is.EqualTo(text),
+                    $"{compartment} 이름표가 정본 한글 명칭이 아니다.");
+        }
+
+        /// <summary>
+        /// 한글은 전각이라 라틴보다 글자당 폭이 넓다. 이걸 안 보면 <c>WidthOf</c> 가 폭을 절반
+        /// 가까이 작게 잡고, 문을 피해 놓았다는 계산이 실제로는 걸친 자리를 내놓는다 —
+        /// <see cref="NoLabelCrossesADoorway"/> 는 그 잘못된 폭을 기준으로 재므로 같이 속는다.
+        /// </summary>
+        [Test]
+        public void KoreanGlyphsAreMeasuredAsFullWidth()
+        {
+            Assert.That(LastShiftCompartmentLabels.WidthOf("화물칸"),
+                Is.EqualTo(LastShiftCompartmentLabels.FullWidthGlyphAdvance * 3f).Within(Tolerance),
+                "한글 세 글자를 전각 세 칸으로 안 재고 있다.");
+            Assert.That(LastShiftCompartmentLabels.FullWidthGlyphAdvance,
+                Is.GreaterThan(LastShiftCompartmentLabels.GlyphAdvance),
+                "전각 폭이 라틴 폭보다 좁다 — 두 상수가 뒤바뀌었다.");
+        }
+
+        /// <summary>
         /// 이 카드가 답해야 하는 원래 증상 — 화물칸 라벨이 관측 회랑 문 인방을 가로지른다.
         /// 전제(방 중심 = 문 중심)까지 같이 못박는다. 이 전제가 깨지면 이 검사는 아무것도
         /// 확인하지 않으면서 통과한다.

@@ -180,10 +180,13 @@ namespace DoodleUp.Editor
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, BackWallInnerZ - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
             CreateCoolingStack(ship.transform);
             CreateStateCues(ship.transform);
-            CreateZoneLabel(ship.transform, "COCKPIT", new Vector3(LastShiftShipDimensions.CockpitCenterX, 2.25f, BackWallInnerZ - 0.13f), cockpitMaterial.color);
-            CreateZoneLabel(ship.transform, "POWER / BUS", new Vector3(LastShiftShipDimensions.PowerCenterX, 2.25f, BackWallInnerZ - 0.13f), powerMaterial.color);
-            CreateZoneLabel(ship.transform, "COOLING", new Vector3(LastShiftShipDimensions.CoolingCenterX, 2.25f, BackWallInnerZ - 0.13f), coolingMaterial.color);
-            CreateZoneLabel(ship.transform, "LIFE SUPPORT", new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 2.25f, BackWallInnerZ - 0.13f), lifeSupportMaterial.color);
+            // 구역 이름표는 <b>HUD·프롬프트와 같은 문자열</b>을 쓴다. 여기서 따로 적으면
+            // 벽에는 `LIFE SUPPORT`, 화면에는 `산소실` 이 떠서 같은 방이 두 이름을 갖는다 —
+            // `LastShiftZoneAtlas.ShortLabelOf` 가 이미 그 자리의 정본이다.
+            CreateZoneLabel(ship.transform, LastShiftZoneAtlas.ShortLabelOf(LastShiftZone.Cockpit), new Vector3(LastShiftShipDimensions.CockpitCenterX, 2.25f, BackWallInnerZ - 0.13f), cockpitMaterial.color);
+            CreateZoneLabel(ship.transform, LastShiftZoneAtlas.ShortLabelOf(LastShiftZone.Power), new Vector3(LastShiftShipDimensions.PowerCenterX, 2.25f, BackWallInnerZ - 0.13f), powerMaterial.color);
+            CreateZoneLabel(ship.transform, LastShiftZoneAtlas.ShortLabelOf(LastShiftZone.Cooling), new Vector3(LastShiftShipDimensions.CoolingCenterX, 2.25f, BackWallInnerZ - 0.13f), coolingMaterial.color);
+            CreateZoneLabel(ship.transform, LastShiftZoneAtlas.ShortLabelOf(LastShiftZone.LifeSupport), new Vector3(LastShiftShipDimensions.LifeSupportCenterX, 2.25f, BackWallInnerZ - 0.13f), lifeSupportMaterial.color);
             return ship;
         }
 
@@ -2066,7 +2069,7 @@ namespace DoodleUp.Editor
             label.transform.localPosition = position;
             // TextMesh 는 +Z 를 보는 면에 글자를 그린다. 라벨은 z=2.25 뒤쪽 벽에 붙어 낮은 z
             // 쪽의 플레이어를 향하므로 회전 없이 두어야 읽힌다. Euler(0,180,0) 을 주면
-            // 글자가 좌우로 뒤집혀 "TROPPUS EFIL" 로 보인다.
+            // 글자가 좌우로 뒤집혀 거꾸로 읽힌다.
             label.transform.rotation = Quaternion.identity;
             var textMesh = label.AddComponent<TextMesh>();
             textMesh.text = text;
