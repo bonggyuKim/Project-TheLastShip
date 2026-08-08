@@ -23,6 +23,17 @@ namespace DoodleUp.Tests.PlayMode
         private static float SuitOxygenLifetime =>
             LastShiftRecoveryTuning.SuitOxygenInitial / LastShiftRecoveryTuning.SuitOxygenDrainPerSecond;
 
+        /// <summary>
+        /// 파공 구역이 1초에 잃을 수 있는 압력의 <b>상한</b>. 누출식
+        /// (<c>OxygenLeakPerSecond × (1 - HullIntegrity) / OxygenLeakHullReference</c>)에
+        /// 선체 0 을 넣은 값이며, 실제 프리셋은 언제나 이보다 느리다 — 기항 모듈의
+        /// <c>OxygenLeakMultiplier</c> 는 감속(<c>&lt;= 1</c>)뿐이라 이 상한을 넘기지 못한다.
+        /// "되돌린 압력이 언제 다시 진공에 닿는가" 의 하한을 주므로, 그 절반을 관측 창으로
+        /// 쓰면 프리셋·선체·모듈 튜닝이 어떻게 움직여도 창 안에서 진공으로 돌아가지 않는다.
+        /// </summary>
+        private static float MaxZoneLeakPerSecond =>
+            LastShiftRecoveryTuning.OxygenLeakPerSecond / LastShiftRecoveryTuning.OxygenLeakHullReference;
+
         private LastShiftSandboxController sandbox;
         private LastShiftPlayerController player;
 
@@ -128,9 +139,24 @@ namespace DoodleUp.Tests.PlayMode
             // 압력만 0.00 위로 되돌린다. 여기서 검증하려는 것은 "소모 정지" 하나다.
             // 승무원이 선 곳은 파공 구역이므로 되돌릴 대상도 그 구역 압력이다. 세 구역을 함께
             // 올려 두어야 다음 tick 의 평준화가 도로 0 으로 끌어내리지 않는다.
-            sandbox.OverrideZonePressuresForProbe(LastShiftZonePressures.Uniform(0.30f));
-            sandbox.AdvanceMission(SuitOxygenLifetime * 0.25f);
+            //
+            // <b>관측 창은 리터럴이 아니라 누출률에서 역산한다.</b> 파공은 아직 열려 있으므로
+            // 되돌린 압력은 그 자리에 머물지 않고 곧바로 다시 빠진다. 예전의 "0.30 을 되돌리고
+            // 20초를 민다" 는 그 20초 안에 구역이 도로 진공이 되어(누출 상한으로는 6.3초,
+            // 실제 프리셋으로도 20초 안쪽) 전제부터 무너졌고, 선체·누출 튜닝이 움직일 때마다
+            // 이 테스트만 조용히 다시 깨졌다 — 재발 카드가 두 번 열린 이유가 이 리터럴이다.
+            // 창을 진공 복귀 하한의 절반으로 잡으면 튜닝과 무관하게 "압력이 0.00 위인 동안" 이
+            // 관측 구간 내내 유지된다.
+            const float restoredPressure = 0.30f;
+            var observationWindow = 0.5f * restoredPressure / MaxZoneLeakPerSecond;
+            sandbox.OverrideZonePressuresForProbe(LastShiftZonePressures.Uniform(restoredPressure));
+            sandbox.AdvanceMission(observationWindow);
 
+            // 전제를 먼저 붙든다. 이 줄이 없으면 다음에 또 깨졌을 때 "소모가 안 멈춘다" 로만
+            // 읽혀 원인이 승무원 쪽에 있는 것처럼 보인다 — 실제로는 구역이 도로 진공이 된 것이다.
+            Assert.That(sandbox.PressureOf(sandbox.BreachZone),
+                Is.GreaterThan(LastShiftRecoveryTuning.VacuumOxygenPressure),
+                "관측 창 동안 파공 구역이 진공 위에 남아 있어야 이 검증의 전제가 성립한다.");
             Assert.That(crew.IsDraining, Is.False, "압력이 0.00 위면 소모가 멈춰야 한다.");
             Assert.That(crew.SuitOxygen, Is.EqualTo(drained).Within(0.0001f),
                 "예비 산소는 항해 1회 예산이라 회복되지 않는다.");
