@@ -192,10 +192,26 @@ namespace DoodleUp.Runtime
         public const float PressureDoorSeconds = 0.8f;
 
         /// <summary>
-        /// 사슬 깊이의 기본 상한. <b>기획이 정한 수가 아니다</b> — §9.4·§17.6 은 "막다른 방" 만
-        /// 요구했고 몇 칸까지인지는 안 정했다. 그래서 판정기는 깊이를 <b>재서 돌려주고</b>
-        /// 구조적으로 불가능한 것(순환·표 밖 부모)만 물린다. 이 기본값은 순환이 아닌 사슬을
-        /// 실수로 막지 않는 자리에 둔 것이고, 수를 정하는 것은 기획 몫이다.
+        /// 사슬 깊이 상한. <b>이제는 기획이 정한 수다</b> —
+        /// <c>docs/free-placement-chain-depth-cap-v1.md</c> §3 이 정본이다.
+        ///
+        /// <b>왜 <c>RG-1(1)</c> 만으로는 부족한가.</b> 이탈 한도가 실제로 물리는 것은 스파인이
+        /// 긴 구역(조종석·산소실, <c>14m</c>)뿐이다. 전력실·냉각실은 구역 길이가 <c>5m</c> 라
+        /// 선체 문에서 구역 끝까지가 <c>2.5m</c> 고, 보행 예산 <c>36.8m</c> 중 <c>34m</c> 가
+        /// 사슬에 남는다. <c>2m</c> 짜리 방을 이으면 <b>깊이 <c>16</c> 까지 이탈 판정을
+        /// 통과한다</b>. 깊이 상한은 그 구역에서만 물리며,
+        /// 두 자가 서로 다른 실패를 막는다.
+        ///
+        /// <b>왜 <c>6</c> 인가.</b> 정본 구획표의 최대 깊이가 <c>4</c>(화장실→숙소→라운지→구명정)
+        /// 이고, 상한은 "시작 배 최대 깊이 <c>+ 2</c>" 다. 어느 사슬 끝에도 두 칸이 남으므로
+        /// 상한이 시작 상태만으로 확장을 봉인하지 않는다. 규약이 깨지는 것은
+        /// <c>LastShiftPlacementVerdictTests.CanonicalDepthLeavesTwoLinksUnderTheCap</c> 가 잡는다.
+        /// </summary>
+        public const int MaxDoorDepth = 6;
+
+        /// <summary>
+        /// 깊이로 안 물리는 값. <b>기본값이 아니다</b> — 배치 UI 는 <see cref="MaxDoorDepth"/> 를
+        /// 쓰고, 이 값은 깊이를 빼고 다른 사유만 보고 싶은 도구·테스트가 명시적으로 준다.
         /// </summary>
         public const int UnboundedDoorDepth = int.MaxValue;
 
@@ -455,12 +471,15 @@ namespace DoodleUp.Runtime
         ///
         /// <b>거부는 다 모아서 돌려준다.</b> 첫 사유에서 멈추면 커서를 움직이는 사람이 하나를
         /// 고칠 때마다 다음 사유를 새로 만나고, 무엇이 몇 개 남았는지가 안 보인다.
+        ///
+        /// <paramref name="maxDoorDepth"/> 의 기본값은 <see cref="MaxDoorDepth"/> 다 — 깊이로
+        /// 안 물리려면 <see cref="UnboundedDoorDepth"/> 를 명시적으로 준다.
         /// </summary>
         public static LastShiftPlacementVerdict Evaluate(
             IReadOnlyList<LastShiftPlacement> table, in LastShiftPlacement candidate,
             int ignoreIndex = -1, bool includeImpassable = false,
             LastShiftPairSpine spine = LastShiftPairSpine.StraightLine,
-            int maxDoorDepth = UnboundedDoorDepth)
+            int maxDoorDepth = MaxDoorDepth)
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
 

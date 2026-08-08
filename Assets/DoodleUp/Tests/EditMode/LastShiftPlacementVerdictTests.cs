@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEngine;
@@ -209,21 +210,72 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void ChainDepthIsReportedButNotLegislated()
+        public void TheDefaultDepthCapIsTheDecidedNumber()
         {
-            // 깊이 상한은 기획이 안 정했다(§9.4 는 "막다른 방" 만 요구했다). 그래서 판정기는
-            // 기본값에서 깊이로 안 물리고, 부르는 쪽이 수를 주면 그때만 문다.
-            var chain = SternChain(links: 4);
-            var deepest = chain[^1];
+            // 깊이 상한은 이제 조문에 있다 — docs/free-placement-chain-depth-cap-v1.md §3.
+            // 기본값이 안 물면 배치 UI 는 상한이 없는 것과 같아지므로, 여기서 기본값 자체를 건다.
+            var atCap = CoolingSpur(links: LastShiftPlacementRules.MaxDoorDepth);
+            var justUnder = LastShiftPlacementRules.Evaluate(
+                atCap, atCap[^1], ignoreIndex: atCap.Length - 1);
 
-            var unbounded = LastShiftPlacementRules.Evaluate(chain, deepest, ignoreIndex: chain.Length - 1);
+            Assert.That(justUnder.DoorDepth, Is.EqualTo(LastShiftPlacementRules.MaxDoorDepth));
+            Assert.That(justUnder.Rejection.HasFlag(LastShiftPlacementRejection.ChainTooDeep), Is.False,
+                $"상한과 같은 깊이가 물린다({justUnder.Rejection}) — 상한은 초과할 때만 무는 값이다.");
+
+            var overCap = CoolingSpur(links: LastShiftPlacementRules.MaxDoorDepth + 1);
+            var tooDeep = LastShiftPlacementRules.Evaluate(
+                overCap, overCap[^1], ignoreIndex: overCap.Length - 1);
+
+            Assert.That(tooDeep.Rejection.HasFlag(LastShiftPlacementRejection.ChainTooDeep), Is.True,
+                $"상한을 한 칸 넘겼는데 기본값이 안 문다(depth={tooDeep.DoorDepth}).");
+
+            // 깊이를 빼고 다른 사유만 보고 싶은 도구는 여전히 있다 — 그 자리가 남아 있어야 한다.
+            var unbounded = LastShiftPlacementRules.Evaluate(
+                overCap, overCap[^1], ignoreIndex: overCap.Length - 1,
+                maxDoorDepth: LastShiftPlacementRules.UnboundedDoorDepth);
             Assert.That(unbounded.Rejection.HasFlag(LastShiftPlacementRejection.ChainTooDeep), Is.False,
-                "기본값이 깊이로 물었다 — 조문에 없는 수를 판정기가 만들어 낸 것이다.");
+                "UnboundedDoorDepth 를 명시적으로 줬는데 깊이로 물었다.");
+        }
 
-            var bounded = LastShiftPlacementRules.Evaluate(
-                chain, deepest, ignoreIndex: chain.Length - 1, maxDoorDepth: 2);
-            Assert.That(bounded.Rejection.HasFlag(LastShiftPlacementRejection.ChainTooDeep), Is.True,
-                "깊이 상한을 줬는데 안 문다.");
+        [Test]
+        public void TheDepthCapBitesWhereTheEgressGuardrailDoesNot()
+        {
+            // <b>이것이 깊이 상한이 따로 있어야 하는 이유 전부다.</b> RG-1(1) 이 실제로 물리는
+            // 것은 스파인이 긴 구역(조종석·산소실, 14m)뿐이다. 냉각실은 스파인이 2.5m 라
+            // 보행 예산이 남아돌고, 작은 방을 이으면 열몇 칸을 이어도 이탈 판정을 통과한다 —
+            // 그 배는 "막다른 방" 이 아니라 복도 한 줄이다(docs/free-placement-chain-depth-cap-v1.md §2).
+            var spur = CoolingSpur(links: LastShiftPlacementRules.MaxDoorDepth + 1);
+            var verdict = LastShiftPlacementRules.Evaluate(spur, spur[^1], ignoreIndex: spur.Length - 1);
+
+            Assert.That(verdict.Zone, Is.EqualTo(LastShiftZone.Cooling),
+                "표본이 잘못됐다 — 냉각실에 안 붙었으면 스파인이 짧다는 전제가 성립 안 한다.");
+            Assert.That(verdict.EgressSeconds,
+                Is.LessThan(LastShiftPlacementRules.TraverseLimitSeconds),
+                $"이탈이 {verdict.EgressSeconds:F2}초로 이미 물린다 — 그러면 이 사슬은 깊이 상한이 " +
+                "없어도 막혔을 것이고, 이 테스트가 아무것도 안 가른다.");
+            Assert.That(verdict.Rejection, Is.EqualTo(LastShiftPlacementRejection.ChainTooDeep),
+                $"깊이 말고 다른 사유가 섞였다({verdict.Rejection}) — 두 자가 겹치면 이 표본이 " +
+                "증명하려는 것이 흐려진다.");
+
+            Debug.Log($"[LAST_SHIFT_PLACEMENT] depthCap={LastShiftPlacementRules.MaxDoorDepth} " +
+                      $"depth={verdict.DoorDepth} egress={verdict.EgressMeters:F2}m " +
+                      $"{verdict.EgressSeconds:F2}s zone={verdict.Zone} result={verdict.Rejection}");
+        }
+
+        [Test]
+        public void CanonicalDepthLeavesTwoLinksUnderTheCap()
+        {
+            // 상한 6 은 "시작 배 최대 깊이 4 + 2" 로 뽑은 수다(§3). 정본 구획표가 깊어지면 그
+            // 유도가 조용히 무너지고, 시작 배만으로 확장 여지가 사라진 배가 나온다 — 그때
+            // 다시 결정해야 하는 것은 상한이지 구획표가 아니다.
+            var deepest = LastShiftCompartments.Specs.Max(
+                spec => LastShiftCompartments.DoorDepth(spec.Compartment));
+
+            Assert.That(deepest, Is.EqualTo(4),
+                "정본 최대 깊이가 4 가 아니다 — 상한 유도의 입력이 바뀌었다.");
+            Assert.That(LastShiftPlacementRules.MaxDoorDepth - deepest, Is.GreaterThanOrEqualTo(2),
+                $"시작 배 최대 깊이가 {deepest} 인데 상한이 {LastShiftPlacementRules.MaxDoorDepth} 다 — " +
+                "가장 깊은 사슬 끝에 두 칸을 못 붙이면 확장 자유도가 시작 상태로 봉인된다.");
         }
 
         // ── 물리지 말아야 하는 것 ────────────────────────────────────────────
@@ -301,6 +353,29 @@ namespace DoodleUp.Tests.EditMode
         /// 산소실 끝벽에서 선미로 곧게 뻗는 사슬. 칸마다 <c>8m</c> 이므로 사슬 거리만으로
         /// 링크당 <c>8m</c> 이 쌓인다 — 구역 스파인이 얼마든 여섯 칸이면 한도를 넘는다.
         /// </summary>
+        /// <summary>
+        /// 냉각실 우현 벽에서 바깥으로 뻗는 <c>2m</c> 짜리 방의 사슬. <b>스파인이 짧은 구역을
+        /// 고른 것이 이 표본의 전부다</b> — 냉각실은 <c>x ∈ [0, 5]</c> 라 선체 문에서 구역
+        /// 끝까지가 <c>2.5m</c> 고, 보행 예산 <c>36.8m</c> 대부분이 사슬에 남는다.
+        /// <see cref="SternChain"/>(<c>8m</c> 방, 산소실 밖)은 반대로 이탈이 먼저 물린다.
+        /// </summary>
+        private static LastShiftPlacement[] CoolingSpur(int links)
+        {
+            const float roomDepth = 2f;
+            var doorX = LastShiftShipDimensions.ZoneCenterX(LastShiftZone.Cooling);
+
+            var spur = new List<LastShiftPlacement>(links);
+            for (var link = 0; link < links; link++)
+            {
+                var minZ = LastShiftShipDimensions.SideWallZ + link * roomDepth;
+                spur.Add(new LastShiftPlacement(
+                    doorX - 2f, doorX + 2f, minZ, minZ + roomDepth,
+                    new Vector3(doorX, 0f, minZ), link - 1));
+            }
+
+            return spur.ToArray();
+        }
+
         private static LastShiftPlacement[] SternChain(int links)
         {
             var chain = new List<LastShiftPlacement>(links);
