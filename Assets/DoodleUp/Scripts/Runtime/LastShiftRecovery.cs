@@ -904,6 +904,27 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 도킹 래치 판정선. <c>modular-docking-progression-review-v1.md</c> §2.1 이
+        /// <see cref="LastShiftRecoveryTuning.DockingSuccessOxygen"/> 를 그대로 쓰자고 한 초안
+        /// 그대로다 — 같은 값을 쓰면 "조종석 래치가 켜져 있다 = 도킹 산소 조건 충족" 이 되어
+        /// HUD 가 한 가지 문법으로 읽힌다. <b>값 조정은 <c>game-balance</c> 소관이고 자리는 여기 하나다.</b>
+        /// </summary>
+        public const float LatchPressure = LastShiftRecoveryTuning.DockingSuccessOxygen;
+
+        /// <summary>
+        /// 그 구역의 래치가 물렸는가 — 압력이 판정선 위이고 <b>봉인되지 않았는가</b>(§2.1 표).
+        ///
+        /// <b>불변식 L3 그대로다</b>: 이 값은 도킹 성립 조건에 안 들어간다. 래치 <c>0</c> 개여도
+        /// 도킹은 성립하고(<see cref="MeetsDockingConditions"/>), 래치가 정하는 것은 <b>이겼을 때
+        /// 무엇을 남겼는가</b> 하나다 — 그리고 그것이 기항의 정비 여력이 된다
+        /// (<c>voyage-run-structure-v1.md</c> §4.1).
+        /// </summary>
+        public static bool IsLatched(float zonePressure, bool zoneSealedOff)
+        {
+            return !zoneSealedOff && zonePressure >= LatchPressure;
+        }
+
+        /// <summary>
         /// S-O3 사이렌 상태. 발동선과 해제선이 달라 경계에서 떨리지 않는다(N9).
         /// <b>어느 구역이든</b> 0.15 이하면 울리므로 최저 구역 압력을 본다(기획 §2.2 A-2 연쇄).
         /// 사이렌은 배 전체 하나이며, 국소 정보 규칙의 유일한 명시적 예외다.

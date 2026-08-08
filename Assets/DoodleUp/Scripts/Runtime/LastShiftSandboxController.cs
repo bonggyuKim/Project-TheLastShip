@@ -186,11 +186,33 @@ namespace DoodleUp.Runtime
         /// 결과 화면의 <c>다음 판</c> 이 가리키는 프리셋. enum 순환이며 새 상수를 두지 않는다
         /// (<c>docs/last-shift-preset-names-v1.md</c> §4.3).
         /// </summary>
-        public LastShiftPreset NextPreset => PresetCycle[((int)currentPreset + 1) % PresetCycle.Length];
+        /// <summary>
+        /// 다음 판의 자극. <b>프리셋 순환이 아니라 항해 회차가 정한다</b>
+        /// (<see cref="LastShiftVoyage.NextPreset"/>) — 값은 고정 순서 <c>1→2→3</c> 이라
+        /// 종전 순환과 같지만, 이제 그 순서를 아는 곳이 항해 하나다.
+        /// </summary>
+        public LastShiftPreset NextPreset => LastShiftVoyage.NextPreset;
 
-        /// <summary>enum 순서가 곧 순환 순서다. 개수를 리터럴로 적으면 프리셋이 늘 때 조용히 빠진다.</summary>
-        private static readonly LastShiftPreset[] PresetCycle =
-            (LastShiftPreset[])System.Enum.GetValues(typeof(LastShiftPreset));
+        /// <summary>
+        /// 지금 물려 있는 도킹 래치 수(<c>0</c>~<c>4</c>). 구간이 끝날 때 그대로 정비 여력이
+        /// 되는 값이다(<c>voyage-run-structure-v1.md</c> §4.1).
+        ///
+        /// <b>여기서 새로 재는 것은 없다</b> — 구역 압력과 봉인 여부는 이미 있는 상태이고,
+        /// 판정선은 <see cref="LastShiftVerdictResolver.IsLatched"/> 하나다.
+        /// </summary>
+        public int LatchCount
+        {
+            get
+            {
+                var count = 0;
+                for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
+                {
+                    var zone = (LastShiftZone)index;
+                    if (LastShiftVerdictResolver.IsLatched(zonePressures[zone], IsZoneSealedOff(zone))) count++;
+                }
+                return count;
+            }
+        }
 
         /// <summary>
         /// 남은 시간 안에 도킹을 채우려면 지금부터 유지해야 하는 추력(<c>G-2</c>).
@@ -559,7 +581,11 @@ namespace DoodleUp.Runtime
         private void Start()
         {
             if (GetComponent<Unity.Netcode.NetworkObject>() != null) return;
-            ResetPreset(LastShiftPreset.HighHeatHighThrust);
+            // 항해가 여기서 시작한다 — 여력 0, 구간 1(§3.1). 네트워크 경로는 아직 이 루프를
+            // 안 돈다(구간 전이 입력이 서버에만 있고 원장은 피어마다 정적이라, 클라이언트
+            // 원장을 맞추는 것은 기항 화면의 합의 입력과 같은 카드다 — §10-4).
+            LastShiftVoyage.BeginVoyage();
+            ResetPreset(LastShiftVoyage.CurrentPreset);
         }
 
         private void Update()
@@ -571,12 +597,21 @@ namespace DoodleUp.Runtime
                 // G-1(c) 다음 판. <b>결과 화면에 입력 하나만 둔다</b> — 1·2·3 은 디버그로
                 // 남고, 프리셋 순환이 여기 붙어야 세 판에 세 가지 사고를 겪는다(§3.1-c).
                 // wasPressedThisFrame 이라 판정 순간 눌려 있던 키는 결과를 넘기지 못한다.
+                //
+                // 이 입력이 이제 구간을 넘긴다. 항해가 끝났으면 같은 키가 새 항해를 열고
+                // (§6 사례 D), 그때 여력이 0 으로 돌아간다 — 이월이 항해를 넘지 않는다는 것이
+                // 화면에서 보이는 자리다.
                 if (IsResolved && CanAdvanceToNextRun && keyboard.spaceKey.wasPressedThisFrame)
-                    RequestPresetReset(NextPreset);
-                else if (keyboard.digit1Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.HighHeatHighThrust);
-                else if (keyboard.digit2Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
-                else if (keyboard.digit3Key.wasPressedThisFrame) RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
-                else if (keyboard.rKey.wasPressedThisFrame) RequestPresetReset(currentPreset);
+                {
+                    LastShiftVoyage.Advance();
+                    RequestPresetReset(LastShiftVoyage.CurrentPreset);
+                }
+                // 디버그 단일 구간 진입(§8-2). 회차도 같이 옮겨야 결과 화면의 "다음" 과
+                // 실제로 서는 판이 안 갈린다.
+                else if (keyboard.digit1Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.HighHeatHighThrust);
+                else if (keyboard.digit2Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.PowerOverloadLooseBattery);
+                else if (keyboard.digit3Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.BadAttitudeHighOxygen);
+                else if (keyboard.rKey.wasPressedThisFrame) EnterSegmentForDebug(currentPreset);
                 else if (keyboard.mKey.wasPressedThisFrame) ApplyMeteorImpact();
                 else if (keyboard.fKey.wasPressedThisFrame) TrySecureHeldItem();
                 // 부품을 제자리에 놓는 것(F)과 계통에 연결하는 것(C·V·G)은 다른 행동이다.
@@ -718,6 +753,14 @@ namespace DoodleUp.Runtime
             if (value == LastShiftVerdict.Pending || IsResolved) return;
             verdict = value;
             CaptureRunSummary();
+            // 구간 판정 → 항해 전이. 여기가 정본 자리다(§5 표) — 배치 화면이 처음 열릴 때
+            // 임시로 기항을 열던 다리를 이 한 줄이 대신한다. 래치 수는 판정 순간의 구역
+            // 압력이고, 상태를 얼린 직후라 결과 화면이 읽는 값과 같은 시점이다.
+            var transition = LastShiftVoyage.SettleSegment(value, LatchCount);
+            Debug.Log($"[LAST_SHIFT_VOYAGE] segment={LastShiftVoyage.SegmentIndex}/{LastShiftVoyage.SegmentCount} " +
+                      $"verdict={value} transition={transition} latches={LastShiftVoyage.LastLatchCount} " +
+                      $"port={LastShiftMaintenance.PortIndex} income={LastShiftMaintenance.LastPortIncome} " +
+                      $"carried={LastShiftMaintenance.LastCarriedOver} balance={LastShiftMaintenance.Balance}");
             Debug.Log($"[LAST_SHIFT_VERDICT] generation={ResetGeneration} verdict={value} trigger={trigger} " +
                       $"thrust={currentState.ThrustDemand:F2} O2={currentState.OxygenPressure:F2} heat={currentState.EngineHeat:F2} " +
                       $"bus={currentState.BusPower:F2} fuel={currentState.FuelReserve:F3} dock={currentState.DockProgress:F1} " +
@@ -819,9 +862,15 @@ namespace DoodleUp.Runtime
 
         public bool IsZoneVacuum(LastShiftZone zone)
         {
-            var sealedOff = repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen) && zone == SealedZone;
-            return LastShiftVerdictResolver.IsZoneVacuum(zonePressures[zone], sealedOff);
+            return LastShiftVerdictResolver.IsZoneVacuum(zonePressures[zone], IsZoneSealedOff(zone));
         }
+
+        /// <summary>
+        /// 산소 계통을 포기해서 밀폐된 구역인가. 진공 판정과 래치 판정이 <b>같은 조건</b>을
+        /// 읽어야 한다 — 두 벌로 두면 진공인 구역의 래치가 켜지는 배가 생긴다.
+        /// </summary>
+        private bool IsZoneSealedOff(LastShiftZone zone) =>
+            repairLedger.IsSacrificed(LastShiftShipSystem.Oxygen) && zone == SealedZone;
 
         /// <summary>
         /// 산소 계통을 포기했을 때 밀폐되는 구역. 파공 지점이 있는 구역이며, 씬 빌더의
@@ -1246,6 +1295,17 @@ namespace DoodleUp.Runtime
         {
             var item = FindItem(LastShiftSystemMap.RoleFor(system));
             return item != null && Vector3.Distance(item.transform.position, item.NominalPosition) <= SecureDistance;
+        }
+
+        /// <summary>
+        /// 디버그 키가 구간 하나에 직접 들어간다(§8-2). <b>여력은 안 건드린다</b> — 회차만
+        /// 옮기므로 이미 받은 기항 수입은 그대로이고, 같은 구간을 다시 판정해도 수입이
+        /// 두 번 안 들어온다(<see cref="LastShiftVoyage.SettleSegment"/> 의 회차 조건).
+        /// </summary>
+        private void EnterSegmentForDebug(LastShiftPreset preset)
+        {
+            LastShiftVoyage.EnterSegment(LastShiftVoyage.SegmentOf(preset));
+            RequestPresetReset(preset);
         }
 
         public void RequestPresetReset(LastShiftPreset preset)

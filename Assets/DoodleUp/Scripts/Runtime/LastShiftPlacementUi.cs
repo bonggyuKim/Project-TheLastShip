@@ -119,18 +119,22 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 구간 판정 → 기항 전이를 도는 것이 아직 없어서, 화면이 처음 열릴 때 원장을 첫 기항으로
+        /// 항해 루프가 없는 씬(배치만 세운 검증 씬)에서 화면이 처음 열릴 때 원장을 첫 기항으로
         /// 밀어 준다. <b>임시 다리이고 그렇게 적어 두는 것이 요지다</b> —
         /// <see cref="InstallWhenMissing"/> 와 같은 성격이다.
         ///
-        /// 정본 자리는 구간 결과가 래치 수를 들고 <see cref="LastShiftMaintenance.ArriveAtPort"/>
-        /// 를 부르는 곳이고, 그 경로가 붙으면 여기는 아무 일도 안 한다(이미 기항 중이므로).
+        /// <b>정본 경로가 붙었으므로 이제 여기는 항해가 안 돌 때만 움직인다</b> —
+        /// <see cref="LastShiftVoyage.SettleSegment"/> 가 구간 판정에서 래치 수를 들고
+        /// <see cref="LastShiftMaintenance.ArriveAtPort"/> 를 부른다. 이 조건이 없으면 구간
+        /// <c>1</c> 도중에 화면을 여는 것만으로 기항이 하나 생겨서, "이월이 첫 기항을 비게
+        /// 만드는가"(§9-3)를 실제 항해에서 못 본다.
+        ///
         /// <b>여기서 잔액을 직접 안 만진다</b> — 수입을 만드는 식은 원장에만 있어야 나중에 래치
         /// 환산이 바뀔 때 고칠 자리가 하나다.
         /// </summary>
         private void EnterPortWhenNoVoyageDrivesIt()
         {
-            if (LastShiftMaintenance.IsAtPort) return;
+            if (LastShiftVoyage.IsRunning || LastShiftMaintenance.IsAtPort) return;
 
             LastShiftMaintenance.ArriveAtPort(sandboxLatches);
         }
