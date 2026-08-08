@@ -165,13 +165,18 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void LongestPairInAZoneStaysWhereItIs()
         {
-            // 쌍 읽기 — "같은 구역 안 두 점 사이 최장 거리". <b>RG-1(1) 판정 대상이 아니다.</b>
+            // W-1 "구역 내 최장 동선" — 같은 구역 안 두 점 사이 최장 거리.
+            // <b>RG-1 판정 대상이 아니다. 래칫만 둔다</b>(측정법 v1.1 §2.4).
+            //
             // (1) 이 보장하는 것은 SuitOxygen 소모가 멈추는 시점까지의 시간이고 그건 구역
             // 경계에서 멈추므로, 종점이 구역 안인 이 값은 (1) 이 재는 양이 아니다 —
-            // docs/rg1-1-measurement-definition-v1.md §2.
+            // docs/rg1-1-measurement-definition-v1.md §2. 그 논증은 배의 모양과 무관하다.
             //
-            // 그래도 고정하는 이유는 이 값이 커지면 RG-1(2) 최악 복구 경로(33.2초, 여유
-            // 1.21배)를 다시 뽑아야 하기 때문이다(§2.1 조항). 한도를 안 걸고 이동만 잡는다.
+            // <b>v1.1 에서 "이탈 판정 > 쌍 최악" 단언을 지웠다.</b> v1 §2.2 가 현행 배의
+            // 8.45 > 8.26 을 조문 선택의 근거처럼 적었고 이 테스트가 그것을 회귀로 못 박았는데,
+            // 그건 이 배에서 우연히 성립한 관측이지 조문의 성질이 아니었다. 선수 조종석
+            // 도안에서 8.21 < 9.81 로 뒤집힌다(docs/rg1-recalc-bow-cockpit-plaza-v1.md §12.3).
+            // <b>조문에 없는 것을 테스트가 막고 있었으므로 값 갈이가 아니라 삭제다</b> — 측정법 §2.2.
             var expected = new (LastShiftZone Zone, float Meters)[]
             {
                 (LastShiftZone.Cockpit, 33.03f),      // 관측실 ↔ 격납고. 화물칸 문 하나를 공유하며 반대로 뻗는다
@@ -183,25 +188,14 @@ namespace DoodleUp.Tests.EditMode
                 var pairs = LongestPairPerZone(includeUnlockable);
                 foreach (var (zone, meters) in expected)
                     Assert.That(pairs[(int)zone], Is.EqualTo(meters).Within(Tolerance),
-                        $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 구역 내 최장 쌍이 " +
-                        $"{pairs[(int)zone]:F2}m 다 (기항 개방 {includeUnlockable}). 관측값 {meters:F2}m 에서 " +
-                        "움직였으면 RG-1(2) 최악 복구 경로를 다시 뽑아야 한다.");
+                        $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 구역 내 최장 동선(W-1)이 " +
+                        $"{pairs[(int)zone]:F2}m 다 (기항 개방 {includeUnlockable}). 래칫 {meters:F2}m 에서 " +
+                        "움직였다. 이건 RG-1 위반이 아니라 분기 신호다 — " +
+                        "측정법 §2.4 로 가서 (a) 쌍의 양 끝 중 하나라도 RG-1(2) 복구 항목표에 " +
+                        "등장하는 구획이면 (2) 최악 복구 경로를 다시 뽑고, (b) 둘 다 항목표 밖이면 " +
+                        "래칫만 여기서 갱신하고 그 구역에 새 목적지를 놓지 않는다. " +
+                        "(c) 복구 항목이 부속 구획으로 옮겨간 경우는 이 값이 안 움직여도 (2) 를 다시 뽑는다.");
             }
-
-            // 이탈 판정(8.45초)이 쌍 최악(8.26초)보다 커야 조문 선택이 보수적인 쪽으로
-            // 성립한다(측정법 §2.2). 이 부등식이 뒤집히면 (1) 을 쌍으로 다시 논의해야 한다.
-            var worstPairSeconds = 0f;
-            foreach (var meters in LongestPairPerZone(includeUnlockable: true))
-                worstPairSeconds = Mathf.Max(worstPairSeconds, meters / LastShiftPlayerController.MoveSpeed);
-
-            var worstEgressSeconds = 0f;
-            foreach (var (_, meters, _) in WorstTraversePerZone(includeUnlockable: true))
-                worstEgressSeconds = Mathf.Max(worstEgressSeconds, EgressSeconds(meters));
-
-            Assert.That(worstEgressSeconds, Is.GreaterThan(worstPairSeconds),
-                $"이탈 판정 {worstEgressSeconds:F2}초가 쌍 최악 {worstPairSeconds:F2}초보다 작아졌다 — " +
-                "RG-1(1) 을 이탈로 고정한 근거 하나가 무너졌다" +
-                "(docs/rg1-1-measurement-definition-v1.md §2.2).");
         }
 
         [Test]
