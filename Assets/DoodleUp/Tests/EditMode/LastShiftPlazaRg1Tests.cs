@@ -33,6 +33,13 @@ namespace DoodleUp.Tests.EditMode
         private const float PressureDoorSeconds = 0.8f;
 
         /// <summary>
+        /// 우주복 산소가 버티는 시간. 가드레일 <c>(4-b)</c> 가 견주는 예산이고, 상수로 안 적고
+        /// 튜닝에서 파생시킨다 — 드레인이 바뀌면 이 테스트가 같이 움직여야 한다.
+        /// </summary>
+        private const float SuitOxygenSeconds =
+            LastShiftRecoveryTuning.SuitOxygenInitial / LastShiftRecoveryTuning.SuitOxygenDrainPerSecond;
+
+        /// <summary>
         /// 재계산 §7 이 명시적으로 승인한 부속 체적 래칫. 현행 배의 <c>8.5</c> 를 대신하는 값이고,
         /// 도안 좌표가 <c>LastShiftCompartments</c> 로 들어갈 때 저쪽 상수가 이 값이 된다.
         /// </summary>
@@ -215,6 +222,58 @@ namespace DoodleUp.Tests.EditMode
                 "당긴 쪽이 원표보다 0.01초 넘게 나빠졌다 — 그러면 발자국 쪽으로 닫아야 한다.");
         }
 
+        // ── §6 RG-1(4-b) 탈출 보장 ───────────────────────────────────────────
+
+        [Test]
+        public void EveryCompartmentEscapesOnATenthOfTheSuitOxygenBudget()
+        {
+            // (1) 과 재는 것이 다르다 — 종점이 구역 경계 평면(x)이 아니라 <b>출구 개구부 실좌표</b>
+            // (x, z) 다. 둘이 거의 같은 양이 됐지만 도안에서는 개구부 3 의 z = -2.2 때문에
+            // 29.67m 대 29.84m 로 갈린다. 판정이 갈릴 만한 차이가 아니라는 것이 §1 의 각주다.
+            //
+            // 선행 재계산이 "31배 -> 9.5배 로 3.3배 축소" 를 경고 신호로 적었는데, 도안은 그
+            // 신호를 더 나쁘게도 더 좋게도 만들지 않는다 — <b>위치만 조종석에서 산소실로 옮긴다.</b>
+            var worst = 0f;
+            var worstName = string.Empty;
+            foreach (var footprint in Attached())
+            {
+                var meters = EscapeMeters(footprint);
+                var seconds = meters / LastShiftPlayerController.MoveSpeed + PressureDoorSeconds;
+                Assert.That(seconds, Is.LessThan(SuitOxygenSeconds),
+                    $"{footprint.Name} 탈출이 {seconds:F2}초로 SuitOxygen 예산을 넘는다 — RG-1(4-b) 위반이다.");
+                if (meters <= worst) continue;
+                (worst, worstName) = (meters, footprint.Name);
+            }
+
+            Assert.That(worstName, Is.EqualTo("의무실"));
+            Assert.That(worst, Is.EqualTo(29.84f).Within(Tolerance),
+                "산소실 최악 탈출 거리가 29.84m 에서 움직였다(재계산 §6 + §9-8 격벽 문 정합).");
+
+            var seconds4b = worst / LastShiftPlayerController.MoveSpeed + PressureDoorSeconds;
+            var budget = SuitOxygenSeconds / seconds4b;
+            Assert.That(budget, Is.EqualTo(9.69f).Within(Tolerance),
+                $"SuitOxygen 대비 여유가 {budget:F2}배다 — 재계산 §6 의 9.69배에서 움직였다. " +
+                "현행 배 9.5배 대비 사실상 불변이라는 것이 도안 판정의 근거다.");
+
+            // 조종석 구역은 두 배 좋아진다. 선수 사슬 16m 가 사라진 직접 효과이고, 도안이
+            // RG-1 에 준 이득은 전부 여기 있다.
+            var cockpitWorst = Attached()
+                .Where(footprint => footprint.DoorX < 0f)
+                .Max(EscapeMeters);
+            Assert.That(cockpitWorst, Is.EqualTo(14.54f).Within(Tolerance),
+                "조종석 구역 최악 탈출이 14.54m(관측실)에서 움직였다(재계산 §6).");
+
+            // 조종석 방 자체의 선수 구석은 관측실보다 짧다 — 방이 구역 끝벽 안에 있어서다.
+            var bowCorner = Vector3.Distance(
+                new Vector3(-LastShiftShipDimensions.HalfLength, 0f, LastShiftShipDimensions.HalfWidth),
+                BoundaryOpening(LastShiftZone.Cockpit));
+            Assert.That(bowCorner, Is.LessThan(cockpitWorst),
+                "조종석 방 선수 구석이 관측실보다 멀다 — 그러면 §6 표의 최악 출발점이 바뀐다.");
+
+            Debug.Log($"[LAST_SHIFT_PLAZA_RG1] escape worst={worst:F2}m {seconds4b:F2}s ({worstName}) " +
+                      $"budget={budget:F2}x cockpit={cockpitWorst:F2}m bowCorner={bowCorner:F2}m result=PASS");
+        }
+
         // ── §5·§12.2 최장 동선 = 측정법 v1.1 의 W-1 ──────────────────────────
 
         [Test]
@@ -387,6 +446,34 @@ namespace DoodleUp.Tests.EditMode
                 Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
                 Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
             return (chain + spine, zone);
+        }
+
+        /// <summary>
+        /// <c>(4-b)</c> 탈출 거리. 사슬에 <b>선체 문 → 출구 개구부 실좌표</b>를 더한다 —
+        /// <c>(1)</c> 이 구역 경계 평면(x)에서 끝나는 자리에서 이쪽은 실제로 나가는 구멍까지 간다.
+        ///
+        /// 에어록은 §6 각주가 표에서 뺐지만(비가압이라 그 안에서 이미 <c>SuitOxygen</c> 이
+        /// 깎이고 있어 자의 단위가 안 맞는다) 여기서는 같이 잰다 — 최악 근처에 안 오므로
+        /// 어느 값도 안 움직이고, 빼면 그 사실이 코드에서 안 보인다.
+        /// </summary>
+        private static float EscapeMeters(LastShiftPlazaProposal.Footprint footprint)
+        {
+            var (chain, hullDoor) = ChainToHull(LastShiftPlazaProposal.Footprints, footprint);
+            var zone = LastShiftZoneAtlas.Resolve(hullDoor);
+            return chain + Vector3.Distance(hullDoor, BoundaryOpening(zone));
+        }
+
+        /// <summary>
+        /// 그 구역의 출구 개구부. 조종석은 <c>1</c>, 산소실은 <c>3</c> 이고 둘 다 압력문이라
+        /// <see cref="PressureDoorSeconds"/> 가 붙는다. 전력실·냉각실은 양쪽이 다 출구라
+        /// "출구 하나" 라는 전제가 안 서는데, 둘 다 <c>5m</c> 라 지금은 최악 근처에 안 온다.
+        /// </summary>
+        private static Vector3 BoundaryOpening(LastShiftZone zone)
+        {
+            var opening = zone == LastShiftZone.Cockpit ? 1 : 3;
+            return new Vector3(
+                LastShiftShipDimensions.OpeningX(opening), 0f,
+                LastShiftShipDimensions.OpeningCenterZ(opening));
         }
 
         private static float[] LongestPairPerZone(bool includeUnlockable) =>
