@@ -136,8 +136,10 @@ namespace DoodleUp.Runtime
                 Mathf.Abs(spec.DoorPlaneCoordinate - face) < Epsilon)
                 result.Add(spec.DoorCenter);
 
+            // 모듈까지 본다. 이 면에 자식이 붙으면 그 자리에 구멍이 있어야 하고, 모듈이
+            // 붙은 것도 자식이다 — 안 세면 벽이 통짜로 서서 그 문이 막힌다.
             foreach (var child in LastShiftCompartments.Specs)
-                if (child.ParentIndex == (int)spec.Compartment && child.IsPassable &&
+                if (child.ParentIndex == spec.Index && child.IsPassable &&
                     child.DoorPlane == LastShiftDoorPlane.AlongZ &&
                     Mathf.Abs(child.DoorPlaneCoordinate - face) < Epsilon)
                     result.Add(child.DoorCenter);

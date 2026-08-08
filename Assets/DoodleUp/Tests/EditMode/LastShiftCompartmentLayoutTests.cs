@@ -26,7 +26,7 @@ namespace DoodleUp.Tests.EditMode
         public void EveryCompartmentValueHasASpec()
         {
             var values = Enum.GetValues(typeof(LastShiftCompartment)).Cast<LastShiftCompartment>().ToArray();
-            Assert.That(values.Length, Is.EqualTo(LastShiftCompartments.Count),
+            Assert.That(values.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
                 "에어록을 뺀 11 개다(§17.5). 개수가 바뀌면 표와 enum 중 하나가 뒤처진 것이다.");
             foreach (var value in values)
                 Assert.That(LastShiftCompartments.Of(value).Compartment, Is.EqualTo(value),
@@ -42,7 +42,7 @@ namespace DoodleUp.Tests.EditMode
                 Is.GreaterThan(LastShiftZoneDoor.OpeningHeight),
                 "문 구멍이 구획 천장보다 높으면 인방 두께가 음수가 되어 벽이 뒤집힌다.");
 
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 Assert.That(spec.LengthX, Is.GreaterThan(0f), $"{spec.Compartment} x 범위가 뒤집혔다.");
                 Assert.That(spec.WidthZ, Is.GreaterThan(0f), $"{spec.Compartment} z 범위가 뒤집혔다.");
@@ -57,7 +57,7 @@ namespace DoodleUp.Tests.EditMode
         {
             // 맞닿는 면은 겹침이 아니다. 사슬(화물칸-정비창-관측실, 화장실-숙소-휴게실-구명정)은
             // 언제나 한 면을 공유하므로 닫힌 구간 비교를 쓰면 전부 FAIL 한다.
-            var specs = LastShiftCompartments.Specs;
+            var specs = LastShiftCompartments.FixedSpecs;
             for (var a = 0; a < specs.Length; a++)
             for (var b = a + 1; b < specs.Length; b++)
                 Assert.That(LastShiftCompartments.VolumesOverlap(specs[a], specs[b]), Is.False,
@@ -70,7 +70,7 @@ namespace DoodleUp.Tests.EditMode
             // 선체 안쪽은 방·통로가 이미 빈틈없이 타일링한 영역이다(LastShiftBulkheadCoverageTests).
             // 구획이 거기 파고들면 승무원이 서는 자리에 벽이 생기거나, 압력 구역 안에 압력 없는
             // 공간이 들어앉아 §17.6 이 미결로 남긴 편입 문제를 코드가 먼저 결정해 버린다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
                 Assert.That(LastShiftCompartments.OverlapsHullInterior(spec), Is.False,
                     $"{spec.Compartment} 가 선체 내부를 침범한다.");
         }
@@ -78,7 +78,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void EveryDoorSitsOnItsOwnBoundaryFace()
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
                 Assert.That(LastShiftCompartments.DoorSitsOnOwnBoundary(spec), Is.True,
                     $"{spec.Compartment} 의 문이 자기 경계면 위에 없거나 폭이 면 밖으로 넘친다.");
         }
@@ -88,7 +88,7 @@ namespace DoodleUp.Tests.EditMode
         {
             // 문이 자기 면 위에 있는 것만으로는 부족하다. 상대 쪽 면과 같은 평면이 아니면
             // 씬에서는 두 방 사이에 0.x m 짜리 솔리드가 남아 "문은 보이는데 안 통하는" 상태가 된다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (LastShiftCompartments.ConnectsToHull(spec))
                 {
@@ -96,7 +96,7 @@ namespace DoodleUp.Tests.EditMode
                     continue;
                 }
 
-                var parent = LastShiftCompartments.Specs[spec.ParentIndex];
+                var parent = LastShiftCompartments.FixedSpecs[spec.ParentIndex];
                 var (parentMin, parentMax) = spec.DoorPlane == LastShiftDoorPlane.AlongX
                     ? (parent.MinX, parent.MaxX)
                     : (parent.MinZ, parent.MaxZ);
@@ -142,17 +142,17 @@ namespace DoodleUp.Tests.EditMode
             // §9.4·§9.5 의 "막다른 방" 전제. 순환이 하나라도 생기면 두 지점을 잇는 경로가 둘이
             // 되고, 그러면 §9.5 가 "기여하지 않는다"고 명시적으로 답한 4인 게이트 대안 경로가
             // 실수로 만들어진다 — 그 순간 RG-1 면제 근거(§9.3)도 같이 사라진다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 var depth = LastShiftCompartments.DoorDepth(spec.Compartment);
                 Assert.That(depth, Is.GreaterThan(0),
                     $"{spec.Compartment} 의 부모 사슬이 선체에 안 닿는다 — 순환이거나 고아다.");
-                Assert.That(depth, Is.LessThanOrEqualTo(LastShiftCompartments.Count));
+                Assert.That(depth, Is.LessThanOrEqualTo(LastShiftCompartments.FixedCount));
             }
 
             // 선체에 직접 붙는 것이 정확히 넷이어야 한다 — 화물칸(선수 끝벽), 서버실·수경재배
             // (우현 긴 벽), 생활공간 진입로(선미 끝벽). §17.3 도해가 그리는 그림이 이것이다.
-            Assert.That(LastShiftCompartments.Specs.Count(LastShiftCompartments.ConnectsToHull),
+            Assert.That(LastShiftCompartments.FixedSpecs.Count(LastShiftCompartments.ConnectsToHull),
                 Is.EqualTo(4));
         }
 
@@ -169,7 +169,7 @@ namespace DoodleUp.Tests.EditMode
             // 거기까지 금지하면 §17.4 의 화물칸 폭 `8m` 를 못 세운다.
             var hullMinX = -LastShiftShipDimensions.HalfLength;
             var hullMaxX = LastShiftShipDimensions.HalfLength;
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 var facesTheWindows = spec.MinX < hullMaxX - Tolerance && hullMinX < spec.MaxX - Tolerance;
                 if (!facesTheWindows) continue;
@@ -187,7 +187,7 @@ namespace DoodleUp.Tests.EditMode
             // 선수 사슬 넷은 확장 검토 §2 로 P0 초기값이 Open 이다 — 언락 순서(§15.2)를
             // 지우는 것이 아니라 "P0 씬 = 언락이 끝난 뒤의 배" 로 정의하는 것이라, 이 넷이
             // 다시 Locked 로 돌아가는 것은 메타 진행 백본이 붙을 때다(§2.3).
-            var open = LastShiftCompartments.Specs
+            var open = LastShiftCompartments.FixedSpecs
                 .Where(spec => spec.Access == LastShiftCompartmentAccess.Open)
                 .Select(spec => spec.Compartment)
                 .ToArray();
@@ -205,7 +205,7 @@ namespace DoodleUp.Tests.EditMode
             // 안 여는 셋. 확장 검토 §2.2 가 각각 "정보 우위 접근 비용"·"새 시간 축"·
             // "두 번째 개인 상태 축" 이 전제라 P0 밖이라고 판정했다 — 이 셋이 같이 열리면
             // 그 판정이 코드에서 조용히 뒤집힌다.
-            var locked = LastShiftCompartments.Specs
+            var locked = LastShiftCompartments.FixedSpecs
                 .Where(spec => spec.Access == LastShiftCompartmentAccess.Locked)
                 .Select(spec => spec.Compartment)
                 .ToArray();
@@ -222,10 +222,10 @@ namespace DoodleUp.Tests.EditMode
 
             // 지나갈 수 있는 구획은 부모도 지나갈 수 있어야 한다. 잠긴 방 너머에 열린 방이
             // 있으면 그 방은 영영 못 들어가는 방이고, 씬에는 도달 불가능한 지오메트리가 남는다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (!spec.IsPassable || LastShiftCompartments.ConnectsToHull(spec)) continue;
-                Assert.That(LastShiftCompartments.Specs[spec.ParentIndex].IsPassable, Is.True,
+                Assert.That(LastShiftCompartments.FixedSpecs[spec.ParentIndex].IsPassable, Is.True,
                     $"{spec.Compartment} 는 열려 있는데 부모가 잠겨 있다 — 도달 불가능한 공간이다.");
             }
         }

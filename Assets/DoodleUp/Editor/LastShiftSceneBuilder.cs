@@ -1481,7 +1481,7 @@ namespace DoodleUp.Editor
             const float thickness = LastShiftCompartments.PanelThickness;
             const float height = LastShiftCompartments.InteriorHeight;
 
-            var root = new GameObject(LastShiftCompartments.NameOf(spec.Compartment));
+            var root = new GameObject(LastShiftCompartments.NameOf(spec));
             root.transform.SetParent(parent, false);
             root.transform.localPosition = new Vector3(spec.CenterX, 0f, spec.CenterZ);
 
@@ -1534,7 +1534,7 @@ namespace DoodleUp.Editor
                 ? (atMax ? spec.MaxX : spec.MinX)
                 : (atMax ? spec.MaxZ : spec.MinZ);
             return LastShiftCompartments.Specs
-                .Where(child => child.ParentIndex == (int)spec.Compartment &&
+                .Where(child => child.ParentIndex == spec.Index &&
                                 child.DoorPlane == (alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ) &&
                                 Mathf.Abs(child.DoorPlaneCoordinate - face) < 0.001f)
                 .ToArray();

@@ -96,7 +96,12 @@ namespace DoodleUp.Runtime
                     LastShiftShipDimensions.OpeningCenterZ(opening)));
 
             // 구획 문. 잠긴 구획은 구멍이 아니므로 뺀다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            //
+            // <b>고정 구획만이다.</b> 이 표는 정적 생성자가 한 번 짓고 그 뒤로 안 다시 짓는데,
+            // 그 시점에는 배치된 모듈이 하나도 없다 — 여기서 Specs 를 훑으면 "모듈까지 본다" 는
+            // 모양만 갖추고 실제로는 언제나 열하나만 담긴다. 모듈 문이 필요해지면 이 표를
+            // Revision 으로 다시 짓는 것이 먼저다(free-placement-compartment-table-v1.md §6).
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (!spec.IsPassable) continue;
                 result.Add(new LastShiftDoorway(LastShiftCompartments.NameOf(spec.Compartment),

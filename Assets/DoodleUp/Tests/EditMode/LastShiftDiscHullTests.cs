@@ -36,7 +36,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void EveryCompartmentFitsInsideTheShell()
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 Assert.That(LastShiftHullShell.ContainsFootprint(spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ),
                     Is.True, $"{spec.Compartment} 의 모서리가 타원 밖이다 — 방이 껍질을 뚫는다.");
@@ -54,7 +54,7 @@ namespace DoodleUp.Tests.EditMode
         {
             // §27.2 가 타원 치수를 이 한 점에서 뽑았다. 다른 구획이 더 빡빡해지면 그 산출
             // 근거가 낡은 것이고, 타원을 다시 잡아야 하는지 판단해야 한다.
-            var worst = LastShiftCompartments.Specs
+            var worst = LastShiftCompartments.FixedSpecs
                 .OrderBy(spec => LastShiftHullShell.FootprintMargin(spec))
                 .First();
             Assert.That(worst.Compartment, Is.EqualTo(LastShiftCompartment.Hangar),
@@ -141,7 +141,7 @@ namespace DoodleUp.Tests.EditMode
                 Assert.That(LastShiftUpperGallery.LegOverlapsHullInterior(leg), Is.False,
                     $"회랑 {leg.Name} 이 선체 내부를 침범한다.");
 
-                foreach (var spec in LastShiftCompartments.Specs)
+                foreach (var spec in LastShiftCompartments.FixedSpecs)
                     Assert.That(LastShiftUpperGallery.LegOverlapsCompartment(leg, spec), Is.False,
                         $"회랑 {leg.Name} 이 {spec.Compartment} 와 겹친다.");
             }
@@ -419,7 +419,7 @@ namespace DoodleUp.Tests.EditMode
                 var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
                 var middle = (start + end) * 0.5f;
 
-                foreach (var spec in LastShiftCompartments.Specs)
+                foreach (var spec in LastShiftCompartments.FixedSpecs)
                     Assert.That(
                         middle.x >= spec.MinX && middle.x <= spec.MaxX &&
                         middle.y >= spec.MinZ && middle.y <= spec.MaxZ, Is.False,
@@ -452,7 +452,7 @@ namespace DoodleUp.Tests.EditMode
                 Is.EqualTo(cargo.CenterX).Within(Tolerance));
 
             // 회랑 문은 화물칸에만 요구한다. 다른 구획에 하나라도 나면 국소 고리가 아니다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (spec.Compartment == LastShiftCompartment.CargoBay) continue;
                 foreach (var plane in new[] { LastShiftDoorPlane.AlongX, LastShiftDoorPlane.AlongZ })
@@ -574,7 +574,7 @@ namespace DoodleUp.Tests.EditMode
         {
             foreach (var band in LastShiftObservationGallery.Bands)
             {
-                foreach (var spec in LastShiftCompartments.Specs)
+                foreach (var spec in LastShiftCompartments.FixedSpecs)
                     Assert.That(LastShiftObservationGallery.BandOverlapsCompartment(band, spec), Is.False,
                         $"{band.Name} 이 구획 {spec.Compartment} 을 파고든다.");
 

@@ -43,7 +43,7 @@ namespace DoodleUp.Tests.EditMode
                 (LastShiftCompartment.EscapePod, "구명정")
             };
 
-            Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.Count),
+            Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
                 "구획이 늘었는데 표시 문구 표가 안 따라왔다.");
 
             foreach (var (compartment, text) in expected)
@@ -100,7 +100,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void NoLabelCrossesADoorway()
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 var doorways = LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec);
                 if (doorways.Length == 0) continue;
@@ -128,7 +128,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void EveryLabelStaysOnItsOwnWall()
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 var x = LastShiftCompartmentLabels.ResolveX(spec);
                 var half = LastShiftCompartmentLabels.HalfWidthOf(spec.Compartment);
@@ -153,7 +153,7 @@ namespace DoodleUp.Tests.EditMode
         public void LabelsWithNoDoorOnTheirWallDoNotMove()
         {
             var moved = 0;
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec).Length == 0)
                 {
@@ -174,7 +174,7 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(moved, Is.GreaterThan(0),
                 "아무 라벨도 안 움직였다 — 회피 규칙이 통째로 안 돌고 있다.");
-            Assert.That(moved, Is.LessThan(LastShiftCompartments.Count),
+            Assert.That(moved, Is.LessThan(LastShiftCompartments.FixedCount),
                 "라벨 열한 개가 전부 움직였다 — '겹칠 때만' 이 안 지켜진다.");
         }
     }

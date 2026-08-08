@@ -186,8 +186,12 @@ namespace DoodleUp.Runtime
             if (Mathf.Abs(x) <= LastShiftShipDimensions.EndWallX + Clearance &&
                 Mathf.Abs(z) <= LastShiftShipDimensions.SideWallZ + Clearance) return false;
 
+            // <b>고정 구획만 본다.</b> 골조는 씬을 세울 때 한 번 구워지고 그 뒤로 안 움직이므로
+            // 나중에 붙은 모듈을 여기서 세면 "이미 서 있는 골조" 와 "지금 세워도 되는 자리" 가
+            // 갈린다 — 답만 바뀌고 씬은 안 바뀐다. 모듈이 골조를 뚫는지는 배치 판정기가 물어야
+            // 하는 것이고, 지금 판정기는 그것을 안 본다(free-placement-compartment-table-v1.md §6).
             var margin = LastShiftCompartments.PanelThickness + Clearance;
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
                 if (x >= spec.MinX - margin && x <= spec.MaxX + margin &&
                     z >= spec.MinZ - margin && z <= spec.MaxZ + margin) return false;
 

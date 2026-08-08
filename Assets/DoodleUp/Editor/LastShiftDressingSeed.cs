@@ -160,7 +160,9 @@ namespace DoodleUp.Editor
         private static void AddCompartmentProps(List<LastShiftDressingProp> props,
             Material fixture, Material hazard, Material indicator, Material grow)
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            // 고정 구획만이다. 드레싱은 enum 으로 키를 잡는다(LastShiftDressingSpace.Of) —
+            // 모듈에는 줄 enum 값이 없으므로 여기 섞이면 키가 없는 방이 들어온다.
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 var compartment = spec.Compartment;
                 var space = LastShiftDressingSpace.Of(compartment);
@@ -466,7 +468,7 @@ namespace DoodleUp.Editor
 
             // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
             // 잠긴 문틈으로 빛이 새면 §17.7 이 미결로 남긴 "차폐 수준" 을 코드가 먼저 정해 버린다.
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (!spec.IsPassable) continue;
                 AddLamp(props, LastShiftDressingSpace.Of(spec.Compartment), "Lamp",

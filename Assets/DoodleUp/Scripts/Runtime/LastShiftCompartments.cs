@@ -65,7 +65,21 @@ namespace DoodleUp.Runtime
         AlongZ = 1
     }
 
-    /// <summary>구획 하나의 그레이박스 제원. 높이는 전 항목 공통이라 여기 없다.</summary>
+    /// <summary>
+    /// 구획 하나의 그레이박스 제원. 높이는 전 항목 공통이라 여기 없다.
+    ///
+    /// <b>이 형은 두 종류를 같이 든다.</b> <see cref="LastShiftCompartments.FixedCount"/> 미만의
+    /// <see cref="Index"/> 는 <see cref="LastShiftCompartment"/> 값 그대로이고(<see cref="IsFixed"/>),
+    /// 그 위는 자유 배치로 붙은 모듈이다. 모듈에는 줄 enum 값이 없으므로
+    /// <see cref="Compartment"/> 는 <see cref="IsFixed"/> 일 때만 뜻이 있다 —
+    /// <c>docs/tech/free-placement-runtime-chain-estimate-v1.md</c> §3.1.
+    ///
+    /// <b><c>(int)Compartment == Index</c> 는 두 종류 모두에서 성립한다.</b> 모듈도 범위 밖
+    /// 값으로 캐스팅해 담는다. 그래야 부모를 인덱스로 가리키는 자리(<c>ParentIndex</c>)와
+    /// 구획을 enum 으로 가리키는 자리가 한 표 안에서 안 갈린다. 대신 그 값을
+    /// <see cref="LastShiftCompartments.Of"/> 에 넣으면 고정 표 길이를 넘어 <b>터진다</b> —
+    /// 조용히 <c>Observatory</c> 로 읽히는 것보다 낫다.
+    /// </summary>
     public readonly struct LastShiftCompartmentSpec
     {
         public LastShiftCompartmentSpec(
@@ -73,8 +87,23 @@ namespace DoodleUp.Runtime
             float minX, float maxX, float minZ, float maxZ,
             LastShiftDoorPlane doorPlane, float doorPlaneCoordinate, float doorCenter,
             int parentIndex, LastShiftCompartmentAccess access)
+            : this((int)compartment, minX, maxX, minZ, maxZ,
+                doorPlane, doorPlaneCoordinate, doorCenter, parentIndex, access)
         {
-            Compartment = compartment;
+        }
+
+        /// <summary>
+        /// 표 인덱스로 짓는다. 자유 배치 모듈이 이 쪽이다 — 인덱스는
+        /// <see cref="LastShiftCompartments.NextModuleIndex"/> 가 준다.
+        /// </summary>
+        public LastShiftCompartmentSpec(
+            int index,
+            float minX, float maxX, float minZ, float maxZ,
+            LastShiftDoorPlane doorPlane, float doorPlaneCoordinate, float doorCenter,
+            int parentIndex, LastShiftCompartmentAccess access)
+        {
+            Index = index;
+            Compartment = (LastShiftCompartment)index;
             MinX = minX;
             MaxX = maxX;
             MinZ = minZ;
@@ -86,6 +115,16 @@ namespace DoodleUp.Runtime
             Access = access;
         }
 
+        /// <summary>
+        /// <see cref="LastShiftCompartments.Specs"/> 안의 자리. <c>ParentIndex</c> 가 가리키는
+        /// 것도 이 값이다. 고정 구획은 <c>(int)Compartment</c> 와 같다.
+        /// </summary>
+        public int Index { get; }
+
+        /// <summary>enum 이 있는 구획인가. <see cref="Compartment"/> 를 믿어도 되는지가 이것이다.</summary>
+        public bool IsFixed => Index < LastShiftCompartments.FixedCount;
+
+        /// <summary><see cref="IsFixed"/> 일 때만 뜻이 있다. 모듈에서는 범위 밖 값이다.</summary>
         public LastShiftCompartment Compartment { get; }
 
         public float MinX { get; }
@@ -156,17 +195,73 @@ namespace DoodleUp.Runtime
         /// <summary>구획 벽·바닥·천장 판 두께. 선체와 같은 두께를 쓴다.</summary>
         public const float PanelThickness = LastShiftShipDimensions.HullThickness;
 
-        /// <summary>구획 수. 에어록을 뺀 `11` 이다(§17.5).</summary>
-        public const int Count = 11;
+        /// <summary>
+        /// enum 이 덮는 고정 구획 수. 에어록을 뺀 `11` 이다(§17.5).
+        ///
+        /// <b><see cref="Count"/> 와 다른 것이 이 표가 이중인 이유다.</b> 자유 배치 모듈은
+        /// 컴파일 타임에 enum 값을 가질 수 없으므로 <c>[0, FixedCount)</c> 를 enum 영역으로
+        /// 두고 그 위를 append 영역으로 연다 — <see cref="Of"/> 를 부르는 `37` 자리와
+        /// 그 값을 리터럴로 물고 있는 넷(<c>UpperGallery</c>·<c>ObservationGallery</c>·
+        /// <c>ObservatoryWindow</c>·<c>DressingRules</c>)을 한 줄도 안 고치기 위해서다.
+        /// 근거는 <c>docs/tech/free-placement-runtime-chain-estimate-v1.md</c> §3.2.
+        /// </summary>
+        public const int FixedCount = 11;
 
-        private static readonly LastShiftCompartmentSpec[] specs = BuildSpecs();
+        private static readonly LastShiftCompartmentSpec[] fixedSpecs = BuildSpecs();
 
-        /// <summary>선수→선미 순이 아니라 <see cref="LastShiftCompartment"/> 값 순이다.</summary>
+        /// <summary>
+        /// 지금 살아 있는 표 전체. 모듈이 하나도 없으면 <see cref="fixedSpecs"/> 그 자체다 —
+        /// 배열을 새로 안 잡으므로 자유 배치가 안 붙은 배에서 이 파일은 예전과 같이 돈다.
+        /// </summary>
+        private static LastShiftCompartmentSpec[] specs = fixedSpecs;
+
+        /// <summary>모듈 칸 하나가 <see cref="LastShiftPlacedModules"/> 에서 받은 핸들. 표와 같은 순서다.</summary>
+        private static int[] moduleHandles = Array.Empty<int>();
+
+        /// <summary>
+        /// 표 길이. <b>이제 상수가 아니다</b> — <see cref="FixedCount"/> + 배치된 모듈 수다.
+        /// enum 을 다 덮었는지를 묻는 자리는 <see cref="FixedCount"/> 를 봐야 한다.
+        /// </summary>
+        public static int Count => specs.Length;
+
+        /// <summary>배치된 모듈 수. <c>Count - FixedCount</c> 다.</summary>
+        public static int ModuleCount => specs.Length - FixedCount;
+
+        /// <summary>
+        /// 표가 바뀔 때마다 오른다. 표를 옮겨 담아 두는 쪽(판정기 입력·씬 조립기)이
+        /// 자기 사본이 낡았는지 묻는 자리다 — <see cref="Specs"/> 참조를 들고 있으면
+        /// 등록·해제가 새 배열로 갈아 끼우므로 그 참조는 그 순간 낡는다.
+        /// </summary>
+        public static int Revision { get; private set; }
+
+        /// <summary>
+        /// <b>고정 구획 열하나만.</b> 선체가 자기 몸으로 세우는 것들 — 선체 골조·문틀·
+        /// 드레싱처럼 <b>배와 함께 태어난 것만</b> 훑어야 하는 자리가 이쪽이다.
+        /// </summary>
+        public static LastShiftCompartmentSpec[] FixedSpecs => fixedSpecs;
+
+        /// <summary>
+        /// <b>고정 구획 + 배치된 모듈 전체.</b> <c>[0, FixedCount)</c> 가
+        /// <see cref="LastShiftCompartment"/> 값 순이고 그 위가 배치 순이다.
+        /// 배열 길이는 언제나 <see cref="Count"/> 다 — 빈 칸이 없다(<see cref="TryRemove"/>).
+        /// </summary>
         public static LastShiftCompartmentSpec[] Specs => specs;
 
-        public static LastShiftCompartmentSpec Of(LastShiftCompartment compartment) => specs[(int)compartment];
+        /// <summary>
+        /// <b>고정 표에서만 찾는다.</b> append 영역 인덱스를 캐스팅해 넣으면 여기서 터진다 —
+        /// 모듈에는 enum 값이 없으므로 그 물음 자체가 틀린 것이다.
+        /// </summary>
+        public static LastShiftCompartmentSpec Of(LastShiftCompartment compartment) => fixedSpecs[(int)compartment];
 
-        /// <summary>구획 이름. 씬 오브젝트 이름과 로그가 같은 문자열을 봐야 검증이 성립한다.</summary>
+        /// <summary>표 인덱스로 찾는다. 모듈까지 본다.</summary>
+        public static LastShiftCompartmentSpec At(int index) => specs[index];
+
+        /// <summary>
+        /// 구획 이름. 씬 오브젝트 이름과 로그가 같은 문자열을 봐야 검증이 성립한다.
+        ///
+        /// <b>범위 밖 값은 모듈 이름이 된다.</b> 예전 <c>_ =&gt; "Compartment_EscapePod"</c> 를
+        /// 그대로 뒀으면 모듈 열 개가 전부 구명정 이름을 달았을 것이다.
+        /// </summary>
         public static string NameOf(LastShiftCompartment compartment) => compartment switch
         {
             LastShiftCompartment.Observatory => "Compartment_Observatory",
@@ -179,8 +274,27 @@ namespace DoodleUp.Runtime
             LastShiftCompartment.Lounge => "Compartment_Lounge",
             LastShiftCompartment.Hydroponics => "Compartment_Hydroponics",
             LastShiftCompartment.MedBay => "Compartment_MedBay",
-            _ => "Compartment_EscapePod"
+            LastShiftCompartment.EscapePod => "Compartment_EscapePod",
+            _ => ModuleName((int)compartment)
         };
+
+        /// <summary>
+        /// 구획 하나의 이름. 고정이면 enum 이름이고, 모듈이면 <c>Compartment_Module_{인덱스}</c> 다.
+        ///
+        /// <b><see cref="LastShiftCompartmentSpec"/> 에 <c>DisplayName</c> 을 안 붙이는 이유가
+        /// 이 함수가 있는 이유다.</b> <c>readonly struct</c> 가 문자열을 들면 배치 판정 루프가
+        /// 그 구조체를 복사할 때마다 참조를 끌고 다니게 된다 — 이름은 씬을 세울 때만 필요하다.
+        /// </summary>
+        public static string NameOf(in LastShiftCompartmentSpec spec) =>
+            spec.IsFixed ? NameOf(spec.Compartment) : ModuleName(spec.Index);
+
+        /// <summary>
+        /// 모듈 칸 이름. <b>인덱스가 이름에 들어가므로 <see cref="TryRemove"/> 로 앞 칸이
+        /// 빠지면 뒤 모듈의 이름이 하나씩 당겨진다.</b> 표를 빈 칸 없이 유지하는 대가이고,
+        /// 배치 해제는 기항에서만 일어나 그때 씬을 다시 세우므로 지금은 문제가 아니다 —
+        /// 판 안에서 해제가 가능해지면 이름을 인덱스에서 떼야 한다.
+        /// </summary>
+        public static string ModuleName(int index) => "Compartment_Module_" + index;
 
         /// <summary>
         /// 안쪽 문이 선체 벽을 뚫는 구획인가. <c>ParentIndex &lt; 0</c> 과 같은 뜻이지만
@@ -198,7 +312,7 @@ namespace DoodleUp.Runtime
             var cockpitCenter = LastShiftShipDimensions.CockpitCenterX;                     // §17.4 의 -15
             var lifeSupportMin = LastShiftShipDimensions.RoomMinX(LastShiftZone.LifeSupport); // §17.4 의 +11
 
-            var result = new LastShiftCompartmentSpec[Count];
+            var result = new LastShiftCompartmentSpec[FixedCount];
 
             // ── 선수 쪽 사슬 — 조종석 끝벽에서 화물칸 → 정비창 → 관측실 로 뻗고,
             //    격납고만 화물칸 우현으로 갈라진다(§17.3 도해).
@@ -349,23 +463,159 @@ namespace DoodleUp.Runtime
         /// 사슬이 <see cref="Count"/> 보다 길어지면 순환이라 <c>-1</c> 을 돌려준다 —
         /// 순환이 있으면 §9.5 가 아니라고 답한 대안 경로가 생긴다.
         /// </summary>
-        public static int DoorDepth(LastShiftCompartment compartment)
+        public static int DoorDepth(LastShiftCompartment compartment) => DoorDepth((int)compartment);
+
+        /// <summary>표 인덱스로 묻는 같은 자. 모듈까지 본다.</summary>
+        public static int DoorDepth(int index)
         {
-            var index = (int)compartment;
-            for (var depth = 1; depth <= Count; depth++)
+            if (index < 0 || index >= specs.Length) return -1;
+
+            for (var depth = 1; depth <= specs.Length; depth++)
             {
                 var parent = specs[index].ParentIndex;
                 if (parent < 0) return depth;
+                if (parent >= specs.Length) return -1;
                 index = parent;
             }
             return -1;
         }
 
+        // ── append 영역 ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 다음 모듈이 받을 인덱스. 후보 제원을 짓는 쪽이 이 값을 <see cref="LastShiftCompartmentSpec"/>
+        /// 생성자에 넣어야 <see cref="Judge"/> 로 미리 재 본 후보와 <see cref="TryRegister"/> 가
+        /// 실제로 넣는 것이 같은 물건이 된다.
+        /// </summary>
+        public static int NextModuleIndex => specs.Length;
+
+        /// <summary>
+        /// 후보 하나를 <b>넣지 않고</b> 재 본다. 배치 커서가 매 프레임 부르는 자리다 —
+        /// 판정 자체는 <see cref="LastShiftPlacementRules.Evaluate"/> 이고, 이 함수가 하는
+        /// 일은 지금 표를 판정기 입력으로 옮기는 것뿐이다.
+        /// </summary>
+        public static LastShiftPlacementVerdict Judge(in LastShiftCompartmentSpec candidate) =>
+            LastShiftPlacementRules.Evaluate(
+                LastShiftPlacementRules.TableOf(specs), LastShiftPlacement.From(candidate));
+
+        /// <summary>
+        /// 배치 하나를 확정한다. <b>판정을 통과해야만 표에 들어간다</b> — 판정기를 건너뛰는
+        /// 등록 경로를 안 두는 것이 이 함수의 요지다. 겹치거나 사슬이 끊긴 방이 표에 들어가면
+        /// 그 뒤의 모든 이탈·최장 쌍 계산이 그 방을 진짜로 걸어갈 수 있는 것으로 센다.
+        ///
+        /// <b>구역 오버레이 등록을 같이 한다.</b> 표와 <see cref="LastShiftPlacedModules"/> 가
+        /// 따로 등록되면 발자국은 있는데 압력이 선체 밴드에서 나오는 방이 생긴다 —
+        /// 문을 닫아도 격리가 안 되는 배가 그것이다(타당성 검토 §11-1). 넘기는 구역은 후보
+        /// 자기 좌표가 아니라 <see cref="LastShiftPlacementVerdict.Zone"/>, 즉 사슬 뿌리의
+        /// 선체 문이 정한 값이다(조항 F-1).
+        /// </summary>
+        public static bool TryRegister(
+            in LastShiftCompartmentSpec candidate, out int index, out LastShiftPlacementVerdict verdict)
+        {
+            if (candidate.Index != specs.Length)
+                throw new ArgumentException(
+                    $"module spec index must be {nameof(NextModuleIndex)}({specs.Length}) but was {candidate.Index}",
+                    nameof(candidate));
+
+            index = -1;
+            verdict = Judge(candidate);
+            if (!verdict.Accepted) return false;
+
+            var grown = new LastShiftCompartmentSpec[specs.Length + 1];
+            Array.Copy(specs, grown, specs.Length);
+            grown[specs.Length] = candidate;
+
+            var handles = new int[moduleHandles.Length + 1];
+            Array.Copy(moduleHandles, handles, moduleHandles.Length);
+            handles[moduleHandles.Length] = LastShiftPlacedModules.Register(
+                candidate.MinX, candidate.MaxX, candidate.MinZ, candidate.MaxZ, verdict.Zone);
+
+            index = specs.Length;
+            specs = grown;
+            moduleHandles = handles;
+            Revision++;
+            return true;
+        }
+
+        /// <summary>
+        /// 모듈 하나를 뺀다. <b>자식이 달린 모듈은 못 뺀다</b> — 빼면 그 자식들이 표 밖을
+        /// 가리키거나(사슬 끊김) 엉뚱한 부모에 붙는다. 잎부터 빼는 것은 부르는 쪽 몫이다.
+        ///
+        /// <b>표에 빈 칸을 안 남긴다.</b> 뒤 칸을 당기고 그보다 큰 <c>ParentIndex</c> 를 하나씩
+        /// 줄인다. 대신 <b>모듈 인덱스는 안정적이지 않다</b> — 인덱스를 들고 있는 쪽은
+        /// <see cref="Revision"/> 을 같이 들고 있어야 한다. 빈 칸(무덤)을 남기는 쪽을 안 고른
+        /// 것은 <see cref="Specs"/> 를 훑는 자리 여섯 곳이 전부 "죽은 칸인가" 를 물어야 하고,
+        /// 그 물음을 한 곳에서 빠뜨리면 씬에 부피 없는 방이 서기 때문이다.
+        /// </summary>
+        public static bool TryRemove(int index)
+        {
+            if (index < FixedCount || index >= specs.Length) return false;
+
+            for (var other = FixedCount; other < specs.Length; other++)
+                if (specs[other].ParentIndex == index) return false;
+
+            LastShiftPlacedModules.Remove(moduleHandles[index - FixedCount]);
+
+            // 마지막 모듈이 빠지면 고정 표 자체로 되돌린다. 길이만 같은 사본을 남기면
+            // "모듈이 없는 표 == 고정 표" 가 참조로는 거짓이 되고, 그 뒤로 둘 중
+            // 어느 쪽을 고쳤는지가 갈린다.
+            if (specs.Length - 1 == FixedCount)
+            {
+                specs = fixedSpecs;
+                moduleHandles = Array.Empty<int>();
+                Revision++;
+                return true;
+            }
+
+            var shrunk = new LastShiftCompartmentSpec[specs.Length - 1];
+            Array.Copy(specs, shrunk, index);
+            for (var source = index + 1; source < specs.Length; source++)
+                shrunk[source - 1] = Reindex(specs[source], source - 1, index);
+
+            var handles = new int[moduleHandles.Length - 1];
+            Array.Copy(moduleHandles, handles, index - FixedCount);
+            Array.Copy(moduleHandles, index - FixedCount + 1,
+                handles, index - FixedCount, moduleHandles.Length - (index - FixedCount) - 1);
+
+            specs = shrunk;
+            moduleHandles = handles;
+            Revision++;
+            return true;
+        }
+
+        /// <summary>모듈을 전부 뺀다. 씬을 다시 세울 때와 테스트가 부른다.</summary>
+        public static void ClearModules()
+        {
+            if (ReferenceEquals(specs, fixedSpecs)) return;
+
+            foreach (var handle in moduleHandles) LastShiftPlacedModules.Remove(handle);
+
+            specs = fixedSpecs;
+            moduleHandles = Array.Empty<int>();
+            Revision++;
+        }
+
+        /// <summary>칸이 당겨질 때 인덱스와 부모를 같이 옮긴다. 고정 구획을 가리키는 부모는 안 움직인다.</summary>
+        private static LastShiftCompartmentSpec Reindex(
+            in LastShiftCompartmentSpec spec, int index, int removed) => new(
+            index, spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ,
+            spec.DoorPlane, spec.DoorPlaneCoordinate, spec.DoorCenter,
+            spec.ParentIndex > removed ? spec.ParentIndex - 1 : spec.ParentIndex,
+            spec.Access);
+
+        /// <summary>
+        /// 정적 상태라 초기화 훅이 있어야 한다 — 도메인 리로드를 끈 에디터에서는 플레이를
+        /// 멈춰도 정적 필드가 안 죽으므로 지난 판의 모듈이 다음 판의 표에 그대로 남는다.
+        /// <see cref="LastShiftPlacedModules"/> 와 같은 이유·같은 방식이다.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnEnterPlayMode() => ClearModules();
+
         private const float Epsilon = 0.0001f;
 
         static LastShiftCompartments()
         {
-            if (specs.Length != Enum.GetValues(typeof(LastShiftCompartment)).Length)
+            if (fixedSpecs.Length != Enum.GetValues(typeof(LastShiftCompartment)).Length)
                 throw new InvalidOperationException("compartment spec table must cover every LastShiftCompartment value");
         }
     }

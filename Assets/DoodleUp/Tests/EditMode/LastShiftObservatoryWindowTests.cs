@@ -47,7 +47,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void NothingStandsInTheSightCone()
         {
-            foreach (var spec in LastShiftCompartments.Specs)
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
                 if (spec.Compartment == LastShiftObservatoryWindow.Compartment) continue;
                 AssertBoxIsOutOfTheCone($"{spec.Compartment}", spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ);
