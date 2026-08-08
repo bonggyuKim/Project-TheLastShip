@@ -35,6 +35,10 @@ namespace DoodleUp.Runtime
         [Tooltip("이 화면을 여닫는 키. 기항에서만 눌린다는 전제라 판 안 조작과 안 겹친다.")]
         [SerializeField] private Key toggleKey = Key.B;
 
+        [Tooltip("항해 루프가 없는 샌드박스에서 화면을 처음 열 때 가정하는 래치 수(0~4).")]
+        [Range(0, LastShiftMaintenance.MaxLatches)]
+        [SerializeField] private int sandboxLatches = LastShiftMaintenance.MaxLatches;
+
         private readonly LastShiftPlacementCursor cursor = new();
 
         private bool open;
@@ -107,9 +111,28 @@ namespace DoodleUp.Runtime
                 return false;
             }
 
+            EnterPortWhenNoVoyageDrivesIt();
+
             open = true;
             lastResult = string.Empty;
             return true;
+        }
+
+        /// <summary>
+        /// 구간 판정 → 기항 전이를 도는 것이 아직 없어서, 화면이 처음 열릴 때 원장을 첫 기항으로
+        /// 밀어 준다. <b>임시 다리이고 그렇게 적어 두는 것이 요지다</b> —
+        /// <see cref="InstallWhenMissing"/> 와 같은 성격이다.
+        ///
+        /// 정본 자리는 구간 결과가 래치 수를 들고 <see cref="LastShiftMaintenance.ArriveAtPort"/>
+        /// 를 부르는 곳이고, 그 경로가 붙으면 여기는 아무 일도 안 한다(이미 기항 중이므로).
+        /// <b>여기서 잔액을 직접 안 만진다</b> — 수입을 만드는 식은 원장에만 있어야 나중에 래치
+        /// 환산이 바뀔 때 고칠 자리가 하나다.
+        /// </summary>
+        private void EnterPortWhenNoVoyageDrivesIt()
+        {
+            if (LastShiftMaintenance.IsAtPort) return;
+
+            LastShiftMaintenance.ArriveAtPort(sandboxLatches);
         }
 
         public void Close()
@@ -130,14 +153,25 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool Confirm()
         {
+            var cost = cursor.Kind.MaintenanceCost;
+            if (!LastShiftMaintenance.CanAfford(cost))
+            {
+                lastResult = $"여력이 모자란다 — {cursor.Kind.Name} {cost} · 잔액 {LastShiftMaintenance.Balance}";
+                return false;
+            }
+
             if (!cursor.TryCommit(out var index, out var verdict))
             {
                 lastResult = Reason(verdict, cursor.Faults);
                 return false;
             }
 
+            // 표에 들어간 것을 보고 나서 문다. 순서를 뒤집으면 판정에 걸린 배치가 여력만 태운다.
+            LastShiftMaintenance.TryChargeModule(index - LastShiftCompartments.FixedCount, cursor.CatalogIndex, cost);
+
             var report = Rebuild();
-            lastResult = $"배치 확정 #{index} · 구역 {verdict.Zone} · 깊이 {verdict.DoorDepth} · " +
+            lastResult = $"배치 확정 #{index} · 여력 -{cost} → 잔액 {LastShiftMaintenance.Balance} · " +
+                         $"구역 {verdict.Zone} · 깊이 {verdict.DoorDepth} · " +
                          $"이탈 {verdict.EgressSeconds:0.0}s · 문 {report.Cut}/{report.Doorways}" +
                          (report.Missing > 0 ? $" · 벽 못 찾음 {report.Missing}" : string.Empty);
             return true;
@@ -155,14 +189,18 @@ namespace DoodleUp.Runtime
                 return false;
             }
 
+            var slot = LastShiftCompartments.ModuleCount - 1;
             if (!LastShiftCompartments.TryRemove(LastShiftCompartments.Count - 1))
             {
                 lastResult = "자식이 달린 모듈은 못 뺀다";
                 return false;
             }
 
+            LastShiftMaintenance.TryRefundModule(slot, out var refunded);
+
             var report = Rebuild();
-            lastResult = $"모듈 해제 · 남은 {LastShiftCompartments.ModuleCount} · 문 {report.Cut}/{report.Doorways}";
+            lastResult = $"모듈 해제 · 여력 +{refunded} → 잔액 {LastShiftMaintenance.Balance} · " +
+                         $"남은 {LastShiftCompartments.ModuleCount} · 문 {report.Cut}/{report.Doorways}";
             return true;
         }
 
@@ -270,10 +308,11 @@ namespace DoodleUp.Runtime
                 return;
             }
 
-            GUI.Box(new Rect(16f, 320f, 520f, 214f), GUIContent.none);
+            GUI.Box(new Rect(16f, 320f, 520f, 236f), GUIContent.none);
             GUI.Label(new Rect(28f, 328f, 480f, 24f),
-                $"기항 배치 — {cursor.Kind.Name} {cursor.Kind.LengthX:0.#}×{cursor.Kind.WidthZ:0.#}m " +
-                $"· 여력 {cursor.Kind.MaintenanceCost} · 회전 {cursor.QuarterTurns * 90}°", headingStyle);
+                $"기항 {LastShiftMaintenance.PortIndex} — 여력 {LastShiftMaintenance.Balance} " +
+                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver})",
+                headingStyle);
 
             var candidate = cursor.Candidate;
             var verdict = cursor.Verdict;
@@ -281,28 +320,45 @@ namespace DoodleUp.Runtime
                 ? "선체"
                 : LastShiftCompartments.NameOf(LastShiftCompartments.At(candidate.ParentIndex));
 
-            GUI.Label(new Rect(28f, 354f, 480f, 22f),
+            GUI.Label(new Rect(28f, 352f, 480f, 22f),
+                $"{cursor.Kind.Name} {cursor.Kind.LengthX:0.#}×{cursor.Kind.WidthZ:0.#}m · " +
+                $"값 {cursor.Kind.MaintenanceCost} · 회전 {cursor.QuarterTurns * 90}°", bodyStyle);
+            GUI.Label(new Rect(28f, 374f, 480f, 22f),
                 $"자리 x {candidate.MinX:0.#}~{candidate.MaxX:0.#} · z {candidate.MinZ:0.#}~{candidate.MaxZ:0.#} · 부모 {parent}",
                 bodyStyle);
-            GUI.Label(new Rect(28f, 374f, 480f, 22f),
+            GUI.Label(new Rect(28f, 396f, 480f, 22f),
                 $"구역 {verdict.Zone} · 깊이 {verdict.DoorDepth}/{LastShiftPlacementRules.MaxDoorDepth} · " +
                 $"이탈 {verdict.EgressSeconds:0.0}/{LastShiftPlacementRules.TraverseLimitSeconds:0.0}s · " +
                 $"최장 쌍 {verdict.LongestPairMeters:0.#}m", bodyStyle);
 
-            var ok = cursor.CanCommit;
+            var affordable = LastShiftMaintenance.CanAfford(cursor.Kind.MaintenanceCost);
+            var ok = cursor.CanCommit && affordable;
             var previous = GUI.color;
             GUI.color = ok ? new Color(0.45f, 1f, 0.75f) : new Color(1f, 0.55f, 0.4f);
-            GUI.Label(new Rect(28f, 396f, 480f, 22f),
-                ok ? "배치 가능 — Enter" : Reason(verdict, cursor.Faults), bodyStyle);
+            GUI.Label(new Rect(28f, 418f, 480f, 22f),
+                ok ? "배치 가능 — Enter"
+                   : affordable ? Reason(verdict, cursor.Faults) : "여력이 모자란다", bodyStyle);
             GUI.color = previous;
 
-            GUI.Label(new Rect(28f, 420f, 480f, 22f),
-                $"놓인 모듈 {LastShiftCompartments.ModuleCount}", bodyStyle);
-            GUI.Label(new Rect(28f, 442f, 480f, 40f),
+            GUI.Label(new Rect(28f, 440f, 480f, 22f),
+                $"놓인 모듈 {LastShiftCompartments.ModuleCount}{RefundHint()}", bodyStyle);
+            GUI.Label(new Rect(28f, 462f, 480f, 40f),
                 "Tab 모듈 · Z/X 회전 · 방향키 이동(1m) · Enter 확정 · Delete 해제 · Esc 닫기", bodyStyle);
 
             if (lastResult.Length > 0)
-                GUI.Label(new Rect(28f, 488f, 480f, 40f), lastResult, bodyStyle);
+                GUI.Label(new Rect(28f, 508f, 480f, 40f), lastResult, bodyStyle);
+        }
+
+        /// <summary>
+        /// 마지막 모듈을 뜯으면 얼마가 돌아오는가. <b>뜯기 전에 적는다</b> — 같은 기항이면 전액,
+        /// 출항한 뒤면 절반이라(조항 M-4) 그 차이를 누른 뒤에 알면 이미 늦다.
+        /// </summary>
+        private static string RefundHint()
+        {
+            var slot = LastShiftCompartments.ModuleCount - 1;
+            if (!LastShiftMaintenance.TryGetPurchase(slot, out var purchase)) return string.Empty;
+
+            return $" · Delete 환수 {LastShiftMaintenance.RefundFor(purchase)}";
         }
 
         /// <summary>

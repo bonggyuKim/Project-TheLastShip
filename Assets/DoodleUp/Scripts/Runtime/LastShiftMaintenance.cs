@@ -1,0 +1,261 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace DoodleUp.Runtime
+{
+    /// <summary>
+    /// 여력을 쓰는 자리 중 <b>배치가 아닌</b> 것들. 가격은 <c>docs/port-module-catalog-v1.md</c>
+    /// §4.3 표 그대로다. 배치 가격은 여기 없다 — 그건 종류마다 다르고
+    /// <see cref="LastShiftModuleKind.MaintenanceCost"/> 가 이미 든다.
+    ///
+    /// <b>이 열거가 화면을 안 만든다.</b> 개방·복구·보급 화면은 아직 없고(같은 문서 §9-5,
+    /// <c>game-art</c>), 여기 있는 것은 가격 정본과 그 값을 빼는 문 하나뿐이다. 화면이 붙을 때
+    /// 가격을 다시 적는 일이 없게 하려고 미리 박는다.
+    /// </summary>
+    public enum LastShiftMaintenanceItem
+    {
+        /// <summary>잠긴 고정 구획 하나를 이번 항해 동안 연다(서버/통신실 · 수경재배 · 의무실).</summary>
+        CompartmentUnlock,
+
+        /// <summary>진공/봉인 구역 재가압 · <c>HullIntegrity</c> 회복 하나.</summary>
+        Repair,
+
+        /// <summary>연료 추가 보충 · 예비 아이템 하나.</summary>
+        Supply,
+
+        /// <summary>견인 봉인 해제(<c>docs/voyage-run-structure-v1.md</c> §5).</summary>
+        TowSealRelease
+    }
+
+    /// <summary>
+    /// 배치 하나가 얼마를 물고 <b>어느 기항에</b> 섰는가. 환수액이 기항 회차에 걸려 있어서
+    /// (조항 M-4) 가격만으로는 못 돌려준다 — 같은 기항이면 전액, 출항한 뒤면 절반이다.
+    /// </summary>
+    public readonly struct LastShiftMaintenancePurchase
+    {
+        public LastShiftMaintenancePurchase(int catalogIndex, int cost, int portIndex)
+        {
+            CatalogIndex = catalogIndex;
+            Cost = cost;
+            PortIndex = portIndex;
+        }
+
+        public int CatalogIndex { get; }
+
+        /// <summary>실제로 빠져나간 여력. 가격표를 나중에 고쳐도 이미 산 것은 산 값으로 돌려준다.</summary>
+        public int Cost { get; }
+
+        /// <summary>세운 기항 회차. <see cref="LastShiftMaintenance.PortIndex"/> 와 비교하는 값이다.</summary>
+        public int PortIndex { get; }
+    }
+
+    /// <summary>
+    /// 정비 여력 원장 — <b>잔액 · 획득 · 소모 · 이월 · 철거 환수</b>.
+    /// <c>docs/port-module-catalog-v1.md</c> §4 의 P-1 이고, 같은 문서 §9-6("구현 위치가
+    /// 항해 상태 객체 신설인가 기존 상태 확장인가")을 <b>신설</b>로 닫는다.
+    ///
+    /// <b>왜 신설인가.</b> 확장할 만한 항해 상태가 아직 없다 — 시뮬레이션
+    /// (<see cref="LastShiftSimulation"/>)은 구간 <b>안</b>의 물리·자원이고 구간이 끝나면 리셋되는
+    /// 물건이라, 기항을 건너 살아남아야 하는 잔액(조항 M-1)을 거기 얹으면 이월이 그날로 죽는다.
+    /// 반대로 여력은 판 안 규칙을 하나도 안 건드린다 — 여기서 나가는 값이 시뮬로 들어가는 경로가
+    /// 없다. <b>그래서 별도 정적 상태 하나가 가장 작다.</b>
+    ///
+    /// <b><see cref="MonoBehaviour"/> 가 아니고 정적이다.</b> <see cref="LastShiftCompartments"/> ·
+    /// <see cref="LastShiftPlacedModules"/> 와 같은 규약이다 — 씬 없이 EditMode 에서 전부 재고,
+    /// 도메인 리로드를 끈 에디터에서 지난 판 잔액이 다음 판에 남지 않도록
+    /// <see cref="ResetOnEnterPlayMode"/> 를 단다.
+    ///
+    /// <b>세이브가 없다</b>(조항 M-2). 이월되는 것은 한 항해 안에서이고, 항해가 끝나면
+    /// <see cref="BeginVoyage"/> 가 <c>0</c> 으로 되돌린다 —
+    /// <c>docs/voyage-run-structure-v1.md</c> §0-3 의 "세이브 불필요" 전제 그대로다.
+    /// </summary>
+    public static class LastShiftMaintenance
+    {
+        /// <summary>도킹 래치 수 상한. <c>modular-docking-progression-review-v1.md</c> §2 의 넷.</summary>
+        public const int MaxLatches = 4;
+
+        /// <summary>
+        /// 래치가 하나도 안 걸려도 주는 몫(§4.1). <b>이게 없으면 구간 <c>1</c> 을 망친 항해가
+        /// 회복 경로 없이 굳고</b>, 그건 <c>RG-3</c>(영구 잠금 금지)의 항해판 위반이다
+        /// (<c>voyage-run-structure-v1.md</c> §4.1-(나)).
+        /// </summary>
+        public const int MinimumIncome = 1;
+
+        /// <summary>
+        /// 한 기항 최대 수입. <c>래치 4 + 최소 보장 1 = 5</c> 다. 카탈로그 최고가(정거장 골조)가
+        /// 정확히 이 값이라 <b>최고 성적으로 한 번에 사거나 두 기항에 걸쳐 모으거나 둘 중 하나가
+        /// 된다</b>(§4.3 검산).
+        /// </summary>
+        public const int MaxPortIncome = MaxLatches + MinimumIncome;
+
+        private static readonly List<LastShiftMaintenancePurchase> purchases = new();
+
+        /// <summary>지금 쓸 수 있는 여력. <b>기항을 건너 남는다</b>(조항 M-1). 상한은 없다.</summary>
+        public static int Balance { get; private set; }
+
+        /// <summary>
+        /// 몇 번째 기항인가. <c>0</c> 은 아직 한 번도 기항하지 않은 상태다 — 구간 <c>1</c> 을
+        /// 도는 동안이 그것이고, 그때는 살 수 있는 것이 없다.
+        /// </summary>
+        public static int PortIndex { get; private set; }
+
+        /// <summary>가장 최근 기항에서 들어온 몫. 이월분을 뺀 <b>수입</b>이다(견인이면 <c>0</c>).</summary>
+        public static int LastPortIncome { get; private set; }
+
+        /// <summary>직전 기항 시작 시점의 잔액 — 즉 이월된 몫. 화면이 "이월 N" 을 적는 자리다.</summary>
+        public static int LastCarriedOver { get; private set; }
+
+        /// <summary>기항에 들어와 있는가. 아니면 살 수 없다.</summary>
+        public static bool IsAtPort => PortIndex > 0;
+
+        /// <summary>지금 원장이 들고 있는 배치 기록 수. 표의 모듈 수와 같아야 한다.</summary>
+        public static int PurchaseCount => purchases.Count;
+
+        // ── 획득 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 래치 수 → 그 기항의 수입. <b>환산은 <c>1:1</c> 이다</b>(§4.1) — 결과 화면의 래치
+        /// <c>3/4</c> 와 기항 화면의 여력 <c>4</c> 사이에 환산표를 안 읽게 하려고 고른 값이지
+        /// 산수로 고른 값이 아니다.
+        ///
+        /// <paramref name="towed"/> 면 <c>0</c> 이다 — 견인의 대가 셋 중 첫째
+        /// (<c>voyage-run-structure-v1.md</c> §5). <b>수입만 <c>0</c> 이고 잔액은 안 건드린다</b>
+        /// (조항 M-3): 모아 둔 것까지 날리면 아끼는 선택이 언제나 손해가 되고, 그러면 아무도
+        /// 두 번은 안 아낀다.
+        /// </summary>
+        public static int IncomeFor(int latches, bool towed = false) =>
+            towed ? 0 : Mathf.Clamp(latches, 0, MaxLatches) + MinimumIncome;
+
+        /// <summary>
+        /// 기항에 들어온다. 회차를 하나 올리고 수입을 <b>남은 잔액 위에 얹는다</b> — 이 한 줄이
+        /// 조항 M-1(이월) 이고, 이월이 없으면 매 기항 다 쓰는 것이 언제나 최적이라 모을 이유가
+        /// 없다(§0-1).
+        /// </summary>
+        /// <returns>이번 기항에 들어온 수입.</returns>
+        public static int ArriveAtPort(int latches, bool towed = false)
+        {
+            LastCarriedOver = Balance;
+            LastPortIncome = IncomeFor(latches, towed);
+
+            PortIndex++;
+            Balance += LastPortIncome;
+            return LastPortIncome;
+        }
+
+        /// <summary>
+        /// 항해를 시작한다 — 조항 M-2. 잔액·회차·배치 기록이 전부 <c>0</c> 이다.
+        /// <b>배치 표는 안 건드린다</b>(<see cref="LastShiftCompartments.ClearModules"/> 는 부르는
+        /// 쪽 몫이다) — 원장이 씬을 지우면 "여력을 리셋했더니 배가 뜯겼다" 가 된다.
+        /// </summary>
+        public static void BeginVoyage() => Clear();
+
+        // ── 소모 ────────────────────────────────────────────────────────────
+
+        /// <summary>§4.3 가격표의 배치 아닌 계열.</summary>
+        public static int PriceOf(LastShiftMaintenanceItem item) => item switch
+        {
+            LastShiftMaintenanceItem.CompartmentUnlock => 2,
+            _ => 1
+        };
+
+        /// <summary>살 수 있는가. <b>기항 밖에서는 언제나 거짓이다.</b></summary>
+        public static bool CanAfford(int cost) => IsAtPort && cost >= 0 && cost <= Balance;
+
+        /// <summary>
+        /// 잔액에서 뺀다. <b>모자라면 한 푼도 안 빠진다</b> — 부분 지불을 두면 여력 <c>1</c> 로
+        /// 개방을 절반 사 둔 상태가 생기고, 그 상태를 화면에 적을 말이 없다.
+        /// </summary>
+        public static bool TrySpend(int cost)
+        {
+            if (!CanAfford(cost)) return false;
+
+            Balance -= cost;
+            return true;
+        }
+
+        /// <summary>가격표를 보고 뺀다.</summary>
+        public static bool TrySpend(LastShiftMaintenanceItem item) => TrySpend(PriceOf(item));
+
+        // ── 배치와 철거 ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 모듈 하나 값을 물고 기록을 남긴다. <paramref name="moduleSlot"/> 은 표의 모듈 자리
+        /// (<c>인덱스 - <see cref="LastShiftCompartments.FixedCount"/></c>)이고, <b>반드시 지금
+        /// 기록 수와 같아야 한다</b> — 표는 꼬리에만 붙으므로(<see cref="LastShiftCompartments.TryRegister"/>)
+        /// 다른 값이 오면 그건 표와 원장이 이미 갈렸다는 뜻이다.
+        ///
+        /// <b>값을 먼저 확인하고 나중에 뺀다.</b> 표에 넣는 것은 부르는 쪽이고, 이 함수가 참을
+        /// 돌려준 뒤에 표 등록이 실패하면 여력만 사라진다 — 그래서 부르는 쪽 규약은
+        /// "표에 들어간 것을 확인하고 나서 이 함수를 부른다" 이고, 살 수 있는지는 그 전에
+        /// <see cref="CanAfford"/> 로 묻는다.
+        /// </summary>
+        public static bool TryChargeModule(int moduleSlot, int catalogIndex, int cost)
+        {
+            if (moduleSlot != purchases.Count) return false;
+            if (!TrySpend(cost)) return false;
+
+            purchases.Add(new LastShiftMaintenancePurchase(catalogIndex, cost, PortIndex));
+            return true;
+        }
+
+        /// <summary>카탈로그에서 가격을 읽어 무는 편의 문.</summary>
+        public static bool TryChargeModule(int moduleSlot, int catalogIndex) =>
+            TryChargeModule(moduleSlot, catalogIndex, LastShiftModuleCatalog.At(catalogIndex).MaintenanceCost);
+
+        /// <summary>
+        /// 철거 환수 — 조항 M-4. <b>같은 기항 안이면 전액</b>(무료 철거: 방금 놓은 자리를 무르는
+        /// 것은 실수 정정이지 거래가 아니다), <b>출항한 뒤면 절반 내림</b>이다.
+        ///
+        /// 절반 내림이라 <c>1</c> 짜리는 <c>0</c> 이 돌아온다. 사고 팔면 언제나 손해라
+        /// <b>매수–매도 루프가 안 생기고</b>, 그래도 돌아오는 것이 있어서 기항 <c>1</c> 의 배치가
+        /// 항해를 망치는 결정이 아니게 된다(§4.4).
+        /// </summary>
+        public static int RefundFor(in LastShiftMaintenancePurchase purchase) =>
+            purchase.PortIndex == PortIndex ? purchase.Cost : purchase.Cost / 2;
+
+        /// <summary>
+        /// 모듈 하나를 뜯고 환수한다. 기록을 지우고 뒤 기록을 당기는 것이
+        /// <see cref="LastShiftCompartments.TryRemove"/> 가 표를 당기는 것과 <b>같은 모양이어야
+        /// 한다</b> — 표는 빈 칸을 안 남기고 뒤를 당기므로, 원장이 무덤을 남기면 그 뒤로 모듈
+        /// 자리와 기록 자리가 하나씩 어긋난 채 환수액이 남의 것으로 나간다.
+        /// </summary>
+        public static bool TryRefundModule(int moduleSlot, out int refunded)
+        {
+            refunded = 0;
+            if (moduleSlot < 0 || moduleSlot >= purchases.Count) return false;
+
+            refunded = RefundFor(purchases[moduleSlot]);
+            purchases.RemoveAt(moduleSlot);
+            Balance += refunded;
+            return true;
+        }
+
+        /// <summary>기록 하나를 읽는다. 화면이 "뜯으면 N 돌아온다" 를 미리 적는 자리다.</summary>
+        public static bool TryGetPurchase(int moduleSlot, out LastShiftMaintenancePurchase purchase)
+        {
+            if (moduleSlot < 0 || moduleSlot >= purchases.Count)
+            {
+                purchase = default;
+                return false;
+            }
+
+            purchase = purchases[moduleSlot];
+            return true;
+        }
+
+        // ── 초기화 ──────────────────────────────────────────────────────────
+
+        /// <summary>전부 되돌린다. 항해 시작과 테스트가 부른다.</summary>
+        public static void Clear()
+        {
+            purchases.Clear();
+            Balance = 0;
+            PortIndex = 0;
+            LastPortIncome = 0;
+            LastCarriedOver = 0;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnEnterPlayMode() => Clear();
+    }
+}
