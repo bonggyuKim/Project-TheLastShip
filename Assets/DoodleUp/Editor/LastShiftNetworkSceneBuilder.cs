@@ -53,7 +53,7 @@ namespace DoodleUp.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             scene.name = "LAST_SHIFT_SP02A_NETWORK";
             LastShiftSceneBuilder.CreateLighting();
-            PrefabUtility.InstantiatePrefab(LastShiftSceneBuilder.RebuildShipPrefab());
+            var ship = (GameObject)PrefabUtility.InstantiatePrefab(LastShiftSceneBuilder.RebuildShipPrefab());
             LastShiftSceneBuilder.RebuildItemPrefabs();
             var items = LastShiftSceneBuilder.CreateItems();
             LastShiftSceneBuilder.CreateMeteorStimulus();
@@ -64,6 +64,11 @@ namespace DoodleUp.Editor
             sandbox.Configure(System.Array.Empty<LastShiftPlayerController>(), items);
             sandbox.gameObject.AddComponent<NetworkObject>();
             sandbox.gameObject.AddComponent<LastShiftNetworkSandbox>().Configure(sandbox);
+
+            // 기항 배치 화면. 팔레트는 아직 자산이 없어 비워 두고, 그러면 조립기가 그레이박스로
+            // 세운다(LastShiftModuleAssembler). 아트 모듈 프리팹이 들어오면 여기 물린다.
+            runtime.AddComponent<LastShiftPlacementUi>().Configure(ship.transform, null);
+
             var sessionObject = new GameObject("LAST_SHIFT_SP02A_NETWORK_Session");
             var manager = sessionObject.AddComponent<NetworkManager>();
             var transport = sessionObject.AddComponent<UnityTransport>();

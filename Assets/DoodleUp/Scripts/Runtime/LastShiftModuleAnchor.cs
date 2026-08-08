@@ -81,6 +81,41 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 이 발자국을 <c>90°</c> 4단으로 돌린 발자국. <b>배치 커서가 쓰는 방향이다</b> —
+        /// 조립기(<see cref="LastShiftModuleAssembler.TryFit"/>)는 프리팹을 돌려 표에 맞추고,
+        /// 커서는 반대로 고른 모듈을 돌려 표에 넣을 칸을 만든다.
+        ///
+        /// <b>면과 오프셋을 따로 돌리지 않고 문점 하나를 돌려서 되읽는다.</b> 면 회전표를
+        /// 손으로 적으면 <see cref="LastShiftModuleAssembler.Rotate"/> 와 두 벌이 되고, 두
+        /// 벌이 갈리면 커서가 만든 칸에 조립기가 프리팹을 못 맞춘다 — 값이 아니라 규약이
+        /// 갈리는 종류의 어긋남이라 씬에서만 드러난다.
+        /// </summary>
+        public LastShiftModuleFootprint Rotated(int quarterTurns)
+        {
+            var turns = quarterTurns & 3;
+            if (turns == 0) return this;
+
+            // 홀수 회전은 x 와 z 를 맞바꾼다 — 조립기가 같은 자리에서 하는 것과 같은 처리다.
+            var swapped = (turns & 1) == 1;
+            var lengthX = swapped ? WidthZ : LengthX;
+            var widthZ = swapped ? LengthX : WidthZ;
+
+            var point = LastShiftModuleAssembler.Rotate(DoorPoint, turns);
+
+            // 돌린 문점이 네 면 중 어디에 얹혀 있는지는 "자기 반폭에 더 가까운 축" 으로 읽는다.
+            // 문이 모서리에 오는 경우는 DoorFits 가 이미 막는다(구멍 폭이 면을 넘친다).
+            var xGap = Mathf.Abs(Mathf.Abs(point.x) - lengthX * 0.5f);
+            var zGap = Mathf.Abs(Mathf.Abs(point.y) - widthZ * 0.5f);
+            var onXFace = xGap <= zGap;
+
+            var face = onXFace
+                ? (point.x < 0f ? LastShiftModuleFace.MinX : LastShiftModuleFace.MaxX)
+                : (point.y < 0f ? LastShiftModuleFace.MinZ : LastShiftModuleFace.MaxZ);
+
+            return new LastShiftModuleFootprint(lengthX, widthZ, face, onXFace ? point.y : point.x);
+        }
+
+        /// <summary>
         /// 구획 제원에서 발자국을 뽑는다. 표에 들어온 칸이 요구하는 <b>목표 형상</b>이 이것이고,
         /// 조립기는 프리팹 발자국을 회전시켜 여기에 맞춘다.
         /// </summary>

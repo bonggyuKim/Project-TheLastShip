@@ -197,7 +197,16 @@ namespace DoodleUp.Runtime
         /// <paramref name="parent"/> 가 선체 판과 구획 루트를 담은 칸이어야 하는 이유가 이것이다.
         /// </summary>
         /// <returns>세운 모듈 수. 뚫은 문 수는 <see cref="LastShiftBakedDoorways.Open"/> 이 돌려준다.</returns>
-        public static int Rebuild(Transform parent, LastShiftModulePalette palette)
+        public static int Rebuild(Transform parent, LastShiftModulePalette palette) =>
+            Rebuild(parent, palette, out _);
+
+        /// <summary>
+        /// 같은 재조립이되 절단 보고서를 같이 돌려준다. <b>배치 확정 화면이 이쪽을 쓴다</b> —
+        /// 안 그러면 보고서를 얻으려고 <see cref="LastShiftBakedDoorways.Open"/> 을 한 번 더
+        /// 불러야 하고, 그건 방금 뚫은 구멍을 전부 메웠다 다시 뚫는 값이다.
+        /// </summary>
+        public static int Rebuild(
+            Transform parent, LastShiftModulePalette palette, out LastShiftBakedDoorwayReport doorways)
         {
             if (parent == null) throw new System.ArgumentNullException(nameof(parent));
 
@@ -211,7 +220,7 @@ namespace DoodleUp.Runtime
                 built++;
             }
 
-            LastShiftBakedDoorways.Open(parent);
+            doorways = LastShiftBakedDoorways.Open(parent);
             return built;
         }
 
