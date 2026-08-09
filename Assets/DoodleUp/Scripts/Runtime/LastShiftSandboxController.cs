@@ -488,12 +488,121 @@ namespace DoodleUp.Runtime
             currentState.OxygenPressure = zonePressures[LastShiftZone.Cockpit];
         }
 
+        /// <summary>
+        /// 지금 구간 런타임(B층) 상태 전부를 값 한 벌로 접는다. <b>동기 대입 한 덩어리</b>이며
+        /// 이 안에서 시뮬을 세우지 않는다 — 캡처는 tick <c>N</c> 직후이거나 <c>N-1</c> 직후이지
+        /// tick 중간일 수 없으므로 찢어진 스냅샷이 구조적으로 나올 수 없다
+        /// (<c>docs/tech/save-backbone-feasibility-v1.md</c> §1.4-나).
+        ///
+        /// 네트워크 계층이 아니라 여기 있는 이유는 소비자가 둘이기 때문이다. 파일 층은
+        /// <see cref="LastShiftNetworkSandbox"/> 없이도 캡처할 수 있어야 한다.
+        /// </summary>
+        public LastShiftNetworkSnapshot CaptureRuntimeSnapshot()
+        {
+            byte securedMask = 0;
+            if (items != null)
+            {
+                foreach (var item in items)
+                {
+                    if (item == null || !item.Secured) continue;
+                    securedMask |= (byte)(1 << (int)item.Role);
+                }
+            }
+
+            byte valveMask = 0;
+            foreach (var holder in coolingValveHolders)
+                if (holder != null) valveMask |= (byte)(1 << (int)holder.PlayerSlot);
+
+            return new LastShiftNetworkSnapshot
+            {
+                Preset = currentPreset,
+                ShipState = currentState,
+                FirstProblem = FirstResult.Problem,
+                CurrentProblem = LastResult.Problem,
+                CoolingScore = LastResult.CoolingScore,
+                BatteryScore = LastResult.BatteryScore,
+                LeakScore = LastResult.LeakScore,
+                DockingSecondsRemaining = dockingSecondsRemaining,
+                ResetGeneration = ResetGeneration,
+                ImpactApplicationCount = ImpactApplicationCount,
+                SecuredItemMask = securedMask,
+                HasAppliedImpact = HasAppliedImpact,
+                Verdict = verdict,
+                SacrificedSystemMask = repairLedger.SacrificeMask,
+                ThrustCeiling = lastTick.ThrustCeiling,
+                HeatProtectionEngaged = lastTick.HeatProtectionEngaged,
+                SteeringDelayed = lastTick.SteeringDelayed,
+                OxygenPumpRunning = lastTick.OxygenPumpRunning,
+                SirenActive = sirenActive,
+                PowerPressure = PressureOf(LastShiftZone.Power),
+                CoolingPressure = PressureOf(LastShiftZone.Cooling),
+                LifeSupportPressure = PressureOf(LastShiftZone.LifeSupport),
+                Boundary0DoorOpen = IsDoorOpen(0),
+                Boundary1DoorOpen = IsDoorOpen(1),
+                Boundary2DoorOpen = IsDoorOpen(2),
+                ForeHatchOpen = IsHatchOpen(LastShiftBypassDuct.ForeShaft),
+                AftHatchOpen = IsHatchOpen(LastShiftBypassDuct.AftShaft),
+                UncontainedSystemMask = UncontainedSystemMask,
+                CoolingRepair = repairLedger.Capture(LastShiftShipSystem.Cooling),
+                PowerRepair = repairLedger.Capture(LastShiftShipSystem.Power),
+                OxygenRepair = repairLedger.Capture(LastShiftShipSystem.Oxygen),
+                QuickBypassCount = repairLedger.QuickBypassCount,
+                BypassLapseCount = repairLedger.BypassLapseCount,
+                DamagedSystemMask = (byte)damagedSystemMask,
+                ControlHoldThrustDemand = controlHold.ThrustDemand,
+                ControlHoldAttitudeDegrees = controlHold.AttitudeDegrees,
+                ControlHoldRemainingSeconds = controlHold.RemainingSeconds,
+                SteeringDelayRemainingSeconds = steeringInputDelayRemaining,
+                PendingThrustDemand = pendingThrust,
+                PendingAttitudeDegrees = pendingAttitude,
+                HasPendingControl = hasPendingControl,
+                HeatProtectionSeconds = heatProtectionSeconds,
+                CrewDeathZone = lastCrewDeathZone,
+                HasCrewDeathZone = hasCrewDeathZone,
+                CrewAtDockingTrigger = wasCrewAtDockingTrigger,
+                MeteorImpactPoint = appliedMeteor.ImpactPoint,
+                MeteorImpactVector = appliedMeteor.ImpactVector,
+                MeteorMass = appliedMeteor.Mass,
+                MeteorSpeed = appliedMeteor.Speed,
+                CoolingValveHolderMask = valveMask,
+                SecondsSinceVerdict = SecondsSinceVerdict
+            };
+        }
+
+        /// <summary>
+        /// 상황 래치 위상을 값으로 접는다. 스냅샷 구조체에 안 넣는 근거는
+        /// <see cref="LastShiftSituationTracker.CaptureLatchDwell"/> 주석에 있다.
+        /// </summary>
+        public float[] CaptureSituationLatches() => situationTracker.CaptureLatchDwell();
+
         public void ApplyNetworkSnapshot(in LastShiftNetworkSnapshot value)
         {
+            ApplyNetworkSnapshot(value, LastShiftStateAuthority.Replicated);
+        }
+
+        /// <summary>
+        /// 스냅샷 주입. <paramref name="authority"/> 가 <b>주입 이후 누가 계산하는가</b> 를 가른다 —
+        /// 이 인자가 생기기 전에는 주입이 언제나 "나는 클라이언트다" 를 같이 켰고, 그래서
+        /// 세이브 복원이 이 경로를 쓸 수 없었다(<c>save-backbone-feasibility-v1.md</c> §1.3-가).
+        ///
+        /// <paramref name="situationLatchDwell"/> 는 히스테리시스 위상이며 없으면(네트워크 경로)
+        /// 지금처럼 0초 재평가로 다시 세운다 — 표시에는 맞고 위상만 초기화된다.
+        /// </summary>
+        public void ApplyNetworkSnapshot(
+            in LastShiftNetworkSnapshot value,
+            LastShiftStateAuthority authority,
+            float[] situationLatchDwell = null)
+        {
+            var restoring = authority == LastShiftStateAuthority.Local;
+
             // 클라이언트는 ApplyMeteorImpact 를 돌리지 않으므로 충격 연출 트리거가 없다.
             // 스냅샷의 ImpactApplicationCount 증가가 곧 "서버에서 충격이 터졌다" 이므로
             // 그 변화를 연출 트리거로 쓴다. 리셋으로 카운트가 유지되는 동안은 재생하지 않는다.
-            var impactAdvanced = value.HasAppliedImpact && value.ImpactApplicationCount > ImpactApplicationCount;
+            //
+            // 복원은 이 트리거를 쓰지 않는다. 저장된 판은 충격이 <b>이미 지나간</b> 상태이고,
+            // 이어하기 첫 프레임에 운석이 다시 터지는 연출은 사실과 다르다.
+            var impactAdvanced = !restoring &&
+                                 value.HasAppliedImpact && value.ImpactApplicationCount > ImpactApplicationCount;
 
             currentPreset = value.Preset;
             currentState = value.ShipState;
@@ -517,12 +626,31 @@ namespace DoodleUp.Runtime
             HasAppliedImpact = value.HasAppliedImpact;
             // 판정이 스냅샷으로 처음 도착한 순간이 곧 이 화면에서의 판정 시각이다. 여기서
             // 찍지 않으면 결과 화면 모션이 t=0 을 잃고 첫 프레임부터 완성된 상태로 뜬다.
-            if (verdict != value.Verdict && LastShiftVerdictResolver.IsResolved(value.Verdict))
+            //
+            // 복원은 반대다 — 저장한 판의 결과 화면이 이미 얼마나 오래 떠 있었는지가 사실이므로
+            // 절대 시각 대신 경과를 되돌린다(절대 시각은 프로세스마다 달라 실을 수 없다).
+            if (restoring)
+                verdictRealtime = Time.unscaledTime - Mathf.Max(0f, value.SecondsSinceVerdict);
+            else if (verdict != value.Verdict && LastShiftVerdictResolver.IsResolved(value.Verdict))
                 verdictRealtime = Time.unscaledTime;
             verdict = value.Verdict;
-            repairLedger.ApplyReplicatedSacrificeMask(value.SacrificedSystemMask);
+            if (restoring)
+            {
+                // 권위를 되찾는 쪽은 결과가 아니라 <b>입력</b>을 받아야 다음 tick 이 성립한다.
+                // 장부 전체와 손상 마스크가 그 입력이고, 이 둘이 있으면 UncontainedSystemMask 를
+                // 스스로 다시 계산할 수 있으므로 usesReplicatedState 를 켜지 않는다.
+                repairLedger.RestoreFrom(
+                    value.CoolingRepair, value.PowerRepair, value.OxygenRepair,
+                    value.QuickBypassCount, value.BypassLapseCount);
+                damagedSystemMask = value.DamagedSystemMask;
+                usesReplicatedState = false;
+            }
+            else
+            {
+                repairLedger.ApplyReplicatedSacrificeMask(value.SacrificedSystemMask);
+                usesReplicatedState = true;
+            }
             replicatedUncontainedSystemMask = value.UncontainedSystemMask;
-            usesReplicatedState = true;
             lastTick = new LastShiftTickReport
             {
                 ThrustCeiling = value.ThrustCeiling,
@@ -538,8 +666,14 @@ namespace DoodleUp.Runtime
                 else StopSirenAudio();
             }
             else if (sirenActive) EnsureSirenAudioPlaying();
-            FirstResult = new LastShiftResolverResult(value.FirstProblem, 0f, 0f, 0f, "server snapshot");
-            LastResult = new LastShiftResolverResult(value.CurrentProblem, value.CoolingScore, value.BatteryScore, value.LeakScore, "server snapshot");
+            var origin = restoring ? "save restore" : "server snapshot";
+            FirstResult = new LastShiftResolverResult(value.FirstProblem, 0f, 0f, 0f, origin);
+            LastResult = new LastShiftResolverResult(value.CurrentProblem, value.CoolingScore, value.BatteryScore, value.LeakScore, origin);
+            if (restoring) RestoreLocalAuthorityState(value);
+            // 래치 위상은 있으면 되돌리고 없으면 아래 0초 재평가가 다시 세운다. 되돌린 뒤에도
+            // 재평가를 거치는 것이 요점이다 — 래치는 상태이고 대표 상황은 그 파생값이라,
+            // 파생값까지 저장했다가 서로 어긋나게 두는 것보다 한 번 다시 접는 편이 안전하다.
+            if (situationLatchDwell != null) situationTracker.ApplyLatchDwell(situationLatchDwell);
             // 구역 등급도 사이렌과 같은 이유로 여기서 다시 평가한다. 클라이언트는
             // AdvanceMission 을 안 돌리므로 이 줄이 없으면 HUD 4칸이 영영 "정상" 이다 —
             // 상황을 스냅샷 필드로 늘리지 않는 것은 이미 동기화되는 상태·압력만으로
@@ -547,6 +681,58 @@ namespace DoodleUp.Runtime
             situationTracker.Evaluate(
                 LastShiftSituationInput.From(currentState, zonePressures, BuildContainment()), 0f);
             if (impactAdvanced) PlayImpactFeedback(Meteor);
+        }
+
+        /// <summary>
+        /// 복원 전용 주입분. 여기 있는 것들은 <b>클라이언트가 굳이 알 필요가 없던 상태</b>라
+        /// 네트워크 경로가 한 번도 안 건드렸다 — 표시만 하는 쪽은 이 값들 없이도 화면이 맞기
+        /// 때문이다. 판정을 이어서 내는 쪽은 전부 필요하다(§1.3-나).
+        /// </summary>
+        private void RestoreLocalAuthorityState(in LastShiftNetworkSnapshot value)
+        {
+            controlHold.Restore(
+                value.ControlHoldThrustDemand, value.ControlHoldAttitudeDegrees, value.ControlHoldRemainingSeconds);
+            steeringInputDelayRemaining = Mathf.Max(0f, value.SteeringDelayRemainingSeconds);
+            pendingThrust = value.PendingThrustDemand;
+            pendingAttitude = value.PendingAttitudeDegrees;
+            hasPendingControl = value.HasPendingControl;
+            heatProtectionSeconds = Mathf.Max(0f, value.HeatProtectionSeconds);
+            lastCrewDeathZone = value.CrewDeathZone;
+            hasCrewDeathZone = value.HasCrewDeathZone;
+            // 도킹 판정은 상주가 아니라 진입 엣지로 난다. 이 기준값을 false 로 두고 복원하면
+            // 트리거 안에서 저장한 판이 다음 tick 에 가만히 서 있는 것만으로 도킹한다.
+            wasCrewAtDockingTrigger = value.CrewAtDockingTrigger;
+            appliedMeteor = new LastShiftMeteorStimulus
+            {
+                ImpactPoint = value.MeteorImpactPoint,
+                ImpactVector = value.MeteorImpactVector,
+                Mass = value.MeteorMass,
+                Speed = value.MeteorSpeed
+            };
+            RestoreCoolingValveHolders(value.CoolingValveHolderMask);
+            // 런 요약은 저장하지 않는다. 얼린 값이 전부 위에서 복원한 상태의 파생이라
+            // (판정·도킹 진행도·남은 시간·열 잠금·장부 카운터·죽은 구역) 다시 접으면 같은 값이
+            // 나오고, 두 벌로 두면 어긋날 자리만 는다. 판정 전에는 요약 자체가 의미 없다.
+            // verdictRealtime 은 위에서 경과로 되돌렸으므로 여기서 다시 찍지 않는다.
+            if (IsResolved) runSummary = BuildRunSummary();
+        }
+
+        /// <summary>
+        /// 밸브 홀더를 슬롯 마스크로 되돌린다. 사거리·생사는 다시 보지 않는다 — 저장 시점에
+        /// 이미 통과한 판정이고, 복원 직후 승무원 위치가 아직 제자리로 오기 전이면 여기서
+        /// 다시 재는 것이 오히려 손을 떼게 만든다. 자격을 잃은 홀더는 다음 tick 의
+        /// <see cref="PruneCoolingValveHolders"/> 가 정상 경로로 걷어낸다.
+        /// </summary>
+        private void RestoreCoolingValveHolders(byte mask)
+        {
+            coolingValveHolders.Clear();
+            if (mask == 0 || players == null) return;
+            foreach (var targetPlayer in players)
+            {
+                if (targetPlayer == null) continue;
+                if ((mask & (1 << (int)targetPlayer.PlayerSlot)) == 0) continue;
+                if (!coolingValveHolders.Contains(targetPlayer)) coolingValveHolders.Add(targetPlayer);
+            }
         }
 
         public void RegisterPlayer(LastShiftPlayerController player)
@@ -777,8 +963,19 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void CaptureRunSummary()
         {
+            runSummary = BuildRunSummary();
+            verdictRealtime = Time.unscaledTime;
+        }
+
+        /// <summary>
+        /// 요약을 지금 상태에서 접는다. <b>새로 계산하는 값이 없다</b>는 성질 덕에 세이브
+        /// 복원이 요약을 따로 저장하지 않고 이 함수를 한 번 더 부르는 것으로 끝난다 —
+        /// 같은 사실을 파일에 두 벌 두면 어긋날 자리만 는다.
+        /// </summary>
+        private LastShiftRunSummary BuildRunSummary()
+        {
             var elapsed = LastShiftRecoveryTuning.DockingTimerSeconds - dockingSecondsRemaining;
-            runSummary = new LastShiftRunSummary(
+            return new LastShiftRunSummary(
                 verdict,
                 currentState.DockProgress,
                 elapsed,
@@ -790,7 +987,6 @@ namespace DoodleUp.Runtime
                 // 죽은 자리가 기록되지 않은 경로(승무원 없는 최소 조립 등)에서는 가장 낮은
                 // 구역을 쓴다. 질식 판정이 났다면 그 구역이 곧 원인이다.
                 hasCrewDeathZone ? lastCrewDeathZone : zonePressures.LowestZone);
-            verdictRealtime = Time.unscaledTime;
         }
 
         /// <summary>

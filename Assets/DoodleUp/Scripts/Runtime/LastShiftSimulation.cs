@@ -405,5 +405,17 @@ namespace DoodleUp.Runtime
             AttitudeDegrees = Mathf.Clamp(attitudeDegrees, -90f, 90f);
             RemainingSeconds = 0f;
         }
+
+        /// <summary>
+        /// 저장된 홀드를 그대로 되살린다. <see cref="Set"/> 이 잔여를 언제나 8초로 리셋하고
+        /// <see cref="Reset"/> 은 0 으로 밀기 때문에, 진행 중인 홀드를 복원할 자리가 없었다 —
+        /// 그 둘 중 어느 쪽을 써도 저장 시점의 남은 시간이 사라진다.
+        /// </summary>
+        public void Restore(float thrustDemand, float attitudeDegrees, float remainingSeconds)
+        {
+            ThrustDemand = Mathf.Clamp01(thrustDemand);
+            AttitudeDegrees = Mathf.Clamp(attitudeDegrees, -90f, 90f);
+            RemainingSeconds = Mathf.Clamp(remainingSeconds, 0f, HoldDuration);
+        }
     }
 }
