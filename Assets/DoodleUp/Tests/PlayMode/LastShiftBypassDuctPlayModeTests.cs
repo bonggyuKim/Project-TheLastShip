@@ -92,11 +92,12 @@ namespace DoodleUp.Tests.PlayMode
             // 선수 다리는 +z 로 달린다. 천장은 z = ForeShaftZ + Section/2 에서 시작하므로,
             // 그 선을 넘었다는 것이 곧 "관 안으로 들어갔다" 이다.
             var ceilingStartZ = LastShiftBypassDuct.ForeShaftZ + LastShiftBypassDuct.Section * 0.5f;
-            yield return Walk(new Vector2(0f, 1f), 5f);
+            yield return Walk(new Vector2(0f, 1f), 5f, holdCrouch: true);
 
             var landed = player.transform.position;
             Assert.That(landed.z, Is.GreaterThan(ceilingStartZ + LastShiftShipPhysics.CrewRadius),
-                $"웅크렸는데도 관 입구에서 막힌다 — z={landed.z:F2}, 천장 시작 {ceilingStartZ:F2}.");
+                $"웅크렸는데도 관 입구에서 막힌다 — pos={landed}, 천장 시작 {ceilingStartZ:F2}, " +
+                $"forward={player.transform.forward}. {UnderfootReport()}");
             Assert.That(LastShiftBypassDuct.Contains(landed), Is.True,
                 $"승무원이 덕트 안으로 안 잡힌다 — {landed}.");
             Assert.That(player.IsCrouching, Is.True,
@@ -104,7 +105,7 @@ namespace DoodleUp.Tests.PlayMode
 
             // L 자 모서리(= 에어록 위)까지 간다. 여기 바닥은 판이 아니라 닫힌 안쪽 해치라,
             // 이 한 줄이 "해치를 뚫어 두고도 닫혀 있으면 걸어서 지나간다" 를 같이 잰다.
-            yield return Walk(new Vector2(0f, 1f), 4f);
+            yield return Walk(new Vector2(0f, 1f), 4f, holdCrouch: true);
             Assert.That(player.transform.position.z,
                 Is.GreaterThan(LastShiftBypassDuct.RunZ - LastShiftBypassDuct.Section * 0.5f),
                 "모서리(에어록 위)에서 막힌다 — 닫힌 안쪽 해치가 바닥을 안 메운다.");
@@ -129,7 +130,7 @@ namespace DoodleUp.Tests.PlayMode
             player.SetAimDirectionForProbe(Vector3.forward);
             yield return Walk(Vector2.zero, 2f);
             player.SetCrouching(true);
-            yield return Walk(new Vector2(0f, 1f), 8f);
+            yield return Walk(new Vector2(0f, 1f), 8f, holdCrouch: true);
 
             var onAirlock = player.transform.position;
             Assert.That(onAirlock.y, Is.EqualTo(LastShiftBypassDuct.FloorY).Within(0.1f),
@@ -198,12 +199,25 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(hatch.IsOpen, Is.EqualTo(expectedOpen), "해치 상태가 안 따라왔다.");
         }
 
-        /// <summary>고정 스텝으로 이동을 민다. 프레임 시간과 assertion 이 경쟁하지 않게 한다.</summary>
-        private IEnumerator Walk(Vector2 move, float seconds)
+        /// <summary>
+        /// 고정 스텝으로 이동을 민다. 프레임 시간과 assertion 이 경쟁하지 않게 한다.
+        ///
+        /// <paramref name="holdCrouch"/> 는 <b>Ctrl 을 누르고 있는 것</b>이다. 한 번만 켜고
+        /// 걸으면 안 되는데, <see cref="LastShiftPlayerController.Update"/> 가 매 프레임
+        /// <c>ProcessKeyboardInput</c> 을 돌려 눌리지 않은 Ctrl 을 읽고 자세를 되돌리기
+        /// 때문이다(누름 유지형 동사라 그게 맞는 동작이다). 승강구 목은 위가 갑판까지
+        /// 뚫려 있어 <c>HasStandingHeadroom</c> 이 참이라 그 자리에서 실제로 일어서고,
+        /// 선 캡슐(<c>1.7m</c>)은 단면 <c>0.9m</c> 관에 못 들어가 입구에서 그대로 선다.
+        ///
+        /// 관 안에 들어간 뒤로는 천장이 헤드룸을 막아 Ctrl 을 놓아도 웅크림이 유지된다 —
+        /// 그래서 이 플래그가 필요한 구간은 승강구에서 관으로 넘어가는 동안뿐이다.
+        /// </summary>
+        private IEnumerator Walk(Vector2 move, float seconds, bool holdCrouch = false)
         {
             var elapsed = 0f;
             while (elapsed < seconds)
             {
+                if (holdCrouch) player.SetCrouching(true);
                 player.MoveForProbe(move, Time.fixedDeltaTime);
                 elapsed += Time.fixedDeltaTime;
                 yield return new WaitForFixedUpdate();

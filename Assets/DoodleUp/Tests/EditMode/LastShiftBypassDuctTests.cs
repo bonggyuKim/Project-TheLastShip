@@ -21,17 +21,23 @@ namespace DoodleUp.Tests.EditMode
         {
             // 이 검사가 원래 "단면 == 웅크림 높이" 였고, 그게 곧 버그였다 — 캡슐이 관에 딱
             // 맞으면 여유가 0 이라 CharacterController 는 천장에 닿은 채로 못 움직인다.
-            // 지켜야 하는 것은 같음이 아니라 <b>들어간다</b> 이고, 여유는 컨트롤러가 접촉을
-            // 만드는 거리(skinWidth) 위아래 한 겹이다.
+            // 지켜야 하는 것은 같음이 아니라 <b>들어간다</b> 이다.
             Assert.That(LastShiftBypassDuct.Section,
                 Is.EqualTo(LastShiftShipPhysics.CrouchSection).Within(Tolerance),
                 "덕트 단면과 웅크림 단면 정본이 갈라졌다.");
-            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth,
+
+            // <b>skinWidth 를 두 번 센다.</b> 한 겹만 세던 것이 이 카드의 PlayMode 실패였다 —
+            // 컨트롤러는 바닥에 붙지 않고 skinWidth 만큼 뜬 채로 서므로(거치 간격), 위쪽
+            // 접촉 거리와 별개로 아래에서도 한 겹을 먹는다. 한 겹만 세면 0.74 + 0.08 = 0.82
+            // 가 0.9 보다 작아 통과하지만, 실제로 필요한 자리는 0.08 + 0.74 + 0.08 = 0.90
+            // 이라 관 입구에서 그대로 선다.
+            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth * 2f,
                 Is.LessThan(LastShiftBypassDuct.Section),
                 "웅크린 캡슐이 덕트 천장에 닿는다 — 웅크려도 못 들어가는 통로다.");
 
             // 폭도 같은 단면이다. 높이만 보고 폭을 안 보면 L 자 모서리에서 걸린다.
-            Assert.That(LastShiftShipPhysics.CrewRadius * 2f + LastShiftShipPhysics.CrewSkinWidth,
+            // 여기서도 접촉 거리는 좌우 한 겹씩이다.
+            Assert.That(LastShiftShipPhysics.CrewRadius * 2f + LastShiftShipPhysics.CrewSkinWidth * 2f,
                 Is.LessThan(LastShiftBypassDuct.Section),
                 "승무원 캡슐 지름이 덕트 폭을 채운다 — 관 안에서 옆으로 낀다.");
 

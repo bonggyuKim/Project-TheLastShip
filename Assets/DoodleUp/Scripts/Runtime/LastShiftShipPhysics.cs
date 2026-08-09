@@ -114,11 +114,19 @@ namespace DoodleUp.Runtime
         public const float CrouchSection = 0.9f;
 
         /// <summary>
-        /// 웅크린 캡슐과 통로 단면 사이 여유. 위아래(그리고 좌우) 각각 skinWidth 한 겹이다 —
-        /// 컨트롤러가 접촉을 만드는 거리가 그것이라 그보다 좁으면 관 안에서 천장에 닿은 채
-        /// 걷는 것이 되고, 실제로는 못 들어간다.
+        /// 웅크린 캡슐과 통로 단면 사이 여유. <b>skinWidth 세 겹이다.</b>
+        ///
+        /// 예전에는 두 겹이었고 "위아래 한 겹씩" 이라고 적혀 있었는데, 아래 한 겹은 여유가
+        /// 아니다 — CharacterController 는 바닥면에 붙지 않고 <see cref="CrewSkinWidth"/> 만큼
+        /// <b>뜬 채로</b> 선다. 그래서 그 한 겹은 캡슐을 얇게 만드는 대신 통째로 위로 밀어
+        /// 올리고, 남는 여유는 위쪽 한 겹뿐인데 그 한 겹을 컨트롤러의 접촉 거리가 그대로
+        /// 먹는다. 결과가 정확히 <c>0.08 + 0.74 + 0.08 = 0.90</c> — 단면과 같은 값이라
+        /// 여유가 <c>0</c> 이고, 관 입구에서 천장에 닿은 채 한 발도 못 나갔다.
+        ///
+        /// 세 겹의 뜻은 <b>거치 간격 + 접촉 거리 + 여유</b> 한 겹씩이다. 앞의 둘은 컨트롤러가
+        /// 반드시 가져가는 몫이라 협상 대상이 아니고, 실제로 남는 여유는 마지막 한 겹이다.
         /// </summary>
-        public const float CrouchClearance = CrewSkinWidth * 2f;
+        public const float CrouchClearance = CrewSkinWidth * 3f;
 
         /// <summary>
         /// 웅크렸을 때의 승무원 높이. <see cref="CrouchSection"/> 에서 여유를 뺀 값이다 —

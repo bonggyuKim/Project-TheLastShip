@@ -204,7 +204,9 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftDeckHatch.OpeningSpan,
                 Is.EqualTo(LastShiftShipPhysics.CrouchSection).Within(Tolerance),
                 "구멍이 웅크림 단면과 어긋나면 통로 단면과 갑판 구멍 중 하나가 거짓이다.");
-            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth,
+            // skinWidth 는 두 겹이다 — 컨트롤러가 거치 간격으로 한 겹, 접촉 거리로 한 겹을
+            // 가져간다(LastShiftShipPhysics.CrouchClearance).
+            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth * 2f,
                 Is.LessThan(LastShiftDeckHatch.OpeningSpan),
                 "웅크린 캡슐이 갑판 구멍을 꽉 채우면 내려가다 목에서 걸린다.");
 
