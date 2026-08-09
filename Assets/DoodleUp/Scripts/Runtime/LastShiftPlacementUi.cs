@@ -1,21 +1,28 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 기항 배치 화면. <b>이 컴포넌트가 자유 배치 사슬을 처음으로 끝까지 잇는다</b> —
-    /// 커서(<see cref="LastShiftPlacementCursor"/>) → 판정(<see cref="LastShiftPlacementVerdict"/>)
-    /// → 표(<see cref="LastShiftCompartments"/>) → 씬(<see cref="LastShiftModuleAssembler"/>)
-    /// → 벽뚫기(<see cref="LastShiftBakedDoorways"/>).
+    /// 기항 <b>선체 도면</b> 화면. 배 전체를 위에서 내려다보며 배치한다 —
+    /// <c>docs/core-four-rooms-and-hull-schematic-v1.md</c> §4 가 정본이다.
     ///
-    /// <b>규칙을 하나도 안 갖는다.</b> 여기 있는 것은 키를 커서 함수로 옮기는 일과, 커서가
-    /// 이미 계산해 둔 값을 화면에 적는 일뿐이다. 판정을 여기서 한 줄이라도 다시 하면 화면이
-    /// 통과라고 적은 배치가 표에서 물리는 자리가 생긴다.
+    /// <b>미니맵이 아니라 도면이다</b>(§0-4). 판 안 HUD 미니맵과 다른 물건이고, 둘을 같은
+    /// 단어로 부르면 "판 안에서도 도면을 보는가" 가 조용히 열린다.
     ///
-    /// <b>IMGUI 다.</b> <see cref="LastShiftSandboxController"/> 의 HUD 와 같은 방식이다 —
-    /// 기항 화면의 실제 모습은 <c>voyage-run-structure-v1.md</c> §4 가 정할 것이고 그건 아트·
-    /// 기획 몫이라, 지금 캔버스 계층을 세우면 그 작업이 통째로 버려진다.
+    /// <b><c>1</c>인칭 커서를 버린 이유는 조작 편의가 아니라 정보다</b>(§4.1). 이 시스템의 유일한
+    /// 결정이 "어느 면에 붙일까" 인데 <c>1</c>인칭으로 서 있으면 배 반대편 벽이 비어 있는지를
+    /// 볼 수 없다. 그래서 이 화면이 새로 보여주는 것 중 가장 중요한 것은 배 그림이 아니라
+    /// <b>자유면 하이라이트</b>(<see cref="LastShiftFreeFaces"/>)다 — 그것만 빼면 개편이 반만 온다.
+    ///
+    /// <b>규칙을 하나도 안 갖는다.</b> 여기 있는 것은 입력을 커서 함수로 옮기는 일과, 커서가
+    /// 이미 계산해 둔 값을 그리는 일뿐이다. 판정을 여기서 한 줄이라도 다시 하면 화면이 통과라고
+    /// 적은 배치가 표에서 물리는 자리가 생긴다.
+    ///
+    /// <b>IMGUI 다.</b> §4.6 이 "구획표가 이미 AABB 목록이라 IMGUI 유지 가능" 으로 적었고,
+    /// 실제 레이아웃·방 아이콘 <c>10</c>종은 <c>game-art</c> 몫이라(§7-9) 지금 캔버스 계층을
+    /// 세우면 그 작업이 통째로 버려진다.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class LastShiftPlacementUi : MonoBehaviour
@@ -44,17 +51,36 @@ namespace DoodleUp.Runtime
 
         private readonly LastShiftPlacementCursor cursor = new();
 
+        /// <summary>지금 표에서 잰 자유면. 표 개정 번호가 안 바뀌면 다시 안 잰다.</summary>
+        private readonly List<LastShiftFreeFace> freeFaces = new();
+
+        private int freeFacesRevision = -1;
+
         private bool open;
 
         /// <summary>커서를 서버에 청구해 두고 승낙을 기다리는 중인가.</summary>
         private bool awaitingCursor;
 
+        /// <summary>
+        /// 후보가 지금 자리에서 확정을 기다리는가. <b><c>2</c>단 클릭인 것이 의도다</b> —
+        /// §4.4 표는 "확정 = 클릭" 이지만 도면에서 클릭 하나가 곧 지출이면 자리를 <b>대 보는</b>
+        /// 동작이 사라진다. 이 화면의 목적이 "두 자리를 나란히 대 본다"(§4.1-1)이므로, 첫 클릭은
+        /// 후보를 옮기고 같은 자리를 다시 누르면 확정한다. 확정 순간은 여전히 클릭 하나다.
+        /// </summary>
+        private bool armed;
+
         private GameObject preview;
         private Material previewMaterial;
         private string lastResult = string.Empty;
 
+        /// <summary>도면 위에서 마우스가 얹힌 지은 모듈. 없으면 <c>-1</c> 이다.</summary>
+        private int hoveredIndex = -1;
+
+        private Texture2D fillTexture;
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
+        private GUIStyle smallStyle;
+        private GUIStyle centeredStyle;
 
         /// <summary>지금 배치 화면이 열려 있는가.</summary>
         public bool IsOpen => open;
@@ -130,11 +156,23 @@ namespace DoodleUp.Runtime
 
         private void OnDisable() => Close();
 
+        private void OnDestroy()
+        {
+            if (fillTexture != null) Destroy(fillTexture);
+            fillTexture = null;
+        }
+
         // ── 흐름 ────────────────────────────────────────────────────────────
 
         /// <summary>
         /// 화면을 연다. <b>커서 소유권을 못 잡으면 안 열린다</b> — 옆 사람이 배치 중이면
         /// 화면이 뜨는 것 자체가 틀린 신호다(§12-9, <see cref="LastShiftPlacementAuthority"/>).
+        ///
+        /// <b>조항 U-1 이 여기서 반만 성립한다.</b> "커서는 한 명이 잡고 도면은 전원이 본다"
+        /// (§4.5) 중 앞은 이미 서버 권위로 서 있고, 뒤(안 잡은 사람도 도면을 보는 것)는 이
+        /// 화면이 소유권을 열림 조건으로 쓰는 한 안 된다. 여는 조건을 푸는 것은 배치 요청을
+        /// 누가 보낼 수 있는가와 같은 물음이라 커서 층에서 닫아야 한다 — 여기서 열어 두면
+        /// 그 사이에 누른 확정이 전부 조용히 버려진다.
         /// </summary>
         public bool Open()
         {
@@ -163,6 +201,7 @@ namespace DoodleUp.Runtime
             EnterPortWhenNoVoyageDrivesIt();
 
             awaitingCursor = false;
+            armed = false;
             open = true;
             lastResult = string.Empty;
             return true;
@@ -193,6 +232,7 @@ namespace DoodleUp.Runtime
             if (LastShiftPlacementAuthority.IsHeldBy(ClientId)) return;
 
             open = false;
+            armed = false;
             DestroyPreview();
             lastResult = "배치 권한을 잃었다";
         }
@@ -225,6 +265,7 @@ namespace DoodleUp.Runtime
         public void Close()
         {
             awaitingCursor = false;
+            armed = false;
             if (!open) return;
 
             open = false;
@@ -243,6 +284,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool Confirm()
         {
+            armed = false;
+
             var network = Network;
             if (network == null)
             {
@@ -366,15 +409,23 @@ namespace DoodleUp.Runtime
 
             if (!open) return;
 
-            if (keyboard[Key.Tab].wasPressedThisFrame) cursor.SelectNext(keyboard[Key.LeftShift].isPressed ? -1 : 1);
-            if (keyboard[Key.Z].wasPressedThisFrame) cursor.Rotate(-1);
-            if (keyboard[Key.X].wasPressedThisFrame) cursor.Rotate(1);
+            // §4.4 — Tab/Shift+Tab 또는 1~0 으로 고른다. 카탈로그가 10종이라 숫자 한 줄이 곧 목록이다.
+            if (keyboard[Key.Tab].wasPressedThisFrame) SelectCatalog(cursor.CatalogIndex + (keyboard[Key.LeftShift].isPressed ? -1 : 1));
+            for (var slot = 0; slot < LastShiftModuleCatalog.Count && slot < 10; slot++)
+                if (keyboard[DigitKeyFor(slot)].wasPressedThisFrame)
+                    SelectCatalog(slot);
+
+            if (keyboard[Key.R].wasPressedThisFrame) Rotate(keyboard[Key.LeftShift].isPressed ? -1 : 1);
 
             var stepX = (keyboard[Key.RightArrow].wasPressedThisFrame ? 1 : 0) -
                         (keyboard[Key.LeftArrow].wasPressedThisFrame ? 1 : 0);
             var stepZ = (keyboard[Key.UpArrow].wasPressedThisFrame ? 1 : 0) -
                         (keyboard[Key.DownArrow].wasPressedThisFrame ? 1 : 0);
-            cursor.Nudge(stepX, stepZ);
+            if (stepX != 0 || stepZ != 0)
+            {
+                cursor.Nudge(stepX, stepZ);
+                armed = false;
+            }
 
             if (keyboard[Key.Enter].wasPressedThisFrame) Confirm();
             if (keyboard[Key.Delete].wasPressedThisFrame) UndoLast();
@@ -383,11 +434,33 @@ namespace DoodleUp.Runtime
             UpdatePreview();
         }
 
+        /// <summary>
+        /// <c>1~0</c> 이 카탈로그 <c>0~9</c> 다. <c>0</c> 이 열째인 것은 키보드 배열 순서이고,
+        /// 목록이 <c>10</c> 종을 넘으면 이 대응이 먼저 깨진다.
+        /// </summary>
+        private static Key DigitKeyFor(int slot) => slot == 9 ? Key.Digit0 : Key.Digit1 + slot;
+
+        private void SelectCatalog(int index)
+        {
+            cursor.Select(index);
+            armed = false;
+        }
+
+        private void Rotate(int steps)
+        {
+            cursor.Rotate(steps);
+            armed = false;
+        }
+
         // ── 미리보기 ────────────────────────────────────────────────────────
 
         /// <summary>
         /// 후보 발자국을 반투명 상자로 세운다. 색이 판정 결과다 — 초록이 들어가는 자리,
         /// 붉은색이 물리는 자리다.
+        ///
+        /// <b>도면이 생겨도 이 상자를 안 버린다.</b> 도면은 판 밖 화면이고 이 상자는 씬에 선
+        /// 물건이라, 화면을 닫고 실제로 걸어 들어갔을 때 방금 고른 자리가 어디였는지를 아는
+        /// 유일한 표시다.
         ///
         /// <b>머티리얼을 새로 안 만든다.</b> <c>Shader.Find</c> 로 만든 셰이더는 빌드에서
         /// 스트립돼 분홍색이 된다(<see cref="LastShiftModulePalette"/>). 팔레트 벽 재질이
@@ -433,71 +506,399 @@ namespace DoodleUp.Runtime
 
         // ── 화면 ────────────────────────────────────────────────────────────
 
+        private static readonly Color PanelColor = new(0.05f, 0.07f, 0.1f, 0.94f);
+        private static readonly Color GridColor = new(0.22f, 0.28f, 0.36f, 1f);
+        private static readonly Color HullColor = new(0.14f, 0.18f, 0.24f, 1f);
+        private static readonly Color FixedColor = new(0.30f, 0.36f, 0.44f, 1f);
+        private static readonly Color ModuleColor = new(0.42f, 0.62f, 0.78f, 1f);
+        private static readonly Color HoverColor = new(0.85f, 0.72f, 0.35f, 1f);
+        private static readonly Color FreeFaceColor = new(0.35f, 1f, 0.72f, 0.95f);
+        private static readonly Color RimColor = new(0.45f, 0.55f, 0.70f, 0.85f);
+        private static readonly Color OkColor = new(0.45f, 1f, 0.75f, 1f);
+        private static readonly Color BadColor = new(1f, 0.45f, 0.35f, 1f);
+
+        /// <summary>압력 구역 넷의 옅은 색. 모듈이 어느 구역에 편입되는지가 곧 진공 조건이다(조항 F-1).</summary>
+        private static readonly Color[] ZoneColors =
+        {
+            new(0.20f, 0.30f, 0.45f, 1f),
+            new(0.34f, 0.26f, 0.20f, 1f),
+            new(0.20f, 0.34f, 0.34f, 1f),
+            new(0.26f, 0.22f, 0.38f, 1f)
+        };
+
         private void OnGUI()
         {
-            headingStyle ??= new GUIStyle(GUI.skin.label)
-                { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-            bodyStyle ??= new GUIStyle(GUI.skin.label)
-                { fontSize = 13, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
+            EnsureStyles();
 
             if (!open)
             {
                 GUI.Label(new Rect(16f, Screen.height - 28f, 420f, 22f),
-                    $"기항 배치 — {toggleKey}", bodyStyle);
+                    $"선체 도면 — {toggleKey}", bodyStyle);
                 return;
             }
 
-            GUI.Box(new Rect(16f, 320f, 520f, 236f), GUIContent.none);
-            GUI.Label(new Rect(28f, 328f, 480f, 24f),
-                $"기항 {LastShiftMaintenance.PortIndex} — 여력 {LastShiftMaintenance.Balance} " +
-                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver})",
+            var panel = new Rect(16f, 16f, Screen.width - 32f, Screen.height - 32f);
+            var header = new Rect(panel.x, panel.y, panel.width, 34f);
+            var body = new Rect(panel.x, header.yMax + 4f, panel.width, panel.height - header.height - 4f);
+            var catalog = new Rect(body.x, body.y, 200f, body.height);
+            var readout = new Rect(body.xMax - 260f, body.y, 260f, body.height);
+            var chart = new Rect(catalog.xMax + 6f, body.y, readout.x - catalog.xMax - 12f, body.height);
+
+            Fill(panel, PanelColor);
+            RefreshFreeFaces();
+
+            var schematic = new LastShiftHullSchematic(chart);
+            HandleChartInput(chart, schematic);
+
+            DrawHeader(header);
+            DrawCatalog(catalog);
+            DrawChart(chart, schematic);
+            DrawReadout(readout);
+        }
+
+        private void EnsureStyles()
+        {
+            if (fillTexture == null)
+            {
+                fillTexture = new Texture2D(1, 1) { hideFlags = HideFlags.DontSave };
+                fillTexture.SetPixel(0, 0, Color.white);
+                fillTexture.Apply();
+            }
+
+            headingStyle ??= new GUIStyle(GUI.skin.label)
+                { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
+            bodyStyle ??= new GUIStyle(GUI.skin.label)
+                { fontSize = 13, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
+            smallStyle ??= new GUIStyle(GUI.skin.label)
+                { fontSize = 10, normal = { textColor = new Color(0.82f, 0.88f, 0.96f) } };
+            centeredStyle ??= new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleCenter };
+        }
+
+        /// <summary>
+        /// 표가 바뀐 뒤에만 자유면을 다시 잰다. <b>후자를 빼면 안 된다</b> — 옆 사람이 배치를
+        /// 확정한 순간 내 도면의 굵은 선이 낡은 표를 근거로 남는다(커서 캐시와 같은 이유).
+        /// </summary>
+        private void RefreshFreeFaces()
+        {
+            if (freeFacesRevision == LastShiftCompartments.Revision) return;
+
+            LastShiftFreeFaces.Collect(freeFaces);
+            freeFacesRevision = LastShiftCompartments.Revision;
+        }
+
+        // ── 도면 조작 ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// §4.4 의 마우스 조작. <b>도면 밖 클릭은 안 먹는다</b> — 카탈로그 칸과 같은 프레임에
+        /// 눌리면 방을 고르는 클릭이 곧 배치가 된다.
+        /// </summary>
+        private void HandleChartInput(Rect chart, in LastShiftHullSchematic schematic)
+        {
+            var current = Event.current;
+            if (current == null) return;
+
+            hoveredIndex = chart.Contains(current.mousePosition)
+                ? ModuleAt(schematic.ToWorld(current.mousePosition))
+                : -1;
+
+            if (!chart.Contains(current.mousePosition)) return;
+
+            switch (current.type)
+            {
+                case EventType.MouseDown when current.button == 0:
+                case EventType.MouseDrag when current.button == 0:
+                    MoveCandidateTo(schematic.ToWorld(current.mousePosition), current.type == EventType.MouseDown);
+                    current.Use();
+                    break;
+
+                case EventType.MouseDown when current.button == 1:
+                    armed = false;
+                    lastResult = string.Empty;
+                    current.Use();
+                    break;
+
+                case EventType.ScrollWheel:
+                    Rotate(current.delta.y > 0f ? 1 : -1);
+                    current.Use();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 후보를 그 자리로 옮긴다. <b>같은 칸을 다시 누르면 확정이다</b>(<see cref="armed"/>).
+        /// 접면 자석은 커서의 <see cref="LastShiftPlacementCursor.AutoParent"/> 가 이미 한다 —
+        /// 문이 닿은 벽의 주인이 곧 부모라, 부모를 따로 고르게 하면 벽에 붙여 놓고 엉뚱한
+        /// 부모를 고른 배치가 판정을 통과한다(§4.4).
+        /// </summary>
+        private void MoveCandidateTo(Vector3 world, bool click)
+        {
+            var before = cursor.Anchor;
+            cursor.MoveTo(world);
+
+            if (!click) { armed = false; return; }
+
+            var moved = !Mathf.Approximately(before.x, cursor.Anchor.x) ||
+                        !Mathf.Approximately(before.z, cursor.Anchor.z);
+            if (moved) { armed = true; return; }
+
+            if (armed) Confirm();
+            else armed = true;
+        }
+
+        /// <summary>도면 위 한 점이 어느 <b>지은 모듈</b> 안인가. 고정 구획은 안 센다 — 못 뜯는다.</summary>
+        private static int ModuleAt(Vector3 world)
+        {
+            var table = LastShiftCompartments.Specs;
+            for (var index = table.Length - 1; index >= LastShiftCompartments.FixedCount; index--)
+            {
+                var spec = table[index];
+                if (world.x >= spec.MinX && world.x <= spec.MaxX &&
+                    world.z >= spec.MinZ && world.z <= spec.MaxZ) return index;
+            }
+
+            return -1;
+        }
+
+        // ── 머리줄 ──────────────────────────────────────────────────────────
+
+        private void DrawHeader(Rect header)
+        {
+            var holder = LastShiftPlacementAuthority.HolderId;
+            var holderText = holder == LastShiftPlacementAuthority.NoHolder
+                ? "커서 없음"
+                : holder == ClientId ? "커서 나" : $"커서 승무원 {holder}";
+
+            GUI.Label(new Rect(header.x + 8f, header.y + 4f, header.width - 140f, 26f),
+                $"선체 도면 — 기항 {LastShiftMaintenance.PortIndex} · 정비 여력 {LastShiftMaintenance.Balance} " +
+                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver}) · {holderText}",
                 headingStyle);
 
+            if (GUI.Button(new Rect(header.xMax - 96f, header.y + 3f, 88f, 26f), "닫기  Esc")) Close();
+        }
+
+        // ── 카탈로그 ────────────────────────────────────────────────────────
+
+        private void DrawCatalog(Rect column)
+        {
+            GUI.Label(new Rect(column.x + 4f, column.y, column.width, 18f), "카탈로그", bodyStyle);
+
+            var top = column.y + 20f;
+            var rowHeight = Mathf.Min(34f, (column.height - 44f) / Mathf.Max(LastShiftModuleCatalog.Count, 1));
+
+            for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
+            {
+                var kind = LastShiftModuleCatalog.At(index);
+                var row = new Rect(column.x, top + index * (rowHeight + 2f), column.width, rowHeight);
+                var chosen = index == cursor.CatalogIndex;
+                var affordable = LastShiftMaintenance.CanAfford(kind.MaintenanceCost);
+
+                Fill(row, chosen
+                    ? new Color(0.20f, 0.34f, 0.44f, 1f)
+                    : new Color(0.11f, 0.14f, 0.19f, 1f));
+
+                var previous = GUI.color;
+                GUI.color = affordable ? Color.white : new Color(1f, 0.6f, 0.5f, 1f);
+                GUI.Label(new Rect(row.x + 6f, row.y + 2f, row.width - 12f, 16f),
+                    $"{DigitLabel(index)}  {kind.Name}", smallStyle);
+                GUI.Label(new Rect(row.x + 6f, row.y + 16f, row.width - 12f, 16f),
+                    $"{kind.LengthX:0.#}×{kind.WidthZ:0.#}m · 값 {kind.MaintenanceCost}", smallStyle);
+                GUI.color = previous;
+
+                if (GUI.Button(row, GUIContent.none, GUIStyle.none)) SelectCatalog(index);
+            }
+
+            GUI.Label(new Rect(column.x + 4f, column.yMax - 20f, column.width, 18f),
+                $"잔여 {LastShiftMaintenance.Balance}", bodyStyle);
+        }
+
+        private static string DigitLabel(int index) => index == 9 ? "0" : (index + 1).ToString();
+
+        // ── 도면 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// §4.3 의 표 순서 그대로 그린다. <b>자유면이 방보다 뒤에 오는 것은 겹침 때문이지
+        /// 우선순위가 낮아서가 아니다</b> — 우선순위 <c>1</c> 이라 방 위에 얹혀야 보인다.
+        /// </summary>
+        private void DrawChart(Rect chart, in LastShiftHullSchematic schematic)
+        {
+            Fill(chart, new Color(0.07f, 0.09f, 0.12f, 1f));
+
+            DrawRim(schematic);
+            DrawZones(schematic);
+            DrawCompartments(schematic);
+            DrawFreeFaces(schematic);
+            DrawCandidate(schematic);
+
+            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 200f, 16f), "선수 ←", smallStyle);
+            GUI.Label(new Rect(chart.xMax - 60f, chart.y + 4f, 60f, 16f), "→ 선미", smallStyle);
+            GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
+                "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소 · Del 마지막 해제",
+                smallStyle);
+        }
+
+        /// <summary>원반 테두리. <b>바깥은 시작 배가 안 쓰는 자리다</b>(§4.3-6) — 점선으로 두른다.</summary>
+        private void DrawRim(in LastShiftHullSchematic schematic)
+        {
+            const int steps = LastShiftHullShell.SegmentCount * 2;
+            for (var step = 0; step < steps; step++)
+            {
+                var point = schematic.RimPoint(step, steps);
+                Fill(new Rect(point.x - 1f, point.y - 1f, 2f, 2f), RimColor);
+            }
+        }
+
+        private void DrawZones(in LastShiftHullSchematic schematic)
+        {
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+            {
+                var rect = schematic.ToScreenRect((LastShiftZone)zone);
+                Fill(rect, ZoneColors[zone % ZoneColors.Length]);
+                Fill(new Rect(rect.x, rect.y, 1f, rect.height), GridColor);
+                GUI.Label(new Rect(rect.x, rect.yMax + 1f, rect.width, 14f),
+                    LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)zone), centeredStyle);
+            }
+
+            Outline(schematic.HullInteriorRect, GridColor, 1f);
+        }
+
+        private void DrawCompartments(in LastShiftHullSchematic schematic)
+        {
+            var table = LastShiftCompartments.Specs;
+            for (var index = 0; index < table.Length; index++)
+            {
+                var spec = table[index];
+                var rect = schematic.ToScreenRect(spec);
+                var isModule = index >= LastShiftCompartments.FixedCount;
+
+                Fill(rect, index == hoveredIndex ? HoverColor : isModule ? ModuleColor : FixedColor);
+                Outline(rect, HullColor, 1f);
+
+                if (rect.height < 12f || rect.width < 24f) continue;
+
+                GUI.Label(rect, ShortName(spec), centeredStyle);
+                if (isModule)
+                    GUI.Label(new Rect(rect.x + 2f, rect.y + 1f, 24f, 12f),
+                        $"D{LastShiftCompartments.DoorDepth(index)}", smallStyle);
+            }
+        }
+
+        /// <summary>도면 칸에 들어갈 만큼 짧은 이름. 이름 정본은 <see cref="LastShiftCompartments.NameOf(in LastShiftCompartmentSpec)"/> 다.</summary>
+        private static string ShortName(in LastShiftCompartmentSpec spec)
+        {
+            if (!spec.IsFixed)
+            {
+                var catalogIndex = LastShiftCompartments.CatalogIndexOf(spec.Index);
+                return catalogIndex >= 0 ? LastShiftModuleCatalog.At(catalogIndex).Name : "모듈";
+            }
+
+            var name = LastShiftCompartments.NameOf(spec);
+            return name.StartsWith("Compartment_") ? name.Substring("Compartment_".Length) : name;
+        }
+
+        /// <summary>
+        /// <b>이 하나가 개편의 실질 이득 전부다</b>(§4.3-1). 붙일 수 있는 변 구간을 굵은 선으로
+        /// 긋는다 — <c>1</c>인칭이 절대 못 보여주던 것이고, 이걸 빼면 플레이어는 도면을 켜 놓고도
+        /// 여전히 벽을 눈으로 훑는다(§8-5).
+        /// </summary>
+        private void DrawFreeFaces(in LastShiftHullSchematic schematic)
+        {
+            for (var index = 0; index < freeFaces.Count; index++)
+                Fill(schematic.ToScreenBand(freeFaces[index], 3f), FreeFaceColor);
+        }
+
+        /// <summary>후보 발자국과 문. L0/L1 위반이면 빨강이고 사유는 오른쪽 칸에 한 줄로 적힌다(§4.3-2).</summary>
+        private void DrawCandidate(in LastShiftHullSchematic schematic)
+        {
+            var candidate = cursor.Candidate;
+            var rect = schematic.ToScreenRect(candidate);
+            var ok = cursor.CanCommit && LastShiftMaintenance.CanAfford(cursor.Kind.MaintenanceCost);
+            var tint = ok ? OkColor : BadColor;
+
+            Fill(rect, new Color(tint.r, tint.g, tint.b, 0.35f));
+            Outline(rect, tint, armed ? 3f : 1f);
+
+            var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
+            var door = candidate.DoorPlane == LastShiftDoorPlane.AlongX
+                ? schematic.ToScreenRect(
+                    candidate.DoorPlaneCoordinate, candidate.DoorPlaneCoordinate,
+                    candidate.DoorCenter - half, candidate.DoorCenter + half)
+                : schematic.ToScreenRect(
+                    candidate.DoorCenter - half, candidate.DoorCenter + half,
+                    candidate.DoorPlaneCoordinate, candidate.DoorPlaneCoordinate);
+
+            Fill(new Rect(door.x - 1.5f, door.y - 1.5f, Mathf.Max(door.width, 3f), Mathf.Max(door.height, 3f)),
+                Color.white);
+        }
+
+        // ── 미리보기 숫자 ───────────────────────────────────────────────────
+
+        private void DrawReadout(Rect column)
+        {
             var candidate = cursor.Candidate;
             var verdict = cursor.Verdict;
             var parent = candidate.ParentIndex < 0
                 ? "선체"
-                : LastShiftCompartments.NameOf(LastShiftCompartments.At(candidate.ParentIndex));
+                : ShortName(LastShiftCompartments.At(candidate.ParentIndex));
 
-            GUI.Label(new Rect(28f, 352f, 480f, 22f),
-                $"{cursor.Kind.Name} {cursor.Kind.LengthX:0.#}×{cursor.Kind.WidthZ:0.#}m · " +
-                $"값 {cursor.Kind.MaintenanceCost} · 회전 {cursor.QuarterTurns * 90}°", bodyStyle);
-            GUI.Label(new Rect(28f, 374f, 480f, 22f),
-                $"자리 x {candidate.MinX:0.#}~{candidate.MaxX:0.#} · z {candidate.MinZ:0.#}~{candidate.MaxZ:0.#} · 부모 {parent}",
-                bodyStyle);
-            GUI.Label(new Rect(28f, 396f, 480f, 22f),
-                $"구역 {verdict.Zone} · 깊이 {verdict.DoorDepth}/{LastShiftPlacementRules.MaxDoorDepth} · " +
-                $"이탈 {verdict.EgressSeconds:0.0}/{LastShiftPlacementRules.TraverseLimitSeconds:0.0}s · " +
-                $"최장 쌍 {verdict.LongestPairMeters:0.#}m", bodyStyle);
+            var line = column.y;
+            void Row(string text, GUIStyle style = null)
+            {
+                GUI.Label(new Rect(column.x + 4f, line, column.width - 8f, 20f), text, style ?? bodyStyle);
+                line += 20f;
+            }
+
+            Row("미리보기", headingStyle);
+            line += 4f;
+            Row($"{cursor.Kind.Name} {cursor.Kind.LengthX:0.#}×{cursor.Kind.WidthZ:0.#}m");
+            Row($"값 {cursor.Kind.MaintenanceCost} · 회전 {cursor.QuarterTurns * 90}°");
+            Row($"x {candidate.MinX:0.#}~{candidate.MaxX:0.#}");
+            Row($"z {candidate.MinZ:0.#}~{candidate.MaxZ:0.#}");
+            Row($"붙는 곳 {parent}");
+            line += 6f;
+
+            Row($"구역 {LastShiftZoneAtlas.ShortLabelOf(verdict.Zone)} · 깊이 {verdict.DoorDepth}/{LastShiftPlacementRules.MaxDoorDepth}");
+            Row($"최장 이탈 {verdict.EgressSeconds:0.00}s (한도 {LastShiftPlacementRules.TraverseLimitSeconds:0.#})");
+            Row($"최장 동선 {verdict.LongestPairMeters:0.#}m");
+            Row($"여력 {LastShiftMaintenance.Balance} → {LastShiftMaintenance.Balance - cursor.Kind.MaintenanceCost}");
+            line += 6f;
 
             var affordable = LastShiftMaintenance.CanAfford(cursor.Kind.MaintenanceCost);
             var ok = cursor.CanCommit && affordable;
             var previous = GUI.color;
-            GUI.color = ok ? new Color(0.45f, 1f, 0.75f) : new Color(1f, 0.55f, 0.4f);
-            GUI.Label(new Rect(28f, 418f, 480f, 22f),
-                ok ? "배치 가능 — Enter"
-                   : affordable ? Reason(verdict, cursor.Faults) : "여력이 모자란다", bodyStyle);
+            GUI.color = ok ? OkColor : BadColor;
+            Row(ok
+                ? armed ? "한 번 더 클릭 = 확정" : "배치 가능 — 클릭 또는 Enter"
+                : affordable ? Reason(verdict, cursor.Faults) : "여력이 모자란다");
             GUI.color = previous;
 
-            GUI.Label(new Rect(28f, 440f, 480f, 22f),
-                $"놓인 모듈 {LastShiftCompartments.ModuleCount}{RefundHint()}", bodyStyle);
-            GUI.Label(new Rect(28f, 462f, 480f, 40f),
-                "Tab 모듈 · Z/X 회전 · 방향키 이동(1m) · Enter 확정 · Delete 해제 · Esc 닫기", bodyStyle);
+            line += 6f;
+            Row($"자유면 {freeFaces.Count}구간 · 놓인 모듈 {LastShiftCompartments.ModuleCount}");
+            Row(RefundHint(), smallStyle);
+
+            if (hoveredIndex >= 0)
+            {
+                var hovered = LastShiftCompartments.At(hoveredIndex);
+                Row($"짚은 것 — {ShortName(hovered)} #{hoveredIndex}", smallStyle);
+            }
 
             if (lastResult.Length > 0)
-                GUI.Label(new Rect(28f, 508f, 480f, 40f), lastResult, bodyStyle);
+                GUI.Label(new Rect(column.x + 4f, column.yMax - 60f, column.width - 8f, 56f), lastResult, bodyStyle);
         }
 
         /// <summary>
         /// 마지막 모듈을 뜯으면 얼마가 돌아오는가. <b>뜯기 전에 적는다</b> — 같은 기항이면 전액,
         /// 출항한 뒤면 절반이라(조항 M-4) 그 차이를 누른 뒤에 알면 이미 늦다.
+        ///
+        /// <b>아직 마지막 하나만이다.</b> §4.3-7 은 지은 모듈을 아무거나 골라 뜯는 것을 적었지만,
+        /// 그건 서버에 새 동사를 하나 더 여는 일이라 §4.6 의 "네트워크 <c>0</c>" 밖이다 —
+        /// 도면은 짚은 모듈을 알려 주고, 뜯는 것은 잎부터다.
         /// </summary>
         private static string RefundHint()
         {
             var slot = LastShiftCompartments.ModuleCount - 1;
-            if (!LastShiftMaintenance.TryGetPurchase(slot, out var purchase)) return string.Empty;
+            if (!LastShiftMaintenance.TryGetPurchase(slot, out var purchase)) return "뜯을 모듈 없음";
 
-            return $" · Delete 환수 {LastShiftMaintenance.RefundFor(purchase)}";
+            return $"Del 환수 {LastShiftMaintenance.RefundFor(purchase)}";
         }
 
         /// <summary>
@@ -507,5 +908,25 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string Reason(in LastShiftPlacementVerdict verdict, LastShiftPlacementFault faults) =>
             LastShiftPlacementCommands.Reason(verdict, faults);
+
+        // ── 그리기 도구 ─────────────────────────────────────────────────────
+
+        private void Fill(Rect rect, Color color)
+        {
+            if (Event.current == null || Event.current.type != EventType.Repaint) return;
+
+            var previous = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, fillTexture);
+            GUI.color = previous;
+        }
+
+        private void Outline(Rect rect, Color color, float thickness)
+        {
+            Fill(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            Fill(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
+        }
     }
 }
