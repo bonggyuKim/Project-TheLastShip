@@ -432,6 +432,66 @@ namespace DoodleUp.Runtime
             QuickBypassCount = 0;
         }
 
+        /// <summary>
+        /// 계통 한 줄을 값으로 접는다. 세이브·네트워크가 같은 그릇을 쓴다
+        /// (<c>docs/tech/save-backbone-feasibility-v1.md</c> §1.3-나).
+        /// </summary>
+        public LastShiftRepairEntrySnapshot Capture(LastShiftShipSystem system)
+        {
+            var entry = entries[(int)system];
+            return new LastShiftRepairEntrySnapshot
+            {
+                Mode = entry.Mode,
+                ChannelMode = entry.ChannelMode,
+                HasCompletedRepair = entry.HasCompletedRepair,
+                Sacrificed = entry.Sacrificed,
+                ChannelActive = entry.ChannelActive,
+                BypassRemainingSeconds = entry.BypassRemainingSeconds,
+                ChannelRemainingSeconds = entry.ChannelRemainingSeconds
+            };
+        }
+
+        /// <summary>
+        /// 장부 전체를 되살린다. 세이브 복원 경로이며 <see cref="ApplyReplicatedSacrificeMask"/>
+        /// 와 달리 <b>진행 중인 작업 채널과 임시 우회 수명까지</b> 되돌린다.
+        ///
+        /// <see cref="SacrificeCount"/> 는 인자로 받지 않고 엔트리에서 다시 센다 — 같은 사실을
+        /// 두 곳에서 받으면 어긋날 자리가 하나 생기고, 여기서는 엔트리 쪽이 정본이다.
+        /// 나머지 두 카운터는 엔트리에서 파생되지 않으므로 받아야 한다.
+        /// </summary>
+        public void RestoreFrom(
+            in LastShiftRepairEntrySnapshot cooling,
+            in LastShiftRepairEntrySnapshot power,
+            in LastShiftRepairEntrySnapshot oxygen,
+            int quickBypassCount,
+            int bypassLapseCount)
+        {
+            RestoreEntry(LastShiftShipSystem.Cooling, cooling);
+            RestoreEntry(LastShiftShipSystem.Power, power);
+            RestoreEntry(LastShiftShipSystem.Oxygen, oxygen);
+
+            SacrificeCount = 0;
+            for (var index = 0; index < entries.Length; index++)
+                if (entries[index].Sacrificed) SacrificeCount++;
+
+            QuickBypassCount = Mathf.Max(0, quickBypassCount);
+            BypassLapseCount = Mathf.Max(0, bypassLapseCount);
+        }
+
+        private void RestoreEntry(LastShiftShipSystem system, in LastShiftRepairEntrySnapshot value)
+        {
+            entries[(int)system] = new Entry
+            {
+                Mode = value.Mode,
+                ChannelMode = value.ChannelMode,
+                HasCompletedRepair = value.HasCompletedRepair,
+                Sacrificed = value.Sacrificed,
+                ChannelActive = value.ChannelActive,
+                BypassRemainingSeconds = value.BypassRemainingSeconds,
+                ChannelRemainingSeconds = value.ChannelRemainingSeconds
+            };
+        }
+
         /// <summary>클라이언트 표시용. 서버 장부를 스냅샷 마스크로 되살린다.</summary>
         public void ApplyReplicatedSacrificeMask(byte mask)
         {

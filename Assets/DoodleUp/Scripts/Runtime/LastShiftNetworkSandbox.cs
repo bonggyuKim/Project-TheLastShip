@@ -112,51 +112,26 @@ namespace DoodleUp.Runtime
                 item.ReleaseForDisconnectOrReset();
         }
 
+        /// <summary>
+        /// 서버 상태를 스냅샷으로 접어 올린다. <b>필드 채우기는 여기 없다</b> —
+        /// <see cref="LastShiftSandboxController.CaptureRuntimeSnapshot"/> 하나가 정본이고,
+        /// 세이브 파일 층도 같은 함수를 부른다. 두 벌로 두면 필드를 늘릴 때 한쪽만 늘어난다.
+        ///
+        /// 여기 남는 것은 네트워크에만 있는 부수 효과다.
+        /// </summary>
         public void PublishSnapshot()
         {
             if (!IsServer || sandbox == null) return;
-            byte securedMask = 0;
             foreach (var item in sandbox.Items)
             {
                 if (item == null) continue;
-                if (item.Secured) securedMask |= (byte)(1 << (int)item.Role);
                 // 고정된 항목만 동기화하면 secured -> loose 로 바뀐 항목이 stale secured=true 를 유지한다.
                 // 그 상태에서 클라이언트는 "고정됨" 을 표시하고 서버 검증은 item-secured 로 거부한다.
                 var networkItem = item.GetComponent<LastShiftNetworkGrabbable>();
                 if (networkItem != null) networkItem.SyncSecuredFromServer();
             }
 
-            snapshot.Value = new LastShiftNetworkSnapshot
-            {
-                Preset = sandbox.CurrentPreset,
-                ShipState = sandbox.CurrentState,
-                FirstProblem = sandbox.FirstResult.Problem,
-                CurrentProblem = sandbox.LastResult.Problem,
-                CoolingScore = sandbox.LastResult.CoolingScore,
-                BatteryScore = sandbox.LastResult.BatteryScore,
-                LeakScore = sandbox.LastResult.LeakScore,
-                DockingSecondsRemaining = sandbox.DockingSecondsRemaining,
-                ResetGeneration = sandbox.ResetGeneration,
-                ImpactApplicationCount = sandbox.ImpactApplicationCount,
-                SecuredItemMask = securedMask,
-                HasAppliedImpact = sandbox.HasAppliedImpact,
-                Verdict = sandbox.Verdict,
-                SacrificedSystemMask = sandbox.Repairs.SacrificeMask,
-                ThrustCeiling = sandbox.ThrustCeiling,
-                HeatProtectionEngaged = sandbox.HeatProtectionEngaged,
-                SteeringDelayed = sandbox.SteeringDelayed,
-                OxygenPumpRunning = sandbox.OxygenPumpRunning,
-                SirenActive = sandbox.SirenActive,
-                PowerPressure = sandbox.PressureOf(LastShiftZone.Power),
-                CoolingPressure = sandbox.PressureOf(LastShiftZone.Cooling),
-                LifeSupportPressure = sandbox.PressureOf(LastShiftZone.LifeSupport),
-                Boundary0DoorOpen = sandbox.IsDoorOpen(0),
-                Boundary1DoorOpen = sandbox.IsDoorOpen(1),
-                Boundary2DoorOpen = sandbox.IsDoorOpen(2),
-                ForeHatchOpen = sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft),
-                AftHatchOpen = sandbox.IsHatchOpen(LastShiftBypassDuct.AftShaft),
-                UncontainedSystemMask = sandbox.UncontainedSystemMask
-            };
+            snapshot.Value = sandbox.CaptureRuntimeSnapshot();
         }
 
         [Rpc(SendTo.Server, RequireOwnership = false)]

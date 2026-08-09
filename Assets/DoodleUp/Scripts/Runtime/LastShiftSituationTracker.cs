@@ -138,6 +138,61 @@ namespace DoodleUp.Runtime
                 oxygenRepresentative[zone] = LastShiftSituation.None;
         }
 
+        /// <summary>
+        /// 래치 체류 시간을 담는 평평한 배열의 칸 수. 전역 한 줄 + 구역별 한 줄씩이며,
+        /// 줄마다 상황 번호를 그대로 인덱스로 쓴다(0번 칸은 <c>None</c> 자리라 비어 있다).
+        /// </summary>
+        public const int LatchSlotStride = LastShiftSituationTable.SituationCount + 1;
+        public static readonly int LatchSlotCount = LatchSlotStride * (1 + LastShiftZoneAtlas.ZoneCount);
+
+        /// <summary>
+        /// 래치 위상을 값으로 접는다(<c>docs/tech/save-backbone-feasibility-v1.md</c> §1.3-나).
+        ///
+        /// <b>이 값을 스냅샷 구조체에 넣지 않는 것이 결정이다.</b> 클라이언트는 이것 없이도
+        /// <see cref="Evaluate"/> 를 0초로 한 번 돌려 같은 표시를 얻고(순수 계산이다), 반대로
+        /// 세이브는 히스테리시스 위상까지 이어야 한다 — 그래서 소비자가 한쪽뿐인 상태를
+        /// 0.25초마다 전원에게 보내는 대신, 파일 층이 따로 가져가는 별도 경로로 둔다.
+        ///
+        /// 부호가 활성 여부를 나른다: <b>음수면 비활성</b>, 0 이상이면 그만큼 체류 중이다.
+        /// 불리언 배열을 따로 두지 않는 이유는 체류 시간이 활성일 때만 정의되기 때문이다.
+        /// </summary>
+        public float[] CaptureLatchDwell()
+        {
+            var dwell = new float[LatchSlotCount];
+            for (var id = 0; id < LatchSlotStride; id++)
+            {
+                dwell[id] = Encode(globalLatches[id]);
+                for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                    dwell[(zone + 1) * LatchSlotStride + id] = Encode(zoneLatches[zone][id]);
+            }
+            return dwell;
+        }
+
+        /// <summary>
+        /// <see cref="CaptureLatchDwell"/> 가 접은 위상을 되살린다. 길이가 맞지 않으면
+        /// <b>아무것도 하지 않고 거짓을 돌려준다</b> — 스키마가 어긋난 파일이 래치를 절반만
+        /// 덮어써서 히스테리시스가 반쪽만 살아 있는 상태를 만드는 것이 조용히 더 나쁘다.
+        /// </summary>
+        public bool ApplyLatchDwell(float[] dwell)
+        {
+            if (dwell == null || dwell.Length != LatchSlotCount) return false;
+            for (var id = 0; id < LatchSlotStride; id++)
+            {
+                Decode(ref globalLatches[id], dwell[id]);
+                for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+                    Decode(ref zoneLatches[zone][id], dwell[(zone + 1) * LatchSlotStride + id]);
+            }
+            return true;
+        }
+
+        private static float Encode(in Latch latch) => latch.Active ? Mathf.Max(0f, latch.ActiveSeconds) : -1f;
+
+        private static void Decode(ref Latch latch, float encoded)
+        {
+            latch.Active = encoded >= 0f;
+            latch.ActiveSeconds = latch.Active ? encoded : 0f;
+        }
+
         /// <summary>열·전력·추진 계통의 현재 대표 상황. 산소는 구역별이라 여기서 못 읽는다.</summary>
         public LastShiftSystemStatus StatusOf(LastShiftSystemChannel channel) =>
             new(channelRepresentative[(int)channel]);
