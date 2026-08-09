@@ -17,7 +17,7 @@ namespace DoodleUp.Runtime
     /// </summary>
     public static class LastShiftModuleEffects
     {
-        // ── 산소 재생기실 (카탈로그 1, 여력 2) ──────────────────────────────
+        // ── 수경재배 (카탈로그 7, 여력 3) ────────────────────────────────────
 
         /// <summary>
         /// 편입 구역의 <b>누출률 감속 비율</b>. 그 구역의 누출이
@@ -55,7 +55,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float OxygenLeakReduction = 0.15f;
 
-        // ── 방열 라디에이터실 (카탈로그 2, 여력 2) ──────────────────────────
+        // ── 방열 라디에이터실 (카탈로그 3, 여력 2) ──────────────────────────
 
         /// <summary>
         /// <c>EngineHeat</c> <b>상승항</b>의 감속 비율. 하강항(냉각 복구·자연 냉각·밸브 유지)에는
@@ -94,7 +94,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float HeatRiseReduction = 0.10f;
 
-        // ── 예비 전력실 (카탈로그 3, 여력 2) ────────────────────────────────
+        // ── 예비 전력실 (카탈로그 2, 여력 2) ────────────────────────────────
 
         /// <summary>
         /// 미연결 <c>BusPower</c> 하한(<see cref="LastShiftRecoveryTuning.UnpoweredBusCeiling"/>
@@ -136,10 +136,10 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float BusFloorBonus = 0.05f;
 
-        // ── 예비 아이템 (카탈로그 3 · 4) ────────────────────────────────────
+        // ── 예비 아이템 (카탈로그 2 · 8) ────────────────────────────────────
 
         /// <summary>
-        /// 예비 아이템은 <b>역할당 최대 하나</b>다(조항 E-2). 예비 전력실과 보급 저장고를 둘 다
+        /// 예비 아이템은 <b>역할당 최대 하나</b>다(조항 E-2). 예비 전력실과 화물칸을 둘 다
         /// 세워도 예비 배터리는 하나이고, 같은 모듈을 둘 세워도 하나다.
         ///
         /// <b>둘째부터는 재미가 아니라 짐이다.</b> 이 계열이 겨누는 것은
@@ -155,14 +155,14 @@ namespace DoodleUp.Runtime
             // 예비 배터리 하나 상시 비치(카탈로그 §3.3). 전력실이 죽은 배의 배터리 왕복이 짧아진다.
             LastShiftModuleCatalog.ReservePower => 1 << (int)LastShiftItemRole.Battery,
 
-            // 세 계통 한 벌. "보급 저장고" 가 한 계통만 든다면 그건 창고가 아니라 선반이고,
+            // 세 계통 한 벌. "화물칸" 이 한 계통만 든다면 그건 창고가 아니라 선반이고,
             // 무엇이 들었는지를 플레이어가 화면 밖에서 외워야 한다.
             //
             // 한 벌이 과하지 않은 이유는 셋이다. (가) 여력 3 은 보통 항해 총 수입 7 의 43% 다.
             // (나) 한 방에 모여 있으므로 그 구역이 진공이 되면 세 예비가 같이 죽는다 — 원본과
             // 같은 위험을 한 번 더 지는 것이지 위험을 지우는 것이 아니다. (다) 그래서 이 모듈의
             // 값은 "무엇이 들었나" 가 아니라 <b>어디 뒀나</b> 로 정해진다(카탈로그 §3.3 · §7-D).
-            LastShiftModuleCatalog.SupplyDepot =>
+            LastShiftModuleCatalog.CargoBay =>
                 (1 << (int)LastShiftItemRole.Battery) |
                 (1 << (int)LastShiftItemRole.CoolingCanister) |
                 (1 << (int)LastShiftItemRole.PatchPlate),
@@ -200,7 +200,7 @@ namespace DoodleUp.Runtime
 
                 switch (module.CatalogIndex)
                 {
-                    case LastShiftModuleCatalog.OxygenRecycler:
+                    case LastShiftModuleCatalog.Hydroponics:
                         // 구역당 한 번(조항 E-3). 비트마스크라 같은 구역에 둘을 세워도 한 번이다.
                         oxygenZones |= 1 << (int)module.Zone;
                         break;
@@ -224,7 +224,7 @@ namespace DoodleUp.Runtime
     /// 걷은 뒤에 배가 바뀌어도 이 tick 의 계산은 걷은 시점 그대로여야 한다.
     ///
     /// <b>조항 E-3 — 같은 효과는 한 번만 쌓인다.</b> 구역 효과(산소)는 <b>구역당</b> 한 번,
-    /// 배 전체 효과(열·전력)는 <b>배당</b> 한 번이다. 곱으로 쌓게 두면 산소 재생기실 둘이
+    /// 배 전체 효과(열·전력)는 <b>배당</b> 한 번이다. 곱으로 쌓게 두면 수경재배 둘이
     /// <c>0.85² = 0.72</c> 가 되어 <see cref="LastShiftModuleEffects.OxygenLeakReduction"/> 이
     /// 지키려던 <c>300</c>초 선을 여력 <c>4</c> 로 넘어간다(<c>245 / 0.7225 = 339</c>초).
     /// <b>계수를 아무리 잘 골라도 누적을 안 막으면 값을 두 번 사서 뚫는다.</b>

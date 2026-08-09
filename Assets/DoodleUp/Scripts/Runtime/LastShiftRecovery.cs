@@ -707,7 +707,7 @@ namespace DoodleUp.Runtime
 
             if (!containment.OxygenContained)
             {
-                // 산소 재생기실이 <b>파공 구역에</b> 붙어 있을 때만 이 항이 줄어든다
+                // 수경재배가 <b>파공 구역에</b> 붙어 있을 때만 이 항이 줄어든다
                 // (OxygenLeakReduction). 다른 구역에 붙은 재생기는 이번 파공에 아무 말도 안 한다 —
                 // 그것이 카탈로그 §7-C 가 "위치가 처음으로 결정이 되는 자리" 라고 부른 것이다.
                 var leak = LastShiftRecoveryTuning.OxygenLeakPerSecond *

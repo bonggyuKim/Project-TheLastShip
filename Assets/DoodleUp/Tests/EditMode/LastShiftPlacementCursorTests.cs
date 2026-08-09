@@ -315,7 +315,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(cursor.ParentIndex, Is.EqualTo(-1));
         }
 
-        /// <summary>목록의 여섯이 전부 실제로 놓이는 치수인가 — 못 놓을 것을 목록에 두면 안 된다.</summary>
+        /// <summary>목록의 열이 전부 실제로 놓이는 치수인가 — 못 놓을 것을 목록에 두면 안 된다.</summary>
         [Test]
         public void EveryCatalogEntryCanActuallyBePlaced()
         {
@@ -329,24 +329,32 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
-        // ── 카탈로그 정본 (docs/port-module-catalog-v1.md) ──────────────────
+        // ── 카탈로그 v2 정본 (docs/core-four-rooms-and-hull-schematic-v1.md §3.3) ──
 
         /// <summary>
-        /// 조항 C-1 — 카탈로그 이름이 고정 구획 열하나와 안 겹친다. 겹치면 기항 화면에서
-        /// 산 것과 배에 이미 있는 것이 같은 이름으로 뜬다(정본 §3.1).
+        /// <b>조항 K-1(<c>C-1</c> 대체) — 카탈로그 이름은 고정 <c>4</c>실과만 안 겹치면 된다</b>
+        /// (맵 개편 §3.1). 이관 열의 이름은 카탈로그가 그대로 쓰므로 관측실·정비창·의무실이
+        /// 목록에 있는 것은 위반이 아니다. <b>고정으로 남는 넷과 겹칠 때만</b> 기항 화면에서
+        /// 산 것과 배에 원래 있는 것이 같은 이름으로 뜬다.
+        ///
+        /// 목록 안에서의 중복도 같이 건다 — 같은 이름 둘이면 가격이 다른 두 칸을 화면에서
+        /// 구별할 방법이 없다.
         /// </summary>
         [Test]
-        public void CatalogNamesDoNotCollideWithFixedCompartments()
+        public void CatalogNamesDoNotCollideWithTheFourCoreRooms()
         {
-            var fixedNames = new List<string>();
-            for (var index = 0; index < LastShiftCompartments.FixedCount; index++)
-                fixedNames.Add(LastShiftCompartments.NameOf((LastShiftCompartment)index));
+            // 고정 4실. enum(LastShiftCompartment)에는 숙소만 있고 나머지 셋은 압력 구역이라
+            // 표에서 못 읽는다 — 그래서 정본 문구를 여기 그대로 적는다(맵 개편 §2.1).
+            var coreRooms = new[] { "조종석", "산소실", "중앙 광장", "숙소" };
+            var seen = new List<string>();
 
             for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
             {
                 var name = LastShiftModuleCatalog.At(index).Name;
                 Assert.That(name, Is.Not.Empty, $"kind {index} 에 이름이 없다");
-                Assert.That(fixedNames, Has.None.EqualTo($"Compartment_{name}"), $"{name} 이 고정 구획과 겹친다");
+                Assert.That(coreRooms, Has.None.EqualTo(name), $"{name} 이 고정 4실과 겹친다 — 조항 K-1 위반");
+                Assert.That(seen, Has.None.EqualTo(name), $"{name} 이 목록에 두 번 있다");
+                seen.Add(name);
             }
         }
 

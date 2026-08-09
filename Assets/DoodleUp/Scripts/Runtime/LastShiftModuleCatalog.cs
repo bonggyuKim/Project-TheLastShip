@@ -51,11 +51,20 @@ namespace DoodleUp.Runtime
     /// 기항 고정 목록. <b>랜덤 상점이 아니다</b> — 목록은 매 기항 같고 달라지는 것은
     /// "내가 몇 개를 놓을 수 있는가" 다(<c>docs/voyage-run-structure-v1.md</c> §4.2).
     ///
-    /// <b>여섯은 기획 정본이다</b> — <c>docs/port-module-catalog-v1.md</c> §3.3. 앞서 있던
-    /// 그레이박스 다섯(연결칸·저장고·작업칸·관측칸·거주칸)은 치수 이전에 <b>이름이 고정 구획과
-    /// 부딪혀서</b> 통째로 갈렸다(같은 문서 §3.1): 배에 이미 정비창·관측실·숙소가 있는데
-    /// 카탈로그가 작업칸·관측칸·거주칸을 팔면 플레이어가 자기가 무엇을 샀는지 모른다.
-    /// <b>조항 C-1 — 카탈로그 이름은 <see cref="LastShiftCompartment"/> 열하나와 안 겹친다.</b>
+    /// <b>열은 기획 정본이다 — 카탈로그 v2</b>(<c>docs/core-four-rooms-and-hull-schematic-v1.md</c>
+    /// §3.3, 구명정 제거 확정판은 <c>docs/outboard-outpost-and-map-final-v1.md</c> §9 의 M-0).
+    /// 고정 구획 열하나 중 열이 자유 배치로 이관되므로 <b>이름 충돌이라는 문제 자체가
+    /// 사라졌고</b>, 추상어로 지었던 셋(<c>산소 재생기실</c>·<c>보급 저장고</c>·<c>정거장 골조</c>)은
+    /// 존재 이유를 잃어 기능이 같은 이관 방에 자리를 넘겼다 — 수경재배·화물칸·격납고다.
+    ///
+    /// <b>조항 K-1(<c>C-1</c> 대체) — 카탈로그 이름은 고정 <c>4</c>실(조종석·산소실·중앙 광장·
+    /// 숙소)과만 안 겹치면 된다.</b> 이관 열의 이름은 카탈로그가 그대로 쓴다. <b>구명정은 어느
+    /// 쪽에도 없다</b>(확정판 §2.1) — 카탈로그에 넣었으면 효과가 <c>0</c>인 최저가 항목이
+    /// 관측실 옆에 하나 더 서서 "기능 없는 방을 여력 받고 팔지 않는다"가 스스로 깨졌을 자리다.
+    ///
+    /// <b>고정 표(<see cref="LastShiftCompartments.FixedCount"/>)는 아직 <c>11</c> 이다.</b>
+    /// 표를 <c>4</c> 로 줄이는 것은 M-2 이고, 그 전까지 같은 방이 배에도 서 있고 카탈로그에도
+    /// 있다 — 목록이 읽히는지를 먼저 보려고 일부러 그 순서로 쪼갰다(확정판 §9).
     ///
     /// 목록 순서는 <b>가격 오름차순</b>이다. 첫 칸이 화면이 열릴 때 커서가 물고 있는 것이고
     /// 사슬 표본이 쓰는 것이므로, 가장 싸고 가장 안 위험한 것이 와야 한다.
@@ -81,40 +90,62 @@ namespace DoodleUp.Runtime
         // 문구를 고치는 날 효과가 조용히 꺼지고, 그건 테스트가 이름을 같이 안 보면 안 잡힌다.
         // 순서는 가격 오름차순이므로 번호도 가격 오름차순이다.
 
-        /// <summary>`0` 연결 통로 — 효과 없음.</summary>
+        /// <summary>`0` 연결 통로 — 효과 없음. 순수 지오메트리.</summary>
         public const int Corridor = 0;
 
-        /// <summary>`1` 산소 재생기실 — 편입 구역 누출 감속.</summary>
-        public const int OxygenRecycler = 1;
+        /// <summary>`1` 관측실 — 효과 없음. 창과 시야뿐인 최저가 둘째 칸.</summary>
+        public const int Observatory = 1;
 
-        /// <summary>`2` 방열 라디에이터실 — <c>EngineHeat</c> 상승 감속.</summary>
-        public const int Radiator = 2;
+        /// <summary>`2` 예비 전력실 — 미연결 <c>BusPower</c> 하한 상향 + 예비 배터리.</summary>
+        public const int ReservePower = 2;
 
-        /// <summary>`3` 예비 전력실 — 미연결 <c>BusPower</c> 하한 상향 + 예비 배터리.</summary>
-        public const int ReservePower = 3;
+        /// <summary>`3` 방열 라디에이터실 — <c>EngineHeat</c> 상승 감속.</summary>
+        public const int Radiator = 3;
 
-        /// <summary>`4` 보급 저장고 — 세 계통 예비 아이템 비치.</summary>
-        public const int SupplyDepot = 4;
+        /// <summary>`4` 서버/통신실 — 효과 미정(맵 개편 §7-3, <c>game-balance</c>).</summary>
+        public const int ServerRoom = 4;
 
-        /// <summary>`5` 정거장 골조 — 효과 없음. 종착 정산 전용.</summary>
-        public const int StationFrame = 5;
+        /// <summary>`5` 정비창 — 효과 미정(맵 개편 §7-3).</summary>
+        public const int Workshop = 5;
+
+        /// <summary>`6` 의무실 — 효과 미정(맵 개편 §7-3).</summary>
+        public const int MedBay = 6;
+
+        /// <summary>`7` 수경재배 — 편입 구역 누출 감속. 예전 `산소 재생기실` 자리를 물려받았다.</summary>
+        public const int Hydroponics = 7;
+
+        /// <summary>`8` 화물칸 — 세 계통 예비 아이템 비치. 예전 `보급 저장고` 자리다.</summary>
+        public const int CargoBay = 8;
+
+        /// <summary>`9` 격납고 — 효과 없음. 종착 정산 전용. 예전 `정거장 골조` 자리다.</summary>
+        public const int Hangar = 9;
 
         /// <summary>
-        /// <c>docs/port-module-catalog-v1.md</c> §3.3 표 그대로. <c>LengthX</c> 는 문에서
-        /// 멀어지는 깊이이고 <c>WidthZ</c> 는 접면 폭이다.
+        /// 맵 개편 §3.3 표 그대로. <c>LengthX</c> 는 문에서 멀어지는 깊이이고 <c>WidthZ</c> 는
+        /// 접면 폭이다. <b>발자국은 이관 방의 현행 치수를 한 칸도 안 바꿨다</b> — 그래야 아트가
+        /// 기존 그레이박스를 그대로 프리팹으로 뽑고, "여력을 다 쓰면 배가 원래 모양으로
+        /// 복원된다" 가 성립한다.
         ///
-        /// <b>효과가 없는 둘(연결 통로 · 정거장 골조)이 일부러 들어 있다.</b> 여섯 중 넷만
-        /// 시뮬레이션 훅을 요구하므로, 훅이 하나도 안 붙은 상태에서도 목록이 성립한다 —
-        /// 같은 문서 §6 이 P-1(여력 잔액)을 재미 판정 지점으로 잡은 근거다.
+        /// <b>효과가 없는 다섯이 일부러 들어 있다.</b> 둘(연결 통로 · 격납고)은 설계상 영영
+        /// 없는 것이고, 셋(서버/통신실 · 정비창 · 의무실)은 수치가 아직 <c>game-balance</c>
+        /// 미결이다(맵 개편 §7-3). 훅이 안 붙은 상태에서도 목록이 성립하는 것이
+        /// <c>port-module-catalog-v1.md</c> §6 이 P-1 을 재미 판정 지점으로 잡은 근거다.
+        ///
+        /// 가격은 면적 기준이다 — <c>~16m²</c> 이하가 <c>1~2</c>, <c>~36m²</c> 가 <c>3</c>,
+        /// <c>80m²</c> 가 <c>5</c>. 네 단(<c>1/2/3/5</c>)은 정본 §4.3 그대로 유지된다.
         /// </summary>
         private static readonly LastShiftModuleKind[] entries =
         {
             new("연결 통로", 4f, 2f, 1),
-            new("산소 재생기실", 5f, 4f, 2),
-            new("방열 라디에이터실", 3f, 6f, 2),
+            new("관측실", 3f, 4f, 1),
             new("예비 전력실", 4f, 4f, 2),
-            new("보급 저장고", 6f, 6f, 3),
-            new("정거장 골조", 8f, 10f, 5)
+            new("방열 라디에이터실", 3f, 6f, 2),
+            new("서버/통신실", 4f, 6f, 2),
+            new("정비창", 5f, 5f, 2),
+            new("의무실", 5f, 5f, 2),
+            new("수경재배", 6f, 6f, 3),
+            new("화물칸", 8f, 8f, 3),
+            new("격납고", 8f, 10f, 5)
         };
 
         public static IReadOnlyList<LastShiftModuleKind> Entries => entries;

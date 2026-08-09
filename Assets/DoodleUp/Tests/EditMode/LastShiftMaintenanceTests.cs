@@ -89,8 +89,8 @@ namespace DoodleUp.Tests.EditMode
 
         /// <summary>
         /// 조항 M-1 — 안 쓴 것이 다음 기항에 얹힌다. <b>정본 §7-B 사례를 그대로 잰다</b>:
-        /// 기항 <c>1</c> 에서 산소 재생기실만 사고 <c>2</c> 를 남기면, 기항 <c>2</c> 의 수입
-        /// <c>4</c> 와 합쳐 <c>6</c> 이 되어 <b>혼자서는 못 사는 정거장 골조(<c>5</c>)가 열린다.</b>
+        /// 기항 <c>1</c> 에서 예비 전력실만 사고 <c>2</c> 를 남기면, 기항 <c>2</c> 의 수입
+        /// <c>4</c> 와 합쳐 <c>6</c> 이 되어 <b>혼자서는 못 사는 격납고(<c>5</c>)가 열린다.</b>
         /// </summary>
         [Test]
         public void UnspentBudgetCarriesIntoTheNextPort()
@@ -218,9 +218,10 @@ namespace DoodleUp.Tests.EditMode
         public void UndoingWithinTheSamePortCostsNothing()
         {
             LastShiftMaintenance.ArriveAtPort(4);
-            var cost = LastShiftModuleCatalog.At(4).MaintenanceCost;
+            const int slot = LastShiftModuleCatalog.CargoBay;
+            var cost = LastShiftModuleCatalog.At(slot).MaintenanceCost;
 
-            Assert.That(LastShiftMaintenance.TryChargeModule(0, 4), Is.True);
+            Assert.That(LastShiftMaintenance.TryChargeModule(0, slot), Is.True);
             Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxPortIncome - cost));
 
             Assert.That(LastShiftMaintenance.TryRefundModule(0, out var refunded), Is.True);
@@ -283,7 +284,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 정본 §7-D 사례를 그대로 돈다 — 기항 <c>1</c> 에 보급 저장고(<c>3</c>)를 선미에 붙이고,
+        /// 정본 §7-D 사례를 그대로 돈다 — 기항 <c>1</c> 에 화물칸(<c>3</c>)을 선미에 붙이고,
         /// 기항 <c>2</c> 에 뜯어(<c>+1</c>) 수입 <c>3</c> 과 합쳐 선수 쪽에 다시 세운다.
         /// <b>손해는 <c>2</c> 지만 배가 이번 항해에 맞게 다시 짜인다</b> — 여력이 예산이 아니라
         /// 재료로 읽히는 것이 이 흐름이다.
@@ -291,7 +292,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void CaseDRebuildsTheShipMidVoyage()
         {
-            const int storage = 4;
+            const int storage = LastShiftModuleCatalog.CargoBay;
             var price = LastShiftModuleCatalog.At(storage).MaintenanceCost;
             Assert.That(price, Is.EqualTo(3));
 

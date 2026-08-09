@@ -59,19 +59,25 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 효과가 없는 둘(연결 통로 · 정거장 골조)은 <b>세워도 아무 시계도 안 건드린다.</b>
-        /// 카탈로그 §3.3 이 그 둘을 일부러 넣은 근거가 이것이라, 값이 붙으면 그 근거가 거짓이 된다.
+        /// 효과가 없는 다섯은 <b>세워도 아무 시계도 안 건드린다.</b> 둘(연결 통로 · 격납고)은
+        /// 설계상 영영 없는 것이고, 셋(서버/통신실 · 정비창 · 의무실)은 수치가 아직
+        /// <c>game-balance</c> 미결이다(맵 개편 §7-3). <b>미결인 셋이 여기 같이 걸려 있는 것이
+        /// 요점이다</b> — 값이 정해지기 전에 무언가 붙으면 그건 아무도 안 고른 효과다.
         /// </summary>
         [TestCase(LastShiftModuleCatalog.Corridor)]
-        [TestCase(LastShiftModuleCatalog.StationFrame)]
+        [TestCase(LastShiftModuleCatalog.Observatory)]
+        [TestCase(LastShiftModuleCatalog.ServerRoom)]
+        [TestCase(LastShiftModuleCatalog.Workshop)]
+        [TestCase(LastShiftModuleCatalog.MedBay)]
+        [TestCase(LastShiftModuleCatalog.Hangar)]
         public void GeometryOnlyModulesCollectNoEffect(int catalogIndex)
         {
             Place(catalogIndex, Breach);
             var effects = LastShiftModuleEffects.Collect(LastShiftZonePressures.Uniform(1f));
 
             Assert.That(effects.Any, Is.False,
-                $"카탈로그 {catalogIndex}(순수 지오메트리)가 효과를 냈다 — 카탈로그 §3.3 이 " +
-                "효과 없는 둘을 넣어 둔 근거가 무너진다.");
+                $"카탈로그 {catalogIndex}({LastShiftModuleCatalog.At(catalogIndex).Name})가 효과를 냈다 — " +
+                "효과가 아직 안 붙은 칸이 조용히 값을 갖고 있다.");
         }
 
         /// <summary>
@@ -85,7 +91,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftModuleEffects.Collect(LastShiftZonePressures.Uniform(1f)).Any, Is.False);
         }
 
-        // ── 산소 재생기실 ────────────────────────────────────────────────────
+        // ── 수경재배 ────────────────────────────────────────────────────
 
         /// <summary>
         /// <b>파공 구역에 붙인 재생기만 그 파공에 말을 한다.</b> 카탈로그 §7-C 가 "위치가 처음으로
@@ -93,9 +99,9 @@ namespace DoodleUp.Tests.EditMode
         /// 배가 여기서 갈린다.
         /// </summary>
         [Test]
-        public void OxygenRecyclerSlowsOnlyItsOwnZone()
+        public void HydroponicsSlowsOnlyItsOwnZone()
         {
-            Place(LastShiftModuleCatalog.OxygenRecycler, LastShiftZone.Cockpit);
+            Place(LastShiftModuleCatalog.Hydroponics, LastShiftZone.Cockpit);
             var effects = LastShiftModuleEffects.Collect(LastShiftZonePressures.Uniform(1f));
 
             Assert.That(effects.OxygenLeakMultiplierFor(LastShiftZone.Cockpit),
@@ -109,7 +115,7 @@ namespace DoodleUp.Tests.EditMode
         ///
         /// <b>이쪽은 여유가 큰 조건이다</b> — 감속 <c>0.25</c> 에서도 <c>293.0</c>초로 타이머
         /// 안이다. 계수를 실제로 구속한 것은 아래
-        /// <see cref="OxygenRecyclerStillPaysForIsolationInsideTheSuitOxygenBudget"/> 이고,
+        /// <see cref="HydroponicsStillPaysForIsolationInsideTheSuitOxygenBudget"/> 이고,
         /// 그래도 이 조건을 같이 거는 것은 <see cref="LastShiftRecoveryTuning.OxygenLeakPerSecond"/>
         /// 가 되살린 "방치의 대가" 가 모듈로 지워지지 않는지를 따로 봐야 하기 때문이다 —
         /// 두 조건은 감속을 반대 방향에서 잡고 있지 않고 <b>같은 방향</b>이라, 하나만 걸면
@@ -120,15 +126,15 @@ namespace DoodleUp.Tests.EditMode
         [TestCase(LastShiftPreset.HighHeatHighThrust)]
         [TestCase(LastShiftPreset.PowerOverloadLooseBattery)]
         [TestCase(LastShiftPreset.BadAttitudeHighOxygen)]
-        public void OxygenRecyclerStillLosesTheSuccessLineInsideTheTimerIfLeftAlone(LastShiftPreset preset)
+        public void HydroponicsStillLosesTheSuccessLineInsideTheTimerIfLeftAlone(LastShiftPreset preset)
         {
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
 
             var (state, pressures) = AfterMeteor(preset);
             var seconds = SecondsUntilCockpitLosesSuccessLine(LastShiftDoorState.AllOpen, state, pressures);
 
             Assert.That(seconds, Is.LessThan(LastShiftRecoveryTuning.DockingTimerSeconds),
-                $"{preset} 에 산소 재생기실을 세웠더니 방치해도 도킹 타이머 안에 성공선을 안 잃는다 — " +
+                $"{preset} 에 수경재배를 세웠더니 방치해도 도킹 타이머 안에 성공선을 안 잃는다 — " +
                 "모듈 하나가 산소 실패 시계를 껐다(조항 C-2 위반).");
         }
 
@@ -147,9 +153,9 @@ namespace DoodleUp.Tests.EditMode
         [TestCase(LastShiftPreset.HighHeatHighThrust)]
         [TestCase(LastShiftPreset.PowerOverloadLooseBattery)]
         [TestCase(LastShiftPreset.BadAttitudeHighOxygen)]
-        public void OxygenRecyclerStillPaysForIsolationInsideTheSuitOxygenBudget(LastShiftPreset preset)
+        public void HydroponicsStillPaysForIsolationInsideTheSuitOxygenBudget(LastShiftPreset preset)
         {
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
 
             var doors = LastShiftDoorState.AllOpen;
             doors[LastShiftZoneAtlas.BoundaryCount - 1] = false;
@@ -158,7 +164,7 @@ namespace DoodleUp.Tests.EditMode
             Integrate(doors, SuitBudgetSeconds, state, pressures, out var breachVacuumSeconds);
 
             Assert.That(breachVacuumSeconds, Is.GreaterThan(0f).And.LessThan(SuitBudgetSeconds),
-                $"{preset} 에 산소 재생기실을 세웠더니 격리한 파공 구역이 예비 산소 예산 안에 " +
+                $"{preset} 에 수경재배를 세웠더니 격리한 파공 구역이 예비 산소 예산 안에 " +
                 "진공이 안 된다 — 격리가 다시 공짜가 됐다(§6-4).");
         }
 
@@ -166,12 +172,12 @@ namespace DoodleUp.Tests.EditMode
         /// 그러면서 <b>이득은 실재해야 한다.</b> 값을 냈는데 시계가 안 늘면 이 항목은 살 이유가 없다.
         /// </summary>
         [Test]
-        public void OxygenRecyclerActuallyBuysTimeInTheBreachZone()
+        public void HydroponicsActuallyBuysTimeInTheBreachZone()
         {
             var (bareState, barePressures) = AfterMeteor(LastShiftPreset.HighHeatHighThrust);
             var bare = SecondsUntilCockpitLosesSuccessLine(LastShiftDoorState.AllOpen, bareState, barePressures);
 
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
             var (state, pressures) = AfterMeteor(LastShiftPreset.HighHeatHighThrust);
             var withModule = SecondsUntilCockpitLosesSuccessLine(LastShiftDoorState.AllOpen, state, pressures);
 
@@ -378,7 +384,7 @@ namespace DoodleUp.Tests.EditMode
 
         // ── 예비 아이템 ──────────────────────────────────────────────────────
 
-        /// <summary>예비 전력실은 배터리 하나, 보급 저장고는 세 계통 한 벌이다(카탈로그 §3.3).</summary>
+        /// <summary>예비 전력실은 배터리 하나, 화물칸는 세 계통 한 벌이다(카탈로그 §3.3).</summary>
         [Test]
         public void SpareItemsFollowTheCatalogTable()
         {
@@ -391,7 +397,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(power.SpareItemCount, Is.EqualTo(1));
 
             LastShiftPlacedModules.Clear();
-            Place(LastShiftModuleCatalog.SupplyDepot, LastShiftZone.Cooling);
+            Place(LastShiftModuleCatalog.CargoBay, LastShiftZone.Cooling);
             var depot = LastShiftModuleEffects.Collect(LastShiftZonePressures.Uniform(1f));
 
             Assert.That(depot.HasSpare(LastShiftItemRole.Battery), Is.True);
@@ -403,7 +409,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>조항 E-2 — 예비는 역할당 하나다.</b> 예비 전력실과 보급 저장고를 둘 다 세워도
+        /// <b>조항 E-2 — 예비는 역할당 하나다.</b> 예비 전력실과 화물칸을 둘 다 세워도
         /// 배터리는 하나이고, 같은 모듈을 둘 세워도 하나다.
         /// </summary>
         [Test]
@@ -411,8 +417,8 @@ namespace DoodleUp.Tests.EditMode
         {
             Place(LastShiftModuleCatalog.ReservePower, LastShiftZone.Power);
             Place(LastShiftModuleCatalog.ReservePower, LastShiftZone.Cockpit);
-            Place(LastShiftModuleCatalog.SupplyDepot, LastShiftZone.Cooling);
-            Place(LastShiftModuleCatalog.SupplyDepot, LastShiftZone.LifeSupport);
+            Place(LastShiftModuleCatalog.CargoBay, LastShiftZone.Cooling);
+            Place(LastShiftModuleCatalog.CargoBay, LastShiftZone.LifeSupport);
 
             var effects = LastShiftModuleEffects.Collect(LastShiftZonePressures.Uniform(1f));
 
@@ -430,10 +436,10 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ModulesInAVacuumZoneStopWorking()
         {
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
             Place(LastShiftModuleCatalog.Radiator, Breach);
             Place(LastShiftModuleCatalog.ReservePower, Breach);
-            Place(LastShiftModuleCatalog.SupplyDepot, Breach);
+            Place(LastShiftModuleCatalog.CargoBay, Breach);
 
             var pressures = LastShiftZonePressures.Uniform(1f);
             Assert.That(LastShiftModuleEffects.Collect(pressures).Any, Is.True);
@@ -453,8 +459,8 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void SameEffectDoesNotStack()
         {
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
-            Place(LastShiftModuleCatalog.OxygenRecycler, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
+            Place(LastShiftModuleCatalog.Hydroponics, Breach);
             Place(LastShiftModuleCatalog.Radiator, LastShiftZone.Cooling);
             Place(LastShiftModuleCatalog.Radiator, LastShiftZone.Power);
             Place(LastShiftModuleCatalog.ReservePower, LastShiftZone.Power);
@@ -476,18 +482,18 @@ namespace DoodleUp.Tests.EditMode
         // ── 가격 재검산 (§9-2) ───────────────────────────────────────────────
 
         /// <summary>
-        /// <b>정거장 골조 <c>5</c>.</b> 한 기항 최대 수입과 같아야 "모아서 큰 것을 짓는다"(카탈로그
+        /// <b>격납고 <c>5</c>.</b> 한 기항 최대 수입과 같아야 "모아서 큰 것을 짓는다"(카탈로그
         /// §0-1)가 성립한다. <c>4</c> 로 내리면 래치 <c>3/4</c> 로도 한 기항에 살 수 있어
         /// <b>모을 이유가 같이 사라진다</b> — 래치 결과가 균등하다고 보면 단독 구매 가능성이
         /// <c>20%</c> 에서 <c>40%</c> 로 뛴다.
         /// </summary>
         [Test]
-        public void StationFramePriceStillRequiresSavingUp()
+        public void HangarPriceStillRequiresSavingUp()
         {
-            var frame = LastShiftModuleCatalog.At(LastShiftModuleCatalog.StationFrame);
+            var frame = LastShiftModuleCatalog.At(LastShiftModuleCatalog.Hangar);
 
             Assert.That(frame.MaintenanceCost, Is.EqualTo(LastShiftMaintenance.MaxPortIncome),
-                "정거장 골조 가격이 한 기항 최대 수입과 갈렸다 — 카탈로그 §4.3 검산의 전제다.");
+                "격납고 가격이 한 기항 최대 수입과 갈렸다 — 카탈로그 §4.3 검산의 전제다.");
 
             // 래치가 최고(4/4)여야 한 기항 수입으로 닿는다. 하나만 놓쳐도 두 기항이다.
             Assert.That(LastShiftMaintenance.IncomeFor(LastShiftMaintenance.MaxLatches),
@@ -536,19 +542,42 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 효과가 붙은 넷과 안 붙은 둘이 <b>카탈로그 번호와 실제 항목이 맞는지</b>. 번호가
-        /// 어긋나면 산 것과 다른 효과가 붙고, 그 어긋남은 화면 어디에도 안 보인다.
+        /// <b>카탈로그 v2 열 항목의 번호·이름·발자국·가격을 정본 표와 통째로 대조한다</b>
+        /// (맵 개편 §3.3). 번호가 어긋나면 산 것과 다른 효과가 붙고, 그 어긋남은 화면 어디에도
+        /// 안 보인다. <b>발자국까지 같이 거는 것은 v2 의 근거가 "이관 방의 현행 치수를 한 칸도
+        /// 안 바꿨다" 이기 때문이다</b> — 치수가 움직이면 그 근거가 조용히 거짓이 된다.
         /// </summary>
         [Test]
         public void CatalogIndexConstantsMatchTheCatalogTable()
         {
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.Corridor).Name, Is.EqualTo("연결 통로"));
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.OxygenRecycler).Name, Is.EqualTo("산소 재생기실"));
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.Radiator).Name, Is.EqualTo("방열 라디에이터실"));
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.ReservePower).Name, Is.EqualTo("예비 전력실"));
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.SupplyDepot).Name, Is.EqualTo("보급 저장고"));
-            Assert.That(LastShiftModuleCatalog.At(LastShiftModuleCatalog.StationFrame).Name, Is.EqualTo("정거장 골조"));
-            Assert.That(LastShiftModuleCatalog.Count, Is.EqualTo(6));
+            var expected = new (int Index, string Name, float LengthX, float WidthZ, int Cost)[]
+            {
+                (LastShiftModuleCatalog.Corridor, "연결 통로", 4f, 2f, 1),
+                (LastShiftModuleCatalog.Observatory, "관측실", 3f, 4f, 1),
+                (LastShiftModuleCatalog.ReservePower, "예비 전력실", 4f, 4f, 2),
+                (LastShiftModuleCatalog.Radiator, "방열 라디에이터실", 3f, 6f, 2),
+                (LastShiftModuleCatalog.ServerRoom, "서버/통신실", 4f, 6f, 2),
+                (LastShiftModuleCatalog.Workshop, "정비창", 5f, 5f, 2),
+                (LastShiftModuleCatalog.MedBay, "의무실", 5f, 5f, 2),
+                (LastShiftModuleCatalog.Hydroponics, "수경재배", 6f, 6f, 3),
+                (LastShiftModuleCatalog.CargoBay, "화물칸", 8f, 8f, 3),
+                (LastShiftModuleCatalog.Hangar, "격납고", 8f, 10f, 5)
+            };
+
+            Assert.That(LastShiftModuleCatalog.Count, Is.EqualTo(expected.Length),
+                "카탈로그 v2 는 열 종이다 — 구명정은 고정에도 카탈로그에도 없다(확정판 §2.1).");
+
+            for (var slot = 0; slot < expected.Length; slot++)
+            {
+                var row = expected[slot];
+                Assert.That(row.Index, Is.EqualTo(slot), $"{row.Name} 의 번호 상수가 표 자리와 갈렸다");
+
+                var kind = LastShiftModuleCatalog.At(slot);
+                Assert.That(kind.Name, Is.EqualTo(row.Name));
+                Assert.That(kind.LengthX, Is.EqualTo(row.LengthX).Within(1e-5f), $"{row.Name} 의 깊이");
+                Assert.That(kind.WidthZ, Is.EqualTo(row.WidthZ).Within(1e-5f), $"{row.Name} 의 접면 폭");
+                Assert.That(kind.MaintenanceCost, Is.EqualTo(row.Cost), $"{row.Name} 의 가격");
+            }
         }
 
         // ── 표본 ────────────────────────────────────────────────────────────
