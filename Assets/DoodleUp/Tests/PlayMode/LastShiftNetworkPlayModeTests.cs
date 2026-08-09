@@ -397,6 +397,13 @@ namespace DoodleUp.Tests.PlayMode
             UnityEngine.Physics.SyncTransforms();
         }
 
+        /// <summary>
+        /// 부품 앞 1.5m 에 세우고 조준시킨다. <b>다가서는 쪽은 언제나 방 안쪽이다</b> —
+        /// 광장 쪽에서 접근하면 문 앞에 서게 되고, 문 프롬프트가 아이템 프롬프트보다 앞이라
+        /// (<c>LastShiftPlayerController.BuildInteractionPrompt</c>) 잡기 안내가 가려진다.
+        /// 방사형에서는 문이 전부 광장을 보고 있으므로 "광장 반대편" 이 곧 방 안쪽이다.
+        /// 일자 스파인 시절에는 부품이 문에서 멀어 서 있던 쪽이 문제가 안 됐다.
+        /// </summary>
         private static void PositionForKeyboardInteraction(
             LastShiftNetworkPlayer player,
             LastShiftPlayerController controller,
@@ -404,7 +411,10 @@ namespace DoodleUp.Tests.PlayMode
         {
             var target = item.GetComponentInChildren<Collider>().bounds.center;
             var cameraTransform = controller.TargetCamera.transform;
-            var forward = Vector3.ProjectOnPlane(target - player.transform.position, Vector3.up).normalized;
+            var outward = Vector3.ProjectOnPlane(target, Vector3.up).normalized;
+            var forward = -outward;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.ProjectOnPlane(target - player.transform.position, Vector3.up).normalized;
             if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
             player.transform.SetPositionAndRotation(
                 target - forward * 1.5f - Vector3.up * cameraTransform.localPosition.y,

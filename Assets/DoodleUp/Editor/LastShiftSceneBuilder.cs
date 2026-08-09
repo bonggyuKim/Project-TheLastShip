@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DoodleUp.Runtime;
@@ -1724,6 +1725,54 @@ namespace DoodleUp.Editor
 
         public static string ItemPrefabPath(LastShiftItemRole role) =>
             $"Assets/DoodleUp/Prefabs/LastShiftItem_{role}.prefab";
+
+        /// <summary>
+        /// 부품 정위치의 정본. <see cref="CreateItems"/> 가 새로 놓을 때 쓰는 값과 <b>같은 출처</b>이며,
+        /// 이미 놓인 씬 인스턴스를 다시 맞추는 쪽(<c>RealignSceneItems</c>)과 그것을 지키는 테스트가
+        /// 이 접근자를 통해 같은 값을 본다.
+        ///
+        /// 좌표를 씬에서 읽어 오지 않고 여기서 내려 주는 것이 요점이다 — 부품이 어느 구역에
+        /// 있는지가 게임 규칙이라(<c>PatchPlate</c> 가 산소실에 있어야 <see cref="LastShiftSandboxController.BreachZone"/>
+        /// 이 산소실이다), 방 배치가 움직이면 씬이 아니라 이쪽이 정답이다.
+        /// </summary>
+        public static Vector3 NominalPositionOf(LastShiftItemRole role)
+        {
+            foreach (var spec in ItemSpecs)
+                if (spec.Role == role)
+                    return spec.Position;
+            throw new System.ArgumentException($"{role} 의 정위치가 부품표에 없다.", nameof(role));
+        }
+
+        /// <summary>
+        /// 이미 씬에 놓인 부품들을 정위치 정본으로 되돌린다. 새로 짓지 않는다.
+        ///
+        /// <b>왜 통짜 재빌드가 아닌가.</b> <see cref="RebuildShipPrefab"/> 은 선체·구획·드레싱까지
+        /// 전부 다시 굽고, 드레싱 규칙 위반이 하나라도 있으면 그 자리에서 던진다. 방 배치가
+        /// 움직였을 때 실제로 어긋나는 것은 <b>부품 좌표 넷</b>이고, 그 넷을 되맞추는 데
+        /// 선체를 다시 구울 이유가 없다 — 아트 데이터 상태와 시뮬레이션 정합성이 서로를
+        /// 인질로 잡지 않아야 한다.
+        /// </summary>
+        public static int RealignSceneItems(IEnumerable<LastShiftGrabbable> items)
+        {
+            var moved = 0;
+            foreach (var item in items)
+            {
+                if (item == null) continue;
+                var nominal = NominalPositionOf(item.Role);
+                var wasOff = (item.transform.position - nominal).sqrMagnitude > 1e-6f ||
+                             (item.NominalPosition - nominal).sqrMagnitude > 1e-6f;
+                item.transform.position = nominal;
+                item.transform.rotation = Quaternion.identity;
+                // Configure 가 정위치를 <b>호출 시점의 transform</b> 에서 잡으므로 이동 뒤에 불러야 한다.
+                // 순서를 바꾸면 좌표만 옮기고 nominalPosition 은 옛 값으로 남는다.
+                item.Configure(item.Role, true);
+                if (!wasOff) continue;
+                moved++;
+                Debug.Log($"[LAST_SHIFT_ITEM_REALIGN] role={item.Role} nominal={nominal} " +
+                          $"zone={LastShiftZoneAtlas.KeyOf(LastShiftZoneAtlas.Resolve(nominal))}");
+            }
+            return moved;
+        }
 
         /// <summary>
         /// 아이템 프리팹 넷. 선체와 같은 이유로 씬 밖으로 뺀다 — 씬에 직접 구우면 씬이 둘일 때

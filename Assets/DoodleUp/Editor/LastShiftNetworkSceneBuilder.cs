@@ -31,6 +31,51 @@ namespace DoodleUp.Editor
             BuildAndSaveSandbox();
         }
 
+        [MenuItem("Last Shift/SP-02A/Realign Scene Items")]
+        public static void RealignSceneItems()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            RealignSceneItemsForAutomation();
+        }
+
+        /// <summary>
+        /// 씬에 놓인 부품 넷을 좌표 정본으로 되맞춘다. <b>방 배치가 움직인 커밋과 씬을 다시 굽는
+        /// 커밋이 갈렸을 때 실제로 깨지는 자리가 여기다.</b>
+        ///
+        /// 중앙 광장 개편(<c>docs/central-plaza-hub-layout-v1.md</c> §9.3)이 방 넷을 방사형으로
+        /// 옮겼는데 씬은 일자 스파인 좌표 그대로 남았고, 그래서 <c>PatchPlate</c> 가 산소실
+        /// 발자국 밖(<c>x = 15.5</c>, 방은 <c>x ∈ [6, 14]</c>)에 떠 <see cref="LastShiftSandboxController.BreachZone"/>
+        /// 이 조종석으로 풀렸다. 파공이 조종석에 났다고 읽히면 CT-05 산소 3단 구조 검증이
+        /// 통째로 전제부터 무너진다 — 승무원 사망 경로를 재는 PlayMode 다섯 건이 모두
+        /// "승무원이 파공 구역에 없다" 로 죽은 것이 그 증상이었다.
+        ///
+        /// <b><see cref="RebuildSandboxForAutomation"/> 로 대신할 수 없다.</b> 저쪽은 선체·구획·
+        /// 드레싱까지 다시 굽고 드레싱 규칙 위반이 남아 있으면 던지므로, 아트 데이터가 정리될
+        /// 때까지 시뮬레이션 정합성이 인질로 잡힌다. 부품 좌표는 그것과 독립적으로 맞출 수 있다.
+        /// </summary>
+        public static void RealignSceneItemsForAutomation()
+        {
+            var activeScene = SceneManager.GetActiveScene();
+            if (activeScene.IsValid() && activeScene.isDirty)
+                throw new System.InvalidOperationException("Refusing to reopen the SP-02A scene while the active scene has unsaved changes.");
+
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var items = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<LastShiftGrabbable>(true))
+                .ToArray();
+            if (items.Length == 0)
+                throw new System.InvalidOperationException($"{ScenePath} has no LastShiftGrabbable items to realign.");
+
+            var moved = LastShiftSceneBuilder.RealignSceneItems(items);
+            if (moved > 0)
+            {
+                foreach (var item in items) EditorUtility.SetDirty(item);
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, ScenePath);
+            }
+            Debug.Log($"[LAST_SHIFT_ITEM_REALIGN] scene={ScenePath} items={items.Length} moved={moved} result=PASS");
+        }
+
         /// <summary>
         /// 이 프로젝트의 유일한 레벨을 짓는다.
         ///
