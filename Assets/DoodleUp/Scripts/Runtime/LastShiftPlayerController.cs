@@ -773,71 +773,144 @@ namespace DoodleUp.Runtime
             serverRejectionExpiry = Time.unscaledTime + 2.5f;
         }
 
-        private string BuildInteractionPrompt()
+        /// <summary>
+        /// 프롬프트 한 건 — <b>문장과, 그 문장이 가리키는 대상의 월드 좌표</b>를 같이 나른다.
+        ///
+        /// 문장만 돌려주면 그릴 자리를 화면 고정 좌표로 정하는 수밖에 없다. 그러면 "이 안내가
+        /// 저 물건에 대한 것" 이라는 연결을 글자로만 말해야 하고(<c>Battery: ...</c>), 대상이
+        /// 둘 이상 보이는 자리에서는 그 글자도 어느 쪽인지 못 가린다. 좌표를 같이 들고 다니면
+        /// 안내가 대상 위에 붙어서 연결이 그림으로 성립한다.
+        ///
+        /// 앵커가 없는 것도 정상이다 — 유령 상태나 서버 거부처럼 <b>대상이 아니라 승무원 자신의
+        /// 상태</b>를 말하는 문장은 가리킬 물건이 없다. 그쪽은 화면 고정 자리로 떨어진다.
+        /// </summary>
+        private readonly struct PromptDraw
+        {
+            public readonly string Text;
+            public readonly Vector3 Anchor;
+            public readonly bool HasAnchor;
+
+            private PromptDraw(string text, Vector3 anchor, bool hasAnchor)
+            {
+                Text = text;
+                Anchor = anchor;
+                HasAnchor = hasAnchor;
+            }
+
+            /// <summary>그릴 것이 없다.</summary>
+            public static PromptDraw None => default;
+
+            /// <summary>대상 위에 뜬다.</summary>
+            public static PromptDraw At(string text, Vector3 anchor) => new(text, anchor, true);
+
+            /// <summary>가리킬 대상이 없어 화면 고정 자리에 뜬다.</summary>
+            public static PromptDraw Floating(string text) => new(text, Vector3.zero, false);
+
+            public bool Exists => Text != null;
+        }
+
+        /// <summary>
+        /// 대상 <b>윗면</b>의 월드 좌표. 안내는 물건을 덮는 것이 아니라 물건 위에 떠야 하므로
+        /// 중심이 아니라 위쪽 경계를 잡는다.
+        ///
+        /// Renderer 를 먼저 보는 이유는 그것이 <b>플레이어가 실제로 보는 크기</b>이기 때문이다.
+        /// Collider 가 렌더보다 크거나 작은 부품이 있고, 그럴 때 판정 상자를 기준으로 띄우면
+        /// 눈에는 물건에서 떨어진 자리에 뜬다. 둘 다 없으면 transform 을 그대로 쓴다.
+        /// </summary>
+        private static Vector3 AnchorTopOf(Component target, Vector3 fallback)
+        {
+            if (target == null) return fallback;
+            var renderer = target.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+                return new Vector3(renderer.bounds.center.x, renderer.bounds.max.y, renderer.bounds.center.z);
+            var collider = target.GetComponentInChildren<Collider>();
+            if (collider != null)
+                return new Vector3(collider.bounds.center.x, collider.bounds.max.y, collider.bounds.center.z);
+            return target.transform.position;
+        }
+
+        /// <summary>
+        /// 좌표를 가진 정적 동사(에어록·잔해처럼 컴포넌트를 안 거치는 것)의 앵커.
+        /// 바닥 좌표를 그대로 쓰면 안내가 발치에 뜨므로 사람 눈높이만큼 올린다.
+        /// </summary>
+        private static Vector3 AnchorAbove(Vector3 groundPoint) =>
+            groundPoint + Vector3.up * LastShiftShipPhysics.EyeHeight;
+
+        private string BuildInteractionPrompt() => BuildPrompt().Text;
+
+        private PromptDraw BuildPrompt()
         {
             // 유령은 어느 프롬프트도 받지 않는다. 잡을 수 있다고 표시해 놓고 눌러도 안 되는
             // 것보다, 왜 안 되는지를 한 줄로 못박는 편이 낫다(문 프롬프트가 사망 승무원에게
-            // "조작 불가" 를 보여 주던 것과 같은 이유다).
-            if (IsGhost) return "유령 — 이동만 가능 (잡기·수리·문 조작 불가)";
+            // "조작 불가" 를 보여 주던 것과 같은 이유다). 이건 대상이 아니라 내 상태라 앵커가 없다.
+            if (IsGhost) return PromptDraw.Floating("유령 — 이동만 가능 (잡기·수리·문 조작 불가)");
 
             // 밸브가 가장 먼저다. 붙잡고 있는 동안은 다른 동사가 아예 막혀 있으므로(§4.3 제약),
             // 그 상태에서 잡기·문 안내를 띄우면 눌러도 안 되는 것을 알려주는 꼴이다.
             var valvePrompt = BuildValvePrompt();
-            if (valvePrompt != null) return valvePrompt;
+            if (valvePrompt.Exists) return valvePrompt;
 
             // 잔해가 문보다 먼저다. 사거리가 겹칠 일은 없지만(잔해는 원반 밖이다) 선외에서
             // 뜰 수 있는 안내가 이것 하나뿐이라 어느 갈래에도 안 가려져야 한다.
             var salvagePrompt = BuildSalvagePrompt();
-            if (salvagePrompt != null) return salvagePrompt;
+            if (salvagePrompt.Exists) return salvagePrompt;
 
             // 문 프롬프트가 아이템 프롬프트보다 먼저다. 문 앞에서만 뜨는 안내이고, 그 자리에서
             // 아이템을 조준하고 있을 확률보다 문을 조작하려 할 확률이 높다.
             var doorPrompt = BuildDoorPrompt();
-            if (doorPrompt != null) return doorPrompt;
+            if (doorPrompt.Exists) return doorPrompt;
 
             // 수리 프롬프트는 문 다음이다. 손상 지점은 방 안이고 문은 경계에 있어 사거리가
             // 겹치지 않지만, 겹치는 배치가 생기면 문 쪽을 남긴다 — 문은 그 자리를 떠나는
             // 동사라 잘못 가려지면 승무원이 갇힌다.
             var repairPrompt = BuildRepairPrompt();
-            if (repairPrompt != null) return repairPrompt;
-            // 네트워크가 없는 단독 씬(SP-01)에서도 빈손이면 중앙에 아무것도 그리지 않는다.
+            if (repairPrompt.Exists) return repairPrompt;
+            // 네트워크가 없는 단독 씬(SP-01)에서도 빈손이면 아무것도 그리지 않는다.
             if (networkPlayer == null || !networkPlayer.IsSpawned)
-                return heldItem != null ? "[E] 놓기" : null;
+                return heldItem != null
+                    ? PromptDraw.At("[E] 놓기", AnchorTopOf(heldItem, heldItem.transform.position))
+                    : PromptDraw.None;
             if (serverRejectionReason != null)
             {
                 if (Time.unscaledTime <= serverRejectionExpiry)
-                    return $"서버 거부: {serverRejectionReason}";
+                    return PromptDraw.Floating($"서버 거부: {serverRejectionReason}");
                 serverRejectionReason = null;
             }
             if (networkPlayer.HeldItem != null && networkPlayer.HeldItem.Grabbable == null)
-                return "[E] 놓기";
+                return PromptDraw.At("[E] 놓기", AnchorTopOf(networkPlayer.HeldItem, networkPlayer.HeldItem.transform.position));
             if (networkPlayer.HeldItem != null)
             {
+                var held = networkPlayer.HeldItem;
                 var distanceToNominal = Vector3.Distance(
-                    networkPlayer.HeldItem.transform.position,
-                    networkPlayer.HeldItem.Grabbable.NominalPosition);
-                return distanceToNominal <= LastShiftSandboxController.SecureDistance
-                    ? "[E] 놓기   [F] 제자리에 고정"
-                    : $"[E] 놓기   고정 위치까지 {distanceToNominal:F1}m";
+                    held.transform.position,
+                    held.Grabbable.NominalPosition);
+                // 들고 있는 것도 물건이다 — 안내는 손에 든 그것 위에 붙는다.
+                var heldAnchor = AnchorTopOf(held, held.transform.position);
+                return PromptDraw.At(
+                    distanceToNominal <= LastShiftSandboxController.SecureDistance
+                        ? "[E] 놓기   [F] 제자리에 고정"
+                        : $"[E] 놓기   고정 위치까지 {distanceToNominal:F1}m",
+                    heldAnchor);
             }
             // 여기부터가 잡기 안내다. <b>판정과 표시가 같은 함수를 쓴다</b> —
             // 조준이 <see cref="TryResolveGrabTarget"/> 에 걸리지 않으면 할 말이 없다.
             // 예전에는 이 자리에서 조준선 앞 8m 를 따로 훑어 "접근 필요 3.1m" 같은 문장을
             // 돌려줬는데, 그건 지금 누를 수 없는 것을 말하는 안내라 상시 UI 로 되돌아왔다.
-            if (!TryGetNetworkTarget(out var item, out _)) return null;
+            if (!TryGetNetworkTarget(out var item, out _)) return PromptDraw.None;
+            var itemAnchor = AnchorTopOf(item, item.transform.position);
             // 아직 spawn 되지 않은 아이템은 역할을 신뢰할 수 없다. OnGUI 는 매 프레임 돌기 때문에
             // 여기서 예외가 나면 화면이 아니라 로그가 먼저 무너진다.
             if (item.Grabbable == null)
-                return "[E] 잡기 — 대상 확인 중";
+                return PromptDraw.At("[E] 잡기 — 대상 확인 중", itemAnchor);
             // 고정된 부품은 눌러도 안 잡힌다. 사거리 안에서 조준했을 때만 사유를 남기므로
             // 이 문장은 "잡으려 다가와 조준한 사람" 에게만 뜬다.
             if (item.IsSecured)
-                return $"{item.Grabbable.Role}: {DescribeSecured(item)}";
+                return PromptDraw.At($"{item.Grabbable.Role}: {DescribeSecured(item)}", itemAnchor);
             if (item.IsClaimed)
-                return $"{item.Grabbable.Role}: 다른 플레이어가 잡는 중";
+                return PromptDraw.At($"{item.Grabbable.Role}: 다른 플레이어가 잡는 중", itemAnchor);
             // 거리 숫자를 뺀다. 사거리 안에서만 뜨게 된 뒤로 그 숫자가 알려 줄 것이
             // "이미 잡을 수 있다" 뿐이고, 그건 프롬프트가 떠 있다는 사실이 이미 말한다.
-            return $"[E] {item.Grabbable.Role} 잡기";
+            return PromptDraw.At($"[E] {item.Grabbable.Role} 잡기", itemAnchor);
         }
 
         /// <summary>
@@ -847,13 +920,16 @@ namespace DoodleUp.Runtime
         /// 아니라 사람이고(§3 문법 축 "소비 대상 = 사람"), 화면이 그걸 말하지 않으면 잡은 사람은
         /// 자기가 조종석을 비우고 있다는 사실을 열 막대에서 역산해야 한다.
         /// </summary>
-        private string BuildValvePrompt()
+        private PromptDraw BuildValvePrompt()
         {
-            if (sustainingValve) return "[T] 유지 중 — 냉각 순환 밸브 (이동·다른 조작 불가)";
-            if (!LastShiftCoolingValve.IsWithinReach(transform.position)) return null;
+            // 손잡이 좌표는 정적이라 씬 조회 없이 바로 앵커가 된다 — 이미 손잡이 높이다.
+            var handle = LastShiftCoolingValve.Position;
+            if (sustainingValve)
+                return PromptDraw.At("[T] 유지 중 — 냉각 순환 밸브 (이동·다른 조작 불가)", handle);
+            if (!LastShiftCoolingValve.IsWithinReach(transform.position)) return PromptDraw.None;
             var crew = GetComponent<LastShiftCrewOxygen>();
-            if (crew != null && crew.IsDead) return "냉각 순환 밸브: 조작 불가";
-            return "[T] 냉각 순환 밸브 유지 (누르고 있는 동안 · 그 자리에 묶인다)";
+            if (crew != null && crew.IsDead) return PromptDraw.At("냉각 순환 밸브: 조작 불가", handle);
+            return PromptDraw.At("[T] 냉각 순환 밸브 유지 (누르고 있는 동안 · 그 자리에 묶인다)", handle);
         }
 
         /// <summary>
@@ -865,17 +941,22 @@ namespace DoodleUp.Runtime
         /// <c>C</c>·<c>V</c> 는 조용히 실패했다. 실패가 조용하면 플레이어는 그 자리에서
         /// <c>G</c> 라는 답이 있다는 것을 배울 방법이 없다.
         /// </summary>
-        private string BuildRepairPrompt()
+        private PromptDraw BuildRepairPrompt()
         {
             var sandbox = Sandbox;
-            if (sandbox == null) return null;
-            if (!sandbox.TryResolveRepairPrompt(transform.position, out _, out var subjectInPlace)) return null;
+            if (sandbox == null) return PromptDraw.None;
+            // 앵커는 <b>수리 대상 부품의 제자리</b>다. 손상 지점이 곧 그 부품이 들어가야 할
+            // 자리이고, 부품을 들고 있든 바닥에 굴러다니든 동사가 걸린 좌표는 그쪽이다.
+            if (!sandbox.TryResolveRepairPrompt(transform.position, out _, out var subjectInPlace, out var subjectNominal))
+                return PromptDraw.None;
             var crew = GetComponent<LastShiftCrewOxygen>();
-            if (crew != null && crew.IsDead) return null;
+            if (crew != null && crew.IsDead) return PromptDraw.None;
 
-            return subjectInPlace
-                ? "[C] 안전 복구 4.0s   [V] 임시 결속 0.8s   [G] 성능 포기"
-                : "[G] 이 구역 포기 — 악화는 멈추고 회복은 없다";
+            return PromptDraw.At(
+                subjectInPlace
+                    ? "[C] 안전 복구 4.0s   [V] 임시 결속 0.8s   [G] 성능 포기"
+                    : "[G] 이 구역 포기 — 악화는 멈추고 회복은 없다",
+                subjectNominal);
         }
 
         /// <summary>
@@ -894,7 +975,7 @@ namespace DoodleUp.Runtime
         /// 사망한 승무원에게는 "조작 불가" 를 보여 준다 — 눌러도 아무 일이 없는 것보다
         /// 왜 안 되는지가 보여야 한다.
         /// </summary>
-        private string BuildDoorPrompt()
+        private PromptDraw BuildDoorPrompt()
         {
             var door = LastShiftZoneDoor.FindOperable(transform.position);
             var crew = GetComponent<LastShiftCrewOxygen>();
@@ -902,17 +983,27 @@ namespace DoodleUp.Runtime
             {
                 var hatch = LastShiftDeckHatch.FindOperable(transform.position);
                 if (hatch == null) return BuildAirlockPrompt(crew);
-                if (crew != null && crew.IsDead) return $"{hatch.ShaftLabel} 승강구: 조작 불가";
+                // 승강구는 갑판에 뚫린 구멍이라 윗면이 곧 바닥면이다. 발치에 뜨지 않도록
+                // 눈높이만큼 올려서 구멍 위 허공에 띄운다.
+                var mouth = AnchorAbove(hatch.Mouth);
+                if (crew != null && crew.IsDead)
+                    return PromptDraw.At($"{hatch.ShaftLabel} 승강구: 조작 불가", mouth);
                 // 여는 쪽에 경고를 붙인다. 여기서 열리는 것은 압력이 아니라 갑판의 구멍이고,
                 // 저중력에서 뜬 물건이 그리로 빠지는 것이 이 동사의 유일한 되돌리기 비용이다.
-                return hatch.IsOpen
-                    ? $"[Q] {hatch.ShaftLabel} 승강구 해치 닫기"
-                    : $"[Q] {hatch.ShaftLabel} 승강구 해치 열기 (갑판에 구멍)";
+                return PromptDraw.At(
+                    hatch.IsOpen
+                        ? $"[Q] {hatch.ShaftLabel} 승강구 해치 닫기"
+                        : $"[Q] {hatch.ShaftLabel} 승강구 해치 열기 (갑판에 구멍)",
+                    mouth);
             }
-            if (crew != null && crew.IsDead) return $"{door.BoundaryLabel} 문: 조작 불가";
-            return door.IsOpen
-                ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
-                : $"[Q] {door.BoundaryLabel} 문 열기";
+            var doorTop = AnchorTopOf(door, door.transform.position);
+            if (crew != null && crew.IsDead)
+                return PromptDraw.At($"{door.BoundaryLabel} 문: 조작 불가", doorTop);
+            return PromptDraw.At(
+                door.IsOpen
+                    ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
+                    : $"[Q] {door.BoundaryLabel} 문 열기",
+                doorTop);
         }
 
         /// <summary>
@@ -922,16 +1013,18 @@ namespace DoodleUp.Runtime
         /// (구간 중 봉인)와 인터록(갑판 구멍과 동시 개방 금지)은 둘 다 눌러도 아무 일이
         /// 안 일어나는 형태로 나타나는데, 배 안 어디에도 그 규칙을 적어 둔 자리가 없다.
         /// </summary>
-        private string BuildAirlockPrompt(LastShiftCrewOxygen crew)
+        private PromptDraw BuildAirlockPrompt(LastShiftCrewOxygen crew)
         {
+            // 에어록은 정적 좌표만 있고 컴포넌트를 안 거친다. 바닥 한가운데라 눈높이로 올린다.
+            var airlock = AnchorAbove(LastShiftAirlock.ReturnPoint);
             if (LastShiftAirlock.IsCycling && LastShiftAirlock.IsWithinReach(transform.position))
-                return $"에어록 사이클 {LastShiftAirlock.CycleProgress:P0}";
+                return PromptDraw.At($"에어록 사이클 {LastShiftAirlock.CycleProgress:P0}", airlock);
 
             var action = LastShiftAirlock.NextAction(transform.position, AnyDeckHatchOpen);
-            if (action == LastShiftAirlockAction.None) return null;
-            if (crew != null && crew.IsDead) return "에어록: 조작 불가";
+            if (action == LastShiftAirlockAction.None) return PromptDraw.None;
+            if (crew != null && crew.IsDead) return PromptDraw.At("에어록: 조작 불가", airlock);
 
-            return action switch
+            return PromptDraw.At(action switch
             {
                 LastShiftAirlockAction.OpenInner => "[Q] 에어록 안쪽 해치 열기",
                 LastShiftAirlockAction.CloseInner => "[Q] 에어록 안쪽 해치 닫기",
@@ -939,26 +1032,27 @@ namespace DoodleUp.Runtime
                 LastShiftAirlockAction.Repressurize => "[Q] 재가압 — 배로 돌아간다",
                 LastShiftAirlockAction.BlockedBySegment => "에어록: 구간 중에는 봉인 (기항에서만 열린다)",
                 _ => "에어록: 갑판 승강구 해치를 먼저 닫으세요"
-            };
+            }, airlock);
         }
 
         /// <summary>
         /// 잔해 앞 안내. 선외에서만 뜨고, <b>남은 산소를 같이 적는다</b> — 밖에서 읽을 수 있는
         /// 숫자가 이것 하나이고, 조항 <c>O-7</c> 의 대가(수확 상실)가 그 숫자에 걸려 있다.
         /// </summary>
-        private string BuildSalvagePrompt()
+        private PromptDraw BuildSalvagePrompt()
         {
-            if (!LastShiftSalvage.IsWithinReach(transform.position)) return null;
+            if (!LastShiftSalvage.IsWithinReach(transform.position)) return PromptDraw.None;
 
+            var field = AnchorAbove(LastShiftSalvage.FieldCenter);
             var carried = $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}";
             if (LastShiftSalvage.Remaining <= 0)
-                return $"{LastShiftSalvage.FieldLabel}: 다 뜯었다   {carried}";
+                return PromptDraw.At($"{LastShiftSalvage.FieldLabel}: 다 뜯었다   {carried}", field);
             if (LastShiftSalvage.Carried >= LastShiftSalvage.CarryCapacity)
-                return $"{LastShiftSalvage.FieldLabel}: 손이 찼다 — 에어록으로   {carried}";
+                return PromptDraw.At($"{LastShiftSalvage.FieldLabel}: 손이 찼다 — 에어록으로   {carried}", field);
             if (LastShiftSalvage.HarvestCooldown > 0f)
-                return $"{LastShiftSalvage.FieldLabel} 뜯는 중 {LastShiftSalvage.HarvestCooldown:F1}s   {carried}";
+                return PromptDraw.At($"{LastShiftSalvage.FieldLabel} 뜯는 중 {LastShiftSalvage.HarvestCooldown:F1}s   {carried}", field);
 
-            return $"[E] {LastShiftSalvage.FieldLabel} 뜯기 (남은 {LastShiftSalvage.Remaining})   {carried}";
+            return PromptDraw.At($"[E] {LastShiftSalvage.FieldLabel} 뜯기 (남은 {LastShiftSalvage.Remaining})   {carried}", field);
         }
 
         /// <summary>
@@ -983,37 +1077,64 @@ namespace DoodleUp.Runtime
         public const float InputBarHeight = 28f;
         public const float InputBarMargin = 8f;
 
-        /// <summary>프롬프트 상자 높이와 조작 안내 줄과의 간격.</summary>
+        /// <summary>프롬프트 상자 높이, 화면 가장자리 여백, 그리고 앵커와 상자 사이 간격.</summary>
         public const float PromptBoxHeight = 26f;
         public const float PromptBoxGap = 10f;
+
+        /// <summary>대상 윗면과 상자 아랫변 사이의 화면 간격. 물건에 닿지 않을 만큼만 띄운다.</summary>
+        public const float PromptAnchorGap = 14f;
 
         /// <summary>조준점 십자의 크기(가로 x 세로).</summary>
         public const float CrosshairWidth = 24f;
         public const float CrosshairHeight = 36f;
 
         /// <summary>
-        /// 프롬프트 상자의 자리. <b>화면 중앙이 아니라 하단</b>이다.
+        /// 프롬프트 상자의 자리 — <b>대상 바로 위</b>.
         ///
-        /// 예전에는 <c>Screen.height * 0.5 + 24</c> 였다 — 조준점 바로 아래라, 문장이 곧
-        /// 조준선 주변 시야를 덮었다. 부품을 조준한다는 것은 그 부품을 본다는 뜻인데
-        /// 안내가 그 자리를 가리면, 안내를 읽는 동안 대상이 안 보인다.
+        /// <paramref name="anchor"/> 는 대상 윗면을 화면에 투영한 점(GUI 좌표, y 아래로 증가)이고
+        /// 상자는 그 점 위에 <see cref="PromptAnchorGap"/> 만큼 띄워 가로 중앙을 맞춰 앉는다.
         ///
-        /// 조작 안내 줄 바로 위에 붙이는 이유는 <b>글자가 읽히는 자리를 하나로 모으기</b>
-        /// 위해서다. 상시 줄과 조건부 줄이 같은 구석에 쌓이면 시선이 한 번만 내려간다.
-        /// 폭은 문장 길이를 따라간다 — <c>[E] 놓기</c> 에 화면 폭짜리 띠를 깔지 않는다.
+        /// 여기까지 온 과정이 두 단계였다. 처음에는 화면 정중앙 고정이라 조준한 대상을 안내가
+        /// 덮었고, 다음에는 하단 고정으로 내렸더니 <b>시선이 가 있는 곳에서 너무 멀어 안 읽혔다</b>.
+        /// 고정 좌표로는 둘 중 하나를 고를 수밖에 없다 — 대상을 덮거나, 대상에서 멀거나.
+        /// 대상을 따라가면 둘 다 아니다: 시선이 이미 그 물건에 있고 안내는 그 바로 위에 있다.
+        ///
+        /// 화면 밖으로는 안 나간다. 대상이 화면 가장자리에 걸리거나 위쪽 끝에 있으면 상자가
+        /// 잘려 읽을 수 없으므로, 가장자리 여백 안쪽으로 밀어 넣는다 — 살짝 어긋나게 붙는 것이
+        /// 반쯤 잘린 것보다 낫다. 아래쪽 한계는 상시 조작 안내 줄이다(겹치면 둘 다 못 읽는다).
         /// </summary>
-        public static Rect ResolvePromptRect(float screenWidth, float screenHeight, float textWidth)
+        public static Rect ResolvePromptRect(float screenWidth, float screenHeight, float textWidth, Vector2 anchor)
         {
-            var maxWidth = Mathf.Max(0f, screenWidth - 48f);
+            var maxWidth = Mathf.Max(0f, screenWidth - InputBarMargin * 2f);
             var boxWidth = Mathf.Min(maxWidth, textWidth + 28f);
-            var boxX = (screenWidth - boxWidth) * 0.5f;
-            var boxY = screenHeight - InputBarMargin - InputBarHeight - PromptBoxGap - PromptBoxHeight;
+
+            var boxX = anchor.x - boxWidth * 0.5f;
+            var maxX = Mathf.Max(InputBarMargin, screenWidth - InputBarMargin - boxWidth);
+            boxX = Mathf.Clamp(boxX, InputBarMargin, maxX);
+
+            var boxY = anchor.y - PromptAnchorGap - PromptBoxHeight;
+            var maxY = screenHeight - InputBarMargin - InputBarHeight - PromptBoxGap - PromptBoxHeight;
+            boxY = Mathf.Clamp(boxY, InputBarMargin, Mathf.Max(InputBarMargin, maxY));
+
             return new Rect(boxX, boxY, boxWidth, PromptBoxHeight);
         }
 
         /// <summary>
-        /// 조준점 자리. 중앙에 남는 것은 이 <c>24x36</c> 십자 하나뿐이고, 이것도
-        /// 프롬프트가 있을 때만 그린다 — 조준점이 상시면 "떠 있음" 이 다시 무의미해진다.
+        /// 가리킬 대상이 없는 문장(유령 상태·서버 거부)이나 대상이 카메라 뒤에 있을 때의 앵커.
+        /// 조준점 <b>아래</b>로 잡아, 같은 규칙(앵커 위에 상자)을 태우면 십자 바로 밑에 앉는다.
+        /// </summary>
+        public static Vector2 ResolveFloatingAnchor(float screenWidth, float screenHeight)
+        {
+            return new Vector2(
+                screenWidth * 0.5f,
+                screenHeight * 0.5f + CrosshairHeight * 0.5f + PromptAnchorGap + PromptBoxHeight);
+        }
+
+        /// <summary>
+        /// 조준점 자리. <b>상시 표시다</b> — 어디를 겨누고 있는지는 상호작용이 성립하든 아니든
+        /// 알아야 하는 정보이고, 조준점이 사라지는 화면은 조준 자체를 감각으로 하게 만든다.
+        /// 프롬프트와 같이 뜨고 지던 시절에는 "십자가 보인다 = 뭔가 된다" 라는 신호를 얻는 대신
+        /// 겨냥이라는 기본 동작을 잃었다.
         /// </summary>
         public static Rect ResolveCrosshairRect(float screenWidth, float screenHeight)
         {
@@ -1025,12 +1146,27 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 상호작용이 성립할 때만 그린다 — 조준점과 문장이 같이 뜨고 같이 사라진다.
-        /// 조준이 필요한 순간과 조준점이 뜨는 순간이 정확히 같다.
+        /// 월드 좌표를 GUI 좌표(y 아래로 증가)로 옮긴다. 카메라 뒤(<c>z &lt;= 0</c>)면 실패한다 —
+        /// <c>WorldToScreenPoint</c> 는 뒤쪽 점도 좌표를 돌려주는데 그 값은 화면 반대편을 가리켜서,
+        /// 그대로 쓰면 등 뒤의 문 안내가 눈앞에 붙는다.
+        /// </summary>
+        private bool TryProjectAnchor(Vector3 world, out Vector2 guiPoint)
+        {
+            guiPoint = default;
+            if (targetCamera == null) return false;
+            var screenPoint = targetCamera.WorldToScreenPoint(world);
+            if (screenPoint.z <= 0f) return false;
+            guiPoint = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
+            return true;
+        }
+
+        /// <summary>
+        /// 조준점은 <b>상시</b>, 프롬프트는 <b>대상 위에</b> 그린다.
         ///
-        /// 자리는 <see cref="ResolvePromptRect"/> 와 <see cref="ResolveCrosshairRect"/> 에 있고
-        /// 여기서는 그리기만 한다. <c>OnGUI</c> 는 EditMode 에서 돌릴 수 없으므로,
-        /// 배치가 검증 가능한 값으로 남으려면 판단이 이 함수 밖에 있어야 한다.
+        /// 자리 계산은 <see cref="ResolvePromptRect"/>·<see cref="ResolveCrosshairRect"/>·
+        /// <see cref="ResolveFloatingAnchor"/> 에 있고 여기서는 그리기만 한다. <c>OnGUI</c> 는
+        /// EditMode 에서 돌릴 수 없으므로, 배치가 검증 가능한 값으로 남으려면 판단이 이 함수
+        /// 밖에 있어야 한다.
         ///
         /// 아래 입력 안내 줄은 그대로 상시다 — 화면 가장자리이고 시야를 덮지 않으며,
         /// 조작 목록은 "지금 여기" 가 아니라 배우는 정보라 조건부로 만들 대상이 아니다.
@@ -1045,8 +1181,8 @@ namespace DoodleUp.Runtime
             };
             promptStyle ??= new GUIStyle(GUI.skin.label)
             {
-                // 18 -> 15. 하단으로 내려오면서 가장자리 줄과 같은 급이 됐고, 큰 글자는
-                // 자리를 옮겨도 여전히 화면에서 가장 먼저 보이는 것이 된다.
+                // 15 를 유지한다. 대상 위에 붙으면서 화면 어디에든 뜰 수 있게 됐고,
+                // 큰 글자는 그 자리가 어디든 물건보다 먼저 보이는 것이 된다.
                 fontSize = 15,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
@@ -1054,17 +1190,23 @@ namespace DoodleUp.Runtime
             identityStyle.normal.textColor = identityColor;
             promptStyle.normal.textColor = Color.white;
 
-            // 한 이벤트 안에서 한 번만 만든다. 이 속성은 씬 조회를 타므로 조준점·상자·문장이
-            // 각자 부르면 같은 프레임에 같은 탐색이 세 번 돈다.
-            var prompt = BuildInteractionPrompt();
-            if (!string.IsNullOrEmpty(prompt))
-            {
-                GUI.Label(ResolveCrosshairRect(Screen.width, Screen.height), "+", promptStyle);
+            // 조준점은 프롬프트와 무관하게 항상 그린다.
+            GUI.Label(ResolveCrosshairRect(Screen.width, Screen.height), "+", promptStyle);
 
-                var textWidth = promptStyle.CalcSize(new GUIContent(prompt)).x;
-                var box = ResolvePromptRect(Screen.width, Screen.height, textWidth);
+            // 한 이벤트 안에서 한 번만 만든다. 이 함수는 씬 조회를 타므로 문장과 앵커를
+            // 각자 부르면 같은 프레임에 같은 탐색이 두 번 돈다.
+            var prompt = BuildPrompt();
+            if (prompt.Exists && prompt.Text.Length > 0)
+            {
+                // 앵커가 없거나 대상이 카메라 뒤면 조준점 아래 고정 자리로 떨어진다.
+                Vector2 anchor;
+                if (!prompt.HasAnchor || !TryProjectAnchor(prompt.Anchor, out anchor))
+                    anchor = ResolveFloatingAnchor(Screen.width, Screen.height);
+
+                var textWidth = promptStyle.CalcSize(new GUIContent(prompt.Text)).x;
+                var box = ResolvePromptRect(Screen.width, Screen.height, textWidth, anchor);
                 GUI.Box(box, GUIContent.none);
-                GUI.Label(new Rect(box.x + 6f, box.y + 2f, box.width - 12f, box.height - 4f), prompt, promptStyle);
+                GUI.Label(new Rect(box.x + 6f, box.y + 2f, box.width - 12f, box.height - 4f), prompt.Text, promptStyle);
             }
 
             GUI.Box(new Rect(InputBarMargin, Screen.height - InputBarMargin - InputBarHeight, Screen.width - InputBarMargin * 2f, InputBarHeight), GUIContent.none);

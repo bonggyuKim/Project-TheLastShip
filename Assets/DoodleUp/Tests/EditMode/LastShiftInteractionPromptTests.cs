@@ -75,28 +75,66 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 프롬프트 상자는 시야 한가운데를 비켜 있어야 한다 — 사용자 피드백이 정확히
-        /// "너무 가운데에 뜨면 다 가리니까" 였다. 예전 자리는 <c>Screen.height * 0.5 + 24</c> 로
-        /// 조준점 바로 아래였고, 조준한 대상과 그 대상을 설명하는 문장이 같은 자리를 다퉜다.
+        /// 상자는 <b>대상 위에</b> 앉는다 — 사용자 피드백 두 번이 이 자리를 만들었다.
+        /// 처음엔 화면 정중앙이라 "다 가린다" 였고, 하단 고정으로 내렸더니 "밑에는 잘 안 보인다"
+        /// 였다. 고정 좌표로는 대상을 덮거나 대상에서 멀거나 둘 중 하나다.
         /// </summary>
         [TestCase(1920f, 1080f)]
         [TestCase(1280f, 720f)]
         [TestCase(2560f, 1440f)]
-        public void PromptSitsInTheLowerEdgeNotTheCenter(float width, float height)
+        public void PromptSitsDirectlyAboveItsTarget(float width, float height)
         {
-            var box = LastShiftPlayerController.ResolvePromptRect(width, height, 240f);
+            // 대상이 화면 한가운데보다 살짝 위, 오른쪽에 보이는 상황.
+            var anchor = new Vector2(width * 0.62f, height * 0.40f);
+            var box = LastShiftPlayerController.ResolvePromptRect(width, height, 240f, anchor);
 
-            Assert.That(box.yMin, Is.GreaterThan(height * 0.7f),
-                "상자가 화면 위쪽 70% 안으로 들어오면 조준선 주변 시야를 다시 덮는다.");
-            Assert.That(box.Overlaps(LastShiftPlayerController.ResolveCrosshairRect(width, height)), Is.False,
-                "조준점과 겹치면 대상을 보는 자리와 문장을 읽는 자리가 같아진다.");
+            Assert.That(box.center.x, Is.EqualTo(anchor.x).Within(0.01f),
+                "가로 중앙이 대상과 안 맞으면 어느 물건에 대한 안내인지가 다시 글자 문제로 돌아간다.");
+            Assert.That(box.yMax, Is.LessThan(anchor.y),
+                "상자 아랫변이 대상보다 아래면 '위에 뜬다'가 아니라 대상을 덮는다.");
+            Assert.That(anchor.y - box.yMax,
+                Is.EqualTo(LastShiftPlayerController.PromptAnchorGap).Within(0.01f));
+        }
 
-            // 상시 조작 안내 줄 위에 앉아야 한다 — 겹치면 둘 다 못 읽는다.
-            var inputBarTop = height - LastShiftPlayerController.InputBarMargin
-                                     - LastShiftPlayerController.InputBarHeight;
-            Assert.That(box.yMax, Is.LessThanOrEqualTo(inputBarTop),
-                "조작 안내 줄과 겹치면 하단에서 두 줄이 포개진다.");
-            Assert.That(box.center.x, Is.EqualTo(width * 0.5f).Within(0.01f));
+        /// <summary>
+        /// 대상이 화면 가장자리에 있어도 상자는 잘리지 않는다. 살짝 어긋나게 붙는 편이
+        /// 반쯤 잘려 못 읽는 것보다 낫다.
+        /// </summary>
+        [TestCase(0f, 0f)]
+        [TestCase(1920f, 0f)]
+        [TestCase(0f, 1080f)]
+        [TestCase(1920f, 1080f)]
+        [TestCase(960f, 12f)]
+        public void PromptStaysOnScreenWhenTheTargetIsAtTheEdge(float anchorX, float anchorY)
+        {
+            var box = LastShiftPlayerController.ResolvePromptRect(
+                1920f, 1080f, 300f, new Vector2(anchorX, anchorY));
+
+            Assert.That(box.xMin, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(box.xMax, Is.LessThanOrEqualTo(1920f));
+            Assert.That(box.yMin, Is.GreaterThanOrEqualTo(0f));
+
+            // 아래쪽 한계는 상시 조작 안내 줄이다 — 겹치면 둘 다 못 읽는다.
+            var inputBarTop = 1080f - LastShiftPlayerController.InputBarMargin
+                                    - LastShiftPlayerController.InputBarHeight;
+            Assert.That(box.yMax, Is.LessThanOrEqualTo(inputBarTop));
+        }
+
+        /// <summary>
+        /// 가리킬 대상이 없는 문장(유령 상태·서버 거부)은 조준점 바로 아래로 떨어진다.
+        /// 앵커 규칙(앵커 위에 상자)을 그대로 태우므로 갈래가 하나다.
+        /// </summary>
+        [Test]
+        public void AnchorlessPromptLandsJustBelowTheCrosshair()
+        {
+            var floating = LastShiftPlayerController.ResolveFloatingAnchor(1920f, 1080f);
+            var box = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 240f, floating);
+            var crosshair = LastShiftPlayerController.ResolveCrosshairRect(1920f, 1080f);
+
+            Assert.That(box.yMin, Is.GreaterThanOrEqualTo(crosshair.yMax),
+                "조준점을 덮으면 상시 표시로 바꾼 의미가 없다.");
+            Assert.That(box.Overlaps(crosshair), Is.False);
+            Assert.That(box.center.x, Is.EqualTo(960f).Within(0.01f));
         }
 
         /// <summary>
@@ -106,15 +144,16 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PromptWidthFollowsTheSentenceAndStaysOnScreen()
         {
-            var narrow = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 80f);
-            var wide = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 400f);
+            var center = new Vector2(960f, 540f);
+            var narrow = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 80f, center);
+            var wide = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 400f, center);
 
             Assert.That(narrow.width, Is.LessThan(wide.width));
             Assert.That(narrow.width, Is.LessThan(1920f * 0.25f),
                 "짧은 문장이 화면 1/4 을 먹으면 폭이 문장을 따라간다고 할 수 없다.");
 
             // 문장이 아무리 길어도 화면 밖으로 나가지 않는다.
-            var huge = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 9000f);
+            var huge = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 9000f, center);
             Assert.That(huge.xMin, Is.GreaterThanOrEqualTo(0f));
             Assert.That(huge.xMax, Is.LessThanOrEqualTo(1920f));
         }

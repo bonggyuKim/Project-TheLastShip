@@ -1546,8 +1546,26 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool TryResolveRepairPrompt(Vector3 crewPosition, out LastShiftShipSystem system, out bool subjectInPlace)
         {
+            return TryResolveRepairPrompt(crewPosition, out system, out subjectInPlace, out _);
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="TryResolveRepairPrompt(Vector3, out LastShiftShipSystem, out bool)"/>
+        ///
+        /// <paramref name="subjectNominal"/> 은 <b>수리 대상 부품의 제자리</b> 좌표다. 화면이
+        /// 프롬프트를 그 자리 위에 띄우기 위해 쓴다 — 여기서 이미 고르는 값이므로 다시
+        /// 찾게 하면 같은 탐색이 프레임마다 한 번 더 돈다. 이 판정이 애초에 <b>부품의 제자리와
+        /// 승무원 거리</b>로 대상을 고르기 때문에, 안내가 붙을 자리도 정의상 그 좌표다.
+        /// </summary>
+        public bool TryResolveRepairPrompt(
+            Vector3 crewPosition,
+            out LastShiftShipSystem system,
+            out bool subjectInPlace,
+            out Vector3 subjectNominal)
+        {
             system = LastShiftShipSystem.Cooling;
             subjectInPlace = false;
+            subjectNominal = crewPosition;
             if (!HasAppliedImpact || IsResolved) return false;
 
             var mask = UncontainedSystemMask;
@@ -1563,6 +1581,7 @@ namespace DoodleUp.Runtime
                 if (distance > SacrificeReachDistance || distance >= best) continue;
                 best = distance;
                 system = candidate;
+                subjectNominal = item.NominalPosition;
                 found = true;
             }
             if (!found) return false;
