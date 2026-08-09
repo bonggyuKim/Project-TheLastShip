@@ -372,12 +372,12 @@ namespace DoodleUp.Tests.EditMode
         private static LastShiftPlacement[] CoolingSpur(int links)
         {
             const float roomDepth = 2f;
-            var doorX = LastShiftShipDimensions.ZoneCenterX(LastShiftZone.Cooling);
+            var doorX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
 
             var spur = new List<LastShiftPlacement>(links);
             for (var link = 0; link < links; link++)
             {
-                var minZ = LastShiftShipDimensions.SideWallZ + link * roomDepth;
+                var minZ = LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling) + link * roomDepth;
                 spur.Add(new LastShiftPlacement(
                     doorX - 2f, doorX + 2f, minZ, minZ + roomDepth,
                     new Vector3(doorX, 0f, minZ), link - 1));

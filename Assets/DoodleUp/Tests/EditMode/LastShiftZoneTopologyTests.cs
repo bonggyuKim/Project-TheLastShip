@@ -19,182 +19,155 @@ namespace DoodleUp.Tests.EditMode
     public sealed class LastShiftZoneTopologyTests
     {
         [Test]
-        public void BoundaryCountIsOneLessThanZoneCount()
+        public void EveryBoundaryIsAPressureDoorOnThePlaza()
         {
-            // 구역이 일렬로 늘어서 있다는 전제 자체다. 이게 깨지면 아래 검사가 전부 무의미하다.
-            Assert.That(LastShiftZoneAtlas.BoundaryCount, Is.EqualTo(LastShiftZoneAtlas.ZoneCount - 1));
+            // <b>"경계 = 구역 수 - 1" 은 이제 우연이다.</b> 그 등식은 구역이 일렬일 때 나오는
+            // 것이었고, 방사형에서는 경계가 광장 변의 압력문 셋이라 값만 같다. 그래서 관계를
+            // 구역 수가 아니라 문 표에서 잰다 — 방이 하나 늘어도 그 방이 압력 경계를 갖는지는
+            // 별개 결정이고, 옛 등식을 남겨 두면 그 결정이 산수로 강제된다.
+            Assert.That(LastShiftZoneAtlas.BoundaryCount,
+                Is.EqualTo(LastShiftPlazaLayout.PressureBoundaryCount));
             Assert.That(LastShiftZoneAtlas.ZoneCount, Is.GreaterThanOrEqualTo(2));
+
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                Assert.That(LastShiftZoneAtlas.BoundaryDoor(boundary).Kind,
+                    Is.EqualTo(LastShiftPlazaDoorKind.PressureDoor),
+                    $"경계 {boundary} 에 압력문이 아닌 구멍이 달려 있다.");
         }
 
         [Test]
-        public void BoundaryPlanesAscendFromBowToStern()
+        public void EveryBoundaryHangsOffTheCockpitZone()
         {
-            // Resolve 가 경계를 앞에서부터 훑고 처음 걸리는 곳에서 멈추므로, 경계가 오름차순이
-            // 아니면 중간 구역이 통째로 도달 불가가 된다 — 그래도 컴파일은 된다.
-            for (var boundary = 1; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
-                Assert.That(LastShiftZoneAtlas.BoundaryX(boundary),
-                    Is.GreaterThan(LastShiftZoneAtlas.BoundaryX(boundary - 1)),
-                    $"경계 {boundary} 가 경계 {boundary - 1} 보다 선수 쪽에 있다 — 구역 순서가 뒤집혔다.");
-        }
-
-        [Test]
-        public void EveryZoneIsReachableAndZonesAppearInOrderAlongTheShip()
-        {
-            // 선내를 선수에서 선미로 훑으면 구역 번호가 0 에서 ZoneCount-1 까지 단조 증가해야
-            // 한다. 건너뛰는 번호가 있으면 그 구역은 좌표를 하나도 안 갖는 유령 구역이다.
-            var half = LastShiftShipDimensions.HalfLength;
-            var seen = new bool[LastShiftZoneAtlas.ZoneCount];
-            var previous = -1;
-            const int samples = 2000;
-
-            for (var i = 0; i <= samples; i++)
+            // 별 위상의 정의다(조항 S-1). 경계 하나가 조종석 구역을 안 물면 그 경계 너머는
+            // 광장을 안 거치고 닿는 방이라는 뜻이고, 그러면 "경유 방이 없다" 가 깨진다.
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
             {
-                var x = Mathf.Lerp(-half, half, i / (float)samples);
-                var zone = (int)LastShiftZoneAtlas.Resolve(new Vector3(x, 0f, 0f));
+                Assert.That(LastShiftZoneAtlas.LowZoneOf(boundary), Is.EqualTo(LastShiftZone.Cockpit));
+                Assert.That(LastShiftZoneAtlas.HighZoneOf(boundary),
+                    Is.Not.EqualTo(LastShiftZone.Cockpit),
+                    $"경계 {boundary} 가 조종석 구역을 자기 자신과 가른다.");
+            }
+        }
 
+        [Test]
+        public void BoundaryNumbersCoverEveryNonCockpitZone()
+        {
+            // 경계 번호와 구역 번호의 관계가 <c>boundary + 1</c> 이라는 것을 여기 한 곳에서
+            // 고정한다. 문 상태 스냅샷과 세이브 파일이 경계 번호로 실려 있어 이 매핑이
+            // 흔들리면 옛 판이 <b>다른 문을 닫은 채</b> 복원된다 — 값이 그럴듯해서 안 보인다.
+            var seen = new bool[LastShiftZoneAtlas.ZoneCount];
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                seen[(int)LastShiftZoneAtlas.HighZoneOf(boundary)] = true;
+
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+            {
+                if ((LastShiftZone)zone == LastShiftZone.Cockpit) continue;
+                Assert.That(seen[zone], Is.True,
+                    $"구역 {zone}({LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)zone)}) 에 압력 경계가 없다 " +
+                    "— 그 방은 격리할 수 없다.");
+            }
+        }
+
+        [Test]
+        public void EveryZoneIsReachableSomewhereInsideTheShip()
+        {
+            // 선내를 격자로 훑으면 구역 넷이 전부 나와야 한다. 하나가 안 나오면 그 구역은
+            // 좌표를 하나도 안 갖는 유령 구역이고, 그래도 컴파일은 된다.
+            //
+            // <b>단조 증가는 이제 요구하지 않는다.</b> 그것은 구역이 x 축 위에 일렬로
+            // 늘어서 있을 때의 성질이었고, 전력실·냉각실이 같은 x 를 z 좌우로 나눠 가지면서
+            // 성립하지 않는다 — 그게 §6.2 가 밴드 훑기를 폐기한 이유 그 자체다.
+            var seen = new bool[LastShiftZoneAtlas.ZoneCount];
+            const float step = 0.25f;
+
+            for (var x = LastShiftPlazaLayout.MinX; x <= LastShiftPlazaLayout.MaxX; x += step)
+            for (var z = LastShiftPlazaLayout.MinZ; z <= LastShiftPlazaLayout.MaxZ; z += step)
+            {
+                if (!LastShiftPlazaLayout.TryResolveSpace(x, z, out _)) continue;
+                var zone = (int)LastShiftZoneAtlas.Resolve(new Vector3(x, 0f, z));
                 Assert.That(zone, Is.InRange(0, LastShiftZoneAtlas.ZoneCount - 1),
-                    $"x={x:F2} 가 범위 밖 구역 {zone} 으로 판정됐다.");
-                Assert.That(zone, Is.GreaterThanOrEqualTo(previous),
-                    $"x={x:F2} 에서 구역이 {previous} → {zone} 으로 되돌아갔다 — 구역이 일렬이 아니다.");
-
+                    $"({x:F2}, {z:F2}) 가 범위 밖 구역 {zone} 으로 판정됐다.");
                 seen[zone] = true;
-                previous = zone;
             }
 
             for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
                 Assert.That(seen[zone], Is.True,
-                    $"구역 {zone}({LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)zone)}) 에 해당하는 x 가 선내에 없다.");
+                    $"구역 {zone}({LastShiftZoneAtlas.ShortLabelOf((LastShiftZone)zone)}) 에 해당하는 좌표가 선내에 없다.");
         }
 
         [Test]
-        public void BoundaryPlaneItselfBelongsToTheLowerZone()
+        public void TheDoorPlaneItselfBelongsToThePlazaSide()
         {
-            // 동점 규칙을 못박는다. 개구부 몇 개는 x 가 구역 경계와 같은 값이라 이 규칙이 실제로
-            // 관측된다. 규칙을 정해 두지 않으면 분기 순서 같은 우연이 답을 정하고, 구역이 늘 때
+            // 동점 규칙을 못박는다. 문 평면 여섯이 전부 광장 변과 <b>같은 값</b>이라 이 규칙이
+            // 실제로 관측된다. 정해 두지 않으면 배열 순서 같은 우연이 답을 정하고, 방이 늘 때
             // 조용히 뒤집힌다 — 그때 증상은 "게이지가 반대편 구역을 가리킨다" 이고, 값이
             // 그럴듯해서 눈에 안 띈다.
+            //
+            // 광장이 발자국표의 첫 줄인 것이 그 규칙의 구현이다.
             for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
             {
-                var x = LastShiftZoneAtlas.BoundaryX(boundary);
-                Assert.That(LastShiftZoneAtlas.Resolve(new Vector3(x, 0f, 0f)),
+                var waypoint = LastShiftZoneAtlas.BoundaryWaypoint(boundary);
+                Assert.That(LastShiftZoneAtlas.Resolve(new Vector3(waypoint.x, 0f, waypoint.y)),
                     Is.EqualTo(LastShiftZoneAtlas.LowZoneOf(boundary)),
-                    $"경계 {boundary}(x={x:F2}) 평면 위의 점은 낮은 쪽 구역에 속해야 한다.");
+                    $"경계 {boundary}({waypoint.x:F2}, {waypoint.y:F2}) 평면 위의 점이 광장 쪽에 안 속한다.");
             }
         }
 
         [Test]
-        public void EachBoundarySeparatesTwoAdjacentZones()
+        public void EachBoundaryDoorSitsOnBothItsRoomAndThePlaza()
         {
+            // "경유 방이 없다"(§2.3)의 좌표 형태다. 문 평면이 광장 변이면서 동시에 자기 방
+            // 경계여야 그 방이 광장에 직결이고, 그 조건이 §6.1 의 사슬 깊이 1 을 만든다.
             for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
             {
-                var low = (int)LastShiftZoneAtlas.LowZoneOf(boundary);
-                var high = (int)LastShiftZoneAtlas.HighZoneOf(boundary);
-                Assert.That(high - low, Is.EqualTo(1),
-                    $"경계 {boundary} 가 인접하지 않은 구역 {low}·{high} 를 가른다.");
-                Assert.That(low, Is.EqualTo(boundary),
-                    $"경계 번호와 낮은 쪽 구역 번호가 어긋난다 — 경계 {boundary}, 낮은 구역 {low}.");
+                var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+                var room = LastShiftPlazaLayout.Of(door.Space);
+                var plaza = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Plaza);
+
+                var onRoom = door.PlaneIsX
+                    ? Mathf.Abs(door.Plane - room.MinX) < 0.001f || Mathf.Abs(door.Plane - room.MaxX) < 0.001f
+                    : Mathf.Abs(door.Plane - room.MinZ) < 0.001f || Mathf.Abs(door.Plane - room.MaxZ) < 0.001f;
+                var onPlaza = door.PlaneIsX
+                    ? Mathf.Abs(door.Plane - plaza.MinX) < 0.001f || Mathf.Abs(door.Plane - plaza.MaxX) < 0.001f
+                    : Mathf.Abs(door.Plane - plaza.MinZ) < 0.001f || Mathf.Abs(door.Plane - plaza.MaxZ) < 0.001f;
+
+                Assert.That(onRoom, Is.True, $"경계 {boundary} 문이 자기 방 경계 위에 없다.");
+                Assert.That(onPlaza, Is.True, $"경계 {boundary} 문이 광장 변 위에 없다.");
+
+                // 구멍 폭이 두 발자국 안에 다 들어가야 문틀이 허공에 안 걸친다.
+                var lo = door.PlaneIsX ? Mathf.Max(room.MinZ, plaza.MinZ) : Mathf.Max(room.MinX, plaza.MinX);
+                var hi = door.PlaneIsX ? Mathf.Min(room.MaxZ, plaza.MaxZ) : Mathf.Min(room.MaxX, plaza.MaxX);
+                Assert.That(door.MinSpan, Is.GreaterThanOrEqualTo(lo - 0.001f));
+                Assert.That(door.MaxSpan, Is.LessThanOrEqualTo(hi + 0.001f));
             }
         }
 
-        /// <summary>
-        /// <b>문 구멍이 실제로 지나갈 수 있는 자리에 뚫리는가.</b> 사용자 플레이에서 "냉각실에서
-        /// 산소실로 가는 길이 막혔다" 로 잡힌 건의 회귀 검사다.
-        ///
-        /// 원인은 <c>OpeningIndexOf</c> 가 3구역 시절 식(<c>boundary &lt;= 0 ? 1 : 2</c>)으로
-        /// 남아 있어 경계 2 가 개구부 3 이 아니라 2 를 가리킨 것이었다. 벌크헤드 x 는 맞고
-        /// 구멍 z 만 통로 반대편에 뚫려서, 그림상으로는 문이 있는데 통로로 걸어가면 벽이었다.
-        ///
-        /// 번호 대응(<c>boundary + 1</c>)을 직접 비교하지 않는다 — 그건 구현을 구현으로
-        /// 검사하는 것이다. 대신 <b>구멍이 그 경계에 접한 통로의 z 폭 안에 들어오는지</b>를 본다.
-        /// 통로가 없는 방-방 경계(전력실|냉각실)는 통로 대신 선체 폭 안이면 된다.
-        /// </summary>
         [Test]
-        public void EveryDoorOpeningLiesInsideThePassageItConnects()
+        public void NearestBoundaryPicksTheClosestDoor()
         {
-            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
-            {
-                var centerZ = LastShiftZoneDoor.CenterZOf(boundary);
-                var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
-
-                // <b>어느 통로에 접한 경계인지는 x 로 판정한다.</b> OpeningIndexOf 로 나누면
-                // 검사 대상이 스스로 "나는 방-방이라 통로 검사 대상이 아니다" 라고 답할 수 있어,
-                // 잘못된 번호가 예외 분기로 빠져나간다 — 처음 쓴 판이 실제로 그래서 통과했다.
-                var boundaryX = LastShiftZoneAtlas.BoundaryX(boundary);
-                var passage = -1;
-                for (var candidate = 0; candidate <= 1; candidate++)
-                {
-                    if (Mathf.Abs(boundaryX - LastShiftShipDimensions.PassageMinX(candidate)) > 0.001f &&
-                        Mathf.Abs(boundaryX - LastShiftShipDimensions.PassageMaxX(candidate)) > 0.001f) continue;
-                    passage = candidate;
-                    break;
-                }
-
-                if (passage < 0)
-                {
-                    Assert.That(Mathf.Abs(centerZ) + half, Is.LessThanOrEqualTo(LastShiftShipDimensions.HalfWidth + 0.001f),
-                        $"방-방 경계 {boundary} 의 구멍이 선체 밖으로 나간다.");
-                    continue;
-                }
-
-                // 구멍은 그 통로 안에 있어야 한다. 아니면 통로로 걸어가는 승무원 앞에
-                // 벌크헤드만 있다.
-                var minZ = LastShiftShipDimensions.PassageMinZ(passage);
-                var maxZ = LastShiftShipDimensions.PassageMaxZ(passage);
-
-                Assert.That(centerZ - half, Is.GreaterThanOrEqualTo(minZ - 0.001f),
-                    $"경계 {boundary} 의 구멍이 통로 {passage}(z {minZ:0.##}~{maxZ:0.##}) 밖이다 — 구멍 z={centerZ:0.##}.");
-                Assert.That(centerZ + half, Is.LessThanOrEqualTo(maxZ + 0.001f),
-                    $"경계 {boundary} 의 구멍이 통로 {passage}(z {minZ:0.##}~{maxZ:0.##}) 밖이다 — 구멍 z={centerZ:0.##}.");
-            }
-        }
-
-        /// <summary>
-        /// 문이 달린 개구부 집합을 <b>서로 독립인 두 경로</b>로 구해 같은지 본다.
-        ///
-        /// <c>OpeningIndexOf</c> 는 경계 번호에서 직접 매핑하고, <c>OpeningHasDoor</c> 는
-        /// 개구부 x 가 경계 평면과 일치하는지로 판정한다. 둘이 어긋나 있어도 각자는 그럴듯해서
-        /// 눈에 안 띈다 — 실제로 4구역 전환 때 <c>OpeningIndexOf</c> 만 3구역 식으로 남아
-        /// 둘이 갈라져 있었고, 그 상태로 씬이 계속 구워졌다.
-        /// </summary>
-        [Test]
-        public void DoorOpeningSetAgreesBetweenBoundaryMappingAndGeometry()
-        {
-            var byMapping = new System.Collections.Generic.HashSet<int>();
-            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
-                byMapping.Add(LastShiftZoneDoor.OpeningIndexOf(boundary));
-
-            var byGeometry = new System.Collections.Generic.HashSet<int>();
-            for (var opening = 0; opening < LastShiftShipDimensions.OpeningCount; opening++)
-                if (LastShiftShipDimensions.OpeningHasDoor(opening)) byGeometry.Add(opening);
-
-            Assert.That(byMapping.SetEquals(byGeometry), Is.True,
-                $"문 달린 개구부가 경로마다 다르다 — 경계 매핑 {Describe(byMapping)} / 기하 {Describe(byGeometry)}.");
-            Assert.That(byMapping.Count, Is.EqualTo(LastShiftZoneAtlas.BoundaryCount),
-                "경계마다 문이 정확히 하나여야 한다.");
-        }
-
-        private static string Describe(System.Collections.Generic.IEnumerable<int> values) =>
-            "{" + string.Join(", ", System.Linq.Enumerable.OrderBy(values, value => value)) + "}";
-
-        [Test]
-        public void NearestBoundaryPicksTheClosestPlane()
-        {
-            var half = LastShiftShipDimensions.HalfLength;
-            const int samples = 500;
-
+            // <b>평면 거리가 아니라 문 중심까지의 거리로 고른다.</b> 평면으로 재면 광장
+            // 어디에 서 있어도 전력실 문과 냉각실 문이 z 하나로만 갈려, 광장 선수 구석에서
+            // 산소실 문(x = +6)이 더 가까운데도 안 잡힌다.
+            const int samples = 24;
             for (var i = 0; i <= samples; i++)
+            for (var j = 0; j <= samples; j++)
             {
-                var x = Mathf.Lerp(-half, half, i / (float)samples);
-                var picked = LastShiftZoneAtlas.NearestBoundary(new Vector3(x, 0f, 0f));
-                var pickedDistance = Mathf.Abs(x - LastShiftZoneAtlas.BoundaryX(picked));
+                var x = Mathf.Lerp(LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX, i / (float)samples);
+                var z = Mathf.Lerp(LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ, j / (float)samples);
+                var at = new Vector3(x, 0f, z);
+                var point = new Vector2(x, z);
+
+                var picked = LastShiftZoneAtlas.NearestBoundary(at);
+                var pickedDistance = Vector2.Distance(point, LastShiftZoneAtlas.BoundaryWaypoint(picked));
 
                 for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
                     Assert.That(pickedDistance,
-                        Is.LessThanOrEqualTo(Mathf.Abs(x - LastShiftZoneAtlas.BoundaryX(boundary)) + 0.0001f),
-                        $"x={x:F2} 에서 경계 {picked} 를 골랐지만 경계 {boundary} 가 더 가깝다.");
+                        Is.LessThanOrEqualTo(
+                            Vector2.Distance(point, LastShiftZoneAtlas.BoundaryWaypoint(boundary)) + 0.0001f),
+                        $"({x:F2}, {z:F2}) 에서 경계 {picked} 를 골랐지만 경계 {boundary} 가 더 가깝다.");
             }
-        }
 
+        }
         [Test]
         public void LowestPressureSeesEveryZone()
         {

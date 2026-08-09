@@ -87,6 +87,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string TextOf(LastShiftCompartment compartment) => compartment switch
         {
+            LastShiftCompartment.AirlockHall => "출정소",
             LastShiftCompartment.Quarters => "숙소",
             _ => ModuleText((int)compartment)
         };

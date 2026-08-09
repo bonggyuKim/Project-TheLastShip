@@ -3,46 +3,49 @@ using UnityEngine;
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 원반(<c>UFO</c>) 외피 타원의 좌표 정본. 기획 정본은
-    /// <c>docs/corridor-4p-redesign-v1.md</c> §26(방향)과 §27.2(치수 확정)다.
+    /// 원반(<c>UFO</c>) 외피의 좌표 정본. 기획 정본은
+    /// <c>docs/central-plaza-hub-layout-v1.md</c> §9.2(반지름 확정)다.
+    ///
+    /// <b>타원에서 정원으로 왔다.</b> §26.4 가 정원을 기각한 근거는 스파인의 종횡비
+    /// <c>6.33:1</c> 이었고, 중앙 광장 허브가 그것을 <c>1.22:1</c> 로 뒤집으면서 장축을 따로
+    /// 둘 이유가 사라졌다 — 허브 앤 스포크는 원형 실루엣이 맞다(§0-8). 반지름은 취향이 아니라
+    /// <see cref="LastShiftPlazaLayout.HullRadius"/> 의 네 항 합이고, 여기서 리터럴로 다시
+    /// 적지 않는다.
     ///
     /// <b>이것은 껍질이지 위상이 아니다.</b> §26.5 가 못박은 대로 <c>Resolve()</c>·<c>RG-1</c>·
-    /// 시선차단·<c>SIMUL_ZONES</c> 는 전부 핵심 4구역의 <b>내부</b> 치수와 인접 관계로
-    /// 계산되고, 타원은 그 바깥을 감싸는 외곽선일 뿐이다. 그래서 여기 있는 값 중 어느 것도
+    /// 시선차단·<c>SIMUL_ZONES</c> 는 전부 고정 방 여섯의 <b>발자국</b>과 광장 문 여섯으로
+    /// 계산되고, 원은 그 바깥을 감싸는 외곽선일 뿐이다. 그래서 여기 있는 값 중 어느 것도
     /// 압력 판정에 들어가지 않는다 — 이 클래스가 <see cref="LastShiftZoneAtlas"/> 를
     /// 참조하지 않는 것이 그 경계를 코드에서 지키는 자리다.
     ///
-    /// <b>방을 곡선에 맞추지 않는다</b>(§27.3). 구획 좌표는 §17.4/§21 그대로 두고 외피만
-    /// 씌운다 — 좌표를 곡선에 맞춰 재배치하면 이미 통과한 겹침 검증(§21.1)이 통째로
-    /// 다시 대상이 되는데, 그 비용이 타원을 조금 줄이는 이득보다 크다는 것이 §27.2 의
-    /// 판단이다. 직사각형 방과 타원 사이 자투리를 무엇으로 채울지는 <c>art</c> 몫이다
-    /// (§27.7-1) — 여기서는 테두리 선만 정본으로 둔다.
+    /// <b>방을 곡선에 맞추지 않는다</b>(§27.3). 직사각형 방과 원 사이 자투리를 무엇으로
+    /// 채울지는 <c>art</c> 몫이고(§27.7-1) 여기서는 테두리 선만 정본으로 둔다.
     ///
-    /// 축 규약은 선체와 같다 — x = 장축(전장), z = 단축(전폭), y = 높이. 중심은 원점이고,
-    /// 그 이유는 핵심 스파인(<c>x = ±19</c>)이 이미 원점 대칭이라 좌표계가 그대로 맞기
-    /// 때문이다(§27.2).
+    /// 축 규약은 선체와 같다 — x = 전장, z = 전폭, y = 높이. 중심은 원점이다.
     /// </summary>
     public static class LastShiftHullShell
     {
         /// <summary>
-        /// 장축 반지름. §27.2 확정값 <c>42m</c>(전장 <c>84m</c>)이고, 이 값을 정한 것은
-        /// 격납고의 먼 모서리 <c>(-27, +14)</c> 다 — <c>x</c> 극단 구획(관측실·구명정)은
-        /// <c>z</c> 가 <c>±2</c> 라 타원 끝의 뾰족한 부분에 자연히 맞고, 격납고만
-        /// <c>x</c> 가 중간이면서 <c>z</c> 가 커서 경계에 가장 먼저 걸린다.
+        /// 원반 반지름. 확정값 <c>19m</c> 이고 정본은 <see cref="LastShiftPlazaLayout.HullRadius"/> 다 —
+        /// 최원 모서리(에어록 홀 <c>(-11, -12)</c> = <c>16.279m</c>) + 판 두께 둘 + 확장 한 겹을
+        /// 내접 보정한 하한 <c>18.719m</c> 의 올림값이다.
         /// </summary>
-        public const float SemiMajorX = 42f;
+        public const float Radius = LastShiftPlazaLayout.HullRadius;
 
-        /// <summary>단축 반지름. §27.2 확정값 <c>20m</c>(전폭 <c>40m</c>).</summary>
-        public const float SemiMinorZ = 20f;
+        /// <summary>
+        /// 장축 반지름. <b>정원이 된 뒤로 <see cref="SemiMinorZ"/> 와 같은 값이다</b> — 이름을
+        /// 남겨 둔 것은 껍질을 <c>x</c>/<c>z</c> 로 나눠 묻는 자리(창·골조·배경막)가 축을
+        /// 구분해서 읽기 때문이고, 값이 갈라질 여지는 없다.
+        /// </summary>
+        public const float SemiMajorX = Radius;
+
+        /// <summary>단축 반지름. 정원이라 <see cref="SemiMajorX"/> 와 같다.</summary>
+        public const float SemiMinorZ = Radius;
 
         public const float OverallLength = SemiMajorX * 2f;
         public const float OverallWidth = SemiMinorZ * 2f;
 
-        /// <summary>
-        /// 종횡비 <c>2.1:1</c>. §26.4 가 정원(正圓)을 기각한 근거가 이 값이다 — 스파인+클러스터의
-        /// 실사용 폭(<c>z ±14</c>)에 비해 길이(<c>x ±35</c>)가 훨씬 길어서, 정원에 넣으면
-        /// 안 쓰는 껍질 부피가 지나치게 커진다.
-        /// </summary>
+        /// <summary>종횡비. 정원이므로 <c>1</c> 이다.</summary>
         public const float AspectRatio = SemiMajorX / SemiMinorZ;
 
         /// <summary>외피 판 두께. 구획과 같은 두께를 쓴다.</summary>
@@ -167,10 +170,10 @@ namespace DoodleUp.Runtime
         /// 현 근사의 최대 새그 — 판 하나의 중점이 진짜 타원에서 얼마나 안쪽으로 들어가는가.
         /// 이 값이 판 두께보다 작아야 테두리가 다각형이 아니라 곡선으로 읽힌다.
         ///
-        /// 식으로 안 적고 세그먼트를 실제로 도는 이유는 <b>매개변수 <c>t</c> 가 기하 각이
-        /// 아니기 때문이다</b> — 종횡비 <c>2.1</c> 에서 <c>t</c> 등분은 호 길이 등분이 아니라,
-        /// 곡률 반지름과 반각을 곱하는 근사식이 어느 자리에서 얼마나 틀리는지가 종횡비에
-        /// 따라 달라진다. <see cref="SegmentCount"/> 를 줄이려는 다음 사람이 근사식이 아니라
+        /// 정원이 된 뒤로는 닫힌 식(<c>R (1 - cos(π/N))</c>)으로도 같은 값이 나오지만 루프를
+        /// 그대로 둔다 — <see cref="SegmentStart"/> 가 실제로 세우는 점과 같은 것을 재야
+        /// "씬에 선 판" 의 새그이고, 껍질이 다시 타원으로 갈 여지가 있는 자리에서 식은
+        /// 조용히 틀린다. <see cref="SegmentCount"/> 를 줄이려는 다음 사람이 근사식이 아니라
         /// 실제 수치를 보게 둔다.
         /// </summary>
         public static float MaxChordSag

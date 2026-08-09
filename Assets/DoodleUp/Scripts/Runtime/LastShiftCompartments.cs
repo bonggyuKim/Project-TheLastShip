@@ -19,14 +19,33 @@ namespace DoodleUp.Runtime
     /// <c>SIMUL_ZONES</c>·<c>RG-1</c> 중 무엇을 따르는지는 별개다. 이 enum 이
     /// <see cref="LastShiftZone"/> 과 섞이면 그 구분이 조용히 무너진다.
     ///
-    /// <b>값이 하나뿐이어도 enum 을 안 지운다.</b> <see cref="LastShiftCompartmentSpec.Compartment"/>
-    /// 가 <c>[0, FixedCount)</c> 를 "이름이 있는 방" 으로 가르는 자리이고, 그 경계가 사라지면
-    /// 자유 배치 모듈과 고정 방을 나누는 규약(<see cref="LastShiftCompartmentSpec.IsFixed"/>)이
-    /// 같이 사라진다.
+    /// <b>이 표는 이제 <c>부속</c> 만 든다</b>(중앙 광장 허브 §2.2). 고정 공간 일곱 중
+    /// 본선 다섯(광장 + 조종석·산소실·전력실·냉각실)은 천장 <c>3.2m</c> 로 선체가 자기 몸으로
+    /// 세우고, 부속 둘(에어록 홀·숙소)만 천장 <c>3.0m</c> 짜리 구획으로 붙는다. 그 높이 차이가
+    /// §2.2 마지막 단락의 규약이고, 이 표가 높이를 하나만 들 수 있다는 사실이 경계를 그대로
+    /// 그어 준다 — 본선을 여기 담으면 <see cref="LastShiftCompartments.InteriorHeight"/> 가
+    /// 두 값이 되어야 한다.
+    ///
+    /// <b>좌표는 여기서 안 적는다.</b> 둘 다 <see cref="LastShiftPlazaLayout.Footprints"/> 의
+    /// 발자국을 그대로 옮긴다.
+    ///
+    /// <b>값이 늘면 모듈 인덱스가 통째로 밀린다.</b> 세이브 파일·네트워크 복제가 모듈 슬롯을
+    /// <c>인덱스 - FixedCount</c> 로 싣고 있으므로 <c>1 → 2</c> 는 옛 세이브를 못 읽는
+    /// 변경이다 — M-2 와 같은 계열의 되돌리기 비싼 단계다.
     /// </summary>
     public enum LastShiftCompartment
     {
-        Quarters = 0
+        /// <summary>
+        /// 숙소. 광장 우현 변에 직결한다.
+        ///
+        /// <b>번호를 안 놓친다.</b> 드레싱 에셋이 이 enum 값을 숫자로 직렬화해 들고 있어
+        /// (<c>compartment: 0</c>), 앞에 값을 끼워 넣으면 숙소 소품 열여덟 개가 통째로
+        /// 다른 방 것이 된다 — 실제로 한 번 그렇게 나서 침상이 에어록 홀로 옮겨갔다.
+        /// </summary>
+        Quarters = 0,
+
+        /// <summary>파밍 출정소. 광장 좌현 변에 직결한다(<c>docs/airlock-hall-sortie-room-v1.md</c>).</summary>
+        AirlockHall = 1
     }
 
     /// <summary>
@@ -205,7 +224,7 @@ namespace DoodleUp.Runtime
         /// 모듈 슬롯을 <c>인덱스 - FixedCount</c> 로 싣고 있으므로, 옛 세이브는 이 개편을
         /// 건너뛸 수 없다 — 그래서 M-2 가 되돌리기 비싼 단계다(§8).
         /// </summary>
-        public const int FixedCount = 1;
+        public const int FixedCount = 2;
 
         private static readonly LastShiftCompartmentSpec[] fixedSpecs = BuildSpecs();
 
@@ -265,6 +284,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string NameOf(LastShiftCompartment compartment) => compartment switch
         {
+            LastShiftCompartment.AirlockHall => "Compartment_AirlockHall",
             LastShiftCompartment.Quarters => "Compartment_Quarters",
             _ => ModuleName((int)compartment)
         };
@@ -295,31 +315,34 @@ namespace DoodleUp.Runtime
 
         private static LastShiftCompartmentSpec[] BuildSpecs()
         {
-            // 붙는 자리. 전부 선체 치수 정본에서 뽑고, 여기서만 이름을 짧게 준다.
-            var stern = LastShiftShipDimensions.HalfLength;    // 산소실 선미 끝벽 안쪽 면 (+19)
-            var starboard = LastShiftShipDimensions.HalfWidth; // 우현 긴 벽 (+3)
-            var port = -LastShiftShipDimensions.HalfWidth;     // 좌현 긴 벽 (-3)
-
+            // 둘 다 광장 변에 <b>직결</b>한다 — 경유 방이 없다는 것이 중앙 광장 허브의 요지이고
+            // (§2.3), 사슬 깊이가 전부 1 인 것이 최악 이탈 `6.05 → 4.26초` 의 실체다.
+            // 좌표는 한 줄도 새로 안 적고 발자국표에서 그대로 옮긴다.
             var result = new LastShiftCompartmentSpec[FixedCount];
-
-            // ── 숙소. 배에 남는 유일한 고정 방이다(맵 개편 조항 S-2).
-            //
-            //    <b>부모를 잃었기 때문에 옮긴 것이다.</b> 예전 숙소는 화장실을 부모로 물고
-            //    선미 사슬 한가운데(`x +21~+25`)에 있었는데, 화장실이 배에서 빠지면서
-            //    <c>ParentIndex</c> 가 표 밖을 가리키게 됐다. 그래서 사슬을 없애고 선미
-            //    끝벽에 직결한다 — 깊이가 <c>2 → 1</c> 로 줄고, 그 감소가 §5.2 최악 이탈
-            //    `8.45초 → 6.05초` 의 실체다.
-            //
-            //    발자국은 현행과 같은 `4×6`(`24m²`)이다. 화장실·휴게실이 폐지되면서 침상·
-            //    위생·휴게가 이 한 방으로 들어오지만(§3.2), 그건 드레싱이 하는 일이지
-            //    치수가 하는 일이 아니다 — 방을 넓히면 §5 의 이탈 계산이 같이 움직인다.
-            result[(int)LastShiftCompartment.Quarters] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Quarters,
-                stern, stern + 4f, port, starboard,
-                LastShiftDoorPlane.AlongX, stern, 0f,
-                -1, LastShiftCompartmentAccess.Open);
-
+            result[(int)LastShiftCompartment.AirlockHall] =
+                AnnexOf(LastShiftCompartment.AirlockHall, LastShiftPlazaSpace.AirlockHall);
+            result[(int)LastShiftCompartment.Quarters] =
+                AnnexOf(LastShiftCompartment.Quarters, LastShiftPlazaSpace.Quarters);
             return result;
+        }
+
+        /// <summary>
+        /// 광장 발자국 하나를 부속 구획 제원으로 옮긴다. 문은 <see cref="LastShiftPlazaLayout.Doors"/>
+        /// 가 이미 <b>자기 방 경계와 광장 변에 동시에 얹힌</b> 평면으로 두었으므로
+        /// (<see cref="DoorSitsOnOwnBoundary"/> 와 <see cref="LastShiftModuleAttachment"/> 의
+        /// 선체 면 판정이 같은 좌표에서 둘 다 성립한다) 축만 옮겨 담으면 된다.
+        /// </summary>
+        private static LastShiftCompartmentSpec AnnexOf(
+            LastShiftCompartment compartment, LastShiftPlazaSpace space)
+        {
+            var footprint = LastShiftPlazaLayout.Of(space);
+            var door = LastShiftPlazaLayout.DoorOf(space);
+            return new LastShiftCompartmentSpec(
+                compartment,
+                footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ,
+                door.PlaneIsX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ,
+                door.Plane, door.Center,
+                -1, LastShiftCompartmentAccess.Open);
         }
 
         /// <summary>
@@ -344,12 +367,32 @@ namespace DoodleUp.Runtime
         public static bool OverlapsHullInterior(in LastShiftCompartmentSpec spec) =>
             OverlapsHullInterior(spec.MinX, spec.MaxX, spec.MinZ, spec.MaxZ);
 
-        /// <summary>발자국 좌표만 받는 같은 판정. <see cref="VolumesOverlap(float,float,float,float,float,float,float,float)"/> 와 같은 이유로 있다.</summary>
-        public static bool OverlapsHullInterior(float minX, float maxX, float minZ, float maxZ) =>
-            minX < LastShiftShipDimensions.HalfLength - Epsilon &&
-            -LastShiftShipDimensions.HalfLength < maxX - Epsilon &&
-            minZ < LastShiftShipDimensions.HalfWidth - Epsilon &&
-            -LastShiftShipDimensions.HalfWidth < maxZ - Epsilon;
+        /// <summary>
+        /// 발자국 좌표만 받는 같은 판정.
+        ///
+        /// <b>사각형 하나로 못 잰다</b>(§9.3-1). 일자 스파인에서는 배 내부가 <c>38 x 6</c>
+        /// 직사각형 하나라 네 부등식이면 끝났는데, 방사형 발자국은 플러스 모양이라 그 경계
+        /// 상자를 쓰면 팔 사이 빈 사분면(예: 전력실 좌현 <c>z [-12,-11]</c>)이 "선체 안" 으로
+        /// 판정돼 붙일 수 있는 자리가 통째로 막힌다. 고정 공간이 일곱으로 상수라 그냥 훑는다.
+        /// </summary>
+        public static bool OverlapsHullInterior(float minX, float maxX, float minZ, float maxZ)
+        {
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
+            {
+                // <b>부속 둘은 여기서 안 센다.</b> 에어록 홀·숙소는 발자국표와 이 표에 <b>둘 다</b>
+                // 있어서, 세면 그 방이 자기 자신을 파고든 것으로 판정된다 — 고정 좌표가 자기
+                // 판정기를 통과 못 하는 상태이고 실제로 그렇게 났다. 모듈이 부속을 파고드는
+                // 경우는 표 대 표 <see cref="VolumesOverlap"/> 가 이미 잡는다(부속이 표 안에 있다).
+                if (footprint.Space == LastShiftPlazaSpace.AirlockHall) continue;
+                if (footprint.Space == LastShiftPlazaSpace.Quarters) continue;
+
+                if (VolumesOverlap(minX, maxX, minZ, maxZ,
+                        footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ))
+                    return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// 문이 <b>자기 구획의 경계면 위</b>에 있고, 구멍 폭이 그 면 안에 다 들어가는가.

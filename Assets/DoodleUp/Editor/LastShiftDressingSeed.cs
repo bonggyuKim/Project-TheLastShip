@@ -182,7 +182,7 @@ namespace DoodleUp.Editor
             LastShiftDressingSpaceKind.Zone => (int)space.zone < LastShiftZoneAtlas.ZoneCount,
             LastShiftDressingSpaceKind.Compartment =>
                 (int)space.compartment >= 0 && (int)space.compartment < LastShiftCompartments.FixedCount,
-            LastShiftDressingSpaceKind.Passage => space.passage is >= 0 and <= 1,
+            LastShiftDressingSpaceKind.Plaza => true,
             LastShiftDressingSpaceKind.BypassRun => true,
             LastShiftDressingSpaceKind.AirlockBranch => true,
             // 없어진 종류(폐지된 상부 회랑의 `5`)가 여기로 온다. 기본 갈래를 true 로 두면
@@ -436,16 +436,11 @@ namespace DoodleUp.Editor
             foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
                 AddSpacedLamps(props, LastShiftDressingSpace.Of(zone), LampPrefab(zone.ToString()));
 
-            // 통로. 6m 짜리 방 사이 구간이라 양쪽 방 등의 range 7 로는 가운데가 처진다.
-            // 색은 통로 중심이 속한 구역을 따른다 — 통로는 경계(±7)를 걸치므로 절반씩
-            // 나뉘지만, 압력상 어느 구역인지는 중심이 정한다. 조명색이 구역 표시를 겸하는
-            // 이상(§CreateLighting) 두 색을 섞으면 그 표시가 흐려진다.
-            for (var passage = 0; passage <= 1; passage++)
-            {
-                var centerX = LastShiftShipDimensions.PassageCenterX(passage);
-                var zone = LastShiftZoneAtlas.Resolve(new Vector3(centerX, 0f, 0f));
-                AddSpacedLamps(props, LastShiftDressingSpace.OfPassage(passage), LampPrefab(zone.ToString()));
-            }
+            // 중앙 광장. 12m 정사각이라 둘레 방 등의 range 7 로는 가운데가 처진다.
+            // 색은 광장이 속한 구역(조종석, 조항 S-1)을 따른다 — 조명색이 구역 표시를
+            // 겸하는 이상(§CreateLighting) 여기서 여섯 색을 섞으면 그 표시가 흐려진다.
+            AddSpacedLamps(props, LastShiftDressingSpace.OfPlaza(),
+                LampPrefab(LastShiftZone.Cockpit.ToString()));
 
             // 드나들 수 있는 구획만 등을 단다. 잠긴 구획은 들어갈 수 없으므로 등이 낭비고,
             // 잠긴 문틈으로 빛이 새면 §17.7 이 미결로 남긴 "차폐 수준" 을 코드가 먼저 정해 버린다.

@@ -383,11 +383,15 @@ namespace DoodleUp.Tests.EditMode
 
                 for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
                 {
-                    var boundaryX = LastShiftZoneAtlas.BoundaryX(boundary);
-                    var doorZ = LastShiftZoneDoor.CenterZOf(boundary);
+                    // 문 평면의 축이 문마다 다르다 — x 로 고정해 두면 z 평면에 선 전력실·냉각실
+                    // 문이 광장 어디에서나 사거리 안으로 판정되고, 그러면 이 검사가 밸브와
+                    // 무관하게 항상 실패한다.
+                    var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+                    var through = door.PlaneIsX ? probe.x : probe.z;
+                    var free = door.PlaneIsX ? probe.z : probe.x;
                     var inDoorReach =
-                        Mathf.Abs(probe.x - boundaryX) <= LastShiftZoneDoor.ReachDistance &&
-                        Mathf.Abs(probe.z - doorZ) <= zWindow;
+                        Mathf.Abs(through - door.Plane) <= LastShiftZoneDoor.ReachDistance &&
+                        Mathf.Abs(free - door.Center) <= zWindow;
 
                     Assert.That(inDoorReach, Is.False,
                         $"밸브 사거리 안의 ({probe.x:F2}, {probe.z:F2}) 가 경계 {boundary} 문 사거리와 겹친다.");

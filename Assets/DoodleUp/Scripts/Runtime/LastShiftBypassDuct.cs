@@ -105,10 +105,24 @@ namespace DoodleUp.Runtime
         /// 선수 쪽 진입점 x. §5 가 정한 대로 <b>조종석 방 안</b>(개구부 0 근처)이고,
         /// 전력실·냉각실 내부가 아니다. 방 끝에서 <c>1m</c> 들어간 자리다.
         /// </summary>
-        public static float ForeShaftX => LastShiftShipDimensions.RoomMaxX(LastShiftZone.Cockpit) - 1f;
+        public static float ForeShaftX =>
+            LastShiftShipDimensions.RoomMaxX(LastShiftZone.Cockpit) - PlazaStandoffX;
 
-        /// <summary>선미 쪽 진입점 x. 산소실 방 안(개구부 4 근처)이다.</summary>
-        public static float AftShaftX => LastShiftShipDimensions.RoomMinX(LastShiftZone.LifeSupport) + 1f;
+        /// <summary>선미 쪽 진입점 x. 산소실 방 안이다.</summary>
+        public static float AftShaftX =>
+            LastShiftShipDimensions.RoomMinX(LastShiftZone.LifeSupport) + PlazaStandoffX;
+
+        /// <summary>
+        /// 승강구가 광장 쪽 방 끝에서 안으로 들어가는 거리.
+        ///
+        /// <b>값이 <c>1m</c> 에서 올라온 것은 사거리 배타성 때문이다.</b> 승강구와 압력문은
+        /// 같은 키를 나눠 쓰므로 둘의 조작 사거리가 겹치면 어느 쪽이 조작될지가 호출 순서에
+        /// 달린다. 일자 스파인에서는 방과 경계 사이에 통로 <c>6m</c> 가 끼어 <c>1m</c> 로도
+        /// 넣넘했는데, 방사형에서는 방이 광장에 <b>직결</b>이라 그 여유가 통째로 사라졌다.
+        /// 두 사거리 합(<c>1.2 + 1.8</c>)에 눈금 하나를 더한다.
+        /// </summary>
+        public static float PlazaStandoffX =>
+            LastShiftDeckHatch.ReachDistance + LastShiftZoneDoor.ReachDistance + 0.5f;
 
         /// <summary>승강구 개수. 양 끝 둘이고, 이 값이 <see cref="LastShiftDeckHatch"/> 의 해치 수다.</summary>
         public const int ShaftCount = 2;

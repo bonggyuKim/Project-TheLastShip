@@ -167,9 +167,15 @@ namespace DoodleUp.Tests.EditMode
         {
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
-            var face = faces.Single(item =>
-                item.OwnerIndex == LastShiftFreeFaces.HullOwner &&
-                item.Face == LastShiftModuleFace.MinZ);
+            // <b>선체 자유면이 여럿이다.</b> 방사형 선체는 사각형 하나가 아니라
+            // 고정 공간 일곱이라 같은 방향 면이 여럿 나온다 — Single 은 그 순간 터진다.
+            // 가장 긴 구간을 고른다: 모듈 하나가 실제로 들어갈 자리여야 이 검사가 묻는 것
+            // ("자유면에 대면 판정을 통과한다")이 성립한다.
+            var face = faces
+                .Where(item => item.OwnerIndex == LastShiftFreeFaces.HullOwner &&
+                               item.Face == LastShiftModuleFace.MinZ)
+                .OrderByDescending(item => item.SpanMax - item.SpanMin)
+                .First();
 
             var kind = LastShiftModuleCatalog.At(LastShiftModuleCatalog.Observatory);
             var cursor = new LastShiftPlacementCursor();

@@ -60,9 +60,9 @@ namespace DoodleUp.Editor
             Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
             VerifyZoneDoors(roots);
             var sightRange = VerifyCameraCoversTheShip(roots, PlayerPrefabCamera());
-            var (rays, gapZ) = VerifyZonesCannotSeeEachOther();
+            var (samples, worstReadings) = VerifySimultaneousZoneReadings(roots);
             var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} sightlineRays={rays} gapZ={gapZ:F2} geometryClearance={clearance:F2} result=PASS");
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} plazaSamples={samples} simulZones={worstReadings} geometryClearance={clearance:F2} result=PASS");
         }
 
         /// <summary>
@@ -97,12 +97,15 @@ namespace DoodleUp.Editor
 
             // 승무원이 설 수 있는 가장 먼 두 자리. 눈높이는 카메라 로컬 y 를 그대로 쓴다.
             var eyeHeight = camera.transform.localPosition.y;
+            // 발자국 전체의 네 극단. 광장 반폭으로 잡으면 안 된다 — 승무원은 조종석 선수
+            // 구석(x -14)과 에어록 홀 좌현(z -12)까지 걸어가고, 카메라 far clip 은 거기서
+            // 반대편 끝을 봤을 때를 견뎌야 한다.
             var corners = new[]
             {
-                new Vector3(-LastShiftShipDimensions.HalfLength, eyeHeight, -LastShiftShipDimensions.HalfWidth),
-                new Vector3(-LastShiftShipDimensions.HalfLength, eyeHeight, LastShiftShipDimensions.HalfWidth),
-                new Vector3(LastShiftShipDimensions.HalfLength, eyeHeight, -LastShiftShipDimensions.HalfWidth),
-                new Vector3(LastShiftShipDimensions.HalfLength, eyeHeight, LastShiftShipDimensions.HalfWidth)
+                new Vector3(LastShiftPlazaLayout.MinX, eyeHeight, LastShiftPlazaLayout.MinZ),
+                new Vector3(LastShiftPlazaLayout.MinX, eyeHeight, LastShiftPlazaLayout.MaxZ),
+                new Vector3(LastShiftPlazaLayout.MaxX, eyeHeight, LastShiftPlazaLayout.MinZ),
+                new Vector3(LastShiftPlazaLayout.MaxX, eyeHeight, LastShiftPlazaLayout.MaxZ)
             };
             var sightRange = 0f;
             foreach (var eye in corners)
@@ -122,150 +125,113 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// N0b 문 배치. 여기서 확인하는 것은 두 가지다: 경계마다 문이 정확히 하나 있는가,
-        /// 그리고 벌크헤드가 문 밖 통과 경로를 남기지 않았는가. 두 번째가 빠지면 예전처럼
-        /// 벌크헤드 옆으로 걸어서 지나갈 수 있고, 그러면 격리가 압력만 끊는 반쪽이 된다.
+        /// 압력문 배치. 여기서 확인하는 것은 두 가지다: 경계마다 문이 정확히 하나 있는가,
+        /// 그리고 광장 벽이 문 밖 통과 경로를 남기지 않았는가. 두 번째가 빠지면 벽 옆으로
+        /// 걸어서 지나갈 수 있고, 그러면 격리가 압력만 끊는 반쪽이 된다.
+        ///
+        /// <b>평면 축이 문마다 다르다.</b> 압력문 셋 중 둘(전력실·냉각실)이 <c>z</c> 평면에
+        /// 서므로 좌표를 축으로 골라 재야 한다 — <c>x</c> 로 고정해 두면 두 문이 서로의
+        /// 자리에서 통과한다.
         /// </summary>
         private static void VerifyZoneDoors(GameObject[] roots)
         {
             var doors = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftZoneDoor>(true)).ToArray();
             Require(doors.Length == LastShiftZoneAtlas.BoundaryCount, "zone door count must equal boundary count");
+
+            var walls = roots
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .Where(x => x.name.StartsWith("PlazaWall_") && !x.name.Contains("_Lintel"))
+                .ToArray();
+
             for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
             {
                 var matching = doors.Where(door => door.Boundary == boundary).ToArray();
                 Require(matching.Length == 1, $"boundary {boundary} must have exactly one door");
                 var door = matching[0];
-                Require(Mathf.Abs(door.transform.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f,
+                var plazaDoor = LastShiftZoneAtlas.BoundaryDoor(boundary);
+
+                var position = door.transform.position;
+                var through = plazaDoor.PlaneIsX ? position.x : position.z;
+                var free = plazaDoor.PlaneIsX ? position.z : position.x;
+                Require(Mathf.Abs(through - plazaDoor.Plane) < 0.0001f,
                     $"boundary {boundary} door must sit on the boundary plane");
-                var centerZ = LastShiftZoneDoor.CenterZOf(boundary);
-                Require(Mathf.Abs(door.transform.position.z - centerZ) < 0.0001f,
+                Require(Mathf.Abs(free - plazaDoor.Center) < 0.0001f,
                     $"boundary {boundary} door must sit on its opening centre");
 
-                // 문 옆 통과 경로 검사. 예전에는 두 판의 z 스케일 <b>합</b>만 봤는데, 합이
-                // 맞으면 위치가 어긋나도 통과한다 — 판 둘이 같은 쪽으로 몰려 반대편이
-                // 통째로 뚫려 있어도 PASS 다. 개구부가 통로를 따라 한쪽으로 치우친 뒤로는
-                // 좌우 판 폭이 서로 다르므로 합 검사가 특히 위험하다. 그래서 실제로 덮인
-                // z 구간을 보고, 개구부를 뺀 나머지가 남김없이 덮였는지 확인한다.
-                var panels = roots
-                    .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                    .Where(x => x.name.StartsWith("Bulkhead_") &&
-                                Mathf.Abs(x.position.x - LastShiftZoneAtlas.BoundaryX(boundary)) < 0.0001f &&
-                                !x.name.EndsWith("_Lintel"))
+                // 문 옆 통과 경로 검사. 판 스케일의 <b>합</b>만 보면 위치가 어긋나도 통과한다 —
+                // 판 둘이 같은 쪽으로 몰려 반대편이 통째로 뚫려 있어도 PASS 다. 그래서 실제로
+                // 덮인 구간을 보고, 구멍을 뺀 나머지가 남김없이 덮였는지 확인한다.
+                //
+                // <b>같은 변에 문이 둘일 수 있다</b>(좌현: 전력실 + 에어록 홀). 그래서 이 변의
+                // 문 전부를 모아 구멍 목록을 만들고, 그 사이 구간만 덮였는지 본다.
+                var onThisSide = walls
+                    .Where(x => Mathf.Abs((plazaDoor.PlaneIsX ? x.position.x : x.position.z) - plazaDoor.Plane) < 0.0001f)
                     .ToArray();
-                Require(panels.Length == 2, $"boundary {boundary} must have two side panels beside the opening");
+                Require(onThisSide.Length > 0, $"boundary {boundary} must have a plaza wall on its plane");
 
-                var wallMin = -LastShiftShipDimensions.EndWallSpan * 0.5f;
-                var wallMax = LastShiftShipDimensions.EndWallSpan * 0.5f;
-                var openingMin = centerZ - LastShiftZoneDoor.OpeningWidth * 0.5f;
-                var openingMax = centerZ + LastShiftZoneDoor.OpeningWidth * 0.5f;
-                RequireCovered(panels, wallMin, openingMin,
-                    $"boundary {boundary} bulkhead must cover z [{wallMin:F2}, {openingMin:F2}] beside the door");
-                RequireCovered(panels, openingMax, wallMax,
-                    $"boundary {boundary} bulkhead must cover z [{openingMax:F2}, {wallMax:F2}] beside the door");
+                var side = LastShiftPlazaLayout.Doors
+                    .Where(other => other.PlaneIsX == plazaDoor.PlaneIsX &&
+                                    Mathf.Abs(other.Plane - plazaDoor.Plane) < 0.0001f)
+                    .OrderBy(other => other.Center)
+                    .ToArray();
+
+                var lo = plazaDoor.PlaneIsX ? LastShiftPlazaLayout.PlazaMinZ : LastShiftPlazaLayout.PlazaMinX;
+                var hi = plazaDoor.PlaneIsX ? LastShiftPlazaLayout.PlazaMaxZ : LastShiftPlazaLayout.PlazaMaxX;
+                var cursor = lo;
+                foreach (var other in side)
+                {
+                    RequireCovered(onThisSide, plazaDoor.PlaneIsX, cursor, other.MinSpan,
+                        $"plaza wall must cover [{cursor:F2}, {other.MinSpan:F2}] beside a door");
+                    cursor = other.MaxSpan;
+                }
+                RequireCovered(onThisSide, plazaDoor.PlaneIsX, cursor, hi,
+                    $"plaza wall must cover [{cursor:F2}, {hi:F2}] beside a door");
             }
         }
 
         /// <summary>
-        /// 구역끼리 서로 보이지 않는가(A3). 구역 쌍 셋에 대해 각각 눈 3자리 × 표적 3자리로
-        /// 9발씩, 모두 27발을 쏘고 전부 막혀야 한다.
+        /// <c>SIMUL_ZONES ≤ 2</c>(기획 정본 §4). <b>A3 "구역끼리 서로 안 보임" 을 대체한다.</b>
         ///
-        /// 조종석↔엔진실을 빼먹은 것이 이번 사건의 원인이다. 조종석↔산소실만 보면 통로가
-        /// 둘 다 꺾여 있어 자동으로 막히지만, 통로 하나만 지나는 인접 구역 쌍은 통로가
-        /// 직선이면 그대로 뚫린다. 그래서 인접 쌍 둘을 반드시 함께 본다.
+        /// 폐지된 이유는 위상이다 — 일자 스파인에서는 방과 방 사이에 꺾인 통로가 있어 시선
+        /// 자체를 끊을 수 있었지만, 방사형에서는 방 여섯이 <b>같은 광장</b>을 보고 있어 두
+        /// 구역이 서로 보이는 직선은 기하학적으로 반드시 남는다. 중앙 광장 허브가 그것을
+        /// 알고 고른 대가이고, 대신 §4 가 막는 것을 <b>판독</b>으로 좁혔다: 게이지를 문틀이
+        /// 아니라 문 너머 방 안쪽 끝벽에 달아 보이는 영역을 구멍을 지나는 쐐기로 줄이고,
+        /// 광장 한가운데를 코어 <c>4x4</c> 로 점유해 쐐기 셋이 겹치는 자리를 없앤다.
         ///
-        /// 다만 레이캐스트만으로는 부족하다. 유한 개를 쏘는 이상 폭 0 의 칼날 틈은 확률적으로
-        /// 안 걸리고, 그때 검사는 "여유 0" 을 "막혔음" 으로 보고한다. 그래서 왜 막혔는지의
-        /// 여유값인 GAP_Z 를 함께 재서 돌려준다 — 실측이므로 다음에 누가 개구부를 0.1m 옮길 때
-        /// 남은 여유가 계산 없이 보인다.
+        /// 그래서 여기서 재는 것은 레이캐스트가 아니라 <b>실제 판독 수</b>다. 격자
+        /// <c>0.05m</c> 로 광장을 훑어 세 구역이 동시에 읽히는 점이 하나라도 있으면 실패다.
+        /// 코어가 씬에 실제로 서 있는지도 함께 본다 — 좌표 계산만 맞고 판이 안 서 있으면
+        /// 이 검사는 통과하고 실플레이는 위반이다.
         /// </summary>
-        private static (int rays, float gapZ) VerifyZonesCannotSeeEachOther()
+        private static (int samples, int worst) VerifySimultaneousZoneReadings(GameObject[] roots)
         {
-            var pairs = new[]
+            var core = roots
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .Where(x => x.name == "PlazaCore")
+                .ToArray();
+            Require(core.Length == 1, "plaza core must exist exactly once — it is the SIMUL_ZONES device, not decor");
+            var half = LastShiftPlazaLayout.CoreHalfExtent;
+            Require(Mathf.Abs(core[0].localScale.x - half * 2f) < 0.0001f &&
+                    Mathf.Abs(core[0].localScale.z - half * 2f) < 0.0001f,
+                $"plaza core footprint must stay {half * 2f:F1}m square");
+
+            const float step = 0.05f;
+            var samples = 0;
+            var worst = 0;
+            for (var x = LastShiftPlazaLayout.PlazaMinX; x <= LastShiftPlazaLayout.PlazaMaxX; x += step)
+            for (var z = LastShiftPlazaLayout.PlazaMinZ; z <= LastShiftPlazaLayout.PlazaMaxZ; z += step)
             {
-                // 구역 쌍이 C(3,2)=3 에서 C(4,2)=6 으로 늘었다. 전력실-냉각실만 뺀다 -
-                // 벽 하나에 구멍 하나뿐이라 좌표로 해결되는 종류가 아니고, 그 쌍의 차단은
-                // 문 개폐 상태가 전담한다는 것이 §19.2 의 결정이다.
-                (from: LastShiftZone.Cockpit, to: LastShiftZone.Power),
-                (from: LastShiftZone.Cockpit, to: LastShiftZone.Cooling),
-                (from: LastShiftZone.Power, to: LastShiftZone.LifeSupport),
-                (from: LastShiftZone.Cooling, to: LastShiftZone.LifeSupport),
-                (from: LastShiftZone.Cockpit, to: LastShiftZone.LifeSupport)
-            };
-
-            // 씬을 막 열었거나 막 만든 직후에는 콜라이더의 물리 트랜스폼이 아직 반영되지 않아
-            // 레이가 전부 빈 공간을 지나간다. 그 상태로 두면 이 검사가 "27발 전부 안 막힘" 이라는
-            // 요란한 실패가 아니라, 형상을 조금만 손보면 조용히 뒤집히는 불안정한 검사가 된다.
-            UnityEngine.Physics.SyncTransforms();
-
-            var rays = 0;
-            foreach (var pair in pairs)
-                foreach (var eye in SightSamples(pair.from, pair.to))
-                    foreach (var target in SightSamples(pair.to, pair.from))
-                    {
-                        rays++;
-                        var direction = target - eye;
-                        var distance = direction.magnitude;
-                        // 막혔다 = 눈과 표적 사이에 무엇이든 있다. 무엇이 막았는지는 보지 않는다 —
-                        // 벌크헤드든 통로 벽이든 캐비닛이든 시선을 끊었으면 조건은 만족이다.
-                        // UnityEngine.Physics 를 명시한다 — DoodleUp.Physics 네임스페이스가 있어
-                        // 짧게 쓰면 그쪽으로 해석된다.
-                        Require(UnityEngine.Physics.Raycast(eye, direction / distance, distance),
-                            $"{pair.from}→{pair.to} sightline from {eye} to {target} is not blocked");
-                    }
-
-            // 실측 GAP_Z. 상수를 다시 읽는 것이 아니라 개구부 구간에서 직접 뺀다. 어느 개구부가
-            // 어느 통로에 속하는지는 치수 정본이 답한다 — 번호를 여기 적어 두면 개구부가 넷에서
-            // 다섯이 되며 번호가 밀렸을 때(§3) 엉뚱한 쌍을 재고도 그럴듯한 값이 나온다.
-            var gapZ = float.MaxValue;
-            for (var passage = 0; passage < 2; passage++)
-            {
-                var near = LastShiftShipDimensions.BaffleNearOpening(passage);
-                var far = LastShiftShipDimensions.BaffleFarOpening(passage);
-                var upper = LastShiftShipDimensions.OpeningCenterZ(near) > LastShiftShipDimensions.OpeningCenterZ(far) ? near : far;
-                var lower = upper == near ? far : near;
-                gapZ = Mathf.Min(gapZ,
-                    LastShiftShipDimensions.OpeningMinZ(upper) - LastShiftShipDimensions.OpeningMaxZ(lower));
+                if (LastShiftPlazaLayout.InsideCore(x, z)) continue;
+                samples++;
+                var readings = LastShiftPlazaLayout.SimultaneousZoneReadings(x, z);
+                if (readings <= worst) continue;
+                worst = readings;
+                Require(worst <= 2, $"SIMUL_ZONES violated at ({x:F2}, {z:F2}) — {worst} zones readable at once");
             }
-            Require(gapZ > 0f,
-                $"openings inside a passage must not overlap in z (measured gap {gapZ:F2}m)");
-            return (rays, gapZ);
-        }
 
-        /// <summary>
-        /// 한 방 안에서 시선을 쏘거나 받을 세 자리. 눈높이는 서 있는 승무원 기준 1.55m 다.
-        ///
-        /// 세 자리 모두 <b>문턱 쪽 벽 밀착</b>이다. 예전에는 방 중심의 좌/중/우를 잡았는데,
-        /// 그러면 새는 자리를 비껴간다 — 누출은 벽에 붙어 문턱 가까이 선 자리에서 가장 크고,
-        /// 방 중심(문턱에서 4m)에서는 필요한 z 가 1.667 이라 inset 2.6 이 그것보다 크긴 해도
-        /// 여유가 얇다. 벽에서 0.3m, 문턱에서 1m 안으로 잡으면 설비(배플)가 사라지는 순간
-        /// 이 검사가 FAIL 한다.
-        ///
-        /// 기준은 구역이 아니라 <b>방</b>이다. 구역으로 재면 통로 안 좌표가 "조종석 안" 으로
-        /// 판정돼, 이미 벽에 막힌 자리에서 쏘고 PASS 를 받게 된다.
-        ///
-        /// <b>wallInset 을 줄이는 방향으로만 틀린다.</b> 0.3 → z = ±2.7 이고 d=1 누출 띠는
-        /// z ≥ 1.467 이라 띠 안쪽 여유가 1.23m, 벽 쪽 여유가 0.3m 다. 늘리면 띠 안이라
-        /// 안전하고, 줄이면 z 가 벽면(±3.0)에 붙어 광선이 벽에 먼저 막혀 <b>차단물이 없어도
-        /// 언제나 PASS</b> 가 된다. 가운데 한 발만 쏘던 시절의 실패와 같은 형태이고,
-        /// 좌·우 두 발도 z 를 벽 쪽으로 미는 같은 상수를 쓰므로 똑같이 성립한다.
-        /// </summary>
-        private static Vector3[] SightSamples(LastShiftZone zone, LastShiftZone toward)
-        {
-            const float eyeHeight = 1.55f;
-            const float wallInset = 0.3f;
-            const float thresholdInset = 1.0f;
-            var forward = LastShiftShipDimensions.RoomCenterX(toward) > LastShiftShipDimensions.RoomCenterX(zone);
-            // 상대 구역 쪽 문턱에서 1m 안. 그 자리가 이 방에서 가장 크게 새는 자리다.
-            var x = forward
-                ? LastShiftShipDimensions.RoomMaxX(zone) - thresholdInset
-                : LastShiftShipDimensions.RoomMinX(zone) + thresholdInset;
-            var inset = LastShiftShipDimensions.HalfWidth - wallInset;
-            return new[]
-            {
-                new Vector3(x, eyeHeight, -inset),
-                new Vector3(x, eyeHeight, 0f),
-                new Vector3(x, eyeHeight, inset)
-            };
+            Require(samples > 0, "plaza sampling produced no points");
+            return (samples, worst);
         }
 
         /// <summary>
@@ -309,14 +275,12 @@ namespace DoodleUp.Editor
         private static float BestGeometryClearance(Vector3 point)
         {
             var best = float.MinValue;
-            foreach (LastShiftZone zone in Enum.GetValues(typeof(LastShiftZone)))
+            // 고정 공간 일곱을 그대로 훑는다. 방과 통로를 따로 나열하던 자리이고, 통로가
+            // 폐지되면서 목록이 발자국표 하나로 합쳐졌다 — 광장도 사람이 서는 자리라 여기
+            // 들어온다.
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
                 best = Mathf.Max(best, Clearance(point,
-                    LastShiftShipDimensions.RoomMinX(zone), LastShiftShipDimensions.RoomMaxX(zone),
-                    -LastShiftShipDimensions.HalfWidth, LastShiftShipDimensions.HalfWidth));
-            for (var passage = 0; passage < 2; passage++)
-                best = Mathf.Max(best, Clearance(point,
-                    LastShiftShipDimensions.PassageMinX(passage), LastShiftShipDimensions.PassageMaxX(passage),
-                    LastShiftShipDimensions.PassageMinZ(passage), LastShiftShipDimensions.PassageMaxZ(passage)));
+                    footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ));
             return best;
         }
 
@@ -328,13 +292,17 @@ namespace DoodleUp.Editor
         /// 이어 붙어 덮는 경우를 모두 인정한다. 덮인 z 를 왼쪽부터 밀어 나가면서 빈 곳이
         /// 나오면 실패한다 — 합 비교와 달리 위치가 틀리면 여기서 걸린다.
         /// </summary>
-        private static void RequireCovered(Transform[] panels, float min, float max, string message)
+        private static void RequireCovered(Transform[] panels, bool planeIsX, float min, float max, string message)
         {
             if (max - min <= 0.0001f) return;
             var reached = min;
+            // 평면 위 자유축이 문마다 다르다 — x 평면 벽은 z 로 덮고, z 평면 벽은 x 로 덮는다.
             var spans = panels
-                .Select(panel => (lo: panel.position.z - panel.localScale.z * 0.5f,
-                                  hi: panel.position.z + panel.localScale.z * 0.5f))
+                .Select(panel => planeIsX
+                    ? (lo: panel.position.z - panel.localScale.z * 0.5f,
+                       hi: panel.position.z + panel.localScale.z * 0.5f)
+                    : (lo: panel.position.x - panel.localScale.x * 0.5f,
+                       hi: panel.position.x + panel.localScale.x * 0.5f))
                 .OrderBy(span => span.lo)
                 .ToArray();
             foreach (var span in spans)

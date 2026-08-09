@@ -60,19 +60,16 @@ namespace DoodleUp.Tests.EditMode
         public void DoorIsOperableFromBothSidesOfTheBoundary()
         {
             var setup = CreateDoorSetup(boundary: 1);
-            var boundaryX = LastShiftZoneAtlas.BoundaryX(1);
-            // 문 앞의 z 는 개구부 중심에서 뽑는다. 통로가 어긋나면서 개구부가 더 이상 z=0 이
-            // 아니므로, 리터럴 0 을 두면 이 테스트가 "문 앞" 이 아닌 자리에서 조작을 시도한다.
-            var doorZ = LastShiftZoneDoor.CenterZOf(1);
 
-            // 엔진실 쪽(경계보다 낮은 x)에서 닫는다.
-            setup.player.transform.position = new Vector3(boundaryX - 1f, 0.1f, doorZ);
+            // 광장 쪽에서 닫는다. 문 앞 좌표를 문에서 뽑는 것이 요점이다 — 압력문 셋 중
+            // 둘이 z 평면에 서므로 x 로 민 좌표는 "문 앞" 이 아니라 같은 평면 위의 벽 앞이다.
+            setup.player.transform.position = NearDoor(1, towardRoom: false, distance: 1f);
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
             Assert.That(setup.sandbox.IsDoorOpen(1), Is.False);
 
             // 산소실 쪽(경계보다 높은 x)에서 다시 연다. 갇힌 쪽에서 열 수 없으면 격리가
             // 아니라 사형이고, 문서가 격리를 "되돌리기 가능" 으로 둔 이유가 사라진다.
-            setup.player.transform.position = new Vector3(boundaryX + 1f, 0.1f, doorZ);
+            setup.player.transform.position = NearDoor(1, towardRoom: true, distance: 1f);
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
             Assert.That(setup.sandbox.IsDoorOpen(1), Is.True, "수용 기준 11: 문은 안팎 양쪽에서 열린다.");
 
@@ -83,21 +80,19 @@ namespace DoodleUp.Tests.EditMode
         public void DoorRejectsOperationOutOfReachAndFromDeadCrew()
         {
             var setup = CreateDoorSetup(boundary: 0);
-            var boundaryX = LastShiftZoneAtlas.BoundaryX(0);
-            var doorZ = LastShiftZoneDoor.CenterZOf(0);
 
-            setup.player.transform.position = new Vector3(boundaryX - 4f, 0.1f, doorZ);
+            setup.player.transform.position = NearDoor(0, towardRoom: false, distance: 4f);
             Assert.That(setup.door.TryOperate(setup.player), Is.False, "사거리 밖에서는 조작되지 않는다.");
             Assert.That(setup.sandbox.IsDoorOpen(0), Is.True);
 
-            // z 로 벗어난 경우도 사거리 밖이다. 개구부가 통로를 따라 한쪽으로 치우쳤으므로
-            // 경계면 위에 서 있다는 것만으로는 문 앞이 아니다 — 반대쪽 벽 앞일 수 있다.
-            setup.player.transform.position = new Vector3(
-                boundaryX, 0.1f, doorZ + LastShiftZoneDoor.OpeningWidth * 0.5f + 1.5f);
-            Assert.That(setup.door.TryOperate(setup.player), Is.False, "개구부에서 z 로 벗어나면 조작되지 않는다.");
+            // 평면 위에서 옆으로 벗어난 경우도 사거리 밖이다. 광장 한 변에 문이 둘 있으므로
+            // (좌현: 전력실 + 에어록 홀) 경계면 위에 서 있다는 것만으로는 문 앞이 아니다 —
+            // 옆 문 앞이거나 그 사이 벽 앞일 수 있다.
+            setup.player.transform.position = BesideDoor(0, LastShiftZoneDoor.OpeningWidth * 0.5f + 1.5f);
+            Assert.That(setup.door.TryOperate(setup.player), Is.False, "문 구멍에서 옆으로 벗어나면 조작되지 않는다.");
             Assert.That(setup.sandbox.IsDoorOpen(0), Is.True);
 
-            setup.player.transform.position = new Vector3(boundaryX, 0.1f, doorZ);
+            setup.player.transform.position = BesideDoor(0, 0f);
             var crew = LastShiftCrewOxygen.Ensure(setup.player);
             crew.KillForProbe();
             Assert.That(setup.door.TryOperate(setup.player), Is.False,
@@ -118,13 +113,11 @@ namespace DoodleUp.Tests.EditMode
             var second = CreateDoor(boundary: 1);
 
             // 조종석↔엔진실 경계(-2) 바로 앞. 반대쪽 경계(+2)는 4m 떨어져 있다.
-            var found = LastShiftZoneDoor.FindOperable(new Vector3(
-                LastShiftZoneAtlas.BoundaryX(0) + 0.5f, 0.1f, LastShiftZoneDoor.CenterZOf(0)));
+            var found = LastShiftZoneDoor.FindOperable(NearDoor(0, towardRoom: false, distance: 0.5f));
             Assert.That(found, Is.Not.Null);
             Assert.That(found.Boundary, Is.EqualTo(0));
 
-            found = LastShiftZoneDoor.FindOperable(new Vector3(
-                LastShiftZoneAtlas.BoundaryX(1) - 0.5f, 0.1f, LastShiftZoneDoor.CenterZOf(1)));
+            found = LastShiftZoneDoor.FindOperable(NearDoor(1, towardRoom: false, distance: 0.5f));
             Assert.That(found, Is.Not.Null);
             Assert.That(found.Boundary, Is.EqualTo(1));
 
@@ -139,7 +132,15 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ClosingDoorIsolatesBreachZoneInsideTheMissionTimer()
         {
-            var setup = CreateDoorSetup(boundary: 1);
+            // 파공 구역(산소실)을 가르는 경계를 번호로 안 적는다. 방사형에서 경계는
+            // 사슬이 아니라 별이라 "하나 낮은 번호" 같은 산수가 안 통한다 — 그대로 두면
+            // 이 검사가 냉각실 문을 닫고 산소실이 격리되기를 기다린다.
+            var breachBoundary = 0;
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                if (LastShiftZoneAtlas.HighZoneOf(boundary) == LastShiftZone.LifeSupport)
+                    breachBoundary = boundary;
+
+            var setup = CreateDoorSetup(breachBoundary);
             var patch = CreateItem(LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal);
             setup.sandbox.Configure(setup.player, new[] { patch });
             setup.sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
@@ -159,8 +160,7 @@ namespace DoodleUp.Tests.EditMode
             // 격리하면 파공 구역이 자기 공기만으로 빠지므로 훨씬 빨리 진공에 닿는다.
             setup.sandbox.ResetPreset(LastShiftPreset.BadAttitudeHighOxygen);
             Assert.That(setup.sandbox.ApplyMeteorImpact(), Is.True);
-            setup.player.transform.position = new Vector3(
-                LastShiftZoneAtlas.BoundaryX(1) - 1f, 0.1f, LastShiftZoneDoor.CenterZOf(1));
+            setup.player.transform.position = NearDoor(breachBoundary, towardRoom: false, distance: 1f);
             Assert.That(setup.door.TryOperate(setup.player), Is.True);
 
             var seconds = AdvanceUntilBreachVacuum(setup.sandbox, 300);
@@ -215,10 +215,40 @@ namespace DoodleUp.Tests.EditMode
             };
         }
 
+        /// <summary>
+        /// 문 앞 좌표. <b>축을 문에서 뽑는다</b> — 압력문 셋 중 둘(전력실 <c>z=-6</c>,
+        /// 냉각실 <c>z=+6</c>)이 <c>z</c> 평면에 서므로 <c>x</c> 로 민 좌표는 "문 앞" 이 아니라
+        /// 같은 평면 위의 벽 앞이다. 그 자리에서 조작을 시도하면 검사가 "사거리 밖" 을
+        /// 당연히 통과시키고도 이유를 모른다.
+        /// </summary>
+        private static Vector3 NearDoor(int boundary, bool towardRoom, float distance, float y = 0.1f)
+        {
+            var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+            var room = LastShiftPlazaLayout.Of(door.Space);
+            var roomThrough = door.PlaneIsX
+                ? (room.MinX + room.MaxX) * 0.5f
+                : (room.MinZ + room.MaxZ) * 0.5f;
+            var outward = Mathf.Sign(roomThrough - door.Plane) * (towardRoom ? 1f : -1f);
+            var through = door.Plane + outward * distance;
+            return door.PlaneIsX
+                ? new Vector3(through, y, door.Center)
+                : new Vector3(door.Center, y, through);
+        }
+
+        /// <summary>문 평면 위에서 구멍 중심으로부터 <paramref name="offset"/> 만큼 옆으로 민 자리.</summary>
+        private static Vector3 BesideDoor(int boundary, float offset, float y = 0.1f)
+        {
+            var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+            return door.PlaneIsX
+                ? new Vector3(door.Plane, y, door.Center + offset)
+                : new Vector3(door.Center + offset, y, door.Plane);
+        }
+
         private static LastShiftZoneDoor CreateDoor(int boundary)
         {
             var doorObject = new GameObject($"ZoneDoor_{boundary}");
-            doorObject.transform.position = new Vector3(LastShiftZoneAtlas.BoundaryX(boundary), 0f, 0f);
+            var waypoint = LastShiftZoneAtlas.BoundaryWaypoint(boundary);
+            doorObject.transform.position = new Vector3(waypoint.x, 0f, waypoint.y);
             var door = doorObject.AddComponent<LastShiftZoneDoor>();
             door.Configure(boundary, null, null, null);
             return door;

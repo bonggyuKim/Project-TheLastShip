@@ -348,13 +348,13 @@ namespace DoodleUp.Tests.EditMode
         private static LastShiftCompartmentSpec CoolingSpur(int index, int link, int parentIndex)
         {
             const float roomDepth = 2f;
-            var doorX = LastShiftShipDimensions.ZoneCenterX(LastShiftZone.Cooling);
-            var minZ = LastShiftShipDimensions.SideWallZ + link * roomDepth;
+            var doorX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
+            var minZ = LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling) + link * roomDepth;
 
             // 선수 쪽으로 길게 눕혀 둔 것이 이 표본의 요지다 — 몸통이 자기 사슬 뿌리와 다른
             // x 밴드에 걸쳐야 구역 오버레이가 걸렸는지가 갈린다(조항 F-1).
             return new LastShiftCompartmentSpec(
-                index, doorX - 9f, doorX + 1f, minZ, minZ + roomDepth,
+                index, doorX - 3f, doorX + 3f, minZ, minZ + roomDepth,
                 LastShiftDoorPlane.AlongZ, minZ, doorX,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
@@ -368,11 +368,11 @@ namespace DoodleUp.Tests.EditMode
         {
             const float roomDepth = 3f;
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
-            var maxZ = quarters.MinZ - link * roomDepth;
+            var minZ = quarters.MaxZ + link * roomDepth;
 
             return new LastShiftCompartmentSpec(
-                index, quarters.MinX, quarters.MinX + 3f, maxZ - roomDepth, maxZ,
-                LastShiftDoorPlane.AlongZ, maxZ, quarters.MinX + 1.5f,
+                index, quarters.MinX, quarters.MinX + 3f, minZ, minZ + roomDepth,
+                LastShiftDoorPlane.AlongZ, minZ, quarters.MinX + 1.5f,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
     }

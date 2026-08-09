@@ -72,7 +72,7 @@ namespace DoodleUp.Runtime
         /// 그대로 금지 구간에 쓰면 좌현 절반의 자투리 구조체가 통째로 사라진다.
         /// 금지 구간은 배경막 크기가 아니라 <b>창이 실제로 훑는 범위</b>다.
         /// </summary>
-        public const float WindowKeepOutHalfX = (LastShiftShipDimensions.InteriorLength + 12f) * 0.5f;
+        public const float WindowKeepOutHalfX = 14f;
 
         /// <summary>
         /// 배경막 반폭. <c>45m</c> 다. 창에서 비스듬히 보는 시선이 배경막 가장자리를 넘지

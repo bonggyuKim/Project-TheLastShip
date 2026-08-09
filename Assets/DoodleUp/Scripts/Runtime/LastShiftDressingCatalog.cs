@@ -13,11 +13,16 @@ namespace DoodleUp.Runtime
         /// <summary>압력 구역 넷(조종석·전력·냉각·산소).</summary>
         Zone = 0,
 
-        /// <summary>고정 구획(§24 압력존 미편입). M-2 이후로는 숙소 하나다.</summary>
+        /// <summary>고정 부속 구획. 중앙 광장 허브 이후로는 에어록 홀·숙소 둘이다.</summary>
         Compartment = 1,
 
-        /// <summary>구역 사이 통로 둘.</summary>
-        Passage = 2,
+        /// <summary>
+        /// 중앙 광장. <b>번호를 통로에서 물려받았다</b> — 통로 둘이 폐지되고 그 동선 역할을
+        /// 광장이 통째로 승계했으므로(조항 P-1) 씬에 구워진 옛 통로 소품이 광장 소품으로
+        /// 읽히는 것이 맞다. 자리는 <see cref="LastShiftDressingSpaces.BoundsOf"/> 가 다시 잡고,
+        /// 광장 한가운데는 코어가 먹고 있어 소품이 그리로 가면 검증에서 걸린다.
+        /// </summary>
+        Plaza = 2,
 
         /// <summary>갑판 하부 우회 통로(본선 + 선수 다리).</summary>
         BypassRun = 3,
@@ -129,7 +134,12 @@ namespace DoodleUp.Runtime
         public LastShiftZone zone;
         public LastShiftCompartment compartment;
 
-        /// <summary>통로 번호. 0 = 조종석↔전력실, 1 = 냉각실↔산소실.</summary>
+        /// <summary>
+        /// 옛 통로 번호. <b>지금은 아무도 안 읽는다</b> — 통로 둘이 폐지되고
+        /// <see cref="LastShiftDressingSpaceKind.Plaza"/> 가 그 번호를 물려받았다. 필드를 안
+        /// 지우는 것은 씬에 구워진 드레싱 데이터가 이 값을 들고 있기 때문이고, 지우면
+        /// Unity 가 그 항목을 통째로 다시 직렬화하면서 옆 필드까지 초기값으로 되돌린다.
+        /// </summary>
         [Range(0, 1)] public int passage;
 
         public static LastShiftDressingSpace Of(LastShiftZone zone) =>
@@ -138,8 +148,8 @@ namespace DoodleUp.Runtime
         public static LastShiftDressingSpace Of(LastShiftCompartment compartment) =>
             new() { kind = LastShiftDressingSpaceKind.Compartment, compartment = compartment };
 
-        public static LastShiftDressingSpace OfPassage(int passage) =>
-            new() { kind = LastShiftDressingSpaceKind.Passage, passage = Mathf.Clamp(passage, 0, 1) };
+        public static LastShiftDressingSpace OfPlaza() =>
+            new() { kind = LastShiftDressingSpaceKind.Plaza };
 
         public static LastShiftDressingSpace OfBypassRun() =>
             new() { kind = LastShiftDressingSpaceKind.BypassRun };
@@ -151,7 +161,7 @@ namespace DoodleUp.Runtime
         {
             LastShiftDressingSpaceKind.Zone => $"Zone.{zone}",
             LastShiftDressingSpaceKind.Compartment => $"Compartment.{compartment}",
-            LastShiftDressingSpaceKind.Passage => $"Passage[{passage}]",
+            LastShiftDressingSpaceKind.Plaza => "Plaza",
             LastShiftDressingSpaceKind.BypassRun => "BypassRun",
             _ => "AirlockBranch"
         };
@@ -218,12 +228,15 @@ namespace DoodleUp.Runtime
         {
             switch (space.kind)
             {
+                // 방 z 범위를 발자국에서 받는다. 예전에는 전폭 전체(±3)로 고정이었는데,
+                // 방사형에서는 전력실·냉각실이 같은 x 범위를 z 좌우로 나눠 가지므로 z 를
+                // 고정으로 두면 두 방의 소품이 서로의 방 안에 선다.
                 case LastShiftDressingSpaceKind.Zone:
                     return new LastShiftDressingBounds(
                         LastShiftShipDimensions.RoomMinX(space.zone),
                         LastShiftShipDimensions.RoomMaxX(space.zone),
-                        -LastShiftShipDimensions.HalfWidth,
-                        LastShiftShipDimensions.HalfWidth,
+                        LastShiftShipDimensions.RoomMinZ(space.zone),
+                        LastShiftShipDimensions.RoomMaxZ(space.zone),
                         0f,
                         LastShiftShipDimensions.CeilingInnerHeight);
 
@@ -235,17 +248,12 @@ namespace DoodleUp.Runtime
                         0f, LastShiftCompartments.InteriorHeight);
                 }
 
-                case LastShiftDressingSpaceKind.Passage:
-                {
-                    var passage = Mathf.Clamp(space.passage, 0, 1);
+                case LastShiftDressingSpaceKind.Plaza:
                     return new LastShiftDressingBounds(
-                        LastShiftShipDimensions.PassageMinX(passage),
-                        LastShiftShipDimensions.PassageMaxX(passage),
-                        LastShiftShipDimensions.PassageMinZ(passage),
-                        LastShiftShipDimensions.PassageMaxZ(passage),
+                        LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX,
+                        LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ,
                         0f,
                         LastShiftShipDimensions.CeilingInnerHeight);
-                }
 
                 case LastShiftDressingSpaceKind.BypassRun:
                 {
@@ -300,7 +308,19 @@ namespace DoodleUp.Runtime
             return new Vector3(x, bounds.FloorY + prop.bottomY + size.y * 0.5f, z);
         }
 
-        /// <summary>소품이 차지하는 가장 큰 z. 노출 원뿔 판정은 중심이 아니라 이 값으로 한다.</summary>
+        // 소품 상자의 평면 구간. <b>노출 원뿔·문 앞 판정은 중심이 아니라 이 값으로 한다</b> —
+        // 중심만 보면 문 정면에 걸친 넓은 상자가 중심만 비껴서 통과한다. 문 평면 축이
+        // 문마다 다르므로 x 쪽도 같이 있어야 한다.
+
+        public static float MinX(LastShiftDressingProp prop) =>
+            WorldCenter(prop).x - prop.Size.x * 0.5f;
+
+        public static float MaxX(LastShiftDressingProp prop) =>
+            WorldCenter(prop).x + prop.Size.x * 0.5f;
+
+        public static float MinZ(LastShiftDressingProp prop) =>
+            WorldCenter(prop).z - prop.Size.z * 0.5f;
+
         public static float MaxZ(LastShiftDressingProp prop) =>
             WorldCenter(prop).z + prop.Size.z * 0.5f;
 

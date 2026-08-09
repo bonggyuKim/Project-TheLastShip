@@ -367,8 +367,8 @@ namespace DoodleUp.Tests.EditMode
         {
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             return new LastShiftCompartmentSpec(
-                index, quarters.MinX, quarters.MinX + 3f, quarters.MinZ - 3f, quarters.MinZ,
-                LastShiftDoorPlane.AlongZ, quarters.MinZ, quarters.MinX + 1.5f,
+                index, quarters.MinX, quarters.MinX + 3f, quarters.MaxZ, quarters.MaxZ + 3f,
+                LastShiftDoorPlane.AlongZ, quarters.MaxZ, quarters.MinX + 1.5f,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
 
@@ -378,10 +378,12 @@ namespace DoodleUp.Tests.EditMode
         /// </summary>
         private static LastShiftCompartmentSpec CoolingSpur(int index)
         {
-            var doorX = LastShiftShipDimensions.ZoneCenterX(LastShiftZone.Cooling);
-            var minZ = LastShiftShipDimensions.SideWallZ;
+            // 냉각실 바깥 면(광장 반대쪽)에 문을 낸다. 예전에는 선체 우현 긴 벽이었는데
+            // 방사형에는 그런 벽이 없고, 각 방이 자기 바깥 면을 든다(§7-(a)).
+            var doorX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
+            var minZ = LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling);
             return new LastShiftCompartmentSpec(
-                index, doorX - 9f, doorX + 1f, minZ, minZ + 2f,
+                index, doorX - 3f, doorX + 3f, minZ, minZ + 2f,
                 LastShiftDoorPlane.AlongZ, minZ, doorX,
                 -1, LastShiftCompartmentAccess.Open);
         }
@@ -391,8 +393,8 @@ namespace DoodleUp.Tests.EditMode
         {
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             return new LastShiftCompartmentSpec(
-                index, doorX - 1f, doorX + 1f, quarters.MinZ - 2f, quarters.MinZ,
-                LastShiftDoorPlane.AlongZ, quarters.MinZ, doorX,
+                index, doorX - 1f, doorX + 1f, quarters.MaxZ, quarters.MaxZ + 2f,
+                LastShiftDoorPlane.AlongZ, quarters.MaxZ, doorX,
                 (int)LastShiftCompartment.Quarters, LastShiftCompartmentAccess.Open);
         }
 

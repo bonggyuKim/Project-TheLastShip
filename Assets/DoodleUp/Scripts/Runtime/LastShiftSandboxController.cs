@@ -259,37 +259,44 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 이 개구부 너머 공간의 판독값. 보는 사람의 x 로 어느 쪽이 "너머" 인지 정한다.
+        /// 이 압력문 너머 공간의 판독값. 보는 사람의 위치로 어느 쪽이 "너머" 인지 정한다.
         ///
-        /// 개구부 1·2 는 x 가 구역 판정 경계와 <b>같은 값</b>이라, 경계 평면에서 ε 만큼 민
-        /// 좌표로 구역을 정하면 부호를 한 번 잘못 잡았을 때 판독이 통째로 반대편 구역을
-        /// 가리키고도 값이 그럴듯해서 안 보인다. 그래서 방·통로의 <b>중심</b>으로 판정한다.
+        /// <b>문 평면 위 좌표를 안 쓴다.</b> 문 평면은 방 경계와 <b>같은 값</b>이라, 평면에서
+        /// ε 만큼 민 좌표로 구역을 정하면 부호를 한 번 잘못 잡았을 때 판독이 통째로 반대편
+        /// 구역을 가리키고도 값이 그럴듯해서 안 보인다. 그래서 <b>방과 광장의 중심</b>으로 잰다.
+        ///
+        /// <b>축을 문에서 뽑는다</b>(§9.3-2) — 전력실·냉각실 문은 <c>z</c> 평면이라
+        /// <c>x</c> 로 비교하던 옛 식은 두 문에서 언제나 같은 답을 낸다.
         /// </summary>
-        public LastShiftDistressReading DistressBeyondOpening(int opening, float viewerX)
+        public LastShiftDistressReading DistressBeyondDoor(int boundary, Vector3 viewer)
         {
-            var beyondX = viewerX <= LastShiftShipDimensions.OpeningX(opening)
-                ? LastShiftShipDimensions.SpaceCenterXAfter(opening)
-                : LastShiftShipDimensions.SpaceCenterXBefore(opening);
-            return DistressOf(LastShiftZoneAtlas.Resolve(new Vector3(beyondX, 0f, 0f)));
+            var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+            var room = LastShiftPlazaLayout.Of(LastShiftPlazaLayout.RoomOf(LastShiftZoneAtlas.HighZoneOf(boundary)));
+            var roomCenter = new Vector3((room.MinX + room.MaxX) * 0.5f, 0f, (room.MinZ + room.MaxZ) * 0.5f);
+
+            var through = door.PlaneIsX ? viewer.x : viewer.z;
+            var roomThrough = door.PlaneIsX ? roomCenter.x : roomCenter.z;
+
+            // 보는 사람이 방과 같은 쪽이면 "너머" 는 광장이다. 광장 중심은 원점이고, 거기
+            // 코어가 서 있어도 상관없다 — 구역 소속만 묻는 좌표다.
+            var viewerIsInRoom = (through - door.Plane) * (roomThrough - door.Plane) > 0f;
+            return DistressOf(LastShiftZoneAtlas.Resolve(viewerIsInRoom ? Vector3.zero : roomCenter));
         }
 
         /// <summary>
-        /// 개구부에 붙은 <b>게이지가 실제로 표시하는</b> 판독값. 게이지는 통로 쪽 한 면에만
-        /// 달리므로 보는 사람이 어디에 있든 값이 같다.
+        /// 압력문 게이지가 <b>실제로 표시하는</b> 판독값. 게이지는 문 너머 방 안쪽 끝벽에
+        /// 달리므로(§4.1) 광장에서 보든 방에서 보든 값이 같고, 그 값은 언제나 <b>문 너머
+        /// 구역</b>이다.
         ///
-        /// <see cref="DistressBeyondOpening"/> 를 단면화하지 않고 접근자를 따로 두는 이유는
-        /// <b>두 가지 "양쪽이 같음" 이 성질이 다르기 때문</b>이다. 개구부 0·3 이 양쪽에서 같은
-        /// 값을 내는 것은 방과 통로가 같은 구역이라는 <b>기하 사실</b>이고, 개구부 1·2 가 한 값을
-        /// 내는 것은 게이지를 한쪽에만 달기로 한 <b>배치 결정</b>이다. 한 함수로 합치면 배치가
-        /// 바뀔 때 둘 중 하나만 움직여야 하는데 어느 쪽이 움직여야 하는지가 코드에서 사라진다.
-        ///
-        /// 그래서 이 접근자는 방향을 스스로 정하지 않고 <see cref="LastShiftShipDimensions.GaugeViewerX"/>
-        /// 에 묻는다 — "엔진실" 을 값으로 박아 두면 통로가 늘거나 게이지가 옮겨갈 때 조용히 틀린다.
+        /// <see cref="DistressBeyondDoor"/> 를 단면화하지 않고 접근자를 따로 두는 이유는
+        /// <b>두 가지 "양쪽이 같음" 이 성질이 다르기 때문</b>이다. 문 없는 개구부(조종석)가
+        /// 양쪽에서 같은 값을 내는 것은 광장과 조종석 방이 같은 구역이라는 <b>기하 사실</b>이고,
+        /// 압력문이 한 값을 내는 것은 게이지를 방 끝벽에 달기로 한 <b>배치 결정</b>이다
+        /// (<c>SIMUL_ZONES ≤ 2</c> 의 장치 1). 한 함수로 합치면 배치가 바뀔 때 둘 중 하나만
+        /// 움직여야 하는데 어느 쪽이 움직여야 하는지가 코드에서 사라진다.
         /// </summary>
-        public LastShiftDistressReading GaugeReading(int opening)
-        {
-            return DistressBeyondOpening(opening, LastShiftShipDimensions.GaugeViewerX(opening));
-        }
+        public LastShiftDistressReading GaugeReading(int boundary) =>
+            DistressOf(LastShiftZoneAtlas.HighZoneOf(boundary));
 
         /// <summary>
         /// 이 구역에서 아직 억제되지 않은 손상 계통 중 가장 진행한 시계. 손상이 없으면 음수다.

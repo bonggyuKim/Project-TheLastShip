@@ -52,163 +52,118 @@ namespace DoodleUp.Tests.EditMode
         private const float AttachedVolumeRatioRatchet = 3.6f;
 
         private const float Tolerance = 0.01f;
-
         [Test]
-        public void AttachedCompartmentsKeepEveryZoneTraverseUnderTheLimit()
+        public void TheWorstEgressIsTheCockpitZoneAndItStaysWhereThePlazaPutIt()
         {
-            var worst = WorstTraversePerZone();
-
-            foreach (var (zone, meters, source) in worst)
+            // §9.4 재래칫. <b>최악 구역이 산소실에서 조종석으로 옮겨왔다</b> — 조종석 구역이
+            // 광장·조종석 방·에어록 홀·숙소 넷의 합집합이라 자기 문을 지나 광장을 가로지르는
+            // 사슬이 유일하게 여기만 남았고, 나머지 셋은 단칸이라 자기 문이 곧 이탈구다.
+            var worst = LastShiftZone.Cockpit;
+            var worstMeters = 0f;
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
             {
-                var seconds = EgressSeconds(meters);
-                Assert.That(seconds, Is.LessThan(TraverseLimitSeconds),
-                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 최장 이탈 {seconds:F2}초 — 가드레일 {TraverseLimitSeconds}초 초과. " +
-                    $"최악 출발점은 {source} 다. RG-1 을 다시 계산해야 한다(docs/core-four-rooms-and-hull-schematic-v1.md §5).");
-            }
-        }
-
-        [Test]
-        public void TheWorstTraverseIsTheQuartersAndItStaysWhereM2PutIt()
-        {
-            // <b>최악이 조종석에서 산소실로 옮겨갔다.</b> 조종석 쪽에 붙어 있던 사슬 넷이
-            // 통째로 빠지면서 그 구역의 최악이 "구역 자체의 x 길이 14m" 로 내려앉았고,
-            // 유일하게 남은 부속 방(숙소)이 산소실 끝벽에 붙어 있다.
-            var worst = WorstTraversePerZone();
-            var thinnestZone = (LastShiftZone)0;
-            var longestMeters = 0f;
-            foreach (var (zone, meters, _) in worst)
-                if (meters > longestMeters) (thinnestZone, longestMeters) = (zone, meters);
-
-            Assert.That(thinnestZone, Is.EqualTo(LastShiftZone.LifeSupport),
-                "최장 이탈 최악이 산소실이 아니다 — 고정 표에 방이 하나 더 붙었거나 숙소가 옮겨갔다.");
-            Assert.That(longestMeters, Is.EqualTo(19.00f).Within(Tolerance),
-                "산소실 구역 최장 이탈 거리가 19.00m 에서 움직였다. 숙소 먼 구석 → 자기 문 5.00m 에 " +
-                "선미 끝벽 → 구역 경계 14.00m 를 더한 값이다(조항 S-2).");
-            Assert.That(EgressSeconds(longestMeters), Is.EqualTo(5.55f).Within(Tolerance),
-                "RG-1(1) 판정값이 5.55초에서 움직였다. 한도 10초까지 남은 보행 거리는 17.80m 다 — " +
-                "여유가 1.18배에서 1.79배로 늘었고, 그 여유를 쓰는 것은 이제 플레이어의 배치다.");
-
-            // 조종석 구역에는 이제 붙은 방이 하나도 없다. 최악이 구역 자체라는 것이
-            // "배가 실제로 비어서 출항한다"(§8 M-2 확인 항목)의 코드 쪽 증거다.
-            foreach (var (zone, meters, source) in worst)
-            {
-                if (zone != LastShiftZone.Cockpit) continue;
-                Assert.That(source, Is.EqualTo("구역 자체"),
-                    $"조종석 구역 최악이 {source} 다 — 선수 쪽에 방이 다시 붙었다.");
-                Assert.That(meters,
-                    Is.EqualTo(LastShiftShipDimensions.ZoneLength(LastShiftZone.Cockpit)).Within(Tolerance));
-            }
-        }
-
-        [Test]
-        public void PressureZoneVolumeRatioStaysUnderThree()
-        {
-            // 압력 스파인은 M-2 대상이 아니다(조항 S-1) — 이 값은 개편 전후로 안 움직인다.
-            var min = float.MaxValue;
-            var max = 0f;
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-            {
-                var length = LastShiftShipDimensions.ZoneLength(zone);
-                min = Mathf.Min(min, length);
-                max = Mathf.Max(max, length);
+                var meters = LastShiftPlazaLayout.WorstEgressMeters((LastShiftZone)zone);
+                if (meters <= worstMeters) continue;
+                worstMeters = meters;
+                worst = (LastShiftZone)zone;
             }
 
-            Assert.That(max / min, Is.LessThanOrEqualTo(VolumeRatioLimit),
-                "RG-1(3) 위반 — EQUALIZE_RATE 를 부피 가중으로 재검토해야 한다.");
-            Assert.That(max / min, Is.EqualTo(2.80f).Within(Tolerance),
-                "여유가 1.07배뿐이다. 조종석·산소실이 1m 만 커져도 3.00배로 즉시 위반이다.");
+            Assert.That(worst, Is.EqualTo(LastShiftZone.Cockpit),
+                "최악 이탈이 조종석 구역이 아니다 — 사슬 깊이가 1 인 방에 경유가 생겼다.");
+            Assert.That(worstMeters, Is.EqualTo(17.03f).Within(0.01f),
+                "최악 이탈 거리가 17.03m 에서 움직였다(§9.4). 조종석 방 선수 구석 → 개구부 → " +
+                "전력실 문이 그 경로다.");
+            Assert.That(EgressSeconds(worstMeters), Is.EqualTo(5.06f).Within(0.01f),
+                "RG-1(1) 판정값이 5.06초에서 움직였다. 한도 10초까지 남은 여유가 4.94초다.");
+            Assert.That(EgressSeconds(worstMeters),
+                Is.LessThanOrEqualTo(LastShiftPlacementRules.TraverseLimitSeconds));
         }
 
         [Test]
-        public void AttachedVolumeRatioDoesNotGrowFurther()
+        public void SingleRoomZonesEgressThroughTheirOwnDoor()
         {
-            var ratio = AttachedVolumeRatio();
-
-            Assert.That(ratio, Is.LessThanOrEqualTo(AttachedVolumeRatioRatchet),
-                $"부속 구획을 포함한 실 기밀 체적비가 {ratio:F2}배로 M-2 실측(3.55배)보다 벌어졌다. " +
-                "판정값(가드레일 3)은 압력존 x 길이비라 이것만으로 위반은 아니지만, 고정 표에 " +
-                "방이 되돌아왔다는 뜻이므로 이관 결정 자체를 다시 봐야 한다.");
-            Assert.That(ratio, Is.EqualTo(3.55f).Within(Tolerance),
-                "M-2 실측 3.55배에서 움직였다 — 숙소 발자국이나 붙는 구역이 바뀌었다.");
-        }
-
-        [Test]
-        public void TheOnlyAttachedVolumeIsOnTheLifeSupportSide()
-        {
-            // 조종석 쪽 부속이 0 이라는 것이 §5.4 표의 셋째 줄이다. 이게 깨지면 위 비율이
-            // 3.55 에서 왜 움직였는지가 안 갈린다 — 숙소가 커진 것인지 새 방이 붙은 것인지.
-            var attached = new float[LastShiftZoneAtlas.ZoneCount];
-            foreach (var spec in LastShiftCompartments.FixedSpecs)
-                attached[(int)LastShiftZoneAtlas.Resolve(spec.DoorPosition)] +=
-                    spec.LengthX * spec.WidthZ;
-
-            Assert.That(attached[(int)LastShiftZone.Cockpit], Is.Zero,
-                "조종석 구역에 붙은 고정 방이 있다 — 선수 사슬이 통째로 이관됐어야 한다.");
-            Assert.That(attached[(int)LastShiftZone.LifeSupport], Is.EqualTo(24f).Within(Tolerance),
-                "산소실 쪽 부속 발자국이 숙소 24m2 가 아니다.");
-        }
-
-        [Test]
-        public void LongestPairInAZoneStaysWhereItIs()
-        {
-            // W-1 "구역 내 최장 동선" — 같은 구역 안 두 점 사이 최장 거리.
-            // <b>RG-1 판정 대상이 아니다. 래칫만 둔다</b>(측정법 v1.1 §2.4).
-            //
-            // <b>시작 배 값이 급락했다</b>(§5.5). 부속이 숙소 하나뿐이라 "같은 구역에 붙은 배치
-            // 둘" 이라는 쌍 자체가 없고, 남는 후보는 구역 x 길이와 숙소 이탈값뿐이다.
-            //
-            // <b>그래서 이 래칫은 이제 상한이 아니라 바닥이다.</b> W-1 을 실제로 밀어 올리는
-            // 것은 플레이어의 배치이고(§5.5), 그 상한은 game-balance 몫으로 열려 있다(B-3).
-            // 여기서 지키는 것은 "시작 배가 이 값에서 안 움직인다" 하나다.
+            // §9.4 의 구역별 표. <b>전력실·냉각실 5.83m 는 §6.1 표에 없던 값이다</b> — 단칸
+            // 구역은 자기 문이 곧 이탈구라 광장을 안 지난다. 문이 광장 변에서 떨어지는 순간
+            // 이 값이 두 배로 뛰므로, 여기가 "직결" 을 수치로 지키는 자리다.
             var expected = new (LastShiftZone Zone, float Meters)[]
             {
-                (LastShiftZone.Cockpit, 14.00f),      // 붙은 방이 없다 — 구역 x 길이 그 자체다
-                (LastShiftZone.LifeSupport, 19.00f)   // 숙소 안쪽 구석 → 구역 끝. 이탈 읽기와 같은 지점이다
+                (LastShiftZone.Power, 5.83f),
+                (LastShiftZone.Cooling, 5.83f),
+                (LastShiftZone.LifeSupport, 8.54f)
             };
 
-            var pairs = LongestPairPerZone();
             foreach (var (zone, meters) in expected)
-                Assert.That(pairs[(int)zone], Is.EqualTo(meters).Within(Tolerance),
-                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} 구역 내 최장 동선(W-1)이 " +
-                    $"{pairs[(int)zone]:F2}m 다. 래칫 {meters:F2}m 에서 움직였다. 이건 RG-1 위반이 " +
-                    "아니라 분기 신호다 — 측정법 §2.4 로 가서 (a) 쌍의 양 끝 중 하나라도 RG-1(2) " +
-                    "복구 항목표에 등장하는 구획이면 (2) 최악 복구 경로를 다시 뽑고, (b) 둘 다 " +
-                    "항목표 밖이면 래칫만 여기서 갱신한다.");
+                Assert.That(LastShiftPlazaLayout.WorstEgressMeters(zone), Is.EqualTo(meters).Within(0.01f),
+                    $"{zone} 최악 이탈이 {meters:F2}m 에서 움직였다 — 방이 커졌거나 문이 광장 변에서 떨어졌다.");
         }
 
-        /// <summary>
-        /// 부속 구획을 포함한 실 기밀 체적의 최대/최소비. 통로는 구역 x 범위에 이미 들어 있지만
-        /// 폭이 좁다 — 여기서는 구역 전 길이를 선체 폭으로 재는 상한 근사를 쓴다.
-        ///
-        /// <b><c>includeUnlockable</c> 매개변수가 빠졌다.</b> 잠긴 구획이 <c>0</c> 개라
-        /// (조항 K-2) 열고 닫을 상태가 없다.
-        /// </summary>
-        private static float AttachedVolumeRatio()
+        [Test]
+        public void StaticFootprintRatioStaysWellUnderThree()
         {
-            var hull = new float[LastShiftZoneAtlas.ZoneCount];
-            for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                hull[(int)zone] = LastShiftShipDimensions.ZoneLength(zone)
-                                  * LastShiftShipDimensions.InteriorWidth
-                                  * LastShiftShipPhysics.CeilingInnerHeight;
-
-            foreach (var spec in LastShiftCompartments.Specs)
+            // RG-1(3) 정적 발자국 기준. §9.4 실측 <c>1.60배</c>(<c>48 / 30</c>) —
+            // 조종석 방 <c>8x6 = 48</c>, 전력실·냉각실 <c>6x5 = 30</c>.
+            //
+            // <b>부피가 아니라 발자국이다.</b> 방사형에서 구역을 x 밴드 길이로 재던 옛 척도는
+            // 뜻을 잃었다 — 조종석 구역이 x 로 23m 를 걸치지만 그중 대부분이 다른 방이다.
+            var min = float.MaxValue;
+            var max = 0f;
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
             {
-                if (!spec.IsPassable) continue;
-                var zone = LastShiftZoneAtlas.Resolve(spec.DoorPosition);
-                hull[(int)zone] += spec.LengthX * spec.WidthZ * LastShiftCompartments.InteriorHeight;
+                if (footprint.Space == LastShiftPlazaSpace.Plaza) continue;
+                if (footprint.Zone == LastShiftZone.Cockpit &&
+                    footprint.Space != LastShiftPlazaSpace.CockpitRoom) continue;
+                min = Mathf.Min(min, footprint.Area);
+                max = Mathf.Max(max, footprint.Area);
             }
+
+            Assert.That(max / min, Is.EqualTo(1.60f).Within(0.01f),
+                "정적 발자국비가 1.60배에서 움직였다(§9.4).");
+            Assert.That(max / min, Is.LessThanOrEqualTo(3f),
+                "RG-1(3) 위반 — EQUALIZE_RATE 를 부피 가중으로 재검토해야 한다.");
+        }
+
+        [Test]
+        public void RealAirtightVolumeRatioIsRatchetedNotBounded()
+        {
+            // §9.4 실측 <c>8.80배</c>(<c>264 / 30</c>). <b>한도가 아니라 래칫이다</b> —
+            // 조종석 구역이 넷의 합집합이라 실 기밀 체적으로 재면 <c>3배</c>를 훌쩍 넘고,
+            // 그것이 §3.3 이 적어 둔 회피다. 이 값을 상한으로 걸면 배치가 성립하지 않으므로,
+            // 여기서는 <b>더 벌어지지 않는지</b>만 지킨다. 닫는 것은 <c>B-2</c> 몫이다.
+            // §9.4 의 <c>264 / 30</c> 은 발자국 <b>면적</b> 합이다 — 천장을 곱하면
+            // 본선 3.2 / 부속 3.0 이 섞여 조종석 구역만 살짝 낮아지고(8.65) 문서 값과 갈린다.
+            var byZone = new float[LastShiftZoneAtlas.ZoneCount];
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
+                byZone[(int)footprint.Zone] += footprint.Area;
 
             var min = float.MaxValue;
             var max = 0f;
-            foreach (var volume in hull)
+            foreach (var volume in byZone)
             {
                 min = Mathf.Min(min, volume);
                 max = Mathf.Max(max, volume);
             }
 
-            return max / min;
+            var ratio = max / min;
+            Assert.That(ratio, Is.EqualTo(8.80f).Within(0.05f),
+                $"실 기밀 체적비가 {ratio:F2}배로 §9.4 실측 8.80배에서 움직였다. 방이 커졌거나 " +
+                "구역 소속이 바뀌었다는 뜻이므로 §3.3 회피의 크기를 다시 봐야 한다.");
+            Assert.That(ratio, Is.LessThanOrEqualTo(AttachedVolumeRatioRatchet),
+                "실 기밀 체적비가 래칫 위로 벌어졌다 — B-2 가 닫기 전에 더 벌리지 않는다.");
         }
 
+        [Test]
+        public void EveryZoneStaysUnderTheEgressLimit()
+        {
+            // 구역 넷 전부가 RG-1(1) 한도 안이어야 한다. 최악 하나만 보면 새로 생긴 구역이
+            // 조용히 한도를 넘어도 안 보인다.
+            for (var zone = 0; zone < LastShiftZoneAtlas.ZoneCount; zone++)
+            {
+                var meters = LastShiftPlazaLayout.WorstEgressMeters((LastShiftZone)zone);
+                Assert.That(EgressSeconds(meters),
+                    Is.LessThanOrEqualTo(LastShiftPlacementRules.TraverseLimitSeconds),
+                    $"{(LastShiftZone)zone} 이탈이 한도를 넘는다 — {meters:F2}m.");
+            }
+        }
         [Test]
         public void NoItemNominalSitsInsideACompartment()
         {

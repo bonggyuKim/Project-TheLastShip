@@ -41,28 +41,23 @@ namespace DoodleUp.Runtime
         public const float PanelFaceOffset = 0.13f;
 
         /// <summary>
-        /// 경계에 문이 달리는 개구부 번호. 배치는
-        /// 조종석 |0| 통로A |1| 전력실 |2| 냉각실 |3| 통로B |4| 산소실 이고, 압력 경계 셋을
-        /// 넘는 자리가 각각 개구부 1·2·3 이다. 즉 <c>boundary + 1</c> 이다.
+        /// 이 경계의 광장 문. 판·문틀·인방·차단 콜라이더·조작 사거리가 전부 여기서 나온다.
         ///
-        /// 매핑을 여기 한 줄로 두는 이유는 개구부 중심 z 가 다섯 다 다르기 때문이다. 판·문틀·
-        /// 인방·차단 콜라이더·조작 사거리가 전부 이 값에서 나오므로, 어느 개구부에 문이 붙는지가
-        /// 여러 자리에 흩어지면 그중 하나만 옛 번호를 보고 구멍에서 어긋난다.
-        ///
-        /// <b>3구역 시절 식이 그대로 남아 있었다</b> — <c>boundary &lt;= 0 ? 1 : 2</c> 는 경계가
-        /// 둘일 때 맞는 값이고, 경계가 셋이 되면서 boundary 2 가 개구부 3 이 아니라 2 를
-        /// 가리켰다. 그 결과 냉각실|산소실 벌크헤드(x=+5)의 구멍이 통로 B 반대편(+z)에
-        /// 뚫려서, 통로 B(-z)로 걸어가면 벽만 있었다. 사용자 플레이에서 "냉각실에서 산소실로
-        /// 가는 길이 막혔다" 로 잡힌 것이 이것이다.
+        /// <b>평면 축이 문마다 다르다.</b> 전력실 문은 <c>z = -6</c>, 냉각실 문은 <c>z = +6</c>,
+        /// 산소실 문만 <c>x = +6</c> 이다 — 일자 스파인에서 셋 다 <c>x</c> 평면이던 전제가
+        /// 방사형에서 깨졌다. 씬 빌더는 <c>z</c> 평면 문을 <b>yaw 90°</b> 로 세워 이 컴포넌트의
+        /// 로컬 계산(판이 로컬 <c>z</c> 로 물러난다)이 축과 무관하게 그대로 성립하게 한다.
         /// </summary>
-        public static int OpeningIndexOf(int boundary) => boundary + 1;
+        public static LastShiftPlazaDoor DoorOf(int boundary) => LastShiftZoneAtlas.BoundaryDoor(boundary);
 
-        /// <summary>이 문이 덮는 개구부의 중심 z. 더 이상 0 이 아니다.</summary>
-        public static float CenterZOf(int boundary) =>
-            LastShiftShipDimensions.OpeningCenterZ(OpeningIndexOf(boundary));
+        /// <summary>이 문이 덮는 구멍의 <b>평면 위</b> 중심. 평면이 x 면 z 값이고, 아니면 x 값이다.</summary>
+        public static float CenterOf(int boundary) => DoorOf(boundary).Center;
 
-        /// <summary>이 문이 덮는 개구부의 중심 z.</summary>
-        public float CenterZ => CenterZOf(boundary);
+        /// <summary>이 문이 덮는 구멍의 평면 위 중심.</summary>
+        public float Center => CenterOf(boundary);
+
+        /// <summary>문 중심의 평면 좌표. 씬 배치와 조작 대상 판정이 같은 점을 봐야 한다.</summary>
+        public Vector2 Waypoint => DoorOf(boundary).Waypoint;
 
         [SerializeField] private int boundary;
         [SerializeField] private Transform panelFore;
@@ -161,15 +156,21 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 조작 사거리. 경계면에서 x 로 떨어진 거리와 문 앞 z 폭으로만 본다. 안팎을 구분하지
-        /// 않는 것이 요점이다 — 격리는 걸어 잠그는 쪽에서만 풀 수 있으면 안 된다. 갇힌 쪽에서
-        /// 열 수 없으면 그건 격리가 아니라 사형이고, 문서가 격리를 "되돌리기 가능" 으로 둔 이유다.
+        /// 조작 사거리. 문 평면에서 <b>법선 방향</b>으로 떨어진 거리와 평면 위 폭으로 본다.
+        /// 안팎을 구분하지 않는 것이 요점이다 — 격리는 걸어 잠그는 쪽에서만 풀 수 있으면 안
+        /// 된다. 갇힌 쪽에서 열 수 없으면 그건 격리가 아니라 사형이고, 문서가 격리를
+        /// "되돌리기 가능" 으로 둔 이유다.
+        ///
+        /// <b>축을 문에서 뽑는다.</b> <c>x</c> 로 고정해 두면 <c>z</c> 평면에 선 전력실·냉각실
+        /// 문이 광장 어디에서나 사거리 안으로 판정되고, 두 문이 서로의 프롬프트를 가로챈다.
         /// </summary>
         public bool IsWithinReach(Vector3 position)
         {
-            var boundaryX = LastShiftZoneAtlas.BoundaryX(boundary);
-            return Mathf.Abs(position.x - boundaryX) <= ReachDistance &&
-                   Mathf.Abs(position.z - CenterZ) <= OpeningWidth * 0.5f + 1.0f;
+            var door = DoorOf(boundary);
+            var through = door.PlaneIsX ? position.x : position.z;
+            var free = door.PlaneIsX ? position.z : position.x;
+            return Mathf.Abs(through - door.Plane) <= ReachDistance &&
+                   Mathf.Abs(free - door.Center) <= OpeningWidth * 0.5f + 1.0f;
         }
 
         /// <summary>문 앞이라고 인정하는 x 거리. 잡기 사거리(2.2)보다 짧게 두어 대상이 겹치지 않는다.</summary>
@@ -208,7 +209,7 @@ namespace DoodleUp.Runtime
             foreach (var door in doors)
             {
                 if (door == null || !door.IsWithinReach(position)) continue;
-                var distance = Mathf.Abs(position.x - LastShiftZoneAtlas.BoundaryX(door.boundary));
+                var distance = LastShiftZoneAtlas.DistanceToBoundaryPlane(door.boundary, position);
                 if (distance >= bestDistance) continue;
                 best = door;
                 bestDistance = distance;
