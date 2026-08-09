@@ -8,13 +8,16 @@ namespace DoodleUp.Runtime
     /// 판정기가 보는 배치 하나. <see cref="LastShiftCompartmentSpec"/> 에서 <b>재는 데 쓰이는 것만</b>
     /// 남긴 형태다 — 발자국 넷, 문 하나, 부모 하나, 통행 여부.
     ///
-    /// <b>왜 <c>LastShiftCompartmentSpec</c> 을 그대로 안 쓰는가.</b> RG-1 을 재는 코드가 지금 두 벌
-    /// 있고(<c>LastShiftRg1GuardrailTests</c>·<c>LastShiftPlazaRg1Tests</c>), 한쪽은 정본 구획표를,
-    /// 다른 쪽은 도안 제안표(<c>LastShiftPlazaProposal.Footprint</c>)를 잰다. 두 표는 부모를 가리키는
-    /// 방법조차 다르다(인덱스 대 이름). 판정기를 어느 한쪽 자료형에 묶으면 나머지 한쪽은 사본을
-    /// 계속 들고 있어야 하고, 자유 배치가 붙으면 <b>세 번째 사본</b>이 생긴다.
+    /// <b>왜 <c>LastShiftCompartmentSpec</c> 을 그대로 안 쓰는가.</b> RG-1 을 재는 표가 하나가 아니다.
+    /// 정본 구획표(<c>LastShiftRg1GuardrailTests</c>)와 확정 배치표
+    /// (<see cref="LastShiftPlazaLayout"/>)가 부모를 가리키는 방법조차 다르고(인덱스 대 광장 변),
+    /// 판정기를 어느 한쪽 자료형에 묶으면 나머지는 사본을 계속 들고 있어야 한다. 자유 배치가
+    /// 붙으면 <b>세 번째 사본</b>이 생긴다.
     ///
-    /// 그래서 자를 표에서 떼어낸다. 표 셋이 각자 이 형태로 옮겨 담고, 재는 것은 하나다.
+    /// 그래서 자를 표에서 떼어낸다. 표가 각자 이 형태로 옮겨 담고, 재는 것은 하나다.
+    ///
+    /// <b>폐기된 <c>LastShiftPlazaProposal</c> 이 세 번째 표였다.</b> 중앙 광장 확정안 §3.4 가 그
+    /// 좌표 체계(통로 A/B·배플·개구부 다섯)를 폐지하면서 표와 그 검사 둘이 같이 나갔다.
     /// </summary>
     public readonly struct LastShiftPlacement
     {
