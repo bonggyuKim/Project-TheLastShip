@@ -65,6 +65,10 @@ namespace DoodleUp.Editor
             sandbox.gameObject.AddComponent<NetworkObject>();
             sandbox.gameObject.AddComponent<LastShiftNetworkSandbox>().Configure(sandbox);
 
+            // 자유 배치 복제. 샌드박스와 같은 NetworkObject 에 붙는다 — 판 안 상태와 판 밖
+            // 배치는 같은 세션의 두 장부이고, 오브젝트를 따로 두면 둘의 스폰 순서가 갈린다.
+            sandbox.gameObject.AddComponent<LastShiftNetworkPlacement>();
+
             // 기항 배치 화면. 팔레트는 아직 자산이 없어 비워 두고, 그러면 조립기가 그레이박스로
             // 세운다(LastShiftModuleAssembler). 아트 모듈 프리팹이 들어오면 여기 물린다.
             runtime.AddComponent<LastShiftPlacementUi>().Configure(ship.transform, null);

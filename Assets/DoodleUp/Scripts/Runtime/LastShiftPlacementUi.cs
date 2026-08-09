@@ -23,7 +23,10 @@ namespace DoodleUp.Runtime
         /// <summary>씬에 선 배 프리팹 인스턴스의 이름. 조립기와 절단기가 받는 뿌리다.</summary>
         public const string DefaultShipRootName = "LastShiftShipGraybox";
 
-        /// <summary>단일 클라이언트에서 쓰는 주인 번호. 네트워크가 붙으면 <c>OwnerClientId</c> 가 이 자리다.</summary>
+        /// <summary>
+        /// 세션이 없을 때 쓰는 주인 번호. 네트워크가 붙으면 <see cref="ClientId"/> 가
+        /// <c>NetworkManager.LocalClientId</c> 를 돌려준다.
+        /// </summary>
         public const int LocalClientId = 0;
 
         [Tooltip("선체 판과 구획 루트를 담은 칸. 비면 이름으로 찾는다.")]
@@ -42,6 +45,10 @@ namespace DoodleUp.Runtime
         private readonly LastShiftPlacementCursor cursor = new();
 
         private bool open;
+
+        /// <summary>커서를 서버에 청구해 두고 승낙을 기다리는 중인가.</summary>
+        private bool awaitingCursor;
+
         private GameObject preview;
         private Material previewMaterial;
         private string lastResult = string.Empty;
@@ -51,6 +58,33 @@ namespace DoodleUp.Runtime
 
         /// <summary>지금 배치 화면이 열려 있는가.</summary>
         public bool IsOpen => open;
+
+        /// <summary>
+        /// 배치 세션이 붙어 있는가. 아니면 이 화면은 예전과 한 글자도 다르지 않게 혼자 돈다 —
+        /// EditMode 배치 테스트와 배치만 세운 검증 씬이 그 경로다.
+        /// </summary>
+        private static LastShiftNetworkPlacement Network
+        {
+            get
+            {
+                var active = LastShiftNetworkPlacement.Active;
+                return active != null && active.IsSpawned ? active : null;
+            }
+        }
+
+        /// <summary>
+        /// 이 화면이 쓰는 주인 번호. 세션이 있으면 <c>NetworkManager.LocalClientId</c> 다 —
+        /// 전부 <see cref="LocalClientId"/> 를 쓰면 커서 주인이 언제나 <c>0</c> 이라
+        /// <b>둘째 클라이언트가 호스트의 커서를 자기 것으로 읽는다.</b>
+        /// </summary>
+        public static int ClientId
+        {
+            get
+            {
+                var network = Network;
+                return network != null ? (int)network.NetworkManager.LocalClientId : LocalClientId;
+            }
+        }
 
         /// <summary>화면이 들고 있는 커서. 테스트와 기항 화면이 같은 물건을 봐야 한다.</summary>
         public LastShiftPlacementCursor Cursor => cursor;
@@ -105,7 +139,22 @@ namespace DoodleUp.Runtime
         public bool Open()
         {
             if (open) return true;
-            if (!LastShiftPlacementAuthority.TryClaim(LocalClientId))
+
+            var network = Network;
+            if (network != null)
+            {
+                // 커서는 서버가 나눠 준다. 호스트에서는 이 요청이 그 자리에서 서버 몸통을
+                // 돌므로 아래 검사가 곧바로 참이 되고, 원격 클라이언트는 승낙이 복제로
+                // 돌아오는 프레임에 열린다(<see cref="OpenWhenCursorGranted"/>).
+                if (!LastShiftPlacementAuthority.IsHeldBy(ClientId)) network.RequestClaimCursorRpc();
+                if (!LastShiftPlacementAuthority.IsHeldBy(ClientId))
+                {
+                    awaitingCursor = true;
+                    lastResult = "배치 권한을 기다린다";
+                    return false;
+                }
+            }
+            else if (!LastShiftPlacementAuthority.TryClaim(ClientId))
             {
                 lastResult = "다른 승무원이 배치 중이다";
                 return false;
@@ -113,9 +162,39 @@ namespace DoodleUp.Runtime
 
             EnterPortWhenNoVoyageDrivesIt();
 
+            awaitingCursor = false;
             open = true;
             lastResult = string.Empty;
             return true;
+        }
+
+        /// <summary>
+        /// 청구해 둔 커서가 넘어왔으면 그때 연다. <b>화면을 미리 열어 두지 않는 것이 의도다</b> —
+        /// 열어 두고 나중에 거부되면 그 사이에 누른 확정이 전부 조용히 버려지고, 화면에는
+        /// 아무 일도 안 일어난 것으로 보인다.
+        /// </summary>
+        private void OpenWhenCursorGranted()
+        {
+            if (!awaitingCursor || open) return;
+            if (!LastShiftPlacementAuthority.IsHeldBy(ClientId)) return;
+
+            awaitingCursor = false;
+            Open();
+        }
+
+        /// <summary>
+        /// 서버가 커서를 거둬 갔으면 화면을 닫는다. 접속이 끊긴 사람의 커서를 호스트가 푸는
+        /// 경로(<see cref="LastShiftPlacementAuthority.Revoke"/>)가 그것이고, 재접속 뒤 예전
+        /// 화면이 열린 채 남아 있으면 <b>서버가 남에게 넘긴 커서로 확정을 계속 누르게 된다.</b>
+        /// </summary>
+        private void CloseWhenCursorRevoked()
+        {
+            if (!open || Network == null) return;
+            if (LastShiftPlacementAuthority.IsHeldBy(ClientId)) return;
+
+            open = false;
+            DestroyPreview();
+            lastResult = "배치 권한을 잃었다";
         }
 
         /// <summary>
@@ -134,6 +213,10 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void EnterPortWhenNoVoyageDrivesIt()
         {
+            // 원장을 만지는 것은 서버뿐이다. 클라이언트가 여기서 기항을 하나 열면 그 잔액은
+            // 다음 복제에 덮여 사라지고, 그 사이에 누른 확정만 서버에서 여력 부족으로 물린다.
+            var network = Network;
+            if (network != null && !network.IsServer) return;
             if (LastShiftVoyage.IsRunning || LastShiftMaintenance.IsAtPort) return;
 
             LastShiftMaintenance.ArriveAtPort(sandboxLatches);
@@ -141,10 +224,13 @@ namespace DoodleUp.Runtime
 
         public void Close()
         {
+            awaitingCursor = false;
             if (!open) return;
 
             open = false;
-            LastShiftPlacementAuthority.Release(LocalClientId);
+            var network = Network;
+            if (network != null) network.RequestReleaseCursorRpc();
+            else LastShiftPlacementAuthority.Release(ClientId);
             DestroyPreview();
         }
 
@@ -157,28 +243,25 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool Confirm()
         {
-            var cost = cursor.Kind.MaintenanceCost;
-            if (!LastShiftMaintenance.CanAfford(cost))
+            var network = Network;
+            if (network == null)
             {
-                lastResult = $"여력이 모자란다 — {cursor.Kind.Name} {cost} · 잔액 {LastShiftMaintenance.Balance}";
-                return false;
+                LastShiftPlacementCommands.TryPlace(cursor, out var local);
+                return ApplyPlaceOutcome(local);
             }
 
-            if (!cursor.TryCommit(out var index, out var verdict))
-            {
-                lastResult = Reason(verdict, cursor.Faults);
-                return false;
-            }
+            // 서버(호스트 포함)는 자기 몸통을 그 자리에서 부른다 — 원격 클라이언트와 같은 문이라
+            // 커서 소유 검사가 호스트에서만 빠지는 일이 없다.
+            if (network.IsServer)
+                return ApplyPlaceOutcome(network.ServerPlace(
+                    (ulong)ClientId, cursor.CatalogIndex, cursor.QuarterTurns,
+                    cursor.Anchor.x, cursor.Anchor.z, cursor.ParentIndex, cursor.AutoParent));
 
-            // 표에 들어간 것을 보고 나서 문다. 순서를 뒤집으면 판정에 걸린 배치가 여력만 태운다.
-            LastShiftMaintenance.TryChargeModule(index - LastShiftCompartments.FixedCount, cursor.CatalogIndex, cost);
-
-            var report = Rebuild();
-            lastResult = $"배치 확정 #{index} · 여력 -{cost} → 잔액 {LastShiftMaintenance.Balance} · " +
-                         $"구역 {verdict.Zone} · 깊이 {verdict.DoorDepth} · " +
-                         $"이탈 {verdict.EgressSeconds:0.0}s · 문 {report.Cut}/{report.Doorways}" +
-                         (report.Missing > 0 ? $" · 벽 못 찾음 {report.Missing}" : string.Empty);
-            return true;
+            network.RequestPlaceModuleRpc(
+                cursor.CatalogIndex, cursor.QuarterTurns,
+                cursor.Anchor.x, cursor.Anchor.z, cursor.ParentIndex, cursor.AutoParent);
+            lastResult = "확정 요청을 보냈다";
+            return false;
         }
 
         /// <summary>
@@ -187,28 +270,77 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool UndoLast()
         {
-            if (LastShiftCompartments.ModuleCount <= 0)
+            var network = Network;
+            if (network == null)
             {
-                lastResult = "뺄 모듈이 없다";
+                LastShiftPlacementCommands.TryRemoveLast(out var local);
+                return ApplyRemoveOutcome(local);
+            }
+
+            if (network.IsServer) return ApplyRemoveOutcome(network.ServerRemoveLast((ulong)ClientId));
+
+            network.RequestRemoveLastModuleRpc();
+            lastResult = "해제 요청을 보냈다";
+            return false;
+        }
+
+        /// <summary>
+        /// 확정 결과를 화면 문구로 옮기고, 통과했으면 배를 다시 세운다.
+        /// <b>서버가 낸 결과와 혼자 도는 결과가 같은 문장을 만든다</b> — 문구를 두 벌로 두면
+        /// 어느 쪽 경로로 들어왔는지가 화면에서 갈린다.
+        /// </summary>
+        private bool ApplyPlaceOutcome(in LastShiftPlacementOutcome outcome)
+        {
+            if (!outcome.Accepted)
+            {
+                lastResult = outcome.Result == LastShiftPlacementCommandResult.Unaffordable
+                    ? $"여력이 모자란다 — {cursor.Kind.Name} {cursor.Kind.MaintenanceCost} · 잔액 {LastShiftMaintenance.Balance}"
+                    : outcome.Message;
                 return false;
             }
 
-            var slot = LastShiftCompartments.ModuleCount - 1;
-            if (!LastShiftCompartments.TryRemove(LastShiftCompartments.Count - 1))
+            var verdict = outcome.Verdict;
+            var report = RebuildShip();
+            lastResult = $"배치 확정 #{outcome.Index} · 여력 -{outcome.Cost} → 잔액 {LastShiftMaintenance.Balance} · " +
+                         $"구역 {verdict.Zone} · 깊이 {verdict.DoorDepth} · " +
+                         $"이탈 {verdict.EgressSeconds:0.0}s · 문 {report.Cut}/{report.Doorways}" +
+                         (report.Missing > 0 ? $" · 벽 못 찾음 {report.Missing}" : string.Empty);
+            return true;
+        }
+
+        private bool ApplyRemoveOutcome(in LastShiftPlacementOutcome outcome)
+        {
+            if (!outcome.Accepted)
             {
-                lastResult = "자식이 달린 모듈은 못 뺀다";
+                lastResult = outcome.Message;
                 return false;
             }
 
-            LastShiftMaintenance.TryRefundModule(slot, out var refunded);
-
-            var report = Rebuild();
-            lastResult = $"모듈 해제 · 여력 +{refunded} → 잔액 {LastShiftMaintenance.Balance} · " +
+            var report = RebuildShip();
+            lastResult = $"모듈 해제 · 여력 +{outcome.Refunded} → 잔액 {LastShiftMaintenance.Balance} · " +
                          $"남은 {LastShiftCompartments.ModuleCount} · 문 {report.Cut}/{report.Doorways}";
             return true;
         }
 
-        private LastShiftBakedDoorwayReport Rebuild()
+        /// <summary>
+        /// 요청자에게 돌아온 서버 판정을 적는다. <b>여기서 표를 안 건드린다</b> — 모듈이 실제로
+        /// 서는 것은 복제가 하는 일이고, 이 회신은 "왜 안 됐는가" 를 적기 위한 것뿐이다.
+        /// </summary>
+        public void ReportNetworkOutcome(in LastShiftPlacementOutcome outcome)
+        {
+            lastResult = outcome.Accepted
+                ? outcome.Refunded > 0
+                    ? $"모듈 해제 · 여력 +{outcome.Refunded}"
+                    : $"배치 확정 #{outcome.Index}"
+                : outcome.Message;
+        }
+
+        /// <summary>
+        /// 표에서 배를 다시 세운다. <b>복제로 표를 받은 클라이언트도 이 문으로 세운다</b>
+        /// (<see cref="LastShiftNetworkPlacement"/>) — 씬 뿌리와 팔레트를 아는 것이 이 화면
+        /// 하나뿐이라, 세우는 문을 하나로 두지 않으면 그 참조를 또 한 곳이 갖게 된다.
+        /// </summary>
+        public LastShiftBakedDoorwayReport RebuildShip()
         {
             if (shipRoot == null) return default;
 
@@ -220,12 +352,15 @@ namespace DoodleUp.Runtime
 
         private void Update()
         {
+            OpenWhenCursorGranted();
+            CloseWhenCursorRevoked();
+
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
 
             if (keyboard[toggleKey].wasPressedThisFrame)
             {
-                if (open) Close();
+                if (open || awaitingCursor) Close();
                 else Open();
             }
 
@@ -366,29 +501,11 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 왜 안 들어가는가. <b>사유를 다 적는다</b> — 하나만 적으면 그걸 고칠 때마다 다음
-        /// 사유를 새로 만나고, 몇 개가 남았는지가 화면에서 안 보인다(판정기가 사유를 모아서
-        /// 돌려주는 것과 같은 이유다).
+        /// 왜 안 들어가는가. 문구 정본은 <see cref="LastShiftPlacementCommands.Reason"/> 로
+        /// 옮겼다 — 서버가 낸 거부도 같은 문장이 돼야 하고, 그 문장을 만드는 자리가 화면 쪽에
+        /// 있으면 세션 없는 서버 경로가 화면을 참조하게 된다.
         /// </summary>
-        public static string Reason(in LastShiftPlacementVerdict verdict, LastShiftPlacementFault faults)
-        {
-            var text = string.Empty;
-
-            void Add(string reason) => text = text.Length == 0 ? reason : text + " · " + reason;
-
-            var rejection = verdict.Rejection;
-            if ((rejection & LastShiftPlacementRejection.OverlapsPlacement) != 0) Add("다른 방과 겹친다");
-            if ((rejection & LastShiftPlacementRejection.OverlapsHullInterior) != 0) Add("선체를 파고든다");
-            if ((rejection & LastShiftPlacementRejection.ChainBroken) != 0) Add("선체까지 사슬이 안 닿는다");
-            if ((rejection & LastShiftPlacementRejection.ChainTooDeep) != 0) Add("사슬이 너무 깊다");
-            if ((rejection & LastShiftPlacementRejection.EgressOverLimit) != 0) Add("이탈 한도를 넘는다");
-
-            if ((faults & LastShiftPlacementFault.ParentMissing) != 0) Add("붙을 상대가 없다");
-            if ((faults & LastShiftPlacementFault.DoorOffOwnFace) != 0) Add("문이 자기 벽에서 벗어났다");
-            if ((faults & LastShiftPlacementFault.DoorOffParentFace) != 0) Add("문이 벽에 안 닿는다");
-            if ((faults & LastShiftPlacementFault.DoorOutsideParentSpan) != 0) Add("문이 벽 끝을 지나쳤다");
-
-            return text.Length == 0 ? "배치 가능" : text;
-        }
+        public static string Reason(in LastShiftPlacementVerdict verdict, LastShiftPlacementFault faults) =>
+            LastShiftPlacementCommands.Reason(verdict, faults);
     }
 }
