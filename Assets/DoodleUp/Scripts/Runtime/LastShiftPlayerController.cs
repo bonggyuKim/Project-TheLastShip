@@ -306,7 +306,9 @@ namespace DoodleUp.Runtime
             // 서버는 어차피 각 진입점에서 자기 조건을 다시 본다.
             if (!IsGhost && !sustainingValve)
             {
-                if (grab) ToggleGrab();
+                // 잔해 뜯기가 잡기보다 먼저다 — §5.2-3 이 "기존 아이템 운반 동사 그대로" 라고
+                // 정한 그 자리이고, 선외에는 잡을 부품이 없으므로 두 갈래가 실제로 안 겹친다.
+                if (grab && !LastShiftSalvage.TryHarvest(transform.position)) ToggleGrab();
                 if (secure && networkPlayer != null) networkPlayer.RequestSecureHeldItem();
                 if (door && (networkPlayer == null || !networkPlayer.IsSpawned)) TryOperateNearestDoor();
             }
@@ -413,8 +415,25 @@ namespace DoodleUp.Runtime
             // 갑판 승강구 해치도 같은 키다(§23.6 — 수직 진입에 새 조작 동사를 안 만든다).
             // 사거리가 겹치지 않아 순서가 결과를 바꾸지 않는다(LastShiftDeckHatch.FindOperable).
             var hatch = LastShiftDeckHatch.FindOperable(transform.position);
-            return hatch != null && hatch.TryOperate(this);
+            if (hatch != null) return hatch.TryOperate(this);
+
+            // 에어록도 같은 키다. 승강구와 x·z 가 같지만(에어록이 선수 승강구 아래 모서리에서
+            // 분기한다, §23.5) 승강구 사거리는 1.2m·y 무시라 덕트 안 어디서나 걸린다 —
+            // 그래서 승강구를 <b>먼저</b> 본다. 덕트 바닥에 서면 승강구가, 에어록 안으로
+            // 내려가면 에어록이 잡히고, 그 경계가 LastShiftAirlock.IsAtInnerSide 다.
+            return LastShiftAirlock.TryOperate(transform.position, AnyDeckHatchOpen);
         }
+
+        /// <summary>
+        /// 갑판 승강구 해치가 하나라도 열려 있는가 — 에어록 인터록의 셋째 조건이 읽는 값이다.
+        /// sandbox 가 정본이고(<see cref="LastShiftSandboxController.IsHatchOpen"/>), 없으면
+        /// 닫힘으로 본다: 최소 조립에서 안전한 쪽은 "구멍이 없다" 이고, 그 기본값이
+        /// <see cref="LastShiftDeckHatch.IsOpen"/> 과 같아야 두 판정이 안 갈린다.
+        /// </summary>
+        private bool AnyDeckHatchOpen =>
+            Sandbox != null &&
+            (Sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft) ||
+             Sandbox.IsHatchOpen(LastShiftBypassDuct.AftShaft));
 
         public void ResetPlayer(Vector3 position)
         {
@@ -767,6 +786,11 @@ namespace DoodleUp.Runtime
             var valvePrompt = BuildValvePrompt();
             if (valvePrompt != null) return valvePrompt;
 
+            // 잔해가 문보다 먼저다. 사거리가 겹칠 일은 없지만(잔해는 원반 밖이다) 선외에서
+            // 뜰 수 있는 안내가 이것 하나뿐이라 어느 갈래에도 안 가려져야 한다.
+            var salvagePrompt = BuildSalvagePrompt();
+            if (salvagePrompt != null) return salvagePrompt;
+
             // 문 프롬프트가 아이템 프롬프트보다 먼저다. 문 앞에서만 뜨는 안내이고, 그 자리에서
             // 아이템을 조준하고 있을 확률보다 문을 조작하려 할 확률이 높다.
             var doorPrompt = BuildDoorPrompt();
@@ -889,7 +913,7 @@ namespace DoodleUp.Runtime
             if (door == null)
             {
                 var hatch = LastShiftDeckHatch.FindOperable(transform.position);
-                if (hatch == null) return null;
+                if (hatch == null) return BuildAirlockPrompt(crew);
                 if (crew != null && crew.IsDead) return $"{hatch.ShaftLabel} 승강구: 조작 불가";
                 // 여는 쪽에 경고를 붙인다. 여기서 열리는 것은 압력이 아니라 갑판의 구멍이고,
                 // 저중력에서 뜬 물건이 그리로 빠지는 것이 이 동사의 유일한 되돌리기 비용이다.
@@ -901,6 +925,52 @@ namespace DoodleUp.Runtime
             return door.IsOpen
                 ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
                 : $"[Q] {door.BoundaryLabel} 문 열기";
+        }
+
+        /// <summary>
+        /// 에어록 앞 안내. 사거리 밖이면 <c>null</c> 이라 아이템 프롬프트가 그대로 나온다.
+        ///
+        /// <b>막힌 사유를 문장으로 적는 것이 여기 있는 이유의 절반이다.</b> 조항 <c>O-4</c>
+        /// (구간 중 봉인)와 인터록(갑판 구멍과 동시 개방 금지)은 둘 다 눌러도 아무 일이
+        /// 안 일어나는 형태로 나타나는데, 배 안 어디에도 그 규칙을 적어 둔 자리가 없다.
+        /// </summary>
+        private string BuildAirlockPrompt(LastShiftCrewOxygen crew)
+        {
+            if (LastShiftAirlock.IsCycling && LastShiftAirlock.IsWithinReach(transform.position))
+                return $"에어록 사이클 {LastShiftAirlock.CycleProgress:P0}";
+
+            var action = LastShiftAirlock.NextAction(transform.position, AnyDeckHatchOpen);
+            if (action == LastShiftAirlockAction.None) return null;
+            if (crew != null && crew.IsDead) return "에어록: 조작 불가";
+
+            return action switch
+            {
+                LastShiftAirlockAction.OpenInner => "[Q] 에어록 안쪽 해치 열기",
+                LastShiftAirlockAction.CloseInner => "[Q] 에어록 안쪽 해치 닫기",
+                LastShiftAirlockAction.Depressurize => "[Q] 감압 — 바깥 해치를 연다 (선외는 진공)",
+                LastShiftAirlockAction.Repressurize => "[Q] 재가압 — 배로 돌아간다",
+                LastShiftAirlockAction.BlockedBySegment => "에어록: 구간 중에는 봉인 (기항에서만 열린다)",
+                _ => "에어록: 갑판 승강구 해치를 먼저 닫으세요"
+            };
+        }
+
+        /// <summary>
+        /// 잔해 앞 안내. 선외에서만 뜨고, <b>남은 산소를 같이 적는다</b> — 밖에서 읽을 수 있는
+        /// 숫자가 이것 하나이고, 조항 <c>O-7</c> 의 대가(수확 상실)가 그 숫자에 걸려 있다.
+        /// </summary>
+        private string BuildSalvagePrompt()
+        {
+            if (!LastShiftSalvage.IsWithinReach(transform.position)) return null;
+
+            var carried = $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}";
+            if (LastShiftSalvage.Remaining <= 0)
+                return $"{LastShiftSalvage.FieldLabel}: 다 뜯었다   {carried}";
+            if (LastShiftSalvage.Carried >= LastShiftSalvage.CarryCapacity)
+                return $"{LastShiftSalvage.FieldLabel}: 손이 찼다 — 에어록으로   {carried}";
+            if (LastShiftSalvage.HarvestCooldown > 0f)
+                return $"{LastShiftSalvage.FieldLabel} 뜯는 중 {LastShiftSalvage.HarvestCooldown:F1}s   {carried}";
+
+            return $"[E] {LastShiftSalvage.FieldLabel} 뜯기 (남은 {LastShiftSalvage.Remaining})   {carried}";
         }
 
         /// <summary>

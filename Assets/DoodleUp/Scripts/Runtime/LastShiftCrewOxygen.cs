@@ -115,6 +115,44 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 기항에서 우주복을 채운다 — <b>구간 중에는 절대로 안 돈다.</b>
+        ///
+        /// <b>왜 필요한가.</b> 예비 산소는 원래 "보충 지점 0개, 항해 1회분" 예산이었는데,
+        /// 선외 파밍(<c>outboard-outpost-and-map-final-v1.md</c> §4.1)이 붙으면서 그 예산이
+        /// 기항마다 왕복으로 나간다. 채울 데가 없으면 첫 EVA 한 번으로 남은 항해의 산소가
+        /// 마르고, 그건 조항 <c>O-7</c>("죽지 않는다")이 지키려던 것보다 훨씬 무거운 대가다.
+        ///
+        /// <b>왜 기항에서만인가.</b> <c>RG-1(4-b)</c>(산소 탈출 예산)는 구간 안의 판정이고,
+        /// 기항은 판 밖이라 <c>300</c>초 시계가 안 돈다(§4.1-4). 여기서만 채우면 구간 안
+        /// 예산은 한 칸도 안 움직인다 — <b>새 판정도, 새 상수도 안 생긴다.</b>
+        ///
+        /// <b>수치는 <c>game-balance</c> 소관이다.</b> 이 함수가 정하는 것은 축 하나 —
+        /// 채우는 데 걸리는 시간이 왕복 한 번보다 짧아야 기항이 대기 화면이 안 된다.
+        /// </summary>
+        public void RefillAtPort(float deltaTime)
+        {
+            if (IsDead || deltaTime <= 0f) return;
+            if (SuitOxygen >= LastShiftRecoveryTuning.SuitOxygenInitial) return;
+
+            SuitOxygen = Mathf.Min(LastShiftRecoveryTuning.SuitOxygenInitial,
+                SuitOxygen + LastShiftRecoveryTuning.SuitOxygenRefillPerSecond * deltaTime);
+        }
+
+        /// <summary>
+        /// 조항 <c>O-7</c> 자동 복귀가 부르는 경계 — 선외에서 마른 우주복을 즉시 채운다.
+        /// <b>사망 판정을 건너뛰는 것이 아니라 그 앞에서 끊는 것이다</b>:
+        /// <see cref="LastShiftAirlock.EvaReturnReserve"/> 한 칸이 남아 있을 때 걸리므로
+        /// <see cref="Tick"/> 의 사망 갈래에는 아직 안 들어갔다.
+        /// </summary>
+        public void RefillForRescue()
+        {
+            if (IsDead) return;
+            SuitOxygen = LastShiftRecoveryTuning.SuitOxygenInitial;
+            IsDraining = false;
+            StopBreathAudio();
+        }
+
+        /// <summary>
         /// 테스트가 "1명만 사망한 상태" 를 조립하기 위한 경계. 실제 경로로는 같은 선체 압력을
         /// 공유하는 두 승무원 중 하나만 죽이기 어렵다(구역을 나눠야 하고 그건 CT-06 범위다).
         /// </summary>

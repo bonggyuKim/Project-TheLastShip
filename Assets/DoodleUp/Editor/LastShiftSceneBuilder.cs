@@ -1006,6 +1006,91 @@ namespace DoodleUp.Editor
 
             CreateAirlock(root.transform);
             CreateBypassDressing(root.transform);
+            CreateOutboard(ship);
+        }
+
+        /// <summary>
+        /// 선외 — 보행 그리드와 잔해(<c>outboard-outpost-and-map-final-v1.md</c> §4.1·§4.2).
+        ///
+        /// <b>별도 씬이 아니라 같은 씬의 에어록 바깥이다</b>(§4.1). 그래서 배 루트 아래에
+        /// 그대로 붙고, 좌표 정본은 <see cref="LastShiftSalvage"/> 와
+        /// <see cref="LastShiftAirlock.OutsideWalkY"/> 다.
+        ///
+        /// <b>보행 그리드가 새 이동 동사를 없앤다.</b> 선외에 바닥이 없으면 저중력이 그대로
+        /// 걸려 나가는 즉시 떨어지고, 그러면 추진·유영이라는 동사를 새로 만들어야 한다.
+        /// 바깥 해치와 같은 평면에 띠 하나를 깔면 <see cref="LastShiftPlayerController"/> 가
+        /// 배 안에서 하던 그대로 걷는다 — 연출은 우주복 자력 부츠가 잡는다.
+        /// </summary>
+        private static void CreateOutboard(Transform ship)
+        {
+            var root = new GameObject("Outboard");
+            root.transform.SetParent(ship, false);
+
+            var walkMaterial = CreateMaterial("LS_EvaGrid", new Color(0.30f, 0.34f, 0.38f));
+            var airlock = LastShiftAirlock.ReturnPoint;
+            var field = LastShiftSalvage.FieldCenter;
+            var span = new Vector2(field.x - airlock.x, field.z - airlock.z);
+            const float laneWidth = LastShiftBypassDuct.AirlockSize;
+            const float plateThickness = LastShiftBypassDuct.PanelThickness;
+
+            // 에어록 바로 아래 발판. 나가는 순간 발이 닿는 자리라 띠보다 넓게 잡는다 —
+            // 좁으면 감압이 끝나고 내려선 첫 걸음이 곧바로 판 밖이다.
+            CreateCube("Outboard_AirlockPad", root.transform,
+                new Vector3(airlock.x, airlock.y - plateThickness * 0.5f, airlock.z),
+                new Vector3(laneWidth * 2f, plateThickness, laneWidth * 2f), walkMaterial);
+
+            // 잔해까지의 띠. 한 장으로 깔고 방향만 돌린다 — 꺾이면 "어디로 가야 하는가" 가
+            // 갈래가 되고, 첫 EVA 에서 길을 찾게 만들 이유가 없다(§5.2-3).
+            var lane = CreateCube("Outboard_Lane", root.transform,
+                new Vector3((airlock.x + field.x) * 0.5f, airlock.y - plateThickness * 0.5f,
+                    (airlock.z + field.z) * 0.5f),
+                new Vector3(span.magnitude, plateThickness, laneWidth), walkMaterial);
+            lane.transform.localRotation = Quaternion.Euler(0f, -Mathf.Atan2(span.y, span.x) * Mathf.Rad2Deg, 0f);
+
+            CreateSalvageField(root.transform, walkMaterial);
+        }
+
+        /// <summary>
+        /// 잔해 덩어리. 조각 <see cref="LastShiftSalvage.ChunksPerField"/>개가 코어 둘레에
+        /// 붙어 있고, 뜯을 때마다 뒤에서부터 꺼진다 — 남은 수가 눈으로 읽히면서도 저중력에서
+        /// 떠다니는 물체가 하나도 안 생긴다(<see cref="LastShiftSalvageField"/> 주석).
+        /// </summary>
+        private static void CreateSalvageField(Transform parent, Material walkMaterial)
+        {
+            var centre = LastShiftSalvage.FieldCenter;
+            var root = new GameObject("SalvageField");
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = centre;
+
+            // 잔해 앞 발판. 뜯는 동안 서 있을 자리이고 사거리(2.2m)를 덮는다.
+            var padSpan = LastShiftSalvage.HarvestReach * 2f;
+            CreateCube("Salvage_Pad", root.transform,
+                new Vector3(0f, -LastShiftBypassDuct.PanelThickness * 0.5f, 0f),
+                new Vector3(padSpan, LastShiftBypassDuct.PanelThickness, padSpan), walkMaterial);
+
+            var coreMaterial = CreateMaterial("LS_SalvageCore", new Color(0.34f, 0.33f, 0.32f));
+            var core = CreateCube("Salvage_Core", root.transform, new Vector3(0f, 1.1f, 0f),
+                new Vector3(2.2f, 2.2f, 2.2f), coreMaterial);
+
+            var chunkMaterial = CreateMaterial("LS_SalvageChunk", LastShiftSalvageField.ColorOf(LastShiftSalvageKind.Cooling));
+            var chunks = new Transform[LastShiftSalvage.ChunksPerField];
+            var tinted = new Renderer[LastShiftSalvage.ChunksPerField];
+            for (var index = 0; index < chunks.Length; index++)
+            {
+                var angle = Mathf.PI * 2f * index / chunks.Length;
+                var chunk = CreateCube($"Salvage_Chunk_{index}", root.transform,
+                    new Vector3(Mathf.Cos(angle) * 1.5f, 1.1f + Mathf.Sin(angle) * 0.5f, Mathf.Sin(angle) * 1.5f),
+                    new Vector3(0.8f, 0.8f, 0.8f), chunkMaterial);
+                // 조각은 부딪히는 것이 아니라 뜯는 것이다. 콜라이더를 남기면 잔해 앞에서
+                // 몸이 먼저 걸려 사거리 판정(좌표)과 손이 닿는 느낌이 어긋난다.
+                Object.DestroyImmediate(chunk.GetComponent<Collider>());
+                chunk.transform.localRotation = Quaternion.Euler(angle * Mathf.Rad2Deg, angle * 30f, 15f);
+                chunks[index] = chunk.transform;
+                tinted[index] = chunk.GetComponent<Renderer>();
+            }
+
+            Object.DestroyImmediate(core.GetComponent<Collider>());
+            root.AddComponent<LastShiftSalvageField>().Configure(chunks, tinted);
         }
 
         /// <summary>
@@ -1100,22 +1185,57 @@ namespace DoodleUp.Editor
                 LastShiftBypassDuct.AirlockCenterZ);
             CreateDecorCube("Airlock", parent, centre, new Vector3(size, size, size), bypassMaterial);
 
-            // 해치 두 짝. 형상으로만 존재하고 아직 안 열린다 — EVA 감압 시퀀스는 §24.7-2 가
-            // 별도 카드로 남긴 항목이다.
+            // 해치 두 짝. <b>이제 열린다</b> — 상태 정본은 LastShiftAirlock 이고 판은
+            // LastShiftAirlockHatch 가 그 값을 향해 따라가기만 한다(승강구 해치와 같은 구조).
             //
             // 안쪽 해치는 덕트 바닥 판 <b>바로 아래</b>에 매단다. 예전처럼 덕트 바닥과 같은 y 에
-            // 두면 판과 겹쳐 z-fighting 이 나고, 무엇보다 이 카드에서 중요한 것은 그 판이
-            // 에어록 천장을 통째로 막고 있다는 사실이다 — 갑판 구멍으로 떨어진 물건이 닿는
-            // 최저점이 덕트 바닥(-1.2)이지 에어록 바닥(-4.2)이 아닌 근거가 그것이고,
-            // LastShiftBypassDuct.DeepestFallY 가 같은 것을 코드로 말한다.
-            var hatchThickness = 0.08f;
-            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth, hatchThickness, LastShiftZoneDoor.OpeningWidth);
-            CreateDecorCube("Hatch_Inner", parent,
-                new Vector3(centre.x,
-                    LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness - hatchThickness * 0.5f,
-                    centre.z), hatch, bypassMaterial);
-            CreateDecorCube("Hatch_Outer", parent,
-                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch, bypassMaterial);
+            // 두면 판과 겹쳐 z-fighting 이 난다.
+            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth,
+                LastShiftAirlockHatch.PanelThickness, LastShiftZoneDoor.OpeningWidth);
+            CreateAirlockHatch(parent, LastShiftAirlockSide.Inner, new Vector3(centre.x,
+                LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness
+                - LastShiftAirlockHatch.PanelThickness * 0.5f, centre.z), hatch);
+            CreateAirlockHatch(parent, LastShiftAirlockSide.Outer,
+                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch);
+
+            // 에어록 계단. 안쪽 해치가 열리면 최저점이 에어록 바닥으로 3m 내려가는데, 그
+            // 3m 는 점프 정점(1.49m)으로 못 오른다 — 단 둘이면 한 걸음이 1m 로 갈린다.
+            // 사다리(새 조작 동사)를 안 만드는 것은 §23.6 이 승강구에서 내린 것과 같은 결정이고,
+            // LastShiftBypassDuct.RecoveryRise 가 그 성질을 코드로 말한다.
+            var stepSpan = LastShiftZoneDoor.OpeningWidth * 0.7f;
+            for (var step = 1; step <= LastShiftBypassDuct.AirlockStepCount; step++)
+            {
+                var top = LastShiftBypassDuct.AirlockFloorY + LastShiftBypassDuct.AirlockStepRise * step;
+                CreateCube($"Airlock_Step_{step}", parent,
+                    new Vector3(centre.x, (LastShiftBypassDuct.AirlockFloorY + top) * 0.5f,
+                        centre.z + size * 0.5f - stepSpan * (0.5f + (LastShiftBypassDuct.AirlockStepCount - step))),
+                    new Vector3(size - 0.2f, top - LastShiftBypassDuct.AirlockFloorY, stepSpan), bypassMaterial);
+            }
+        }
+
+        /// <summary>
+        /// 에어록 해치 한 짝. 승강구 해치(<see cref="CreateDeckHatch"/>)와 같은 구조다 —
+        /// 판은 미끄러지고 통행 차단은 별도 콜라이더가 맡는다. 다른 것은 하나뿐이고, 여기서는
+        /// 차단면이 <b>기본으로 켜져 있다</b>(둘 다 닫힌 것이 시작 상태다).
+        /// </summary>
+        private static void CreateAirlockHatch(
+            Transform parent, LastShiftAirlockSide side, Vector3 centre, Vector3 size)
+        {
+            var name = $"AirlockHatch_{side}";
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = centre;
+
+            var panel = CreateCube($"{name}_Panel", root.transform, Vector3.zero, size,
+                CreateMaterial($"LS_AirlockHatch_{side}", new Color(0.46f, 0.40f, 0.30f)));
+            Object.DestroyImmediate(panel.GetComponent<Collider>());
+
+            var blockerObject = new GameObject($"{name}_Blocker");
+            blockerObject.transform.SetParent(root.transform, false);
+            var blocker = blockerObject.AddComponent<BoxCollider>();
+            blocker.size = new Vector3(size.x, LastShiftShipDimensions.HullThickness, size.z);
+
+            root.AddComponent<LastShiftAirlockHatch>().Configure(side, panel.transform, blocker);
         }
 
         /// <summary>

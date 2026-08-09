@@ -878,6 +878,12 @@ namespace DoodleUp.Runtime
                 }
             }
 
+            // 선외 tick 은 운석 게이트 <b>위</b>다 — 아니 위여야만 한다. 아래 조기 반환은
+            // 판정이 확정되면 시계를 멈추는데, 기항이 바로 그 "판정이 확정된 뒤" 이고
+            // (조항 O-4 가 에어록을 여는 유일한 창이 그때다) 게이트 아래 두면 감압 사이클도
+            // 선외 산소도 한 프레임도 안 돈다.
+            AdvanceExtravehicular(deltaTime);
+
             if (!HasAppliedImpact || IsResolved) return;
 
             // 기존 우회의 수명을 먼저 줄여야 이 tick 끝에 막 완성된 우회가 작업 시간까지
@@ -1039,6 +1045,73 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 선외 tick — <b>기항에서만 실제로 일이 일어난다.</b>
+        /// 기획 정본은 <c>docs/outboard-outpost-and-map-final-v1.md</c> §4.1·§5.5 다.
+        ///
+        /// <b>왜 <see cref="AdvanceCrewOxygen"/> 과 따로인가.</b> 저쪽은 구간 안 tick 이라
+        /// 판정이 확정되면 시계가 멈춘다. 기항은 정확히 그 멈춘 뒤이고, 에어록이 열리는 창도
+        /// 거기뿐이다(조항 <c>O-4</c>) — 같은 함수에 얹으면 산소가 안 돌거나, 돌게 고치면
+        /// 구간 판정 뒤에도 시뮬레이션이 계속 도는 회귀가 된다.
+        ///
+        /// <b>기항에서는 승무원이 세 자리 중 하나에 있다.</b> 가압 구역(반입·재충전),
+        /// 선외(소모·조항 <c>O-7</c>), 그 사이 덕트·에어록(소모만). 셋을 여기서 한 번에 가른다.
+        /// </summary>
+        private void AdvanceExtravehicular(float deltaTime)
+        {
+            LastShiftAirlock.Tick(deltaTime);
+            LastShiftSalvage.Tick(deltaTime);
+            if (!LastShiftAirlock.IsAtPort || players == null) return;
+
+            foreach (var targetPlayer in players)
+            {
+                if (targetPlayer == null) continue;
+                var crew = LastShiftCrewOxygen.Ensure(targetPlayer);
+                if (crew == null || crew.IsDead) continue;
+
+                var position = targetPlayer.transform.position;
+                if (!IsZoneVacuum(position))
+                {
+                    // 배 안으로 들어오는 것이 곧 반입이다. 에어록 안에서 받지 않는 이유는
+                    // 챔버도 비가압이라 "안전해진 순간" 이 아니기 때문이고, 좌표를 따로 재지
+                    // 않는 이유는 가압 판정이 이미 그 경계를 알고 있기 때문이다.
+                    LastShiftSalvage.Deposit();
+                    crew.RefillAtPort(deltaTime);
+                    crew.Tick(false, deltaTime);
+                    continue;
+                }
+
+                if (LastShiftAirlock.IsOutside(position) &&
+                    crew.SuitOxygen <= LastShiftAirlock.EvaReturnReserve)
+                {
+                    RescueFromExtravehicular(targetPlayer, crew);
+                    continue;
+                }
+
+                crew.Tick(true, deltaTime);
+            }
+        }
+
+        /// <summary>
+        /// 조항 <c>O-7</c> — 선외에서 산소가 마르면 <b>죽지 않고 수확만 잃는다.</b>
+        ///
+        /// 네 가지가 한 덩어리로 일어나야 한다. 미회수 자재 소실(대가), 갑판 해치 봉인
+        /// (에어록 인터록의 셋째 조건을 구조 경로가 건너뛰므로 여기서 되메운다), 에어록
+        /// 안쪽 개방(배 안으로 올라올 길), 우주복 재충전(챔버도 비가압이라 이게 없으면
+        /// 내려놓자마자 죽는다 — "죽지 않는다" 가 말뿐이 된다).
+        /// </summary>
+        private void RescueFromExtravehicular(LastShiftPlayerController targetPlayer, LastShiftCrewOxygen crew)
+        {
+            var lost = LastShiftSalvage.AbandonCarried();
+            SetHatchOpen(LastShiftBypassDuct.ForeShaft, false);
+            SetHatchOpen(LastShiftBypassDuct.AftShaft, false);
+            LastShiftAirlock.ForceRescueEntry();
+            targetPlayer.ResetPlayer(LastShiftAirlock.ReturnPoint);
+            crew.RefillForRescue();
+            Debug.Log($"[LAST_SHIFT_EVA] generation={ResetGeneration} crew={targetPlayer.PlayerSlot} " +
+                      $"event=AUTO_RETURN lostChunks={lost} materials={LastShiftMaterials.Balance}");
+        }
+
+        /// <summary>
         /// 이 위치가 진공인가. N0 이후 판정 대상은 <b>그 위치가 속한 구역의</b> 압력이다.
         /// 산소 계통을 성능 포기로 밀폐했다면 밀폐한 구역만 압력과 무관하게 진공이다.
         /// </summary>
@@ -1053,6 +1126,11 @@ namespace DoodleUp.Runtime
         public bool IsZoneVacuum(Vector3 position)
         {
             if (LastShiftBypassDuct.IsUnpressurizedSpace(position)) return true;
+            // 선외는 덕트보다 더 확실한 진공이다. 덕트 판정 아래 두는 것은 순서 문제가
+            // 아니라 읽는 순서다 — 덕트·에어록은 배 안 좌표라 원반 안이고, 선외 판정은
+            // 그 밖을 본다. 이 줄이 없으면 바깥 해치로 나간 승무원이 머리 위 방의 압력을
+            // 그대로 받아 산소를 안 태우고, 그러면 §5.5(조항 O-7)가 잴 것이 없어진다.
+            if (LastShiftAirlock.IsOutside(position)) return true;
             return IsZoneVacuum(LastShiftZoneAtlas.Resolve(position));
         }
 

@@ -223,25 +223,50 @@ namespace DoodleUp.Runtime
             IsUnpressurized && (Contains(position) || ShaftContains(position));
 
         /// <summary>
-        /// 에어록 안쪽 해치는 닫혀 있고 이 카드에서 열지 않는다 — EVA 감압 시퀀스는 §24.7-2 가
-        /// 별도 카드로 남긴 항목이다. 형상으로도 덕트 바닥 판이 에어록 천장을 그대로 덮는다.
+        /// 에어록 안쪽 해치가 지금 봉인인가. <b>예전에는 <c>const true</c> 였고 그 옆에 "EVA 감압
+        /// 시퀀스는 별도 카드" 라고 적혀 있었다 — <see cref="LastShiftAirlock"/> 이 그 카드다.</b>
+        ///
+        /// 상수를 상태로 바꾸면서도 이 이름을 남기는 이유는, 이 값을 읽는 쪽이 묻는 것이
+        /// "지금 어느 단계인가" 가 아니라 <b>"갑판 아래로 뚫려 있는가"</b> 하나이기 때문이다.
+        /// 단계는 에어록이 알고, 여기서 필요한 것은 그 결론뿐이다.
         /// </summary>
-        public const bool AirlockInnerHatchSealed = true;
+        public static bool AirlockInnerHatchSealed => !LastShiftAirlock.IsInnerHatchOpen;
+
+        /// <summary>
+        /// 에어록 안 계단의 단 수. 안쪽 해치가 열리면 최저점이 에어록 바닥으로 <c>3m</c>
+        /// 내려가는데, 그 <c>3m</c> 를 한 번에 뛰어오를 수는 없다(점프 정점 <c>1.49m</c>).
+        ///
+        /// <b>사다리를 안 만드는 것이 요점이다.</b> 승강구가 새 조작 동사 대신 단
+        /// (<see cref="StepHeight"/>)을 쓴 것과 같은 선택이고(§23.6), 단 둘이면 상승이
+        /// <see cref="AirlockStepRise"/> 로 갈라져 점프 정점 안에 들어온다.
+        /// </summary>
+        public const int AirlockStepCount = 2;
+
+        /// <summary>에어록 안에서 한 단을 오르는 높이. 바닥 → 단 → 단 → 덕트 바닥으로 균등하다.</summary>
+        public const float AirlockStepRise = AirlockSize / (AirlockStepCount + 1);
 
         /// <summary>
         /// 갑판 구멍으로 떨어진 물건이 닿는 가장 낮은 바닥. 승강구를 개통하면서 실제로 위험해지는
         /// 것은 "저중력에서 뜬 물건이 회수 불가가 된다" 하나이고, 그 답이 이 값이다.
         ///
-        /// 안쪽 해치가 막혀 있는 한 최저점은 덕트 바닥이다. 거기서 갑판까지는 단
-        /// (<see cref="StepHeight"/>)을 밟고 오르므로 <see cref="RecoveryRise"/> 만큼만 뛰면 되고,
-        /// 그 값이 점프 정점 안이면 <b>회수는 우회일 뿐 손실이 아니다</b>. 안쪽 해치를 여는 날
-        /// 최저점이 에어록 바닥(<c>3m</c> 더 아래)으로 내려가 이 성질이 깨지므로,
-        /// 이 식이 테스트가 잡아 주는 자리다.
+        /// <b>안쪽 해치가 열리면 최저점이 에어록 바닥으로 내려간다.</b> 이건 회귀가 아니라
+        /// 설계이고, 세 가지가 함께 그것을 손실이 아니게 만든다 — (1) 인터록상 갑판 승강구
+        /// 해치와 동시에 열리지 않으므로(<see cref="LastShiftAirlock.CanOpenInner"/>) 갑판에서
+        /// 떨어진 물건이 그리로 갈 길 자체가 없고, (2) 그래도 덕트 안 물건은 떨어질 수 있는데
+        /// 에어록 계단이 <see cref="RecoveryRise"/> 를 점프 정점 안으로 잘라 두며,
+        /// (3) 안쪽 해치가 열리는 것은 기항뿐이라 <c>300</c>초 시계가 안 돈다.
         /// </summary>
         public static float DeepestFallY => AirlockInnerHatchSealed ? FloorY : AirlockFloorY;
 
-        /// <summary>최저점에서 갑판으로 되올라오는 데 필요한 상승. 단 하나를 밟는 것까지 뺀 값이다.</summary>
-        public static float RecoveryRise => DeckY - DeepestFallY - StepHeight;
+        /// <summary>
+        /// 최저점에서 갑판까지 되올라오는 경로에서 <b>한 번에 뛰어야 하는 최대 상승.</b>
+        /// 예전에는 최저점이 하나뿐이라 총 상승과 같았는데, 에어록이 열리면서 경로가 두 구간
+        /// (에어록 계단 → 덕트 바닥 → 승강구 단 → 갑판)이 되어 <b>가장 높은 한 걸음</b>이
+        /// 판정 대상이 됐다. 이 값이 점프 정점 안이면 회수는 우회일 뿐 손실이 아니다.
+        /// </summary>
+        public static float RecoveryRise => Mathf.Max(
+            DeckY - FloorY - StepHeight,
+            AirlockInnerHatchSealed ? 0f : AirlockStepRise);
 
         /// <summary>
         /// 두 승강구를 잇는 통행 거리. 주 통로와 비교해 우회로가 실제로 더 먼지 재는 값이고,

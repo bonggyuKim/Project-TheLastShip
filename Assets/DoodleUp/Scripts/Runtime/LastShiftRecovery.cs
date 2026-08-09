@@ -235,6 +235,18 @@ namespace DoodleUp.Runtime
         /// <summary>진공 구역에 있을 때만 도는 소모율. 1.00 에서 0.00 까지 정확히 80초다.</summary>
         public const float SuitOxygenDrainPerSecond = 0.0125f;
 
+        /// <summary>
+        /// <b>기항에서만</b> 도는 재충전율(<c>outboard-outpost-and-map-final-v1.md</c> §4.1).
+        /// <c>0.00 → 1.00</c> 이 <c>20</c>초라 소모(<c>80</c>초)의 <c>1/4</c> 이고, 선외 왕복
+        /// 한 번(<c>~26</c>초)보다 짧다 — 길면 기항이 게이지 채우는 대기 화면이 된다.
+        ///
+        /// <b>구간 안 예산은 이 값이 안 건드린다.</b> 부르는 자리가
+        /// <see cref="LastShiftCrewOxygen.RefillAtPort"/> 하나이고 거기 게이트가
+        /// <see cref="LastShiftAirlock.IsAtPort"/> 라서, <c>RG-1(4-b)</c> 가 재는 <c>80</c>초는
+        /// 그대로다.
+        /// </summary>
+        public const float SuitOxygenRefillPerSecond = 0.05f;
+
         /// <summary>이 값 이하의 구역 압력이 진공이다. 사이렌선(0.15)과 겹치지 않아야 한다.</summary>
         public const float VacuumOxygenPressure = 0.00f;
 

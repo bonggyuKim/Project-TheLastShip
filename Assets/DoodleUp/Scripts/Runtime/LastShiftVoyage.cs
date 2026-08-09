@@ -113,6 +113,10 @@ namespace DoodleUp.Runtime
         public static void BeginVoyage()
         {
             LastShiftMaintenance.BeginVoyage();
+            // 자재도 항해 단위 자원이다(조항 O-1 · 이월은 M-1 과 같다). 여력과 나란히 두는
+            // 이유는 둘이 서로 환산되지 않아도 <b>리셋 시점은 하나</b>여야 하기 때문이다 —
+            // 갈라 두면 새 항해의 첫 기항에 지난 항해 자재가 남는다.
+            LastShiftMaterials.BeginVoyage();
             LastLatchCount = 0;
             EnterSegment(FirstSegment);
         }
@@ -126,6 +130,11 @@ namespace DoodleUp.Runtime
             SegmentIndex = Mathf.Clamp(segment, FirstSegment, SegmentCount);
             LastTransition = LastShiftSegmentTransition.Pending;
             IsRunning = true;
+            // 출항하면 선외가 닫힌다 — 조항 O-4(구간 중 에어록 봉인)와 O-5(잔해는 정박한
+            // 동안만 뜬다). 게이트를 조회로만 두면 밖에 나간 채로 출항하는 상태가 남고,
+            // 그 순간 RG-1 이탈 시간 계산의 종점이 배 밖이 된다.
+            LastShiftAirlock.SealForSegment();
+            LastShiftSalvage.LeavePort();
         }
 
         /// <summary>
@@ -171,7 +180,15 @@ namespace DoodleUp.Runtime
             // 기항 회차가 이미 이 구간 몫을 받았으면 다시 안 넣는다 — 같은 구간 재판정에서
             // 수입이 두 번 들어오는 것을 막는 유일한 조건이다.
             if (entersPort && LastShiftMaintenance.PortIndex < SegmentIndex)
+            {
                 LastShiftMaintenance.ArriveAtPort(LastLatchCount, towed);
+                // 잔해는 직전 구간의 자극이 남긴 것이다(§4.2) — 여기서는 구간 회차가 아직
+                // 안 올라갔으므로 CurrentPreset 이 그대로 방금 끝난 구간이다. 견인이어도
+                // 잔해는 뜬다: 견인의 대가는 여력 수입 0 이고(조항 M-3), 자재는 여력이
+                // 아니라서(조항 O-1) 그 대가에 안 걸린다 — 걸면 최악 항해의 회복 경로가
+                // 통째로 사라져 RG-3 의 항해판 위반이 된다.
+                LastShiftSalvage.ArriveAtPort(CurrentPreset);
+            }
 
             return LastTransition;
         }
@@ -199,6 +216,9 @@ namespace DoodleUp.Runtime
         public static void Clear()
         {
             LastShiftMaintenance.Clear();
+            LastShiftMaterials.Clear();
+            LastShiftSalvage.Clear();
+            LastShiftAirlock.Clear();
             SegmentIndex = FirstSegment;
             LastTransition = LastShiftSegmentTransition.Pending;
             LastLatchCount = 0;

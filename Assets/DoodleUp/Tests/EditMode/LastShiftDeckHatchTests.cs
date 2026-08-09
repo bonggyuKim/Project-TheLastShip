@@ -110,6 +110,7 @@ namespace DoodleUp.Tests.EditMode
             //
             // (1) 최저점이 덕트 바닥이다. 에어록 안쪽 해치가 닫혀 있고 덕트 바닥 판이 에어록
             //     천장을 그대로 덮으므로 3m 더 아래로는 못 간다.
+            LastShiftAirlock.Clear();
             Assert.That(LastShiftBypassDuct.AirlockInnerHatchSealed, Is.True);
             Assert.That(LastShiftBypassDuct.DeepestFallY,
                 Is.EqualTo(LastShiftBypassDuct.FloorY).Within(Tolerance),
@@ -121,11 +122,54 @@ namespace DoodleUp.Tests.EditMode
                 $"최저점에서 상승 {LastShiftBypassDuct.RecoveryRise:F2}m 가 점프 정점 " +
                 $"{LastShiftShipPhysics.JumpApexHeight:F2}m 를 넘는다 — 떨어지면 못 돌아온다.");
 
-            // 에어록 안쪽 해치를 여는 날 이 성질이 깨진다는 것을 같은 식으로 못박는다.
+            // 에어록 안쪽 해치가 열리면 최저점이 3m 더 내려간다. 예전에는 그것을 "여는 날
+            // 이 검사가 깨진다" 로 적어 뒀는데, EVA 카드가 실제로 열었으므로 이제 그 3m 를
+            // 두 가지가 함께 막는다 — 인터록(동시 개방 금지)과 에어록 계단이다.
             var riseFromAirlock = LastShiftBypassDuct.DeckY - LastShiftBypassDuct.AirlockFloorY
                                   - LastShiftBypassDuct.StepHeight;
             Assert.That(riseFromAirlock, Is.GreaterThan(LastShiftShipPhysics.JumpApexHeight),
-                "에어록 바닥이 점프로 나올 수 있는 깊이면 위 검사가 아무것도 안 지킨다.");
+                "에어록 바닥이 점프로 한 번에 나올 수 있는 깊이면 계단이 필요 없다는 뜻이다.");
+            Assert.That(LastShiftBypassDuct.AirlockStepRise,
+                Is.LessThan(LastShiftShipPhysics.JumpApexHeight),
+                $"에어록 계단 한 단 {LastShiftBypassDuct.AirlockStepRise:F2}m 가 점프 정점을 넘는다.");
+        }
+
+        /// <summary>
+        /// <b>인터록 — 갑판 구멍과 에어록이 동시에 안 열린다.</b>
+        /// 이게 없으면 갑판에서 떨어진 물건이 덕트 바닥을 지나 에어록 바닥까지 <c>3m</c> 더
+        /// 내려가고, 위 검사가 지키던 성질이 통째로 죽는다. 양방향을 다 건다 — 한쪽만 막으면
+        /// 순서만 바꿔서 같은 구성에 도달한다.
+        /// </summary>
+        [Test]
+        public void TheDeckHoleAndTheAirlockNeverOpenTogether()
+        {
+            var setup = CreateHatchSetup(LastShiftBypassDuct.ForeShaft);
+            var mouth = LastShiftBypassDuct.ShaftMouth(LastShiftBypassDuct.ForeShaft);
+            setup.player.transform.position = new Vector3(mouth.x, 0f, mouth.z);
+            LastShiftVoyage.Clear();
+            LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
+            Assert.That(LastShiftAirlock.IsAtPort, Is.True, "기항이 아니면 인터록을 잴 수가 없다.");
+
+            // (가) 갑판 해치가 열려 있으면 에어록 안쪽이 안 열린다.
+            setup.sandbox.SetHatchOpen(LastShiftBypassDuct.ForeShaft, true);
+            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: true), Is.False);
+            Assert.That(LastShiftAirlock.IsInnerHatchOpen, Is.False);
+
+            // (나) 에어록 안쪽이 열려 있으면 갑판 해치가 안 열린다.
+            setup.sandbox.SetHatchOpen(LastShiftBypassDuct.ForeShaft, false);
+            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(setup.hatch.TryOperate(setup.player), Is.False,
+                "에어록이 열린 채로 갑판 구멍이 뚫렸다 — 떨어진 물건이 4.2m 아래로 간다.");
+            Assert.That(setup.sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft), Is.False);
+
+            // 그 상태에서도 최저점은 회수 가능하다 — 계단이 한 걸음을 점프 정점 안으로 자른다.
+            Assert.That(LastShiftBypassDuct.DeepestFallY,
+                Is.EqualTo(LastShiftBypassDuct.AirlockFloorY).Within(Tolerance));
+            Assert.That(LastShiftBypassDuct.RecoveryRise,
+                Is.LessThan(LastShiftShipPhysics.JumpApexHeight));
+
+            LastShiftVoyage.Clear();
+            Teardown(setup);
         }
 
         [Test]

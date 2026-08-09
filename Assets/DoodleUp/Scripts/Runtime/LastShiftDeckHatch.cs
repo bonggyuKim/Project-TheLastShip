@@ -184,6 +184,16 @@ namespace DoodleUp.Runtime
             }
             if (!IsWithinReach(crewMember.transform.position)) return false;
 
+            // 인터록 — 에어록 안쪽 해치가 열려 있으면 갑판 구멍을 못 연다
+            // (<see cref="LastShiftAirlock"/> 주석의 셋째 조건). 반대 방향은 에어록 쪽이 막는다.
+            // 여기서 막는 것이 <see cref="LastShiftBypassDuct.DeepestFallY"/> 를 지킨다 —
+            // 둘이 동시에 열리면 갑판에서 떨어진 물건이 에어록 바닥까지 3m 더 내려간다.
+            if (!IsOpen && LastShiftAirlock.IsInnerHatchOpen)
+            {
+                Debug.Log($"[LAST_SHIFT_HATCH] shaft={shaft} action=toggle result=REJECT reason=airlock-inner-open");
+                return false;
+            }
+
             Sandbox.SetHatchOpen(shaft, !IsOpen);
             return true;
         }
