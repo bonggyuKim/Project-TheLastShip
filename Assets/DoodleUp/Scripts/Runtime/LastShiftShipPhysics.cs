@@ -7,25 +7,33 @@ namespace DoodleUp.Runtime
     /// 범위에서만 저중력을 적용한다. DU02/DU03BC 의 접지·낙하 검증이 지구 중력 Rigidbody 를
     /// 전제하므로 ProjectSettings 의 m_Gravity 를 건드리면 그 테스트들이 함께 깨진다.
     ///
-    /// 값 근거: 달 표면 중력(-1.62 m/s^2)을 채택했다. 지구의 약 1/6 이라 점프 체공과 낙하 시간이
-    /// 대략 2.5배 길어져 "떠 있다"가 즉시 읽히면서도, 무중력(0)처럼 착지가 불가능해져 걷기·조준이
+    /// 값 근거: 화성 표면 중력(-3.72 m/s^2)을 채택했다. 지구의 약 3/8 이라 체공이 지구의
+    /// 1.6배로 남아 "떠 있다"가 즉시 읽히면서도, 무중력(0)처럼 착지가 불가능해져 걷기·조준이
     /// 무너지지는 않는다. 이동·조준·잡기 검증(SP-02~04)을 유지하려면 접지가 성립해야 한다.
+    ///
+    /// <b>처음에는 달(-1.62)이었다.</b> 사용자 플레이(2026-08-10)에서 "점프 후 너무 늦게
+    /// 떨어진다"로 나왔다 — 체공 2.72초 중 낙하만 1.36초라, 저중력이 읽히는 것을 넘어
+    /// 점프 한 번이 조작을 멈춰 세우는 시간이 됐다. 달 → 화성으로 올리면 같은 정점에서
+    /// 낙하가 0.90초로 줄어 답답함이 사라지고, 지구(0.55초)와는 여전히 확연히 다르다.
+    /// 정점은 <see cref="JumpSpeed"/> 를 같이 올려 그대로 유지한다 — 정점은 취향이 아니라
+    /// 승강구 회수 높이(1.2m)와 천장 여유가 양쪽에서 좁혀 놓은 값이다.
     /// </summary>
     public static class LastShiftShipPhysics
     {
-        /// <summary>선내 중력 가속도(y). 지구 -9.81 의 약 1/6.</summary>
-        public const float GravityY = -1.62f;
+        /// <summary>선내 중력 가속도(y). 지구 -9.81 의 약 3/8(화성 수준).</summary>
+        public const float GravityY = -3.72f;
 
         /// <summary>
-        /// 점프 초기 상승 속도. 지구 중력에서 4.8 이던 값을 2.2 로 낮췄다. 저중력에서 4.8 을
-        /// 유지하면 정점 고도가 7m 를 넘어 천장을 뚫고 카메라가 선체 밖으로 나간다.
+        /// 점프 초기 상승 속도. 지구 중력에서 4.8 이던 값을 3.33 으로 낮췄다. 저중력에서 4.8 을
+        /// 유지하면 정점 고도가 3m 를 넘어 천장을 뚫고 카메라가 선체 밖으로 나간다.
         ///
-        /// 값 근거: 정점 = JumpSpeed^2 / (2 * |GravityY|). 2.2 는 정점 약 1.49m 로,
+        /// 값 근거: 정점 = JumpSpeed^2 / (2 * |GravityY|). 3.33 은 정점 약 1.49m 로,
         /// 카메라 눈높이(1.55) + 정점이 천장 내면(<see cref="CeilingInnerHeight"/> = 3.2) 아래에
-        /// 머문다. 3.4 는 정점 3.57m 라 천장을 뚫으므로 쓸 수 없다. 체공은 약 2.7초로
-        /// 지구 중력 점프(약 1초)보다 확실히 길어 저중력이 즉시 읽힌다.
+        /// 머문다. <b>이 값은 <see cref="GravityY"/> 와 짝이다</b> — 중력만 올리면 정점이 같이
+        /// 내려가 승강구 바닥에서 갑판으로 못 올라온다. 달 중력 시절의 2.2 는 지금 정점
+        /// 0.65m 라 쓸 수 없다.
         /// </summary>
-        public const float JumpSpeed = 2.2f;
+        public const float JumpSpeed = 3.33f;
 
         /// <summary>
         /// 천장 내면 높이. 점프 정점 계산과 씬 빌더의 천장 배치가 같은 값을 써야 한다.
@@ -35,6 +43,22 @@ namespace DoodleUp.Runtime
 
         /// <summary>점프 정점 고도(발 기준). 천장 검증용.</summary>
         public static float JumpApexHeight => JumpSpeed * JumpSpeed / (2f * Mathf.Abs(GravityY));
+
+        /// <summary>
+        /// 정점에서 원래 높이로 돌아오는 데 걸리는 시간. <b>사용자가 "늦게 떨어진다"로 느끼는
+        /// 것이 이 값</b>이고, 정점이 고정된 뒤에는 <see cref="GravityY"/> 하나로만 정해진다.
+        /// </summary>
+        public static float JumpFallDuration => Mathf.Sqrt(2f * JumpApexHeight / Mathf.Abs(GravityY));
+
+        /// <summary>
+        /// 뛰어서 다시 착지할 때까지의 체공 시간. 상승과 낙하가 대칭이라 낙하의 두 배다.
+        /// 저중력 체감은 이 값과 지구 중력에서의 같은 정점 체공(<see cref="EarthHangTime"/>)의
+        /// 비율로 읽는다 — 절대 시간은 정점을 바꾸면 같이 움직여서 기준이 못 된다.
+        /// </summary>
+        public static float JumpHangTime => JumpFallDuration * 2f;
+
+        /// <summary>지구 중력에서 같은 정점을 뛰었을 때의 체공. 저중력 배율의 분모다.</summary>
+        public static float EarthHangTime => 2f * Mathf.Sqrt(2f * JumpApexHeight / 9.81f);
 
         /// <summary>
         /// 카메라 눈높이(발 기준 local y). <see cref="JumpSpeed"/> 주석이 이미 이 값을 천장
