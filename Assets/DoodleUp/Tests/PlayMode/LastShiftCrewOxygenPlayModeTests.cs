@@ -40,6 +40,13 @@ namespace DoodleUp.Tests.PlayMode
         [UnitySetUp]
         public IEnumerator LoadSoloScene()
         {
+            // 항해 진행은 정적이라 씬을 다시 열어도 안 지워진다. 앞 테스트가 구간을 판정하면
+            // LastTransition 이 ToPort 로 남고, 그러면 LastShiftAirlock.IsAtPort 가 참이 되어
+            // AdvanceMission 의 기항 분기가 돈다 — 그 분기는 예비 산소를 채우고(RefillAtPort)
+            // crew.Tick(false, …) 로 소모 표시까지 덮으므로, 이 파일이 재는 산소 시계가 통째로
+            // 어긋난다. 단독 실행은 통과하고 묶음 실행만 실패하는 형태로 나타난다.
+            LastShiftVoyage.Clear();
+
             // 이 파일은 네트워크가 아니라 시계를 잰다. 씬이 하나가 되면서 이 씬을 열기만 해도
             // host 가 자동으로 뜨는데, 테스트마다 같은 UDP 포트를 잡으면 앞 테스트의 host 가
             // 내려가기 전에 다음이 떠서 SetUp 부터 죽는다. 로드 전에 꺼 둔다.
