@@ -308,18 +308,24 @@ namespace DoodleUp.Tests.EditMode
                 "테두리 새그가 판 두께보다 크다 — 판 수를 늘려야 곡선으로 읽힌다.");
         }
 
-        [Test]
-        public void TheCurrentSpineDoesNotFitTheNewDiscYet()
-        {
-            // <b>이 검사는 통과가 아니라 순서를 지킨다.</b> 지금 서 있는 일자 스파인 선미 모서리가
-            // 새 원 밖이므로, 발자국보다 껍질을 먼저 갈아 끼우면 배가 잘린다. 씬 재빌드 카드가
-            // 둘을 같은 커밋에서 옮겨야 하는 이유이고, 그 순서가 지켜지면 이 검사가 삭제된다.
-            var margin = LastShiftPlazaLayout.InscribedMargin(
-                LastShiftShipDimensions.HalfLength, LastShiftShipDimensions.HalfWidth);
+        // `TheCurrentSpineDoesNotFitTheNewDiscYet` 이 여기 있었다. 그 검사는 통과가 아니라
+        // <b>순서</b>를 지키는 것이었다 — 일자 스파인 선미 모서리(19, 3)가 새 원 밖이라
+        // 발자국보다 껍질을 먼저 갈아 끼우면 배가 잘렸다. 이제 둘이 같은 커밋에서 옮겨졌으므로
+        // 그 유예 근거가 사라졌고, 예고대로 삭제한다.
+        //
+        // 그 자리를 대신하는 것이 아래다: 지금 서 있는 발자국 일곱이 전부 새 원 안이어야 한다.
 
-            Assert.That(margin, Is.LessThan(0f),
-                "일자 스파인이 새 원반에 들어간다 — 그렇다면 LastShiftHullShell 을 지금 원으로 " +
-                "바꿔도 되고, 이 검사와 함께 그 유예 근거가 사라진다.");
+        [Test]
+        public void EverySpaceNowFitsInsideTheDisc()
+        {
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
+                Assert.That(LastShiftPlazaLayout.InscribedMargin(footprint), Is.GreaterThan(0f),
+                    $"{footprint.Space} 가 원반 내접 다각형 밖이다 — 씬에서 그 방이 테두리 판에 잘린다.");
+
+            // 껍질도 같은 반지름을 본다. 둘이 갈라지면 검산은 통과하고 씬만 틀린다.
+            Assert.That(LastShiftHullShell.Radius, Is.EqualTo(LastShiftPlazaLayout.HullRadius));
+            Assert.That(LastShiftHullShell.AspectRatio, Is.EqualTo(1f).Within(1e-6f),
+                "외피가 아직 타원이다 — 허브 앤 스포크는 원형 실루엣이 맞다(§0-8).");
         }
 
         // ── 구역 판정 (§6.2) ─────────────────────────────────────────────────
@@ -327,13 +333,18 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ZoneMembershipNoLongerFallsOutOfXAlone()
         {
-            // 이 카드가 <c>LastShiftZoneAtlas.ResolveHull</c> 의 밴드 훑기를 못 쓰게 만드는 자리다.
-            // 전력실과 냉각실이 같은 x 범위를 z 좌우로 나눠 가지므로 같은 x 에서 구역이 갈린다.
+            // 밴드 훑기를 못 쓰게 만든 자리다. 전력실과 냉각실이 같은 x 범위를 z 좌우로
+            // 나눠 가지므로 같은 x 에서 구역이 갈린다 — x 하나로 답하는 판정은 여기서
+            // 반드시 한쪽을 틀린다.
             Assert.That(LastShiftPlazaLayout.ResolveZone(0f, -8.5f), Is.EqualTo(LastShiftZone.Power));
             Assert.That(LastShiftPlazaLayout.ResolveZone(0f, 8.5f), Is.EqualTo(LastShiftZone.Cooling));
+
+            // <b>이관이 끝났다</b>(§9.3-2). 예전 이 검사는 "밴드 훑기가 아직 z 를 안 본다" 를
+            // 확인해 이관 필요를 증명했고, 지금은 그 반대를 잰다.
             Assert.That(LastShiftZoneAtlas.ResolveHull(new Vector3(0f, 0f, -8.5f)),
-                Is.EqualTo(LastShiftZoneAtlas.ResolveHull(new Vector3(0f, 0f, 8.5f))),
-                "현행 밴드 훑기가 z 를 이미 본다 — 그렇다면 §6.2 의 전제가 틀렸다.");
+                Is.EqualTo(LastShiftZone.Power));
+            Assert.That(LastShiftZoneAtlas.ResolveHull(new Vector3(0f, 0f, 8.5f)),
+                Is.EqualTo(LastShiftZone.Cooling));
         }
 
         [Test]

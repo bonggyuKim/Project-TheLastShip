@@ -74,13 +74,12 @@ namespace DoodleUp.Runtime
             float faceNear, faceFar, spanMin, spanMax;
             if (parent < 0)
             {
-                // 선체 직결. 문이 얹혀야 하는 평면은 선체 내부 영역의 외곽이다.
-                faceNear = alongX ? -LastShiftShipDimensions.HalfLength : -LastShiftShipDimensions.HalfWidth;
-                faceFar = alongX ? LastShiftShipDimensions.HalfLength : LastShiftShipDimensions.HalfWidth;
-                spanMin = alongX ? -LastShiftShipDimensions.HalfWidth : -LastShiftShipDimensions.HalfLength;
-                spanMax = alongX ? LastShiftShipDimensions.HalfWidth : LastShiftShipDimensions.HalfLength;
+                // 선체 직결. <b>사각형 하나가 아니라 고정 공간 일곱의 면 전부다</b> — 방사형
+                // 발자국은 플러스 모양이라 배를 정확히 덮는 사각형이 없고, 경계 상자를 쓰면
+                // 실제로는 벽이 없는 자리(팔 사이 빈 사분면)에 붙임이 성립한다.
+                return FitsHull(candidate) ? fault : fault | LastShiftPlacementFault.DoorOffParentFace;
             }
-            else
+
             {
                 var owner = table[parent];
                 faceNear = alongX ? owner.MinX : owner.MinZ;
@@ -138,16 +137,29 @@ namespace DoodleUp.Runtime
                    WithinSpan(candidate.DoorCenter, spanMin, spanMax);
         }
 
+        /// <summary>
+        /// 후보의 문이 <b>고정 구조물 어느 하나의 바깥 면</b>에 얹혀 있는가. 광장 둘레
+        /// (§5.1 자유면 여섯)와 방 여섯의 바깥 면이 전부 여기 들어온다 — §7-(a) 가 확장
+        /// 모듈을 "고정 방 바깥 면에" 붙인다고 적은 자리이고, 광장 둘레만 보면 그 여섯이
+        /// 전부 붙일 수 없는 배가 된다.
+        /// </summary>
         private static bool FitsHull(in LastShiftCompartmentSpec candidate)
         {
             var alongX = candidate.DoorPlane == LastShiftDoorPlane.AlongX;
-            var faceNear = alongX ? -LastShiftShipDimensions.HalfLength : -LastShiftShipDimensions.HalfWidth;
-            var faceFar = alongX ? LastShiftShipDimensions.HalfLength : LastShiftShipDimensions.HalfWidth;
-            var spanMin = alongX ? -LastShiftShipDimensions.HalfWidth : -LastShiftShipDimensions.HalfLength;
-            var spanMax = alongX ? LastShiftShipDimensions.HalfWidth : LastShiftShipDimensions.HalfLength;
 
-            return OnFace(candidate.DoorPlaneCoordinate, faceNear, faceFar) &&
-                   WithinSpan(candidate.DoorCenter, spanMin, spanMax);
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
+            {
+                var faceNear = alongX ? footprint.MinX : footprint.MinZ;
+                var faceFar = alongX ? footprint.MaxX : footprint.MaxZ;
+                var spanMin = alongX ? footprint.MinZ : footprint.MinX;
+                var spanMax = alongX ? footprint.MaxZ : footprint.MaxX;
+
+                if (OnFace(candidate.DoorPlaneCoordinate, faceNear, faceFar) &&
+                    WithinSpan(candidate.DoorCenter, spanMin, spanMax))
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool OnFace(float coordinate, float near, float far) =>

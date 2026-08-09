@@ -157,7 +157,8 @@ namespace DoodleUp.Tests.EditMode
             // <b>이 수가 곧 시작 배의 사슬 깊이 상한이다.</b> 뿌리가 하나뿐이므로 배치 전
             // 배에서 가장 깊은 방이 깊이 1 이고, 그것이 §5.2 의 최악 이탈 재계산을 성립시킨다.
             Assert.That(LastShiftCompartments.FixedSpecs.Count(LastShiftCompartments.ConnectsToHull),
-                Is.EqualTo(1));
+                Is.EqualTo(LastShiftCompartments.FixedCount),
+                "부속 중 하나가 다른 구획을 부모로 물었다 — 경유 방이 생겼다.");
         }
 
         [Test]
@@ -218,28 +219,44 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void CompartmentCoordinatesFollowTheHullInsteadOfLiterals()
+        public void CompartmentCoordinatesFollowThePlazaInsteadOfLiterals()
         {
-            // 표 숫자를 박아 두면 전장 개정이 들어오는 순간 방이 통째로 어긋난다.
-            // 여기서는 "선체에 붙어 있는가" 만 본다 — 붙어 있으면 전장이 바뀌어도 따라온다.
-            var stern = LastShiftShipDimensions.HalfLength;
-            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            // 표 숫자를 박아 두면 배치 개정이 들어오는 순간 방이 통째로 어긋난다.
+            // 여기서는 "광장에 붙어 있는가" 만 본다 — 붙어 있으면 발자국이 움직여도 따라온다.
+            //
+            // <b>부속 둘 다 광장에 직결이다</b>(§2.3). 예전 숭소는 선미 끝벽에 붙었고
+            // 에어록 홀은 언더덱 통로에 있었는데, 둘 다 광장 변으로 올라오면서 사슬 깊이가
+            // 전부 <c>1</c> 이 됐다 — 그것이 최악 이탈 <c>6.05 → 4.26초</c> 의 실체다.
+            foreach (var compartment in new[]
+                     { LastShiftCompartment.AirlockHall, LastShiftCompartment.Quarters })
+            {
+                var spec = LastShiftCompartments.Of(compartment);
+                var space = compartment == LastShiftCompartment.AirlockHall
+                    ? LastShiftPlazaSpace.AirlockHall
+                    : LastShiftPlazaSpace.Quarters;
+                var footprint = LastShiftPlazaLayout.Of(space);
+                var door = LastShiftPlazaLayout.DoorOf(space);
 
-            // 조항 S-2. 숙소는 선미 끝벽에 <b>직결</b>한다 — 부모(화장실)를 잃은 방이라
-            // ParentIndex 가 -1 이어야 하고, 그 직결이 §5.2 의 이탈 재계산 전제다.
-            Assert.That(quarters.MinX, Is.EqualTo(stern).Within(Tolerance),
-                "숙소가 산소실 선미 끝벽에 안 붙었다.");
-            Assert.That(quarters.ParentIndex, Is.EqualTo(-1),
-                "숙소가 아직 부모를 물고 있다 — 화장실이 빠졌으므로 그 인덱스는 표 밖이다.");
-            Assert.That(quarters.DoorPlaneCoordinate, Is.EqualTo(stern).Within(Tolerance));
-            Assert.That(quarters.DoorCenter, Is.EqualTo(0f).Within(Tolerance),
-                "숙소 문은 선미 끝벽 한가운데다.");
-            Assert.That(LastShiftCompartments.DoorDepth(LastShiftCompartment.Quarters), Is.EqualTo(1),
-                "숙소 깊이가 1 이 아니다 — 선미 사슬이 안 없어졌다.");
+                Assert.That(spec.MinX, Is.EqualTo(footprint.MinX).Within(Tolerance), $"{compartment} MinX");
+                Assert.That(spec.MaxX, Is.EqualTo(footprint.MaxX).Within(Tolerance), $"{compartment} MaxX");
+                Assert.That(spec.MinZ, Is.EqualTo(footprint.MinZ).Within(Tolerance), $"{compartment} MinZ");
+                Assert.That(spec.MaxZ, Is.EqualTo(footprint.MaxZ).Within(Tolerance), $"{compartment} MaxZ");
 
-            // 발자국은 예전 숙소와 같은 4x6 이다. 화장실·휴게실을 흡수했지만 그건 드레싱이
-            // 하는 일이고, 방을 넓히면 §5 의 이탈 계산이 같이 움직인다(맵 개편 §2.4).
-            AssertFootprint(LastShiftCompartment.Quarters, 4f, LastShiftShipDimensions.InteriorWidth);
+                Assert.That(spec.ParentIndex, Is.EqualTo(-1),
+                    $"{compartment} 가 다른 구획을 부모로 물고 있다 — 광장 직결이 아니다.");
+                Assert.That(spec.DoorPlaneCoordinate, Is.EqualTo(door.Plane).Within(Tolerance));
+                Assert.That(spec.DoorCenter, Is.EqualTo(door.Center).Within(Tolerance));
+                Assert.That(LastShiftCompartments.DoorDepth(compartment), Is.EqualTo(1),
+                    $"{compartment} 사슬 깊이가 1 이 아니다 — 경유 방이 생겼다.");
+
+                // 문이 자기 경계와 광장 변에 동시에 얇혀 있어야 직결이다.
+                Assert.That(LastShiftCompartments.DoorSitsOnOwnBoundary(spec), Is.True,
+                    $"{compartment} 문이 자기 발자국 경계 위가 아니다.");
+            }
+
+            // 발자국은 확정표 그대로다(§2.2). 에어록 홀 8x6, 숭소 6x4.
+            AssertFootprint(LastShiftCompartment.AirlockHall, 8f, 6f);
+            AssertFootprint(LastShiftCompartment.Quarters, 6f, 4f);
         }
 
         private static void AssertFootprint(LastShiftCompartment compartment, float lengthX, float widthZ)

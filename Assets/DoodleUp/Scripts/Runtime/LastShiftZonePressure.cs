@@ -42,33 +42,20 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const int ZoneCount = 4;
 
-        /// <summary>인접 구역 쌍의 수. 구역이 일렬이므로 언제나 구역 수보다 하나 적다.</summary>
-        public const int BoundaryCount = ZoneCount - 1;
-
-        /// <summary>구역 판정 기준 x 경계. 치수 정본(<see cref="LastShiftShipDimensions"/>)에서 파생한다.</summary>
-        public const float CockpitMaxX = -LastShiftShipDimensions.ZoneBoundaryX;
-        /// <summary>전력실↔냉각실 경계. 선체 중앙이고 개구부 2 가 놓인 평면이다(§3).</summary>
-        public const float PowerMaxX = 0f;
-        public const float LifeSupportMinX = LastShiftShipDimensions.ZoneBoundaryX;
-
         /// <summary>
-        /// 구역 경계 평면을 선수→선미 순으로 늘어놓은 것. index 가 곧 경계 번호이고,
-        /// 경계 <c>b</c> 는 구역 <c>b</c> 와 <c>b+1</c> 을 가른다.
-        ///
-        /// 오름차순이어야 <see cref="Resolve"/> 의 선형 훑기가 성립한다 — 그 조건은
-        /// <c>LastShiftZoneTopologyTests</c> 가 고정한다.
+        /// 압력 경계 수. <b>더 이상 "구역 수 - 1" 이 아니다</b> — 그 등식은 구역이 일렬일 때
+        /// 성립하는 것이었고, 방사형에서는 경계가 전부 광장을 물고 있는 <b>별</b>이라 우연히
+        /// 같은 값이 나올 뿐이다. 정본은 광장 변의 압력문 셋이다.
         /// </summary>
-        private static readonly float[] BoundaryPlanes = { CockpitMaxX, PowerMaxX, LifeSupportMinX };
+        public const int BoundaryCount = LastShiftPlazaLayout.PressureBoundaryCount;
 
         /// <summary>
-        /// 위치 → 구역. 경계를 선수 쪽부터 훑어 처음으로 <c>x ≤ 경계</c> 인 구역을 돌려주고,
-        /// 어느 경계에도 안 걸리면 마지막 구역이다.
+        /// 위치 → 구역. 고정 발자국 일곱을 훑어 담고 있는 공간의 구역을 돌려준다.
         ///
-        /// <b>경계 평면 위의 점은 낮은 쪽(선수 쪽) 구역에 속한다.</b> 개구부 몇 개는 x 가 구역
-        /// 경계와 <b>같은 값</b>이라 이 동점 규칙이 실제로 관측된다 — 규칙을 정하지 않고 두면
-        /// 분기 순서 같은 우연이 답을 정하고, 구역이 늘 때 조용히 뒤집힌다. 그래서 규칙으로
-        /// 못박고 테스트로 고정한다. 경계 위 좌표를 실제로 쓰지 말라는 요구는 그대로다 —
-        /// 그쪽은 <see cref="LastShiftShipDimensions.SpaceCenterXBefore"/> 가 답이다.
+        /// <b>경계 위의 점은 먼저 선언된 공간이 가져간다</b> — 광장이 표의 첫 줄인 것이 그
+        /// 규칙의 실체다. 문 평면 여섯이 전부 광장 변과 같은 값이라 동점이 실제로 관측되고,
+        /// 규칙을 안 정하면 배열 순서라는 우연이 답을 정한다. 예전 밴드 훑기의 "낮은 쪽
+        /// 구역이 가져간다" 가 옮겨온 자리다.
         ///
         /// <b>자유 배치로 확정된 모듈을 먼저 본다</b>(<see cref="LastShiftPlacedModules"/>).
         /// 선체 밴드는 <c>x</c> 하나로만 가르므로 선체 옆으로 뻗은 모듈을 구분하지 못한다 —
@@ -84,20 +71,20 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 선체 밴드만 보는 구역 판정. <b>배치 오버레이를 안 본다.</b>
+        /// 고정 발자국만 보는 구역 판정. <b>배치 오버레이를 안 본다.</b>
         ///
         /// 이것이 따로 있는 이유는 조항 F-1 이다 — 모듈의 구역은 사슬 뿌리의 <b>선체 문</b>이
         /// 정한다. 그 귀속을 <see cref="Resolve"/> 로 물으면 이미 등록된 모듈이 뿌리 좌표를 덮는
         /// 순간 구역이 자기 자신을 참조하게 되고, 등록 순서가 배의 격리 구조를 정하게 된다.
         /// 그래서 <see cref="LastShiftPlacementRules"/> 는 언제나 이쪽을 부른다.
+        ///
+        /// <b>밴드 훑기가 발자국 조회로 바뀌었다</b>(§9.3-2). <c>x</c> 하나로는 전력실
+        /// (<c>z [-11,-6]</c>)과 냉각실(<c>z [+6,+11]</c>)을 못 가른다 — 둘이 같은 <c>x</c>
+        /// 범위 <c>[-3,+3]</c> 를 쓴다. 고정 공간이 일곱으로 상수라 표를 통째로 훑어도
+        /// <c>O(1)</c> 이고, 압력 시뮬이 매 tick 도는 이 자리의 요구는 그 하나였다(§6.2).
         /// </summary>
-        public static LastShiftZone ResolveHull(Vector3 position)
-        {
-            for (var boundary = 0; boundary < BoundaryCount; boundary++)
-                if (position.x <= BoundaryPlanes[boundary])
-                    return (LastShiftZone)boundary;
-            return (LastShiftZone)(ZoneCount - 1);
-        }
+        public static LastShiftZone ResolveHull(Vector3 position) =>
+            LastShiftPlazaLayout.ResolveZone(position.x, position.z);
 
         public static string NameOf(LastShiftZone zone)
         {
@@ -148,30 +135,58 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 경계 index 의 낮은 쪽 구역. 0 = 조종석↔엔진실, 1 = 엔진실↔산소실.
-        /// 경계 번호가 곧 낮은 쪽 구역 번호다 — 구역이 일렬이라 그렇고, 구역이 넷이 돼도 같다.
+        /// 경계 index 의 <b>이쪽</b> 구역. <b>방사형에서는 언제나 조종석 구역이다</b> — 압력문
+        /// 셋이 전부 광장 변에 있고 광장이 조종석 구역이기 때문이다(조항 S-1). 일자 스파인의
+        /// "경계 번호가 곧 낮은 쪽 구역 번호" 는 사슬 위상에서만 성립하던 식이었다.
         /// </summary>
-        public static LastShiftZone LowZoneOf(int boundary) =>
-            (LastShiftZone)Mathf.Clamp(boundary, 0, BoundaryCount - 1);
+        public static LastShiftZone LowZoneOf(int boundary) => LastShiftZone.Cockpit;
 
+        /// <summary>
+        /// 경계 index 의 <b>저쪽</b> 구역. 번호를 구역 번호에서 하나 뺀 값으로 잡아 두었으므로
+        /// <c>boundary + 1</c> 이라는 옛 식이 그대로 산다 — 경계 번호가 문 상태 스냅샷과
+        /// 세이브 파일에 실려 있어 흔들 수 없다.
+        /// </summary>
         public static LastShiftZone HighZoneOf(int boundary) =>
-            (LastShiftZone)(Mathf.Clamp(boundary, 0, BoundaryCount - 1) + 1);
+            LastShiftPlazaLayout.HighZoneOf(boundary);
 
-        /// <summary>경계가 놓인 x. 벌크헤드/문 배치와 같은 값이어야 한다.</summary>
-        public static float BoundaryX(int boundary) =>
-            BoundaryPlanes[Mathf.Clamp(boundary, 0, BoundaryCount - 1)];
+        /// <summary>
+        /// 경계 문의 중심점. <b>스칼라 <c>BoundaryX</c> 를 대체한다</b> — 전력실 문은
+        /// <c>z = -6</c>, 냉각실 문은 <c>z = +6</c>, 산소실 문만 <c>x = +6</c> 이라 경계를
+        /// <c>x</c> 하나로 못 적는다(§9.3-2).
+        /// </summary>
+        public static Vector2 BoundaryWaypoint(int boundary) =>
+            LastShiftPlazaLayout.BoundaryWaypoint(Mathf.Clamp(boundary, 0, BoundaryCount - 1));
+
+        /// <summary>이 경계의 문이 놓인 평면과 그 법선 축.</summary>
+        public static LastShiftPlazaDoor BoundaryDoor(int boundary) =>
+            LastShiftPlazaLayout.BoundaryDoor(Mathf.Clamp(boundary, 0, BoundaryCount - 1));
+
+        /// <summary>
+        /// 이 위치에서 경계 문 평면까지의 <b>수직</b> 거리. 문 조작 사거리와 프롬프트 대상
+        /// 판정이 쓰는 척도이며, 문마다 법선 축이 달라 좌표를 골라 재야 한다.
+        /// </summary>
+        public static float DistanceToBoundaryPlane(int boundary, Vector3 position)
+        {
+            var door = BoundaryDoor(boundary);
+            return Mathf.Abs((door.PlaneIsX ? position.x : position.z) - door.Plane);
+        }
 
         /// <summary>
         /// 이 위치에서 가장 가까운 경계. 문 조작 프롬프트의 대상 판정에 쓴다.
         /// 동점이면 낮은 번호를 고른다 — 예전 <c>&lt;=</c> 비교의 동작을 그대로 옮긴 것이다.
+        ///
+        /// <b>평면 거리가 아니라 문 중심까지의 거리로 잰다.</b> 평면 거리로 두면 광장 어디에
+        /// 서 있어도 전력실 문과 냉각실 문이 <c>z</c> 하나로만 갈려, 광장 선수 구석에서
+        /// 산소실 문(<c>x = +6</c>)이 <b>더 가까운데도</b> 안 잡힌다.
         /// </summary>
         public static int NearestBoundary(Vector3 position)
         {
+            var point = new Vector2(position.x, position.z);
             var nearest = 0;
-            var best = Mathf.Abs(position.x - BoundaryX(0));
+            var best = Vector2.Distance(point, BoundaryWaypoint(0));
             for (var boundary = 1; boundary < BoundaryCount; boundary++)
             {
-                var distance = Mathf.Abs(position.x - BoundaryX(boundary));
+                var distance = Vector2.Distance(point, BoundaryWaypoint(boundary));
                 if (distance >= best) continue;
                 best = distance;
                 nearest = boundary;

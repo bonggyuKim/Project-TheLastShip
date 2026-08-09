@@ -44,16 +44,21 @@ namespace DoodleUp.Runtime
         /// 통로 건너까지 들리면 "누가 근처에 있다" 가 아니라 "누군가 살아 있다" 가 되어
         /// 위치 정보가 사라진다.
         /// </summary>
-        // 방 길이가 균등하지 않게 된 뒤(§2.2) 기준을 끝방으로 못박는다. 가운데 방을 쓰면
-        // 전력실·냉각실 분할에서 이 값이 절반이 되어 숨소리가 방 안에서도 안 닿는다.
-        public static float BreathMaxDistance => LastShiftShipDimensions.EndRoomLength;
+        // 방 길이가 균등하지 않으므로 기준을 <b>가장 긴 방</b>으로 못박는다. 가운데 방
+        // (전력실·냉각실 6m)을 쓰면 조종석·산소실(8m)에서 숨소리가 방 안에서도 안 닿는다.
+        public static float BreathMaxDistance =>
+            Mathf.Max(LastShiftShipDimensions.RoomLengthOf(LastShiftZone.Cockpit),
+                LastShiftShipDimensions.RoomLengthOf(LastShiftZone.LifeSupport));
 
         /// <summary>
         /// 충격음이 들리는 거리. 선내 전 구간이다 — 충격은 상황의 시작이라 못 듣는 사람이
         /// 있으면 안 된다. 그래도 3D 인 이유는 <b>어느 구역에서 났는지가 정보</b>이기 때문이고,
         /// 선형 감쇠라 반대쪽 끝에서는 거리로 구역이 갈린다.
         /// </summary>
-        public static float ImpactMaxDistance => LastShiftShipDimensions.InteriorLength;
+        // <b>광장 치수가 아니라 원반 지름이다.</b> InteriorLength 가 "배 전장" 에서
+        // "허브 한 칸(12m)" 으로 뜻이 바뀌었으므로 그대로 두면 조종석에서 산소실 충격음이
+        // 안 들린다 — 두 방 중심 사이가 20m 다.
+        public static float ImpactMaxDistance => LastShiftHullShell.OverallLength;
 
         /// <summary>
         /// 국소 음원 설정. <see cref="AudioRolloffMode.Linear"/> 를 쓰는 이유는 로그 감쇠가

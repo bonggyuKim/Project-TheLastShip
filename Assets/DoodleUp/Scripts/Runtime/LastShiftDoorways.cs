@@ -136,11 +136,17 @@ namespace DoodleUp.Runtime
         {
             var result = new List<LastShiftDoorway>();
 
-            // 개구부 다섯. 문이 달리든(압력 경계 셋) 안 달리든 승무원이 지나는 자리는 같다.
-            for (var opening = 0; opening < LastShiftShipDimensions.OpeningCount; opening++)
-                result.Add(new LastShiftDoorway($"Opening_{opening}", LastShiftDoorPlane.AlongX,
-                    LastShiftShipDimensions.OpeningX(opening),
-                    LastShiftShipDimensions.OpeningCenterZ(opening)));
+            // 광장 변의 문 여섯. 문짝이 달리든(압력문 셋) 안 달리든(개구부 하나·생활문 둘)
+            // 승무원이 지나는 자리는 같다.
+            //
+            // <b>부속 둘이 여기서 두 번 들어온다.</b> 에어록 홀·숙소는 광장 문 표에도 있고
+            // 아래 구획 표에도 있는데, 같은 좌표라 구간이 겹칠 뿐 판정이 달라지지 않는다 —
+            // <see cref="Intrudes"/> 는 문 하나씩 독립으로 재고, 소품 하나가 두 번 걸리면
+            // 위반이 두 줄 찍힐 뿐이다. 한쪽을 빼면 "어느 표가 정본인가" 가 자리마다 갈린다.
+            foreach (var door in LastShiftPlazaLayout.Doors)
+                result.Add(new LastShiftDoorway($"PlazaDoor_{door.Space}",
+                    door.PlaneIsX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ,
+                    door.Plane, door.Center));
 
             // 구획 문. 잠긴 구획은 구멍이 아니므로 뺀다.
             //

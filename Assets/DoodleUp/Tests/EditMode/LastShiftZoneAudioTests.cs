@@ -40,18 +40,22 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void BreathIsARoomCueAndImpactIsAShipCue()
         {
-            // 호흡: 같은 방 안에서는 들리고, 통로를 건너면 안 들린다. 통로 건너까지 들리면
-            // "근처에 누가 있다" 가 "누군가 살아 있다" 가 되어 위치 정보가 사라진다.
+            // 호흡: 가장 긴 방 안에서는 들리고, 광장을 건너면 안 들린다. 광장 건너까지
+            // 들리면 "근처에 누가 있다" 가 "누군가 살아 있다" 가 되어 위치 정보가 사라진다.
+            var longestRoom = LastShiftShipDimensions.RoomLengthOf(LastShiftZone.Cockpit);
             Assert.That(LastShiftZoneAudio.BreathMaxDistance,
-                Is.GreaterThanOrEqualTo(LastShiftShipDimensions.EndRoomLength),
+                Is.GreaterThanOrEqualTo(longestRoom),
                 "호흡이 방을 못 덮으면 같은 방 안에서도 안 들린다.");
             Assert.That(LastShiftZoneAudio.BreathMaxDistance,
-                Is.LessThan(LastShiftShipDimensions.EndRoomLength + LastShiftShipDimensions.PassageLength),
-                "호흡이 통로를 건너면 통로의 청각 이점이 방 소리에 묻힌다.");
+                Is.LessThan(longestRoom + LastShiftShipDimensions.InteriorLength),
+                "호흡이 광장을 건너면 방 사이 거리가 소리로 안 갈린다.");
 
-            // 충격: 상황의 시작이라 못 듣는 사람이 있으면 안 된다. 선내 최장 거리를 덮어야 한다.
+            // 충격: 상황의 시작이라 못 듣는 사람이 있으면 안 된다. 선내 최장 거리는 조종석
+            // 선수 구석에서 산소실 선미 구석까지이고, 그것은 광장이 아니라 원반 지름이 재는 값이다.
             Assert.That(LastShiftZoneAudio.ImpactMaxDistance,
-                Is.GreaterThanOrEqualTo(LastShiftShipDimensions.InteriorLength),
+                Is.GreaterThanOrEqualTo(
+                    LastShiftShipDimensions.RoomMaxX(LastShiftZone.LifeSupport) -
+                    LastShiftShipDimensions.RoomMinX(LastShiftZone.Cockpit)),
                 "충격음이 배 끝까지 안 가면 반대편 승무원은 무슨 일이 났는지 모른다.");
         }
 
@@ -69,13 +73,17 @@ namespace DoodleUp.Tests.EditMode
                 Assert.That(source.dopplerLevel, Is.EqualTo(0f),
                     "이동 4m/s 에 걸린 호흡 루프는 도플러가 켜져 있으면 음정이 흔들리는 잡음이 된다.");
 
-                // 엔진실 방 중앙에서 통로 A 반대쪽 끝까지의 거리는 감쇠 범위 밖이다.
-                var listener = new Vector3(LastShiftShipDimensions.PowerCenterX, 0f, 0f);
-                var farEnd = new Vector3(LastShiftShipDimensions.PassageMinX(0), 0f,
-                    LastShiftShipDimensions.PassageCenterZ(0));
+                // 전력실 방 중앙에서 광장 건너편 냉각실 방 중앙까지는 감쇠 범위 밖이다.
+                // 둘은 광장을 사이에 두고 z 로 마주 보는 두 방이라 이 배에서 가장 먼 방 쌍이다.
+                var listener = new Vector3(
+                    LastShiftShipDimensions.PowerCenterX, 0f,
+                    LastShiftShipDimensions.RoomCenterZ(LastShiftZone.Power));
+                var farEnd = new Vector3(
+                    LastShiftShipDimensions.CoolingCenterX, 0f,
+                    LastShiftShipDimensions.RoomCenterZ(LastShiftZone.Cooling));
                 Assert.That(Vector3.Distance(listener, farEnd),
                     Is.GreaterThan(LastShiftZoneAudio.BreathMaxDistance),
-                    "통로 반대쪽 끝의 호흡이 엔진실 방에서 들리면 방향 판단이 소리로 안 갈린다.");
+                    "광장 건너편 방의 호흡이 들리면 방향 판단이 소리로 안 갈린다.");
             }
             finally
             {

@@ -15,12 +15,10 @@ namespace DoodleUp.Runtime
     /// </summary>
     public sealed class LastShiftImpactFeedback : MonoBehaviour
     {
-        /// <summary>
-        /// 구역 판정 기준 x 경계. 정본은 <see cref="LastShiftZoneAtlas"/> 이며 여기서는 재노출만 한다 —
-        /// 매핑이 두 벌이 되면 손상 표시와 압력·진공 판정이 서로 다른 구역을 가리킨다.
-        /// </summary>
-        public const float CockpitZoneMaxX = LastShiftZoneAtlas.CockpitMaxX;
-        public const float LifeSupportZoneMinX = LastShiftZoneAtlas.LifeSupportMinX;
+        // 구역 판정 기준 x 경계 둘(`CockpitZoneMaxX` / `LifeSupportZoneMinX`)을 여기 재노출해
+        // 두었는데, 방사형 배치에서 <b>구역을 x 하나로 못 가르게 되면서</b> 두 상수 자체가
+        // 없어졌다 — 전력실과 냉각실이 같은 x 범위를 z 좌우로 나눠 쓴다(§6.2). 부르는 자리가
+        // 하나도 없었고, 필요해지면 LastShiftZoneAtlas.Resolve 를 직접 부른다.
 
         public const float ShakeDurationSeconds = 0.9f;
         public const float ShakeMaxAngleDegrees = 3.2f;

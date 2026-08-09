@@ -138,9 +138,27 @@ namespace DoodleUp.Runtime
 
             into.Clear();
 
+            // 선체(<see cref="HullOwner"/>)는 사각형 하나가 아니라 고정 공간 일곱이다. 그래서
+            // 그 자리만 발자국표를 훑고, 나머지는 표 인덱스를 그대로 쓴다 — 자유면의 주인을
+            // 여전히 <c>-1</c> 하나로 두는 것은 도면에서 "선체에 직결" 이 한 종류이기 때문이다.
+            var hullFaces = LastShiftPlazaLayout.Footprints.Length;
+
             for (var owner = HullOwner; owner < table.Count; owner++)
+            for (var part = 0; part < (owner == HullOwner ? hullFaces : 1); part++)
             {
-                Bounds(table, owner, out var minX, out var maxX, out var minZ, out var maxZ);
+                float minX, maxX, minZ, maxZ;
+                if (owner == HullOwner)
+                {
+                    var footprint = LastShiftPlazaLayout.Footprints[part];
+                    minX = footprint.MinX;
+                    maxX = footprint.MaxX;
+                    minZ = footprint.MinZ;
+                    maxZ = footprint.MaxZ;
+                }
+                else
+                {
+                    Bounds(table, owner, out minX, out maxX, out minZ, out maxZ);
+                }
 
                 for (var face = 0; face < 4; face++)
                 {
@@ -159,7 +177,8 @@ namespace DoodleUp.Runtime
                     var spanMin = onXFace ? minZ : minX;
                     var spanMax = onXFace ? maxZ : maxX;
 
-                    CollectBlocked(table, owner, onXFace, plane, outward, spanMin, spanMax, clearance);
+                    CollectBlocked(table, owner, owner == HullOwner ? part : -1,
+                        onXFace, plane, outward, spanMin, spanMax, clearance);
                     EmitRuns(into, owner, kind, plane, spanMin, spanMax, minimumRun);
                 }
             }
@@ -173,7 +192,7 @@ namespace DoodleUp.Runtime
         /// 굵은 선으로 남는다.
         /// </summary>
         private static void CollectBlocked(
-            IReadOnlyList<LastShiftCompartmentSpec> table, int owner,
+            IReadOnlyList<LastShiftCompartmentSpec> table, int owner, int hullPart,
             bool onXFace, float plane, float outward, float spanMin, float spanMax, float clearance)
         {
             Blocked.Clear();
@@ -181,7 +200,9 @@ namespace DoodleUp.Runtime
             var stripLow = outward > 0f ? plane : plane - clearance;
             var stripHigh = outward > 0f ? plane + clearance : plane;
 
-            for (var other = HullOwner; other < table.Count; other++)
+            // 표에 있는 것들(고정 부속 + 배치된 모듈). 선체는 사각형이 아니라 발자국 일곱이라
+            // 아래에서 따로 센다.
+            for (var other = 0; other < table.Count; other++)
             {
                 if (other == owner) continue;
 
@@ -193,6 +214,32 @@ namespace DoodleUp.Runtime
 
                 var low = Mathf.Max(spanMin, onXFace ? otherMinZ : otherMinX);
                 var high = Mathf.Min(spanMax, onXFace ? otherMaxZ : otherMaxX);
+                if (high - low <= Epsilon) continue;
+
+                Blocked.Add(new Vector2(low, high));
+            }
+
+            // 고정 공간 일곱. 표에 없지만 실제로 서 있는 벽이라, 안 세면 광장 둘레가 통째로
+            // 자유면으로 나오고 §5.1 의 답("여섯 구간 18m 뿐이라 독점이면 확장이 여섯 번에
+            // 끝난다")이 도면에서 거짓이 된다.
+            //
+            // <b>부속 둘은 뺀다</b> — 에어록 홀·숙소는 이미 표
+            // (<see cref="LastShiftCompartments.FixedSpecs"/>) 안에 있어 위 루프가 센다.
+            // 자기 자신(<paramref name="hullPart"/>)도 뺀다: 안 빼면 면을 내놓는 발자국이
+            // 자기 면을 자기가 막는다.
+            for (var part = 0; part < LastShiftPlazaLayout.Footprints.Length; part++)
+            {
+                if (part == hullPart) continue;
+                var footprint = LastShiftPlazaLayout.Footprints[part];
+                if (footprint.Space == LastShiftPlazaSpace.AirlockHall) continue;
+                if (footprint.Space == LastShiftPlazaSpace.Quarters) continue;
+
+                var depthMin = onXFace ? footprint.MinX : footprint.MinZ;
+                var depthMax = onXFace ? footprint.MaxX : footprint.MaxZ;
+                if (depthMin >= stripHigh - Epsilon || depthMax <= stripLow + Epsilon) continue;
+
+                var low = Mathf.Max(spanMin, onXFace ? footprint.MinZ : footprint.MinX);
+                var high = Mathf.Min(spanMax, onXFace ? footprint.MaxZ : footprint.MaxX);
                 if (high - low <= Epsilon) continue;
 
                 Blocked.Add(new Vector2(low, high));
@@ -220,23 +267,17 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 표 인덱스 하나의 발자국. <paramref name="index"/> 가 <see cref="HullOwner"/> 면
-        /// <b>선체 내부 영역</b>이다 — <see cref="LastShiftModuleAttachment"/> 가 선체 직결을
-        /// 판정할 때 쓰는 것과 같은 사각형이라 두 자가 안 갈린다.
+        /// 표 인덱스 하나의 발자국.
+        ///
+        /// <b>이제 표 항목만 받는다.</b> 예전에는 <see cref="HullOwner"/> 를 받으면 선체 내부
+        /// 사각형을 돌려줬는데, 방사형 선체는 사각형 하나가 아니라 고정 공간 일곱이라
+        /// 그 갈래가 부르는 쪽으로 올라갔다 — 사각형을 남겨 두면 팔 사이 빈 사분면이
+        /// "선체" 로 판정돼 그 자리의 자유면이 통째로 막힌 것으로 나온다.
         /// </summary>
         private static void Bounds(
             IReadOnlyList<LastShiftCompartmentSpec> table, int index,
             out float minX, out float maxX, out float minZ, out float maxZ)
         {
-            if (index < 0)
-            {
-                minX = -LastShiftShipDimensions.HalfLength;
-                maxX = LastShiftShipDimensions.HalfLength;
-                minZ = -LastShiftShipDimensions.HalfWidth;
-                maxZ = LastShiftShipDimensions.HalfWidth;
-                return;
-            }
-
             var spec = table[index];
             minX = spec.MinX;
             maxX = spec.MaxX;

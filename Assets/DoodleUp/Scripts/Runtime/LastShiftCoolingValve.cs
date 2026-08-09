@@ -73,7 +73,7 @@ namespace DoodleUp.Runtime
         public static Vector3 Position => new(
             LastShiftShipDimensions.RoomMaxX(LastShiftZone.Cooling) - SternStandoffX,
             HandleHeight,
-            LastShiftShipDimensions.HalfWidth - WallStandoffZ);
+            LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling) - WallStandoffZ);
 
         /// <summary>밸브가 속한 구역. 프롬프트와 로그가 같은 이름을 쓴다.</summary>
         public static LastShiftZone Zone => LastShiftZoneAtlas.Resolve(Position);

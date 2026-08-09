@@ -121,16 +121,14 @@ namespace DoodleUp.Runtime
     /// <summary>
     /// 중앙 광장 허브 배치의 좌표 정본(<c>docs/central-plaza-hub-layout-v1.md</c> §2.2·§2.3 확정표).
     ///
-    /// <b>이것이 아직 서 있는 배가 아니다.</b> 지금 씬에 서는 것은 <see cref="LastShiftShipDimensions"/>
-    /// 의 일자 스파인(<c>38 x 6m</c>, 통로 둘·배플 둘)이고, 이 표는 그것을 대체할 확정안이다. 둘을
-    /// 한 카드에서 갈아 끼우지 않은 이유는 결합도다 — 좌표 정본을 참조하는 파일이 <c>60</c>개이고
-    /// <c>EditMode</c> 검사 <c>54</c>개 중 <c>44</c>개가 선체 기하를 직접 잰다. 씬 재빌드는 이 표를
-    /// <b>소비하는</b> 후속 카드이고, 그때 <see cref="LastShiftShipDimensions"/>·
-    /// <see cref="LastShiftZoneAtlas"/>·<see cref="LastShiftHullShell"/> 이 여기로 넘어온다.
+    /// <b>이제 이것이 서 있는 배다.</b> 일자 스파인(<c>38 x 6m</c>, 통로 둘·배플 둘·개구부 다섯)은
+    /// 폐지됐고, <see cref="LastShiftShipDimensions"/>·<see cref="LastShiftZoneAtlas"/>·
+    /// <see cref="LastShiftHullShell"/> 이 전부 이 표에서 파생한다. 씬 빌더도 여기를 읽는다 —
+    /// 좌표가 두 벌이 되지 않도록 §9.3 이 여섯 항목을 <b>같은 커밋</b>으로 묶어 둔 결과다.
     ///
-    /// <b>그래도 테스트가 아니라 <c>Runtime</c> 에 있다.</b> 폐기된 <c>LastShiftPlazaProposal</c> 은
+    /// <b>테스트가 아니라 <c>Runtime</c> 에 있다.</b> 폐기된 <c>LastShiftPlazaProposal</c> 은
     /// "승인 전 도안" 이라 테스트에 있었고, 이 표는 승인된 확정안이다. 확정안을 테스트에 두면
-    /// 씬 빌더가 그것을 참조할 수 없어 재빌드 카드가 좌표를 또 한 벌 옮겨 적게 된다.
+    /// 씬 빌더가 그것을 참조할 수 없다.
     ///
     /// 축 규약은 선체와 같다 — <c>x</c> = 전장(음수가 선수), <c>z</c> = 전폭(음수가 좌현), <c>y</c> = 높이.
     /// </summary>
@@ -224,6 +222,73 @@ namespace DoodleUp.Runtime
                 if (door.Space == space)
                     return door;
             throw new System.ArgumentException($"{space} 에 광장 문이 없다.", nameof(space));
+        }
+
+        // ── 압력 경계 (조항 S-1) ─────────────────────────────────────────────
+        // 압력문 셋이 곧 경계 셋이다. 일자 스파인에서는 경계가 사슬(조종석-전력실-냉각실-
+        // 산소실)이었고 경계 b 가 구역 b 와 b+1 을 갈랐는데, 방사형에서는 <b>전부 광장을
+        // 물고 있는 별</b>이다 — 낮은 쪽이 언제나 조종석 구역이다.
+        //
+        // 번호를 구역 번호에서 하나 뺀 값으로 잡는 것이 유일한 자유도였고, 그렇게 잡으면
+        // <c>HighZoneOf(b) = (LastShiftZone)(b + 1)</c> 이 식 그대로 살아남는다. 문 상태
+        // 스냅샷(<see cref="LastShiftDoorState"/>)과 세이브 파일이 경계 번호로 실려 있어
+        // 번호를 흔들면 옛 판이 다른 문을 닫은 채 복원된다.
+
+        /// <summary>압력 경계 수. 압력문 셋과 같고 <see cref="LastShiftZoneAtlas.BoundaryCount"/> 의 정본이다.</summary>
+        public const int PressureBoundaryCount = 3;
+
+        /// <summary>경계 <paramref name="boundary"/> 너머의 구역. 이쪽 편은 언제나 조종석 구역이다.</summary>
+        public static LastShiftZone HighZoneOf(int boundary) =>
+            (LastShiftZone)(Mathf.Clamp(boundary, 0, PressureBoundaryCount - 1) + 1);
+
+        /// <summary>구역이 쓰는 방. 광장·에어록 홀·숙소는 조종석 구역이지만 방으로는 조종석 방이 대표다.</summary>
+        public static LastShiftPlazaSpace RoomOf(LastShiftZone zone) => zone switch
+        {
+            LastShiftZone.Cockpit => LastShiftPlazaSpace.CockpitRoom,
+            LastShiftZone.Power => LastShiftPlazaSpace.PowerRoom,
+            LastShiftZone.Cooling => LastShiftPlazaSpace.CoolingRoom,
+            _ => LastShiftPlazaSpace.LifeSupportRoom
+        };
+
+        /// <summary>이 경계에 달린 압력문. 평면이 <c>x</c> 인지 <c>z</c> 인지가 문마다 다르다.</summary>
+        public static LastShiftPlazaDoor BoundaryDoor(int boundary) => DoorOf(RoomOf(HighZoneOf(boundary)));
+
+        /// <summary>
+        /// 이 경계의 문 중심. <b>스칼라 <c>x</c> 하나로 못 적는다</b> — 전력실 문은 <c>z = -6</c>,
+        /// 냉각실 문은 <c>z = +6</c>, 산소실 문만 <c>x = +6</c> 이다. 일자 스파인에서 경계를
+        /// <c>float BoundaryX</c> 로 들고 있던 자리가 전부 이 값으로 넘어온다.
+        /// </summary>
+        public static Vector2 BoundaryWaypoint(int boundary) => BoundaryDoor(boundary).Waypoint;
+
+        // ── 발자국 전체의 경계 상자 ──────────────────────────────────────────
+
+        /// <summary>고정 구조물 일곱을 전부 담는 최소 상자. 자유 배치가 "선체 안" 을 묻는 자리다.</summary>
+        public static float MinX => BoundsOf(zone: null).xMin;
+        public static float MaxX => BoundsOf(zone: null).xMax;
+        public static float MinZ => BoundsOf(zone: null).yMin;
+        public static float MaxZ => BoundsOf(zone: null).yMax;
+
+        /// <summary>
+        /// 한 압력 구역이 차지하는 평면 상자. 조종석 구역만 넷(광장·조종석 방·에어록 홀·숙소)의
+        /// 합집합이라 <b>상자가 실제 점유보다 크다</b> — 구역 소속 판정은 반드시
+        /// <see cref="ResolveZone"/> 를 쓰고, 이 상자는 바닥·이름표처럼 "대충 그 근처" 면
+        /// 되는 자리에만 쓴다.
+        /// </summary>
+        public static Rect ZoneBounds(LastShiftZone zone) => BoundsOf(zone);
+
+        private static Rect BoundsOf(LastShiftZone? zone)
+        {
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+            foreach (var footprint in Footprints)
+            {
+                if (zone.HasValue && footprint.Zone != zone.Value) continue;
+                minX = Mathf.Min(minX, footprint.MinX);
+                maxX = Mathf.Max(maxX, footprint.MaxX);
+                minZ = Mathf.Min(minZ, footprint.MinZ);
+                maxZ = Mathf.Max(maxZ, footprint.MaxZ);
+            }
+            return Rect.MinMaxRect(minX, minZ, maxX, maxZ);
         }
 
         // ── 구역 판정 (§6.2) ─────────────────────────────────────────────────
@@ -413,9 +478,8 @@ namespace DoodleUp.Runtime
         /// </code>
         ///
         /// 실제로 남는 내접 여유는 최원 모서리에서 <c>2.68m</c> 다(요구 <c>2.40m</c> 대비 <c>+0.28</c>).
-        /// <b>지금 서 있는 배는 이 원에 안 들어간다</b> — 일자 스파인 선미 모서리 <c>(19, 3)</c> 이
-        /// <c>19.235m</c> 라 내접 밖이다. 그래서 <see cref="LastShiftHullShell"/> 을 아직 안 바꿨고,
-        /// 씬 재빌드 카드가 발자국과 껍질을 <b>같은 커밋에서</b> 갈아 끼워야 한다.
+        /// <see cref="LastShiftHullShell"/> 이 이 값을 그대로 반지름으로 쓴다 — 껍질에 리터럴을
+        /// 남겨 두면 발자국이 움직여도 원이 안 따라온다.
         /// </summary>
         public const float HullRadius = 19f;
 

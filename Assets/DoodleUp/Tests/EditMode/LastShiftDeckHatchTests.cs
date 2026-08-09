@@ -250,7 +250,7 @@ namespace DoodleUp.Tests.EditMode
                 var mouth = LastShiftBypassDuct.ShaftMouth(shaft);
                 for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
                 {
-                    var gap = Mathf.Abs(mouth.x - LastShiftZoneAtlas.BoundaryX(boundary));
+                    var gap = LastShiftZoneAtlas.DistanceToBoundaryPlane(boundary, mouth);
                     Assert.That(gap,
                         Is.GreaterThan(LastShiftDeckHatch.ReachDistance + LastShiftZoneDoor.ReachDistance),
                         $"승강구 {shaft} 와 경계 {boundary} 의 조작 사거리가 겹친다.");

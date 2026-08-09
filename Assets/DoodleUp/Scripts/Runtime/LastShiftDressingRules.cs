@@ -245,12 +245,26 @@ namespace DoodleUp.Runtime
             if (prop.space.kind != LastShiftDressingSpaceKind.Zone) return;
             if (prop.space.zone is not (LastShiftZone.Power or LastShiftZone.Cooling)) return;
 
-            var maxZ = LastShiftDressingSpaces.MaxZ(prop);
-            if (maxZ > StateCueSafeMaxZ + Epsilon)
-                violations.Add(new LastShiftDressingViolation("C1_ExposureCone", prop.id, prop.space,
-                    $"상태 단서가 z={maxZ:0.##} 까지 뻗어 개구부 노출 원뿔로 넘어간다 — " +
-                    $"z ≤ {StateCueSafeMaxZ} 안에만 둘 수 있다(§19.4/§19.7). " +
-                    "원뿔 안에 든 상태 단서는 게이지가 없어도 사실상 세 번째 게이지가 된다."));
+            // <b>기준이 절대 z 밴드에서 문 쐐기로 바뀌었다.</b> 옛 상한
+            // (<see cref="LastShiftDressing.StateCueSafeMaxZ"/> = 1.40)은 전력실↔냉각실
+            // <b>방-방 개구부</b>의 노출 원뿔에서 나온 값인데, §3.4 가 그 개구부를 폐지했다 —
+            // 두 방은 이제 서로 안 닿고 각자 광장에만 문이 있다. 그 상한을 그대로 두면 두 방이
+            // z 6~11 대역에 있으므로 상태 단서를 <b>어디에도</b> 못 놓는다.
+            //
+            // 남은 실제 요건은 §4 그대로다: 광장에 선 사람이 방 안 상태를 읽으면 그것이
+            // 게이지 하나 몫을 더 한다. 그래서 문 구멍이 만드는 쐐기로 잰다 — 구멍 폭 밖으로
+            // 비켜난 자리(방 옆벽 쪽)면 광장에서 그 소품을 지나는 직선이 없다.
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaLayout.RoomOf(prop.space.zone));
+            var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
+            var propMin = door.PlaneIsX ? LastShiftDressingSpaces.MinZ(prop) : LastShiftDressingSpaces.MinX(prop);
+            var propMax = door.PlaneIsX ? LastShiftDressingSpaces.MaxZ(prop) : LastShiftDressingSpaces.MaxX(prop);
+
+            if (propMax <= door.Center - half + Epsilon || propMin >= door.Center + half - Epsilon) return;
+
+            violations.Add(new LastShiftDressingViolation("C1_ExposureCone", prop.id, prop.space,
+                $"상태 단서가 {prop.space.zone} 문 구멍 정면([{door.Center - half:0.##}, {door.Center + half:0.##}])에 " +
+                "걸쳐 광장에서 읽힌다 — 게이지가 없어도 사실상 세 번째 게이지가 된다(§4). " +
+                "문 정면 쐐기를 벗어난 방 옆벽 쪽으로 옮겨야 한다."));
         }
 
         /// <summary>

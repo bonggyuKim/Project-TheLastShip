@@ -21,16 +21,18 @@ namespace DoodleUp.Tests.EditMode
         // ── 외피 타원 ────────────────────────────────────────────────────────
 
         [Test]
-        public void ShellMatchesTheApprovedEllipse()
+        public void ShellMatchesTheApprovedDisc()
         {
-            // §27.1 이 사용자 승인 완료로 확정한 값이다. 여기가 흔들리면 그 승인이 무효다.
-            Assert.That(LastShiftHullShell.SemiMajorX, Is.EqualTo(42f).Within(Tolerance));
-            Assert.That(LastShiftHullShell.SemiMinorZ, Is.EqualTo(20f).Within(Tolerance));
-            Assert.That(LastShiftHullShell.OverallLength, Is.EqualTo(84f).Within(Tolerance));
-            Assert.That(LastShiftHullShell.OverallWidth, Is.EqualTo(40f).Within(Tolerance));
+            // 중앙 광장 허브 §9.2 가 확정한 값이다. 반지름은 취향이 아니라 네 항의 합이라
+            // 리터럴이 아니라 정본을 본다 — 발자국이 한 번만 움직여도 이 값이 따라와야 한다.
+            Assert.That(LastShiftHullShell.Radius, Is.EqualTo(LastShiftPlazaLayout.HullRadius).Within(Tolerance));
+            Assert.That(LastShiftHullShell.Radius, Is.EqualTo(19f).Within(Tolerance));
+            Assert.That(LastShiftHullShell.OverallLength, Is.EqualTo(38f).Within(Tolerance));
+            Assert.That(LastShiftHullShell.OverallWidth, Is.EqualTo(38f).Within(Tolerance));
 
-            // §26.4 가 정원을 기각했다. 종횡비가 1 로 수렴하면 그 결정이 조용히 뒤집힌 것이다.
-            Assert.That(LastShiftHullShell.AspectRatio, Is.EqualTo(2.1f).Within(0.001f));
+            // §26.4 가 정원을 기각했던 근거는 스파인의 종횡비 6.33:1 이었고, 허브가
+            // 그것을 1.22:1 로 뒤집으면서 장축을 따로 둘 이유가 사라졌다(§0-8).
+            Assert.That(LastShiftHullShell.AspectRatio, Is.EqualTo(1f).Within(0.001f));
         }
 
         [Test]
@@ -62,7 +64,7 @@ namespace DoodleUp.Tests.EditMode
             var worst = LastShiftCompartments.FixedSpecs
                 .OrderBy(spec => LastShiftHullShell.FootprintMargin(spec))
                 .First();
-            Assert.That(worst.Compartment, Is.EqualTo(LastShiftCompartment.Quarters));
+            Assert.That(worst.Compartment, Is.EqualTo(LastShiftCompartment.AirlockHall));
 
             Assert.That(LastShiftHullShell.FootprintMargin(worst), Is.EqualTo(0.678f).Within(0.005f),
                 "숙소 모서리 여유가 움직였다 — 발자국이나 선미 붙는 자리가 바뀌었다.");
@@ -80,14 +82,22 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ShellDoesNotTouchThePressureZones()
         {
-            // §26.5: 원반은 껍질이고 내부 4구역을 안 바꾼다. CT-09(38m x 6.0m)도 그대로다.
-            Assert.That(LastShiftShipDimensions.InteriorLength, Is.EqualTo(38f).Within(Tolerance));
-            Assert.That(LastShiftShipDimensions.InteriorWidth, Is.EqualTo(6f).Within(Tolerance));
+            // §26.5: 원반은 껍질이고 압력 구역 넷을 안 바꾼다.
+            //
+            // <b>내부 치수를 리터럴로 안 잰다.</b> 예전에는 CT-09 의 <c>38 x 6.0</c> 을 그대로
+            // 박아 두었는데, 방사형에서 그 두 수는 배를 덮는 사각형이 아니라 <b>경계 상자</b>가
+            // 됐다. 껍질이 안 건드린다는 것을 재려면 발자국이 그대로인지를 물어야 하고,
+            // 그건 발자국표가 답한다.
+            Assert.That(LastShiftShipDimensions.InteriorLength,
+                Is.EqualTo(LastShiftPlazaLayout.MaxX - LastShiftPlazaLayout.MinX).Within(Tolerance));
+            Assert.That(LastShiftShipDimensions.InteriorWidth,
+                Is.GreaterThanOrEqualTo(LastShiftPlazaLayout.MaxZ - LastShiftPlazaLayout.MinZ),
+                "경계 상자가 발자국보다 좁다 — 에어록 홀이 배 밖으로 판정된다.");
             Assert.That(LastShiftZoneAtlas.ZoneCount, Is.EqualTo(4));
 
-            // §27.5: 스파인 1회 꺾기는 채택하지 않았다. 채택하면 Resolve() 가 x 하나로
-            // 못 정하게 되고 경계도 셋이 아니게 된다 — 그 결정이 코드에 들어왔는지는
-            // 경계 수와 선체 폭이 먼저 말한다.
+            // 압력 경계는 여전히 셋이다. 일자 스파인에서는 사슬이라 셋이었고 방사형에서는
+            // 광장 변의 압력문이 셋이라 같은 값이 나온다 — 위상은 바뀌었지만 문 개수가
+            // 안 움직여서 LastShiftZoneDoor 인스턴스 수도 그대로다.
             Assert.That(LastShiftZoneAtlas.BoundaryCount, Is.EqualTo(3));
         }
 
@@ -140,7 +150,8 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftHullFrames.WindowBackdropZ,
                 Is.LessThan(-LastShiftHullShell.SemiMinorZ),
                 "배경막이 원반 단축 반지름 안쪽에 있다 — 외피에 가려 창에서 안 보인다.");
-            Assert.That(LastShiftHullFrames.WindowBackdropZ, Is.EqualTo(-22f).Within(0.001f),
+            Assert.That(LastShiftHullFrames.WindowBackdropZ,
+                Is.EqualTo(-LastShiftHullShell.Radius - 2f).Within(0.001f),
                 "배경막 z 가 씬 빌더의 SpaceVoid 와 어긋났다 — 두 값이 갈리면 회피가 헛돈다.");
 
             // 별 판도 원반 밖이어야 한다. 배경막과 달리 별은 배경막 <b>앞</b>으로 흩뿌려지므로

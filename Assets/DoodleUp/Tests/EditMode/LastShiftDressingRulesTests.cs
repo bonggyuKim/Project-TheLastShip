@@ -126,7 +126,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void HatchMarkerOutsideACompartmentIsRejected()
         {
-            var marker = Prop("CorridorSign", LastShiftDressingSpace.OfPassage(0),
+            var marker = Prop("PlazaSign", LastShiftDressingSpace.OfPlaza(),
                 LastShiftDressingSemantics.HatchMarker);
 
             Assert.That(HasRule(Validate(marker), "C2_HatchMarker"), Is.True);
@@ -287,7 +287,7 @@ namespace DoodleUp.Tests.EditMode
             // 소품은 공간별 루트 아래에 붙으므로 하이어라키에서 안 겹친다. 전역 유일을
             // 요구하면 방 이름을 접두어로 달아야 하고 이름이 두 번 반복된다.
             var a = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
-            var b = Prop("Bench_Port", LastShiftDressingSpace.OfPassage(0));
+            var b = Prop("Bench_Port", LastShiftDressingSpace.OfPlaza());
 
             Assert.That(HasRule(Validate(a, b), "R0_Id"), Is.False);
         }
@@ -318,22 +318,29 @@ namespace DoodleUp.Tests.EditMode
         /// 냉각실↔통로B 문 앞에 <paramref name="halfWidth"/> 만큼 z 로 뻗은 상자를 세운다.
         /// 2026-08-08 플레이테스트에서 실제로 그 자리에 있던 <c>CrateStack_Aft</c> 와 같은 배치다.
         /// </summary>
-        private static LastShiftDressingProp CoolingDoorProp(string id, float centerZ, float sizeZ,
+        private static LastShiftDressingProp CoolingDoorProp(string id, float centerAlongDoor, float sizeAlongDoor,
             float sizeY = 1.55f)
         {
             var prop = Prop(id, LastShiftDressingSpace.Of(LastShiftZone.Cooling));
-            prop.size = new Vector3(1f, sizeY, sizeZ);
-            // 냉각실 방 중심에서 문 평면(x = +5) 쪽으로 붙인다.
-            var doorX = LastShiftShipDimensions.OpeningX(3);
-            prop.anchor = new Vector2(doorX - LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling) - 0.5f,
-                centerZ);
+            // <b>문의 자유축이 z 에서 x 로 바뀌었다.</b> 냉각실 문은 이제 광장 우현 변
+            // (z = +6)에 있고, 그 구멍을 막는 방향은 x 다. 크기를 그대로 두면
+            // 상자가 문 앞을 가로로 가로지르는 것이 아니라 깊이로 서서 아무것도 안 막는다.
+            prop.size = new Vector3(sizeAlongDoor, sizeY, 1f);
+
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom);
+            // 문 평면에서 방 안쪽으로 0.5m. 문틀에 딱 붙이면 ApproachDepth 검사가
+            // 재는 띄 밖으로 나가 문을 막아도 통과한다.
+            var insideZ = door.Plane + 0.5f;
+            prop.anchor = new Vector2(
+                centerAlongDoor - LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling),
+                insideZ - LastShiftShipDimensions.RoomCenterZ(LastShiftZone.Cooling));
             return prop;
         }
 
         [Test]
         public void PropAcrossADoorwayIsRejected()
         {
-            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom).Center;
             var crate = CoolingDoorProp("CrateStack", door, 0.8f);
 
             Assert.That(HasRule(Validate(crate), "C5_DoorwayClearance"), Is.True);
@@ -343,7 +350,7 @@ namespace DoodleUp.Tests.EditMode
         public void PropBesideADoorwayIsAllowed()
         {
             // 문 구멍 밖으로 완전히 비켜난 상자. 문 앞이라도 구멍을 안 물면 통행이 남는다.
-            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom).Center;
             var crate = CoolingDoorProp("CrateStack",
                 door - LastShiftZoneDoor.OpeningWidth * 0.5f - 0.6f, 0.8f);
 
@@ -355,7 +362,7 @@ namespace DoodleUp.Tests.EditMode
         {
             // 하나씩 재면 둘 다 통과한다 — 각각 한쪽 끝만 조금 물어 반대쪽에 넓은 토막이
             // 남기 때문이다. 문 단위로 합쳐야 가운데 한 토막만 남은 것이 보인다.
-            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom).Center;
             var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
             var fore = CoolingDoorProp("PinchFore", door - half, 0.8f);
             var aft = CoolingDoorProp("PinchAft", door + half, 0.8f);
@@ -369,7 +376,7 @@ namespace DoodleUp.Tests.EditMode
         public void DeckDecalInADoorwayIsAllowed()
         {
             // 갑판 띠·격자는 밟고 지나간다. 이걸 세면 문 앞 갑판 표시가 전부 위반이 된다.
-            var door = LastShiftShipDimensions.OpeningCenterZ(3);
+            var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom).Center;
             var band = CoolingDoorProp("DeckGrate", door, 0.9f, LastShiftDoorways.WalkOverHeight * 0.5f);
 
             Assert.That(HasRule(Validate(band), "C5_DoorwayClearance"), Is.False);

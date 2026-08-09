@@ -202,96 +202,80 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void BeyondOpeningResolvesTheSpaceOnTheFarSideFromEitherApproach()
+        public void BeyondDoorResolvesTheSpaceOnTheFarSideFromEitherApproach()
         {
             var runtimeObject = new GameObject("Runtime");
             var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
-            // 세 구역을 서로 다른 압력으로 벌려 둔다. 같은 값이면 잘못된 구역을 가리켜도
+            // 네 구역을 서로 다른 압력으로 벌려 둔다. 같은 값이면 잘못된 구역을 가리켜도
             // 스칼라가 같아서 이 검사가 통과한다 — 조용히 틀리는 바로 그 모양이다.
-            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
+            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.53f, 0.11f));
 
-            var cockpit = sandbox.DistressOf(LastShiftZone.Cockpit).Scalar;
-            var utility = sandbox.DistressOf(LastShiftZone.Power).Scalar;
-            var lifeSupport = sandbox.DistressOf(LastShiftZone.LifeSupport).Scalar;
-            Assert.That(new[] { cockpit, utility, lifeSupport }, Is.Unique);
-
-            for (var opening = 0; opening < LastShiftShipDimensions.OpeningCount; opening++)
+            var scalars = new[]
             {
-                var x = LastShiftShipDimensions.OpeningX(opening);
-                var expectedFromLow = LastShiftZoneAtlas.Resolve(
-                    new Vector3(LastShiftShipDimensions.SpaceCenterXAfter(opening), 0f, 0f));
-                var expectedFromHigh = LastShiftZoneAtlas.Resolve(
-                    new Vector3(LastShiftShipDimensions.SpaceCenterXBefore(opening), 0f, 0f));
+                sandbox.DistressOf(LastShiftZone.Cockpit).Scalar,
+                sandbox.DistressOf(LastShiftZone.Power).Scalar,
+                sandbox.DistressOf(LastShiftZone.Cooling).Scalar,
+                sandbox.DistressOf(LastShiftZone.LifeSupport).Scalar
+            };
+            Assert.That(scalars, Is.Unique);
 
-                Assert.That(sandbox.DistressBeyondOpening(opening, x - 1f).Zone, Is.EqualTo(expectedFromLow),
-                    $"개구부 {opening}: 선수 쪽에서 보면 선미 쪽 공간이 너머다.");
-                Assert.That(sandbox.DistressBeyondOpening(opening, x + 1f).Zone, Is.EqualTo(expectedFromHigh),
-                    $"개구부 {opening}: 선미 쪽에서 보면 선수 쪽 공간이 너머다.");
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+            {
+                var door = LastShiftZoneAtlas.BoundaryDoor(boundary);
+                var room = LastShiftPlazaLayout.Of(door.Space);
+                var roomCentre = new Vector3(
+                    (room.MinX + room.MaxX) * 0.5f, 0f, (room.MinZ + room.MaxZ) * 0.5f);
+
+                // 광장에서 보면 너머는 방, 방에서 보면 너머는 광장(조종석 구역)이다.
+                Assert.That(sandbox.DistressBeyondDoor(boundary, Vector3.zero).Zone,
+                    Is.EqualTo(LastShiftZoneAtlas.HighZoneOf(boundary)),
+                    $"경계 {boundary}: 광장에서 보면 문 너머 방이 너머다.");
+                Assert.That(sandbox.DistressBeyondDoor(boundary, roomCentre).Zone,
+                    Is.EqualTo(LastShiftZone.Cockpit),
+                    $"경계 {boundary}: 방에서 보면 광장이 너머다.");
             }
 
-            // 개구부 1·2 는 x 가 구역 판정 경계와 같은 값이라, ε 부호를 한 번 잘못 잡으면
-            // 판독이 통째로 반대편을 가리키고도 값이 그럴듯하다. 두 개구부만 이름으로 못박는다.
-            Assert.That(LastShiftShipDimensions.OpeningX(1),
-                Is.EqualTo(LastShiftZoneAtlas.BoundaryX(0)).Within(0.0001f));
-            Assert.That(LastShiftShipDimensions.OpeningX(2),
-                Is.EqualTo(LastShiftZoneAtlas.BoundaryX(1)).Within(0.0001f));
+            // <b>문 평면 위 좌표를 쓰면 안 되는 이유가 여기 있다.</b> 문 평면은 방 경계와
+            // 같은 값이라, 평면에서 ε 만큼 민 좌표로 구역을 정하면 부호를 한 번 잘못 잡았을
+            // 때 판독이 통째로 반대편을 가리키고도 값이 그럴듯하다. 그래서 방과 광장의
+            // <b>중심</b>으로 잰다 — 그쪽은 그런 여지가 없다.
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+            {
+                var waypoint = LastShiftZoneAtlas.BoundaryWaypoint(boundary);
+                var room = LastShiftPlazaLayout.Of(LastShiftZoneAtlas.BoundaryDoor(boundary).Space);
+                Assert.That(room.Contains(waypoint.x, waypoint.y), Is.True,
+                    $"경계 {boundary} 문 중심이 자기 방 경계 위가 아니다 — 동점이 관측되지 않는다.");
+            }
 
-            // 개구부가 넷에서 다섯이 되며 번호가 밀렸다(§3). 옛 개구부 2(엔진실↔통로B)는 이제 3 이고,
-            // 새 2 는 전력실↔냉각실 방-방 문이다.
-            Assert.That(sandbox.DistressBeyondOpening(1, LastShiftShipDimensions.PassageCenterX(0)).Zone,
-                Is.EqualTo(LastShiftZone.Power), "통로 A 에서 개구부 1 너머는 전력실이다.");
-            Assert.That(sandbox.DistressBeyondOpening(1, LastShiftShipDimensions.PowerCenterX).Zone,
-                Is.EqualTo(LastShiftZone.Cockpit), "전력실에서 개구부 1 너머는 통로 A(조종석 구역)다.");
-            Assert.That(sandbox.DistressBeyondOpening(LastShiftShipDimensions.RoomToRoomOpening, LastShiftShipDimensions.PowerCenterX).Zone,
-                Is.EqualTo(LastShiftZone.Cooling), "전력실에서 개구부 2 너머는 냉각실이다 - 방-방 직접 인접이라 통로가 없다.");
-            Assert.That(sandbox.DistressBeyondOpening(3, LastShiftShipDimensions.CoolingCenterX).Zone,
-                Is.EqualTo(LastShiftZone.LifeSupport), "냉각실에서 개구부 3 너머는 통로 B(산소실 구역)다.");
-            Assert.That(sandbox.DistressBeyondOpening(3, LastShiftShipDimensions.PassageCenterX(1)).Zone,
-                Is.EqualTo(LastShiftZone.Cooling), "통로 B 에서 개구부 3 너머는 냉각실이다.");
+            // 게이지는 방향과 무관하게 언제나 문 너머 구역을 표시한다(§4.1 이설의 결과).
+            for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
+                Assert.That(sandbox.GaugeReading(boundary).Zone,
+                    Is.EqualTo(LastShiftZoneAtlas.HighZoneOf(boundary)));
 
             Object.DestroyImmediate(runtimeObject);
         }
 
         [Test]
-        public void PassageEndOpeningsReadTheZoneTheyBelongTo()
+        public void TheCockpitOpeningReadsTheSameZoneFromBothSides()
         {
-            // 통로의 방 쪽 개구부(문이 없는 끝)는 양쪽이 같은 구역이다 — 통로 A 전체가 조종석 구역이고 통로 B 전체가
-            // 산소실 구역이기 때문이다(구역 경계는 통로 안이 아니라 통로 끝에 있다).
-            // 이건 결함이 아니라 성질이다. 여기가 조용히 뒤집히면 문 달린 두 개구부의 판독도
-            // 같이 어긋난다.
-            //
-            // <b>판독 자리는 개구부 0 앞이 아니다.</b> 개구부 0 평면에 서서 개구부 1 을 보는
-            // 시선은 정의상 두 개구부를 모두 지나므로 배플이 전부 막는다 — 그게 배플이 막는
-            // 집합의 정의다(LastShiftShipDimensions.BaffleOffsetT). 실제로 읽히는 자리는 통로
-            // 안, 배플 옆 통행 차선이고 거기서 개구부 1 까지는 6m 가 아니라 5.5m 다.
-            // 배플 도입(7be4938) 전 그림이 이 주석에 남아 있었다.
+            // 조종석↔광장은 문짝 없는 개구부라 양쪽이 <b>같은 구역</b>이다. 이건 결함이 아니라
+            // 성질이고(§3.2), 여기가 조용히 뒤집히면 압력 구역이 넷에서 다섯이 된다.
+            Assert.That(LastShiftZoneAtlas.Resolve(Vector3.zero), Is.EqualTo(LastShiftZone.Cockpit));
             Assert.That(
-                LastShiftZoneAtlas.Resolve(new Vector3(LastShiftShipDimensions.PassageCenterX(0), 0f, 0f)),
+                LastShiftZoneAtlas.Resolve(new Vector3(LastShiftShipDimensions.CockpitCenterX, 0f, 0f)),
                 Is.EqualTo(LastShiftZone.Cockpit));
-            Assert.That(
-                LastShiftZoneAtlas.Resolve(new Vector3(LastShiftShipDimensions.PassageCenterX(1), 0f, 0f)),
-                Is.EqualTo(LastShiftZone.LifeSupport));
 
-            var runtimeObject = new GameObject("Runtime");
-            var sandbox = runtimeObject.AddComponent<LastShiftSandboxController>();
-            sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
-            sandbox.OverrideZonePressuresForProbe(new LastShiftZonePressures(1f, 0.29f, 0.29f, 0.11f));
-
-            // 번호를 적지 않는다 — 개구부가 다섯이 되며 통로 B 쪽이 3 에서 4 로 밀렸다(§3).
-            foreach (var opening in new[]
-                     {
-                         LastShiftShipDimensions.BaffleNearOpening(0),
-                         LastShiftShipDimensions.BaffleNearOpening(1)
-                     })
+            // 광장에 일반문으로 붙은 부속 둘도 같은 구역을 따라온다.
+            foreach (var space in new[] { LastShiftPlazaSpace.AirlockHall, LastShiftPlazaSpace.Quarters })
             {
-                var x = LastShiftShipDimensions.OpeningX(opening);
-                Assert.That(sandbox.DistressBeyondOpening(opening, x - 1f).Zone,
-                    Is.EqualTo(sandbox.DistressBeyondOpening(opening, x + 1f).Zone),
-                    $"개구부 {opening} 은 방과 통로를 잇고 둘은 같은 구역이다.");
+                var room = LastShiftPlazaLayout.Of(space);
+                Assert.That(
+                    LastShiftZoneAtlas.Resolve(new Vector3(
+                        (room.MinX + room.MaxX) * 0.5f, 0f, (room.MinZ + room.MaxZ) * 0.5f)),
+                    Is.EqualTo(LastShiftZone.Cockpit),
+                    $"{space} 가 조종석 구역이 아니다 — 일반문으로 붙은 부속은 구역을 안 가른다.");
             }
-
-            Object.DestroyImmediate(runtimeObject);
         }
 
         [Test]

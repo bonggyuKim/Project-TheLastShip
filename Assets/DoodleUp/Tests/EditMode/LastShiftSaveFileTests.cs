@@ -361,11 +361,11 @@ namespace DoodleUp.Tests.EditMode
         private static LastShiftCompartmentSpec Spur(int index, int link, int parentIndex)
         {
             const float roomDepth = 2f;
-            var doorX = LastShiftShipDimensions.ZoneCenterX(LastShiftZone.Cooling);
-            var minZ = LastShiftShipDimensions.SideWallZ + link * roomDepth;
+            var doorX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
+            var minZ = LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling) + link * roomDepth;
 
             return new LastShiftCompartmentSpec(
-                index, doorX - 9f, doorX + 1f, minZ, minZ + roomDepth,
+                index, doorX - 3f, doorX + 3f, minZ, minZ + roomDepth,
                 LastShiftDoorPlane.AlongZ, minZ, doorX,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
