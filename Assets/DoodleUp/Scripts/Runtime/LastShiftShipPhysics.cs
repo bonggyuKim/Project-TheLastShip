@@ -22,16 +22,15 @@ namespace DoodleUp.Runtime
         public const float GravityY = -5.5f;
 
         /// <summary>
-        /// 점프 초기 상승 속도. 지구 중력에서 4.8 이던 값을 4.05 로 낮췄다. 저중력에서 4.8 을
-        /// 유지하면 정점 고도가 천장을 뚫고 카메라가 선체 밖으로 나간다.
+        /// 점프 초기 상승 속도. 사용자 요청(2026-08-10)으로 4.05 → 3.85 로 낮췄다.
         ///
-        /// 값 근거: 정점 = JumpSpeed^2 / (2 * |GravityY|). 4.05 는 정점 약 1.49m 로,
-        /// 카메라 눈높이(1.55) + 정점이 천장 내면(<see cref="CeilingInnerHeight"/> = 3.2) 아래에
-        /// 머문다. <b>이 값은 <see cref="GravityY"/> 와 짝이다</b> — 중력만 내리면 정점이 같이
-        /// 내려가 승강구 바닥에서 갑판으로 못 올라온다. 화성 시절의 3.33 은 지금 정점
-        /// 1.01m 라 승강구 회수 높이(1.2m)에 못 미친다.
+        /// 값 근거: 정점 = JumpSpeed^2 / (2 * |GravityY|). 3.85 는 정점 약 1.35m 다.
+        /// <b>이 방향으로는 여기가 거의 바닥이다</b> — 승강구 회수 높이
+        /// (<see cref="LastShiftBypassDuct.RecoveryRise"/> = 1.2m)를 정점이 못 밑돌기 때문이다.
+        /// 밑돌면 갑판 구멍에 떨어진 물건을 회수할 길이 사라진다. 남은 여유는 0.15m 뿐이라,
+        /// 더 낮추려면 값이 아니라 승강구에 단을 넣는 설계 변경이 필요하다.
         /// </summary>
-        public const float JumpSpeed = 4.05f;
+        public const float JumpSpeed = 3.85f;
 
         /// <summary>
         /// 천장 내면 높이. 점프 정점 계산과 씬 빌더의 천장 배치가 같은 값을 써야 한다.
