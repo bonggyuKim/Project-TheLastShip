@@ -5,6 +5,8 @@
 > **이 문서가 갱신하는 것**: `corridor-4p-redesign-v1.md` §23.5(에어록 좌표 = `L` 자 모서리 하부 분기) 를 폐기하고 대체한다. `outboard-outpost-and-map-final-v1.md` §4.1 의 "에어록이 이미 좌표까지 있다" 는 근거는 **좌표가 바뀔 뿐 결론(같은 씬·에어록 바깥)은 그대로 산다**. 조항 `O-4`·`O-5`·`O-7` 전부 유효하다.
 > 실측 기준(이번에 직접 읽은 코드): `LastShiftBypassDuct.cs` · `LastShiftAirlock.cs` · `LastShiftShipDimensions.cs` · `LastShiftShipPhysics.cs` · `LastShiftCompartments.cs` · `LastShiftHullShell.cs` · `LastShiftSalvage.cs` · `LastShiftRecovery.cs` · `LastShiftSceneBuilder.cs`
 > **산출물은 기획 확정안이다. 좌표·수치를 코드에 안 넣는다 — 구현은 `game-tech-director` 후속 카드다.**
+>
+> **좌표 갱신 (`2026-08-10`, 카드 `3794f2fc`).** `central-plaza-hub-layout-v1.md` 가 배를 광장 중심 방사형으로 다시 짜면서 **에어록 홀 발자국이 `x [-11, -3]` · `z [-12, -6]` 로 바뀌고, 안쪽 문이 조종석 좌현 벽에서 광장 좌현 변(평면 `z = -6`, 중심 `x = -4.5`)으로 옮겨간다.** 바뀌는 것은 그 둘뿐이다 — `48m²`(§2-2) · `3×3` 감압 챔버 · 바닥 해치 문법 · 산소 시계 규칙(§2-4) · 인터록 1항 폐지(§2-3) · 고정 표에 안 넣는다(§3-3) · Tether 이설 보류(§3-5) 전부 유효하다. §2-1 의 "왜 조종석 좌현 선수인가" 넷 중 (2)튜토리얼만 형태가 바뀐다 — 조종석 창을 본 그 방이 아니라 **광장 건너 왼쪽 앞 문**이 목표가 된다.
 
 ## 0. 결론 먼저
 
