@@ -12,6 +12,9 @@ namespace DoodleUp.Runtime
             NetworkVariableWritePermission.Server);
 
         [SerializeField] private LastShiftSandboxController sandbox;
+
+        /// <summary>호스트의 저장 서비스. 클라이언트에는 이것이 없어도 된다 — 조항 S-2.</summary>
+        [SerializeField] private LastShiftSaveService saveService;
         private float nextSnapshotTime;
         private readonly System.Collections.Generic.Dictionary<LastShiftNetworkGrabbable, float> outOfBoundsSince = new();
 
@@ -132,6 +135,36 @@ namespace DoodleUp.Runtime
             }
 
             snapshot.Value = sandbox.CaptureRuntimeSnapshot();
+        }
+
+        /// <summary>
+        /// 클라이언트가 누른 저장을 호스트로 넘긴다(<c>docs/tech/save-backbone-feasibility-v1.md</c>
+        /// §7.1). <b>클라이언트는 세이브를 갖지 않는다</b>(조항 S-2) — 파일도 캡처도 호스트 것이고,
+        /// 여기서 넘어가는 것은 "지금 저장해 달라" 는 요청 하나뿐이다.
+        ///
+        /// <b>클라이언트를 세우지 않는다.</b> 아이템·승무원 포즈가 소유자 권위라 호스트가 보는 값은
+        /// <c>RTT</c> + 보간만큼 지난 것이지만, 시뮬이 이미 그 지연된 값으로 판정하므로(§7.3)
+        /// 저장이 시뮬보다 더 최신인 값을 뜰 이유가 없다. 되받아 오면 요구 (가)(체감 정지 <c>0</c>)를
+        /// 스스로 깨고 얻는 것은 판정에 안 쓰이는 <c>30</c>cm 다.
+        ///
+        /// 캡처 시점은 이 프레임의 <c>LateUpdate</c> 다 — <see cref="LastShiftSaveService.RequestSave"/>
+        /// 가 플래그만 세우고, 재진입 가드도 그쪽 하나다(§1.4-마-1).
+        /// </summary>
+        [Rpc(SendTo.Server, RequireOwnership = false)]
+        public void RequestSaveRpc(RpcParams rpcParams = default)
+        {
+            var sender = rpcParams.Receive.SenderClientId;
+            if (!IsConnectedSender(sender)) return;
+
+            if (saveService == null) saveService = GetComponent<LastShiftSaveService>();
+            if (saveService == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_SAVE] result=FAIL reason=no-service client={sender}");
+                return;
+            }
+
+            saveService.RequestSave();
+            Debug.Log($"[LAST_SHIFT_SAVE_REQUEST] client={sender} writing={saveService.IsWriting} result=ACCEPT");
         }
 
         [Rpc(SendTo.Server, RequireOwnership = false)]

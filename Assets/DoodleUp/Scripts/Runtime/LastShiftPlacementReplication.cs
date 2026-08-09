@@ -15,6 +15,7 @@ namespace DoodleUp.Runtime
     /// 두 화면의 벽이 같은 자리에 선다. 클라이언트에서 후보를 다시 지어 내면 부동소수 반올림
     /// 하나로 방이 <c>1cm</c> 어긋나고, 그 어긋남은 문틀을 뚫을 때만 드러난다.
     /// </summary>
+    [Serializable]
     public struct LastShiftPlacementRecord : INetworkSerializable, IEquatable<LastShiftPlacementRecord>
     {
         /// <summary>원장 기록이 없는 칸. 표에 직접 등록된 것(테스트·조립 경로)이 이 값이다.</summary>
@@ -88,6 +89,7 @@ namespace DoodleUp.Runtime
     /// 주인이 풀린다. 따로 실으면 한 프레임 동안 "기항 2 인데 잔액은 기항 1 의 것" 인 화면이 서고,
     /// 그 한 프레임에 확정을 누르면 어느 회차의 값으로 무는지가 갈린다.
     /// </summary>
+    [Serializable]
     public struct LastShiftPlacementLedger : INetworkSerializable, IEquatable<LastShiftPlacementLedger>
     {
         public int Balance;

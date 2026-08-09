@@ -204,6 +204,31 @@ namespace DoodleUp.Runtime
             ApplyPhysicsState();
         }
 
+        /// <summary>
+        /// 세이브 복원이 쓰는 자리. <see cref="RecoverToNominal"/> 와 같은 원자적 정리를 하되
+        /// 목적지가 제자리가 아니라 <b>저장된 자리</b>다.
+        ///
+        /// <b>속도를 복원하지 않는다</b>(조항 S-7) — 그래서 로드 후 그 자리에 정지 배치된다.
+        /// 이것이 저장 시점의 소유자 권위 지연을 판정에서 떼어 내는 성질이다
+        /// (<c>docs/tech/save-backbone-feasibility-v1.md</c> §7.3): 어긋난 <c>30</c>cm 가
+        /// 남더라도 그 값으로 다시 계산되는 것이 없다.
+        ///
+        /// <b>든 상태를 복원하지 않는다.</b> 홀더는 승무원이고 승무원은 따로 복원되므로,
+        /// 여기서 든 채로 되살리면 홀더 소켓이 아직 없는 프레임에 소켓 없는 "들림" 이 남는다.
+        /// </summary>
+        public void RestoreFromSave(Vector3 position, Quaternion rotation, bool restoredSecured, bool byCrew)
+        {
+            if (body == null) body = GetComponent<Rigidbody>();
+            IsHeld = false;
+            secured = restoredSecured;
+            SecuredByCrew = restoredSecured && byCrew;
+            transform.SetParent(originalParent, false);
+            transform.SetPositionAndRotation(position, rotation);
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            ApplyPhysicsState();
+        }
+
         private void BeginHold()
         {
             IsHeld = true;
