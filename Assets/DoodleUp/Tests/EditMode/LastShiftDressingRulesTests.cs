@@ -94,43 +94,33 @@ namespace DoodleUp.Tests.EditMode
         // ── 제약 2 · 해치 표식 금지 ──────────────────────────────────────────────────
 
         [Test]
-        public void HatchMarkerOnALockedCompartmentIsRejected()
+        public void NoFixedCompartmentIsLockedSoTheHatchMarkerRuleHasNoTarget()
         {
-            // 관측실이 아니라 서버/통신실을 쓴다 — 관측실은 확장 검토 §2 로 P0 상시 개방이
-            // 됐고, 서버/통신실은 §2.2 가 "정보 우위에 접근 비용" 설계 전이라 P0 밖으로
-            // 남긴 셋 중 하나다.
-            var marker = Prop("Placard", LastShiftDressingSpace.Of(LastShiftCompartment.ServerRoom),
-                LastShiftDressingSemantics.HatchMarker);
-
-            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.ServerRoom).Access,
-                Is.EqualTo(LastShiftCompartmentAccess.Locked));
-            Assert.That(HasRule(Validate(marker), "C2_HatchMarker"), Is.True);
+            // <b>이 규칙의 대상이 M-2 에서 0 이 됐다</b>(조항 K-2). 잠긴 셋(서버/통신실·
+            // 수경재배·의무실)이 전부 자유 배치 카탈로그로 갔고, 배치된 모듈은 언제나
+            // Open 으로 선다 — 언락 전에 새어 나갈 상태 자체가 없다.
+            //
+            // <b>규칙을 지우지 않는 이유가 이 검사다.</b> 메타 진행 백본이 붙으면 Locked 가
+            // 다시 쓰이고, 그때 표식 금지가 같이 돌아와야 한다. 여기서 확인하는 것은
+            // "지금 잠긴 방이 없다" 이지 "규칙이 없다" 가 아니다.
+            Assert.That(
+                LastShiftCompartments.FixedSpecs.Any(
+                    spec => spec.Access == LastShiftCompartmentAccess.Locked),
+                Is.False,
+                "잠긴 고정 구획이 생겼다 — 해치 표식 금지가 다시 대상을 갖는다.");
         }
 
         [Test]
-        public void HatchMarkerOnAnOpenedBowCompartmentPasses()
+        public void HatchMarkerOnAnOpenCompartmentPasses()
         {
-            // 선수 사슬 넷은 P0 에서 열려 있으므로 표식이 흘릴 언락 상태가 없다(§21.4 는
-            // "언락 전 구획" 에만 걸린다). 이 넷을 다시 잠글 때 이 테스트가 같이 뒤집힌다.
-            var marker = Prop("CargoPlacard", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay),
+            // 숙소는 언제나 열려 있으므로 표식이 흘릴 언락 상태가 없다(§21.4 는 "언락 전
+            // 구획" 에만 걸린다).
+            var marker = Prop("QuartersPlacard", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters),
                 LastShiftDressingSemantics.HatchMarker);
 
-            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.CargoBay).Access,
+            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.Quarters).Access,
                 Is.EqualTo(LastShiftCompartmentAccess.Open));
             Assert.That(HasRule(Validate(marker), "C2_HatchMarker"), Is.False);
-        }
-
-        [Test]
-        public void HatchMarkerOnTheEscapePodPasses()
-        {
-            // 구명정은 공간이 처음부터 열려 있고 기능만 잠겨 있다(§15.4). 표식이 흘릴
-            // 언락 상태가 없으므로 브리프 §4.3 이 원칙 적용 대상에서 뺐다.
-            var marker = Prop("PodPlacard", LastShiftDressingSpace.Of(LastShiftCompartment.EscapePod),
-                LastShiftDressingSemantics.HatchMarker);
-
-            Assume.That(LastShiftCompartments.Of(LastShiftCompartment.EscapePod).Access,
-                Is.Not.EqualTo(LastShiftCompartmentAccess.Locked));
-            Assert.That(Validate(marker), Is.Empty);
         }
 
         [Test]
@@ -147,7 +137,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PressureGaugeInACompartmentIsRejected()
         {
-            var gauge = Prop("Gauge", LastShiftDressingSpace.Of(LastShiftCompartment.Workshop),
+            var gauge = Prop("Gauge", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters),
                 LastShiftDressingSemantics.PressureGauge);
 
             Assert.That(HasRule(Validate(gauge), "C3_NoGauge"), Is.True);
@@ -156,7 +146,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void SirenInACompartmentIsRejected()
         {
-            var siren = Prop("Siren", LastShiftDressingSpace.Of(LastShiftCompartment.Hangar),
+            var siren = Prop("Siren", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters),
                 LastShiftDressingSemantics.SirenEffect);
 
             Assert.That(HasRule(Validate(siren), "C3_NoSiren"), Is.True);
@@ -165,7 +155,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PressureGaugeInAPressureZonePasses()
         {
-            // 금지 대상은 §24 미편입 구획 열한 개다. 압력 구역 안의 계기는 원래 그 방 것이다.
+            // 금지 대상은 §24 미편입 구획이다. 압력 구역 안의 계기는 원래 그 방 것이다.
             var gauge = Prop("Gauge", LastShiftDressingSpace.Of(LastShiftZone.LifeSupport),
                 LastShiftDressingSemantics.PressureGauge);
 
@@ -175,32 +165,28 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void RoomSystemReadoutNeedsAReason()
         {
-            var led = Prop("RackLed", LastShiftDressingSpace.Of(LastShiftCompartment.ServerRoom),
+            // 사유 검사는 공간 종류와 무관하다 — 구획 밖(압력 구역)에서도 걸린다.
+            var led = Prop("RackLed", LastShiftDressingSpace.Of(LastShiftZone.LifeSupport),
                 LastShiftDressingSemantics.RoomSystemReadout);
 
             Assert.That(HasRule(Validate(led), "C3_ReadoutReason"), Is.True);
         }
 
         [Test]
-        public void RoomSystemReadoutInASanctionedRoomWithAReasonPasses()
+        public void NoCompartmentIsSanctionedForARoomSystemReadoutAnyMore()
         {
-            var led = Prop("RackLed", LastShiftDressingSpace.Of(LastShiftCompartment.ServerRoom),
+            // 브리프가 이름을 댄 넷(수경재배·서버통신실·의무실·구명정)은 M-2 에서 전부
+            // 배를 떠났다(맵 개편 §3.2). 사유를 적어도 통과 못 하는 것이 맞다 — 예외를
+            // <b>방 이름으로</b> 못 박는 것이 제약 3 의 실체이고, 이름이 없으면 예외도 없다.
+            var led = Prop("BunkLed", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters),
                 LastShiftDressingSemantics.RoomSystemReadout);
-            led.justification = "통신 상태 표현 — 브리프 §6.2";
+            led.justification = "침상 점유 표시";
 
-            Assert.That(Validate(led), Is.Empty);
-        }
-
-        [Test]
-        public void RoomSystemReadoutOutsideTheSanctionedRoomsIsRejected()
-        {
-            // 예외를 방 이름으로 못 박지 않으면 "이것도 그 방 고유 시스템" 이라는 말로
-            // 열한 개 전부에 계기가 붙는다.
-            var led = Prop("BasinLed", LastShiftDressingSpace.Of(LastShiftCompartment.Lavatory),
-                LastShiftDressingSemantics.RoomSystemReadout);
-            led.justification = "세면대 상태";
-
-            Assert.That(HasRule(Validate(led), "C3_ReadoutRoom"), Is.True);
+            Assert.That(HasRule(Validate(led), "C3_ReadoutRoom"), Is.True,
+                "고정 방에 고유 시스템 계기가 통과했다 — 모듈에 고유 계기를 허용할지는 " +
+                "game-planning 결정이 있어야 열리는 문이다.");
+            Assert.That(HasRule(Validate(led), "C3_ReadoutReason"), Is.False,
+                "사유를 적었는데 사유 누락으로도 걸린다 — 두 검사가 섞였다.");
         }
 
         // ── 제약 4 · 우회 통로는 불편해야 한다 ───────────────────────────────────────
@@ -262,7 +248,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PropThroughTheCeilingIsRejected()
         {
-            var mast = Prop("Mast", LastShiftDressingSpace.Of(LastShiftCompartment.Lounge));
+            var mast = Prop("Mast", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
             mast.size = new Vector3(0.2f, LastShiftCompartments.InteriorHeight + 1f, 0.2f);
 
             Assert.That(HasRule(Validate(mast), "R1_Bounds"), Is.True);
@@ -271,7 +257,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PropBelowTheDeckIsRejected()
         {
-            var sunken = Prop("Sunken", LastShiftDressingSpace.Of(LastShiftCompartment.Lounge));
+            var sunken = Prop("Sunken", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
             sunken.bottomY = -0.5f;
 
             Assert.That(HasRule(Validate(sunken), "R1_Bounds"), Is.True);
@@ -280,7 +266,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void PropOutsideItsRoomIsRejected()
         {
-            var stray = Prop("Stray", LastShiftDressingSpace.Of(LastShiftCompartment.Lounge));
+            var stray = Prop("Stray", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
             stray.anchor = new Vector2(60f, 0f);
 
             Assert.That(HasRule(Validate(stray), "R1_Bounds"), Is.True);
@@ -289,8 +275,8 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void DuplicateIdsInTheSameSpaceAreRejected()
         {
-            var a = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay));
-            var b = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.CargoBay));
+            var a = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
+            var b = Prop("Crate", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
 
             Assert.That(HasRule(Validate(a, b), "R0_Id"), Is.True);
         }
@@ -300,8 +286,8 @@ namespace DoodleUp.Tests.EditMode
         {
             // 소품은 공간별 루트 아래에 붙으므로 하이어라키에서 안 겹친다. 전역 유일을
             // 요구하면 방 이름을 접두어로 달아야 하고 이름이 두 번 반복된다.
-            var a = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Workshop));
-            var b = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Lounge));
+            var a = Prop("Bench_Port", LastShiftDressingSpace.Of(LastShiftCompartment.Quarters));
+            var b = Prop("Bench_Port", LastShiftDressingSpace.OfPassage(0));
 
             Assert.That(HasRule(Validate(a, b), "R0_Id"), Is.False);
         }
@@ -324,82 +310,6 @@ namespace DoodleUp.Tests.EditMode
                 Assert.That(HasRule(LastShiftDressingRules.Validate(new[] { prop }), "R1_Bounds"), Is.False,
                     $"{compartment} 에서 단위좌표 ({ux}, {uz}) 가 방을 벗어난다.");
             }
-        }
-
-        // ── 상부 회랑 ────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void GalleryBoundsFollowTheLegFootprint()
-        {
-            // 회랑 좌표 정본이 둘이 되는 것을 막는다. 드레싱이 자기 사본을 들면 구획 하나가
-            // 움직였을 때 회랑은 따라가고 소품만 제자리에 남는다.
-            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
-            {
-                var leg = LastShiftUpperGallery.LegAt(index);
-                var bounds = LastShiftDressingSpaces.BoundsOf(LastShiftDressingSpace.OfGallery(index));
-
-                Assert.That(bounds.MinX, Is.EqualTo(leg.MinX).Within(0.0001f), $"{leg.Name} MinX");
-                Assert.That(bounds.MaxX, Is.EqualTo(leg.MaxX).Within(0.0001f), $"{leg.Name} MaxX");
-                Assert.That(bounds.MinZ, Is.EqualTo(leg.MinZ).Within(0.0001f), $"{leg.Name} MinZ");
-                Assert.That(bounds.MaxZ, Is.EqualTo(leg.MaxZ).Within(0.0001f), $"{leg.Name} MaxZ");
-                Assert.That(bounds.FloorY, Is.EqualTo(0f).Within(0.0001f), $"{leg.Name} FloorY");
-                Assert.That(bounds.CeilingY,
-                    Is.EqualTo(LastShiftUpperGallery.InteriorHeight).Within(0.0001f), $"{leg.Name} CeilingY");
-            }
-        }
-
-        [Test]
-        public void GalleryLegsAreSeparateSpacesForIdUniqueness()
-        {
-            // 다리마다 같은 이름을 쓸 수 있어야 한다 — 등은 어느 다리에서나 Lamp_0 이다.
-            // 반대로 한 다리 안에서 겹치면 걸려야 한다. 이 둘이 같이 성립해야 다리 번호가
-            // 실제로 공간을 가르는 값이 된다.
-            var run = LastShiftDressingSpace.OfGalleryRun();
-            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
-
-            Assert.That(HasRule(Validate(Prop("Lamp_0", run), Prop("Lamp_0", descent)), "R0_Id"), Is.False);
-            Assert.That(HasRule(Validate(Prop("Lamp_0", run), Prop("Lamp_0", run)), "R0_Id"), Is.True);
-        }
-
-        [Test]
-        public void GalleryPropOutsideItsLegIsRejected()
-        {
-            // 강하 다리는 폭이 2m 뿐이다. 긴 구간 좌표를 그대로 적으면 다리 밖으로 나간다.
-            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
-            var stray = Prop("Stray", descent);
-            stray.anchor = new Vector2(LastShiftUpperGallery.Width * 2f, 0f);
-
-            Assert.That(HasRule(Validate(stray), "R1_Bounds"), Is.True);
-        }
-
-        [Test]
-        public void GalleryComfortIsAllowed()
-        {
-            // 유도띠는 Comfort 다. 그 금지는 우회 통로 전용이라(§5) 회랑에 옮겨 붙으면
-            // art §4.3 이 근거를 대고 만든 띠 일곱 장이 통째로 위반이 된다.
-            var band = Prop("Trim", LastShiftDressingSpace.OfGalleryRun(),
-                LastShiftDressingSemantics.Comfort);
-
-            Assert.That(HasRule(Validate(band), "C4_BypassComfort"), Is.False);
-        }
-
-        [Test]
-        public void GalleryLightIsOutsideTheBypassBudget()
-        {
-            // 회랑 등 열둘의 합(15.12)은 우회 통로 예산 2.0 을 한참 넘는다. 회랑이 그
-            // 예산에 섞이면 등을 다는 순간 관 쪽 위반으로 잡힌다.
-            var props = new List<LastShiftDressingProp>();
-            for (var index = 0; index < 12; index++)
-            {
-                var lamp = Prop($"Lamp_{index}", LastShiftDressingSpace.OfGalleryRun(),
-                    LastShiftDressingSemantics.LightSource);
-                lamp.lightIntensity = 1.26f;
-                props.Add(lamp);
-            }
-
-            var violations = LastShiftDressingRules.Validate(props);
-            Assert.That(HasRule(violations, "C4_BypassLightBudget"), Is.False);
-            Assert.That(HasRule(violations, "C4_AirlockLightBudget"), Is.False);
         }
 
         // ── 제약 5 · 문 통행 폭 ─────────────────────────────────────────────────────
@@ -466,20 +376,17 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void LockedCompartmentDoorsAreNotTracked()
+        public void OnlyPassableCompartmentDoorsAreTracked()
         {
-            // 잠긴 구획의 문은 구멍이 아니라 메운 판이다(§15.2). 그 앞을 비우라고 요구하면
-            // 서버실·수경재배·의무실 벽 앞이 전부 통행 예약 구역이 된다.
-            var locked = new[]
-            {
-                LastShiftCompartment.ServerRoom,
-                LastShiftCompartment.Hydroponics,
-                LastShiftCompartment.MedBay
-            };
-
-            foreach (var compartment in locked)
-                Assert.That(LastShiftDoorways.All.Any(d => d.Name == LastShiftCompartments.NameOf(compartment)),
-                    Is.False, $"{compartment} 는 잠겨 있는데 통행 문 목록에 들어 있다.");
+            // 잠긴 구획의 문은 구멍이 아니라 메운 판이라(§15.2) 통행 문 목록에서 빠진다.
+            // 지금 잠긴 고정 구획은 없으므로(조항 K-2) 이 검사가 지키는 것은 반대 방향이다 —
+            // <b>열린 방의 문은 반드시 들어 있다.</b> 빠지면 그 앞에 소품을 놓아도 아무도
+            // 안 보고, 배에 하나뿐인 고정 방의 문이 막힌 채로 통과한다.
+            foreach (var spec in LastShiftCompartments.FixedSpecs)
+                Assert.That(
+                    LastShiftDoorways.All.Any(d => d.Name == LastShiftCompartments.NameOf(spec.Compartment)),
+                    Is.EqualTo(spec.IsPassable),
+                    $"{spec.Compartment}(passable={spec.IsPassable}) 가 통행 문 목록과 안 맞는다.");
         }
     }
 }

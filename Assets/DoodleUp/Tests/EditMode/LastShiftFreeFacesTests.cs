@@ -87,8 +87,14 @@ namespace DoodleUp.Tests.EditMode
         /// 뒤에 못 쓰는 굵은 선이 남는다 — 다음 시험이 그것을 건다.
         /// </summary>
         [Test]
-        public void StarboardHullFaceSplitsAroundTheTwoAttachedRooms()
+        public void StarboardHullFaceIsOneUnbrokenRunNow()
         {
+            // <b>M-2 가 이 검사의 부호를 뒤집었다.</b> 예전에는 서버실·수경재배가 우현 벽에
+            // 구워져 있어 그 면이 셋으로 갈렸고, 이 테스트는 "갈린다" 를 지켰다. 둘 다
+            // 카탈로그로 이관되면서 우현 벽은 통짜 한 구간이 됐다.
+            //
+            // 그게 맵 개편 §4.1-3 이 적은 "이관이 자유면을 몇 배로 늘린다" 의 실체다 —
+            // 선체 바깥 둘레가 거의 전부 붙일 수 있는 면이 된다.
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
             var starboard = faces
@@ -97,14 +103,11 @@ namespace DoodleUp.Tests.EditMode
                 .OrderBy(face => face.SpanMin)
                 .ToArray();
 
-            var server = LastShiftCompartments.Of(LastShiftCompartment.ServerRoom);
-            var hydroponics = LastShiftCompartments.Of(LastShiftCompartment.Hydroponics);
-
-            Assert.That(starboard.Length, Is.EqualTo(3), "우현 선체 면이 셋으로 안 갈렸다");
-            Assert.That(starboard[0].SpanMax, Is.EqualTo(server.MinX).Within(Tolerance));
-            Assert.That(starboard[1].SpanMin, Is.EqualTo(server.MaxX).Within(Tolerance));
-            Assert.That(starboard[1].SpanMax, Is.EqualTo(hydroponics.MinX).Within(Tolerance));
-            Assert.That(starboard[2].SpanMin, Is.EqualTo(hydroponics.MaxX).Within(Tolerance));
+            Assert.That(starboard.Length, Is.EqualTo(1), "우현 선체 면이 아직 갈려 있다");
+            Assert.That(starboard[0].SpanMin,
+                Is.EqualTo(-LastShiftShipDimensions.HalfLength).Within(Tolerance));
+            Assert.That(starboard[0].SpanMax,
+                Is.EqualTo(LastShiftShipDimensions.HalfLength).Within(Tolerance));
         }
 
         /// <summary>
@@ -133,8 +136,9 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 선체 안쪽을 향한 면은 자유면이 아니다. 정본 화물칸의 선미 면(<c>x = -19</c>)은
-        /// 선체 내부와 맞닿아 있고, 위아래로 <c>1m</c> 씩 삐져나온 자투리는 문 구멍보다 좁다.
+        /// 선체 안쪽을 향한 면은 자유면이 아니다. 숙소의 선수 면(<c>x = +19</c>)은 선체
+        /// 선미 끝벽과 통째로 맞닿아 있다 — 폭이 선체 내폭과 같은 <c>6m</c> 라 자투리조차
+        /// 안 남는다(조항 S-2).
         /// </summary>
         [Test]
         public void FaceLookingIntoTheHullIsNotFree()
@@ -142,8 +146,8 @@ namespace DoodleUp.Tests.EditMode
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
             var inward = faces.Any(face =>
-                face.OwnerIndex == (int)LastShiftCompartment.CargoBay &&
-                face.Face == LastShiftModuleFace.MaxX);
+                face.OwnerIndex == (int)LastShiftCompartment.Quarters &&
+                face.Face == LastShiftModuleFace.MinX);
 
             Assert.That(inward, Is.False, "선체를 파고드는 면이 자유면으로 나왔다");
         }

@@ -87,18 +87,29 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string TextOf(LastShiftCompartment compartment) => compartment switch
         {
-            LastShiftCompartment.Observatory => "관측실",
-            LastShiftCompartment.Workshop => "정비창",
-            LastShiftCompartment.CargoBay => "화물칸",
-            LastShiftCompartment.Hangar => "격납고",
-            LastShiftCompartment.ServerRoom => "서버·통신실",
-            LastShiftCompartment.Lavatory => "화장실",
             LastShiftCompartment.Quarters => "숙소",
-            LastShiftCompartment.Lounge => "휴게실",
-            LastShiftCompartment.Hydroponics => "수경재배",
-            LastShiftCompartment.MedBay => "의무실",
-            _ => "구명정"
+            _ => ModuleText((int)compartment)
         };
+
+        /// <summary>
+        /// 표 한 칸의 이름표 문구. 고정이면 <see cref="TextOf(LastShiftCompartment)"/> 이고,
+        /// 모듈이면 그 칸이 어느 카탈로그 항목으로 섰는지를 묻는다.
+        ///
+        /// <b>enum 만 받는 쪽으로는 모듈 이름을 낼 수 없다.</b> 종류를 아는 것은 표가 아니라
+        /// 오버레이(<see cref="LastShiftCompartments.CatalogIndexOf"/>)이고, 그 물음의 열쇠는
+        /// enum 값이 아니라 표 인덱스다. 고정 표가 하나로 줄면서 이름표가 붙는 방의 대다수가
+        /// 모듈이 됐으므로 이 갈래가 이제 주 경로다.
+        /// </summary>
+        public static string TextOf(in LastShiftCompartmentSpec spec) =>
+            spec.IsFixed ? TextOf(spec.Compartment) : ModuleText(spec.Index);
+
+        private static string ModuleText(int index)
+        {
+            var catalogIndex = LastShiftCompartments.CatalogIndexOf(index);
+            return catalogIndex == LastShiftPlacedModule.NoCatalogIndex
+                ? LastShiftCompartments.ModuleName(index)
+                : LastShiftModuleCatalog.At(catalogIndex).Name;
+        }
 
         /// <summary>
         /// 글자 폭의 합. 한글은 전각이라 라틴과 진행 폭이 다르므로 글자 수에 상수 하나를
@@ -123,9 +134,12 @@ namespace DoodleUp.Runtime
         private static bool IsFullWidth(char glyph) => glyph >= '가' && glyph <= '힣';
 
         /// <summary>
-        /// 라벨이 붙는 벽에 실제로 뚫리는 구멍들의 <c>x</c>. 셋을 합친다 —
-        /// 자기 문(부모가 이 면에 뚫는다), 자식 문, 회랑 문. 잠긴 문은 구멍이 아니라
-        /// 메운 판이라 빼고 센다(§15.2).
+        /// 라벨이 붙는 벽에 실제로 뚫리는 구멍들의 <c>x</c>. 둘을 합친다 —
+        /// 자기 문(부모가 이 면에 뚫는다)과 자식 문이다. 잠긴 문은 구멍이 아니라
+        /// 메운 판이라 빼고 센다.
+        ///
+        /// <b>회랑 문이 셋째 항목이었는데 회랑 둘이 폐지되면서 빠졌다</b>
+        /// (<c>docs/bow-cockpit-central-plaza-layout-v1.md</c> §165·§166).
         /// </summary>
         public static float[] DoorwaysOnLabelWall(in LastShiftCompartmentSpec spec)
         {
@@ -143,11 +157,6 @@ namespace DoodleUp.Runtime
                     child.DoorPlane == LastShiftDoorPlane.AlongZ &&
                     Mathf.Abs(child.DoorPlaneCoordinate - face) < Epsilon)
                     result.Add(child.DoorCenter);
-
-            result.AddRange(LastShiftUpperGallery.DoorwaysOn(
-                spec.Compartment, LastShiftDoorPlane.AlongZ, face));
-            result.AddRange(LastShiftObservationGallery.DoorwaysOn(
-                spec.Compartment, LastShiftDoorPlane.AlongZ, face));
 
             result.Sort();
             return result.ToArray();

@@ -49,8 +49,7 @@ namespace DoodleUp.Runtime
 
     /// <summary>
     /// 승무원이 실제로 지나다니는 문 전부의 정본. 좌표는 하나도 새로 안 적고
-    /// <see cref="LastShiftShipDimensions"/>·<see cref="LastShiftCompartments"/>·
-    /// <see cref="LastShiftObservationGallery"/> 에서 뽑는다.
+    /// <see cref="LastShiftShipDimensions"/>·<see cref="LastShiftCompartments"/> 에서 뽑는다.
     ///
     /// <b>이 목록이 따로 있는 이유는 드레싱이다.</b> 문이 뚫린 자리는 벽 빌더가 알고 있지만,
     /// 그 앞에 소품을 놓아도 되는지는 아무도 안 보고 있었다 — 2026-08-08 플레이테스트에서
@@ -155,16 +154,10 @@ namespace DoodleUp.Runtime
                 result.Add(Of(spec));
             }
 
-            // 관측 회랑 양 끝. 화물칸 쪽은 구획 면에, 조종석 쪽은 선체 좌현 벽에 뚫린다.
-            if (LastShiftObservationGallery.CockpitDoorwayIsOpen)
-                result.Add(new LastShiftDoorway("ObservationGallery_Cockpit", LastShiftDoorPlane.AlongZ,
-                    LastShiftObservationGallery.CockpitDoorwayFaceZ,
-                    LastShiftObservationGallery.CockpitLandingCenterX));
-
-            foreach (var x in LastShiftObservationGallery.DoorwaysOn(LastShiftCompartment.CargoBay,
-                         LastShiftDoorPlane.AlongZ, LastShiftObservationGallery.CargoDoorwayFaceZ))
-                result.Add(new LastShiftDoorway("ObservationGallery_Cargo", LastShiftDoorPlane.AlongZ,
-                    LastShiftObservationGallery.CargoDoorwayFaceZ, x));
+            // 관측 회랑 양 끝(조종석 좌현 벽 · 화물칸 좌현 면)이 여기 있었다. 회랑이
+            // 폐지되면서 빠졌다 — 화물칸이 배에서 나가 한쪽 끝이 사라졌고, 곡선 동선
+            // 역할은 중앙 광장 좌현 테두리 벽이 승계한다
+            // (docs/bow-cockpit-central-plaza-layout-v1.md §166).
 
             return result.ToArray();
         }

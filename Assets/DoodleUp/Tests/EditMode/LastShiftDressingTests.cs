@@ -112,18 +112,25 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void OnlyTheEscapePodIsRed()
+        public void NothingIsRedAnyMoreBecauseTheEscapePodIsGone()
         {
-            // 배 전체에서 적색이 하나뿐이어야 "복도 끝의 적색 = 마지막 수단" 이 성립한다.
-            // 언락 상태를 말하지 않으면서 방의 역할을 색 하나로 전달하는 유일한 자리다.
+            // 예전에는 구명정 하나만 적색이었고, 배 어디에도 그 색이 없다는 것이 "복도 끝의
+            // 적색 = 마지막 수단" 을 성립시켰다. 구명정이 제거되면서(맵 개편 §6.2-6) 그 색을
+            // 쓰는 방이 <c>0</c> 이 됐다.
+            //
+            // <b>적색을 비워 두는 것이 이 검사의 요지다.</b> 그 강조는 에어록이 물려받기를
+            // 권고했고(outboard-outpost-and-map-final-v1.md §7-7), 그때까지 아무 방에도 적색이
+            // 새로 붙으면 안 된다 — 붙는 순간 "마지막 수단" 이라는 뜻이 조용히 재배정된다.
             bool IsRed(Color c) => c.r > 0.6f && c.r - Mathf.Max(c.g, c.b) > 0.25f;
 
             var reds = AllCompartments.Where(c => IsRed(LastShiftDressing.TintOf(c))).ToArray();
-            Assert.That(reds, Is.EqualTo(new[] { LastShiftCompartment.EscapePod }),
-                "적색은 구명정 전용이다.");
+            Assert.That(reds, Is.Empty,
+                "적색을 쓰는 방이 생겼다 — 이 색은 에어록이 물려받을 때까지 비워 둔다.");
+            Assert.That(IsRed(LastShiftDressing.ModuleTint), Is.False,
+                "자유 배치 모듈 띠가 적색 대역이다 — 항해 중에 붙인 방이 비상 경로로 읽힌다.");
             foreach (var zone in AllZones)
                 Assert.That(IsRed(LastShiftDressing.TintOf(zone)), Is.False,
-                    $"구역 {zone} 색이 적색 대역에 들어왔다 — 구명정의 단독성이 깨진다.");
+                    $"구역 {zone} 색이 적색 대역에 들어왔다.");
         }
 
         [Test]

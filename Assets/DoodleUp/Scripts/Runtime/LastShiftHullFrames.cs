@@ -177,10 +177,9 @@ namespace DoodleUp.Runtime
             if (!LastShiftHullShell.InscribedContains(x, z)) return false;
             if (IsWindowKeepOut(x, z)) return false;
 
-            // 관측실 선수 창(§7-6). 좌현 창과 같은 이유로 그 앞에는 아무것도 안 선다.
-            // 판정 자체는 LastShiftObservatoryWindow 가 갖는다 — 창 좌표 셋(개구부·금지
-            // 구간·테두리 유리)이 한 자리에 모여 있어야 하나만 갈리는 일이 안 생긴다.
-            if (LastShiftObservatoryWindow.IsSightKeepOut(x, z)) return false;
+            // 관측실 선수 창 금지 구간이 여기 있었다. 관측실이 카탈로그로 이관되면서
+            // (맵 개편 §3.2) 그 방과 창이 배에서 같이 나갔다 — 좌현 창 띠
+            // (IsWindowKeepOut)만 남는다.
 
             // 선체 본체. 판 바깥면에서 다시 여유를 둔다.
             if (Mathf.Abs(x) <= LastShiftShipDimensions.EndWallX + Clearance &&
@@ -195,17 +194,10 @@ namespace DoodleUp.Runtime
                 if (x >= spec.MinX - margin && x <= spec.MaxX + margin &&
                     z >= spec.MinZ - margin && z <= spec.MaxZ + margin) return false;
 
-            foreach (var leg in LastShiftUpperGallery.Legs)
-                if (x >= leg.MinX - margin && x <= leg.MaxX + margin &&
-                    z >= leg.MinZ - margin && z <= leg.MaxZ + margin) return false;
-
-            // 관측 회랑(§29.4-(2)). 지금은 이 회랑이 통째로 IsWindowKeepOut 안에 있어서 위
-            // 조건에서 이미 걸러지지만, 그 사실에 기대지 않는다 — 창 구간이 좁아지거나
-            // 회랑이 길어지면 골조가 회랑 한가운데를 관통하게 되고, 그때 원인이 여기가
-            // 아니라 창 상수에 있는 것으로 보인다.
-            foreach (var leg in LastShiftObservationGallery.Legs)
-                if (x >= leg.MinX - margin && x <= leg.MaxX + margin &&
-                    z >= leg.MinZ - margin && z <= leg.MaxZ + margin) return false;
+            // 회랑 둘(상부·관측)의 다리도 여기서 걸러졌다. 둘 다 폐지됐다
+            // (docs/bow-cockpit-central-plaza-layout-v1.md §165·§166) —
+            // 이제 원반 안에서 골조를 밀어내는 것은 선체 본체와 고정 숙소뿐이라,
+            // 자유 골조 면적이 이 개편으로 크게 는다.
 
             return true;
         }

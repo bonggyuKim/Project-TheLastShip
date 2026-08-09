@@ -79,33 +79,32 @@ namespace DoodleUp.Runtime
         public const float StateCueSafeMaxZ = 1.40f;
 
         /// <summary>
-        /// 구획색. 기능군으로 묶고 군 안에서만 갈랐다 — 열한 개를 전부 무관한 색으로 두면
-        /// 색이 분류가 아니라 소음이 된다.
+        /// 고정 구획색. <b>M-2 에서 열하나가 하나로 줄었다</b> — 배와 함께 태어나는 방이
+        /// 숙소뿐이라(<see cref="LastShiftCompartments.FixedCount"/>) 여기 남는 색도 하나다.
+        /// 자유 배치 모듈의 색은 카탈로그 쪽(<see cref="LastShiftModulePalette"/>)이 든다.
         ///
-        ///   작업·화물  화물칸 · 격납고 · 정비창    황토~주황
-        ///   관측·정보  관측실 · 서버통신실         청보라
-        ///   생활       화장실 · 숙소 · 휴게실      따뜻한 중성
-        ///   생명유지   수경재배 · 의무실           녹 · 백
-        ///   비상       구명정                     적 (배 전체에서 여기 하나뿐이다)
-        ///
-        /// 구명정만 단독 적색인 것이 의도다. 배 어디에도 이 색이 없으므로 복도 끝에 적색이
-        /// 보이면 그것이 "마지막 수단" 이라는 뜻이 되고, 언락 상태를 말하지 않으면서도
-        /// 방의 역할이 색 하나로 읽힌다.
+        /// <b>붉은 계열이 여기서 사라졌다.</b> 예전 기본 갈래는 구명정 적색이었고, 배 어디에도
+        /// 그 색이 없다는 것이 "복도 끝의 적색 = 마지막 수단" 을 성립시켰다. 구명정이 제거되면서
+        /// 대상이 <c>0</c> 이 됐고, 그 시각적 강조는 에어록이 물려받기를 권고한다
+        /// (<c>docs/outboard-outpost-and-map-final-v1.md</c> §7-7 · 맵 개편 §6.2-6).
         /// </summary>
         public static Color TintOf(LastShiftCompartment compartment) => compartment switch
         {
-            LastShiftCompartment.CargoBay => new Color(0.60f, 0.44f, 0.24f),
-            LastShiftCompartment.Hangar => new Color(0.72f, 0.56f, 0.22f),
-            LastShiftCompartment.Workshop => new Color(0.56f, 0.34f, 0.34f),
-            LastShiftCompartment.Observatory => new Color(0.34f, 0.44f, 0.70f),
-            LastShiftCompartment.ServerRoom => new Color(0.48f, 0.38f, 0.72f),
-            LastShiftCompartment.Lavatory => new Color(0.46f, 0.58f, 0.62f),
             LastShiftCompartment.Quarters => new Color(0.62f, 0.50f, 0.42f),
-            LastShiftCompartment.Lounge => new Color(0.74f, 0.60f, 0.34f),
-            LastShiftCompartment.Hydroponics => new Color(0.36f, 0.66f, 0.36f),
-            LastShiftCompartment.MedBay => new Color(0.78f, 0.82f, 0.84f),
-            _ => new Color(0.78f, 0.26f, 0.22f)
+            _ => ModuleTint
         };
+
+        /// <summary>
+        /// 자유 배치 모듈의 띠 색. <b>종류별로 안 가른다</b> — 카탈로그 열 종에 색을 하나씩
+        /// 주면 배 한 척에 스물다섯 색이 다시 서고, 구획색이 분류가 아니라 소음이 된다는
+        /// 예전 진단이 그대로 돌아온다. 모듈이 어느 종류인지는 이름표가 말하고
+        /// (<see cref="LastShiftCompartmentLabels.TextOf(in LastShiftCompartmentSpec)"/>),
+        /// 색은 "이건 항해 중에 붙인 방이다" 만 말한다.
+        ///
+        /// 구역색 넷·고정 숙소색과 <see cref="MinimumTintSeparation"/> 이상 떨어져야
+        /// 한다는 조건은 그대로 걸린다.
+        /// </summary>
+        public static readonly Color ModuleTint = new(0.52f, 0.56f, 0.60f);
 
         /// <summary>
         /// 압력 구역 색. 씬 빌더가 이미 들고 있던 값을 여기로 옮겼다 — 구획색이 구역색과

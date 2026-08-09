@@ -77,12 +77,12 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void OfStillAnswersTheEnumAndRefusesTheAppendRegion()
         {
-            // <b>이 표를 이중으로 만든 이유 전부가 이 한 줄이다.</b> Of(enum) 을 부르는 자리
-            // 서른일곱과 그 값을 리터럴로 물고 있는 넷이 표가 늘어도 안 바뀐다.
-            var before = LastShiftCompartments.Of(LastShiftCompartment.Hangar);
+            // <b>이 표를 이중으로 만든 이유 전부가 이 한 줄이다.</b> Of(enum) 을 부르는 자리가
+            // 표가 늘어도 안 바뀐다.
+            var before = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             Register(CoolingSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: -1));
 
-            var after = LastShiftCompartments.Of(LastShiftCompartment.Hangar);
+            var after = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             Assert.That(after.MinX, Is.EqualTo(before.MinX).Within(Tolerance));
             Assert.That(after.Index, Is.EqualTo(before.Index));
             Assert.That(LastShiftCompartments.FixedSpecs.Length,
@@ -93,22 +93,23 @@ namespace DoodleUp.Tests.EditMode
             // 조용히 답이 나오면 안 된다.
             Assert.That(() => LastShiftCompartments.Of((LastShiftCompartment)LastShiftCompartments.FixedCount),
                 Throws.TypeOf<IndexOutOfRangeException>(),
-                "모듈 인덱스를 Of 에 넣었는데 안 터진다 — 조용히 관측실로 읽히면 좌표가 통째로 틀린다.");
+                "모듈 인덱스를 Of 에 넣었는데 안 터진다 — 조용히 숙소로 읽히면 좌표가 통째로 틀린다.");
         }
 
         [Test]
-        public void ModulesAreNotAllCalledEscapePod()
+        public void ModulesAreNotAllCalledQuarters()
         {
-            // NameOf 의 default 가 "Compartment_EscapePod" 였다. 그대로 뒀으면 배치한 모듈
-            // 열 개가 전부 구명정 이름을 달고 씬에 서고, 이름으로 찾는 검증이 통째로 무너진다.
+            // NameOf 의 기본 갈래가 고정 방 이름이면 배치한 모듈 전부가 그 이름을 달고 씬에
+            // 서고, 이름으로 찾는 검증이 통째로 무너진다. 고정 표가 하나로 줄면서 이 함수에
+            // 들어오는 값의 대다수가 모듈이 됐으므로 M-2 이후 더 잘 걸려야 하는 검사다.
             var index = Register(CoolingSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: -1));
             var spec = LastShiftCompartments.At(index);
 
             Assert.That(LastShiftCompartments.NameOf(spec), Is.EqualTo($"Compartment_Module_{index}"));
             Assert.That(LastShiftCompartments.NameOf(spec),
-                Is.Not.EqualTo(LastShiftCompartments.NameOf(LastShiftCompartment.EscapePod)));
-            Assert.That(LastShiftCompartments.NameOf(LastShiftCompartments.Of(LastShiftCompartment.EscapePod)),
-                Is.EqualTo("Compartment_EscapePod"),
+                Is.Not.EqualTo(LastShiftCompartments.NameOf(LastShiftCompartment.Quarters)));
+            Assert.That(LastShiftCompartments.NameOf(LastShiftCompartments.Of(LastShiftCompartment.Quarters)),
+                Is.EqualTo("Compartment_Quarters"),
                 "고정 구획 이름이 같이 바뀌었다 — 씬 오브젝트 이름을 전제하는 검증이 통째로 깨진다.");
         }
 
@@ -129,11 +130,11 @@ namespace DoodleUp.Tests.EditMode
         {
             // 모듈의 부모가 고정 구획일 때가 자유 배치의 기본형이다. 깊이가 부모 + 1 이
             // 아니면 사슬이 두 영역 경계에서 끊긴 것이다.
-            var lounge = (int)LastShiftCompartment.Lounge;
-            var index = Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: lounge));
+            var quarters = (int)LastShiftCompartment.Quarters;
+            var index = Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: quarters));
 
             Assert.That(LastShiftCompartments.DoorDepth(index),
-                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Lounge) + 1));
+                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Quarters) + 1));
         }
 
         // ── 판정기를 건너뛰는 등록 경로가 없다 ───────────────────────────────
@@ -143,18 +144,18 @@ namespace DoodleUp.Tests.EditMode
         {
             // 겹치거나 사슬이 끊긴 방이 표에 들어가면 그 뒤의 모든 이탈·최장 쌍 계산이 그
             // 방을 진짜로 걸어갈 수 있는 것으로 센다. 그래서 등록은 판정을 통과해야만 한다.
-            var hangar = LastShiftCompartments.Of(LastShiftCompartment.Hangar);
-            var onTopOfHangar = new LastShiftCompartmentSpec(
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var onTopOfQuarters = new LastShiftCompartmentSpec(
                 LastShiftCompartments.NextModuleIndex,
-                hangar.MinX, hangar.MaxX, hangar.MinZ, hangar.MaxZ,
-                hangar.DoorPlane, hangar.DoorPlaneCoordinate, hangar.DoorCenter,
-                hangar.ParentIndex, LastShiftCompartmentAccess.Open);
+                quarters.MinX, quarters.MaxX, quarters.MinZ, quarters.MaxZ,
+                quarters.DoorPlane, quarters.DoorPlaneCoordinate, quarters.DoorCenter,
+                quarters.ParentIndex, LastShiftCompartmentAccess.Open);
 
             var overlayBefore = LastShiftPlacedModules.ActiveCount;
 
             Assert.That(
-                LastShiftCompartments.TryRegister(onTopOfHangar, out var index, out var verdict),
-                Is.False, "격납고 자리에 겹쳐 놓았는데 표에 들어갔다.");
+                LastShiftCompartments.TryRegister(onTopOfQuarters, out var index, out var verdict),
+                Is.False, "숙소 자리에 겹쳐 놓았는데 표에 들어갔다.");
             Assert.That(verdict.Rejection.HasFlag(LastShiftPlacementRejection.OverlapsPlacement), Is.True);
             Assert.That(index, Is.EqualTo(-1));
             Assert.That(LastShiftCompartments.ModuleCount, Is.Zero);
@@ -256,7 +257,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void FixedCompartmentsCannotBeRemoved()
         {
-            Assert.That(LastShiftCompartments.TryRemove((int)LastShiftCompartment.Hangar), Is.False,
+            Assert.That(LastShiftCompartments.TryRemove((int)LastShiftCompartment.Quarters), Is.False,
                 "고정 구획이 빠졌다 — enum 값은 남고 표만 짧아진 배가 된다.");
             Assert.That(LastShiftCompartments.Count, Is.EqualTo(LastShiftCompartments.FixedCount));
         }
@@ -267,25 +268,25 @@ namespace DoodleUp.Tests.EditMode
             // 빈 칸(무덤)을 안 남기는 대가가 이것이다 — 인덱스가 당겨지므로 뒤 칸의 부모도
             // 같이 당겨져야 사슬이 그대로 산다. 안 당기면 뒤 모듈이 자기 부모 대신 그
             // 앞 칸에 붙는다.
-            var lounge = (int)LastShiftCompartment.Lounge;
+            var quarters = (int)LastShiftCompartment.Quarters;
             var doomed = Register(CoolingSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: -1));
-            var keptRoot = Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: lounge));
+            var keptRoot = Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: quarters));
             var keptLeaf = Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 1, parentIndex: keptRoot));
 
             Assume.That(LastShiftCompartments.DoorDepth(keptLeaf),
-                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Lounge) + 2));
+                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Quarters) + 2));
 
             Assert.That(LastShiftCompartments.TryRemove(doomed), Is.True);
 
             Assert.That(LastShiftCompartments.ModuleCount, Is.EqualTo(2));
-            Assert.That(LastShiftCompartments.At(keptRoot - 1).ParentIndex, Is.EqualTo(lounge),
+            Assert.That(LastShiftCompartments.At(keptRoot - 1).ParentIndex, Is.EqualTo(quarters),
                 "고정 구획을 가리키던 부모가 같이 당겨졌다 — 고정 영역은 안 움직인다.");
             Assert.That(LastShiftCompartments.At(keptLeaf - 1).ParentIndex, Is.EqualTo(keptRoot - 1),
                 "뒤 모듈의 부모가 안 당겨졌다 — 사슬이 앞 칸으로 잘못 붙었다.");
             Assert.That(LastShiftCompartments.At(keptLeaf - 1).Index, Is.EqualTo(keptLeaf - 1),
                 "당겨진 칸의 Index 가 자기 자리와 다르다.");
             Assert.That(LastShiftCompartments.DoorDepth(keptLeaf - 1),
-                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Lounge) + 2),
+                Is.EqualTo(LastShiftCompartments.DoorDepth(LastShiftCompartment.Quarters) + 2),
                 "당겨진 뒤 사슬 깊이가 달라졌다.");
         }
 
@@ -341,9 +342,8 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 냉각실 우현 벽에 문을 내고 선수 쪽으로 길게 눕는 칸. 정본 구획 열한 개 중 어느
-        /// 것도 이 <c>z</c> 대역의 이 <c>x</c> 구간에 없다(서버실은 <c>x ≈ -15</c>, 수경재배는
-        /// <c>x ≈ +11</c> 이다).
+        /// 냉각실 우현 벽에 문을 내고 선수 쪽으로 길게 눕는 칸. 고정 표에 남은 숙소
+        /// (<c>x +19~+23</c>)와 <c>x</c> 대역이 안 겹친다.
         /// </summary>
         private static LastShiftCompartmentSpec CoolingSpur(int index, int link, int parentIndex)
         {
@@ -360,18 +360,19 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 라운지 좌현 면에서 바깥으로 뻗는 칸. <paramref name="link"/> 는 그 방향으로 몇 칸째다.
-        /// 구명정(선미로 더 나간 자리)과 의무실(우현)을 둘 다 피하려고 좌현으로 뺐다.
+        /// 숙소 좌현 면에서 바깥으로 뻗는 칸. <paramref name="link"/> 는 그 방향으로 몇 칸째다.
+        /// 좌현(<c>-z</c>)으로 빼는 것은 선체 내부(<c>|x| &lt; 19</c>)를 안 물기 위해서다 —
+        /// 숙소가 선미 끝벽 밖에 있으므로 이 방향은 통째로 빈 자리다.
         /// </summary>
         private static LastShiftCompartmentSpec SternSpur(int index, int link, int parentIndex)
         {
             const float roomDepth = 3f;
-            var lounge = LastShiftCompartments.Of(LastShiftCompartment.Lounge);
-            var maxZ = lounge.MinZ - link * roomDepth;
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var maxZ = quarters.MinZ - link * roomDepth;
 
             return new LastShiftCompartmentSpec(
-                index, lounge.MinX, lounge.MinX + 3f, maxZ - roomDepth, maxZ,
-                LastShiftDoorPlane.AlongZ, maxZ, lounge.MinX + 1.5f,
+                index, quarters.MinX, quarters.MinX + 3f, maxZ - roomDepth, maxZ,
+                LastShiftDoorPlane.AlongZ, maxZ, quarters.MinX + 1.5f,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
     }

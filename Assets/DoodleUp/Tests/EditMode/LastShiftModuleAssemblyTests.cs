@@ -296,7 +296,7 @@ namespace DoodleUp.Tests.EditMode
             // 고정 열하나는 배 프리팹에 구워져 있다. 여기서 또 세우면 같은 방이 두 겹으로 서고
             // 문이 이중으로 막힌다.
             Assert.Throws<System.ArgumentException>(
-                () => Build(LastShiftCompartments.Of(LastShiftCompartment.Lounge), null));
+                () => Build(LastShiftCompartments.Of(LastShiftCompartment.Quarters), null));
         }
 
         // ── 다시 세우기 ─────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ namespace DoodleUp.Tests.EditMode
         {
             Register(CoolingSpur(LastShiftCompartments.NextModuleIndex, link: 0, parentIndex: -1));
             Register(SternSpur(LastShiftCompartments.NextModuleIndex, link: 0,
-                parentIndex: (int)LastShiftCompartment.Lounge));
+                parentIndex: (int)LastShiftCompartment.Quarters));
 
             var parent = Spawn(new GameObject("Ship"));
             var built = LastShiftModuleAssembler.Rebuild(parent.transform, null);
@@ -372,16 +372,16 @@ namespace DoodleUp.Tests.EditMode
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
 
-        /// <summary>라운지 좌현 면에서 바깥으로 뻗는 칸. 구명정과 의무실을 둘 다 피한다.</summary>
+        /// <summary>숙소 좌현 면에서 바깥으로 뻗는 칸. 구명정과 의무실을 둘 다 피한다.</summary>
         private static LastShiftCompartmentSpec SternSpur(int index, int link, int parentIndex)
         {
             const float roomDepth = 3f;
-            var lounge = LastShiftCompartments.Of(LastShiftCompartment.Lounge);
-            var maxZ = lounge.MinZ - link * roomDepth;
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var maxZ = quarters.MinZ - link * roomDepth;
 
             return new LastShiftCompartmentSpec(
-                index, lounge.MinX, lounge.MinX + 3f, maxZ - roomDepth, maxZ,
-                LastShiftDoorPlane.AlongZ, maxZ, lounge.MinX + 1.5f,
+                index, quarters.MinX, quarters.MinX + 3f, maxZ - roomDepth, maxZ,
+                LastShiftDoorPlane.AlongZ, maxZ, quarters.MinX + 1.5f,
                 parentIndex, LastShiftCompartmentAccess.Open);
         }
 

@@ -104,6 +104,92 @@ namespace DoodleUp.Editor
         /// <summary><c>-executeMethod DoodleUp.Editor.LastShiftDressingSeed.SyncForAutomation</c></summary>
         public static void SyncForAutomation() => SyncMissingProps();
 
+        /// <summary>
+        /// <b>공간이 없어진 소품만</b> 에셋에서 뺀다. 나머지는 한 줄도 안 건드린다 —
+        /// art 가 채운 프리팹·재질 참조가 그대로 남는다.
+        ///
+        /// <b>M-2 가 이 진입점을 요구했다.</b> 고정 구획이 열하나에서 하나로 줄면서
+        /// (<c>docs/core-four-rooms-and-hull-schematic-v1.md</c> §2.4) 에셋에 구워진 소품
+        /// 대다수가 <b>표 밖 구획</b>을 가리키게 됐고, <see cref="LastShiftDressingSpaces.BoundsOf"/>
+        /// 가 그 값을 <see cref="LastShiftCompartments.Of"/> 에 넣는 순간 터진다. 상부 회랑
+        /// 소품도 같은 처지다 — 종류 <c>5</c> 가 enum 에서 없어져 조용히 에어록으로 읽힌다.
+        ///
+        /// <b><see cref="Seed"/> 도 <see cref="SyncMissingProps"/> 도 이 일을 못 한다.</b>
+        /// 시드는 목록을 통째로 되돌려 연결을 전부 끊고, 동기화는 덧붙이기만 한다. 이관에
+        /// 필요한 것은 <b>빼기</b>이고, 그건 둘 다와 다른 동작이다.
+        ///
+        /// <c>-executeMethod DoodleUp.Editor.LastShiftDressingSeed.PruneForAutomation</c>
+        /// </summary>
+        [MenuItem("Last Shift/SP-02A/드레싱 고아 소품 제거 (연결 보존)")]
+        public static void PruneOrphanedProps()
+        {
+            var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
+            if (set == null)
+            {
+                Debug.LogError($"[LAST_SHIFT_DRESSING_PRUNE] path={LastShiftDressingSet.AssetPath} " +
+                               "result=FAIL reason=asset-missing");
+                return;
+            }
+
+            // 코드가 지금 세우는 구획 소품의 키. <b>구획 소품은 이 목록에 있어야만 남는다.</b>
+            // 근거는 §2.3 이 예고한 enum 재번호다 — 옛 <c>Observatory = 0</c> 자리에 지금
+            // <c>Quarters = 0</c> 이 앉았으므로, 인덱스만 보면 관측실 소품이 <b>숙소 소품으로
+            // 조용히 되살아난다</b>. 실제로 그 상태에서 별자리도(StarChart)가 숙소 문을
+            // 0.05m 로 막아 C5 를 물렸다.
+            var codeSideKeys = new HashSet<string>();
+            foreach (var candidate in BuildInitialProps())
+                if (candidate.space.kind == LastShiftDressingSpaceKind.Compartment)
+                    codeSideKeys.Add(KeyOf(candidate));
+
+            var kept = new List<LastShiftDressingProp>();
+            var dropped = new List<string>();
+            foreach (var prop in set.Props)
+            {
+                if (prop == null) continue;
+
+                var alive = SpaceStillExists(prop.space) &&
+                            (prop.space.kind != LastShiftDressingSpaceKind.Compartment ||
+                             codeSideKeys.Contains(KeyOf(prop)));
+
+                if (alive) kept.Add(prop);
+                else dropped.Add($"{prop.space}/{prop.id}");
+            }
+
+            if (dropped.Count == 0)
+            {
+                Debug.Log($"[LAST_SHIFT_DRESSING_PRUNE] dropped=0 kept={kept.Count} result=PASS");
+                return;
+            }
+
+            set.ReplaceAll(kept);
+            EditorUtility.SetDirty(set);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(LastShiftDressingSet.AssetPath, ImportAssetOptions.ForceSynchronousImport);
+            Debug.Log($"[LAST_SHIFT_DRESSING_PRUNE] dropped={dropped.Count} kept={kept.Count} " +
+                      $"result=PASS removed={string.Join(",", dropped)}");
+        }
+
+        /// <summary><c>-executeMethod DoodleUp.Editor.LastShiftDressingSeed.PruneForAutomation</c></summary>
+        public static void PruneForAutomation() => PruneOrphanedProps();
+
+        /// <summary>
+        /// 이 소품이 가리키는 공간이 아직 배에 있는가. <b>좌표를 안 묻는다</b> —
+        /// 그 물음이 곧 터지는 자리라(<see cref="LastShiftCompartments.Of"/>) 여기서는
+        /// 종류와 인덱스만 본다.
+        /// </summary>
+        private static bool SpaceStillExists(LastShiftDressingSpace space) => space.kind switch
+        {
+            LastShiftDressingSpaceKind.Zone => (int)space.zone < LastShiftZoneAtlas.ZoneCount,
+            LastShiftDressingSpaceKind.Compartment =>
+                (int)space.compartment >= 0 && (int)space.compartment < LastShiftCompartments.FixedCount,
+            LastShiftDressingSpaceKind.Passage => space.passage is >= 0 and <= 1,
+            LastShiftDressingSpaceKind.BypassRun => true,
+            LastShiftDressingSpaceKind.AirlockBranch => true,
+            // 없어진 종류(폐지된 상부 회랑의 `5`)가 여기로 온다. 기본 갈래를 true 로 두면
+            // 그 소품이 조용히 에어록 소품으로 되살아난다.
+            _ => false
+        };
+
         private static int CountLinkedPrefabs(LastShiftDressingSet set)
         {
             var linked = 0;
@@ -114,7 +200,7 @@ namespace DoodleUp.Editor
 
         private static string KeyOf(LastShiftDressingProp prop) =>
             $"{prop.space.kind}/{prop.space.zone}/{prop.space.compartment}/" +
-            $"{prop.space.passage}/{prop.space.galleryLeg}/{prop.id}";
+            $"{prop.space.passage}/{prop.id}";
 
         /// <summary>에셋을 만들고(또는 덮어쓰고) 저장한다.</summary>
         public static LastShiftDressingSet Seed()
@@ -144,21 +230,17 @@ namespace DoodleUp.Editor
             var fixture = Mat("LS_Fixture");
             var hazard = Mat("LS_Hazard");
             var lane = Mat("LS_Lane");
-            var indicator = Mat("LS_ServerIndicator");
-            var grow = Mat("LS_GrowLight");
 
-            AddCompartmentProps(props, fixture, hazard, indicator, grow);
+            AddCompartmentProps(props, fixture);
             AddStateCues(props);
             AddBypassProps(props, lane, hazard);
             AddCeilingLamps(props);
-            AddGalleryProps(props);
             return props;
         }
 
         // ── 구획 ─────────────────────────────────────────────────────────────────────
 
-        private static void AddCompartmentProps(List<LastShiftDressingProp> props,
-            Material fixture, Material hazard, Material indicator, Material grow)
+        private static void AddCompartmentProps(List<LastShiftDressingProp> props, Material fixture)
         {
             // 고정 구획만이다. 드레싱은 enum 으로 키를 잡는다(LastShiftDressingSpace.Of) —
             // 모듈에는 줄 enum 값이 없으므로 여기 섞이면 키가 없는 방이 들어온다.
@@ -188,131 +270,30 @@ namespace DoodleUp.Editor
                     material = tint
                 });
 
-                switch (compartment)
+                // 숙소가 이 배에 남는 유일한 고정 방이고, 폐지된 화장실·휴게실을 흡수한다
+                // (맵 개편 §3.2 — "침상 + 위생 + 휴게가 한 방"). 프리팹 셋이 하나로 줄어드는
+                // 것이 그 결정의 아트 쪽 이득이고, 여기서는 소품 세 벌을 한 공간에 합친다.
+                //
+                // 발자국이 4x6 이라 예전 숙소와 같으므로 침상 배치는 그대로 두고, 위생·휴게를
+                // 남은 x 양 끝에 붙인다. 문이 x=MinX 한가운데(z=0)이므로 z ~ 0 의 x 동선은
+                // 비워 둔다 — 여기 소품을 놓으면 배에 하나뿐인 고정 방의 문이 막힌다.
+                foreach (var (bunk, uz) in new[] { ("Port", -0.75f), ("Starboard", 0.75f) })
                 {
-                    // 관측실 — 앉아서 밖을 보는 방. 콘솔을 낮게 깔아 시선 높이를 비워 둔다.
-                    case LastShiftCompartment.Observatory:
-                        Add(props, space, "SightingConsole", 0f, -1f, 2.0f, 0.85f, 0.5f, fixture);
-                        Add(props, space, "ObserverSeat", 0f, -0.2f, 0.6f, 0.5f, 0.6f, fixture);
-                        Add(props, space, "InstrumentColumn", 1f, 1f, 0.4f, 2.0f, 0.4f, fixture);
-                        Add(props, space, "StarChart", -1f, 0.3f, 0.12f, 1.0f, 1.4f, tint, 1.0f);
-                        break;
-
-                    // 정비창 — 작업대가 양 현에 붙어 가운데 x 동선을 남긴다. 양 끝 x 면은 둘 다
-                    // 문 면이라(선수 쪽 관측실, 선미 쪽 화물칸) 거기에는 아무것도 안 붙인다.
-                    case LastShiftCompartment.Workshop:
-                        Add(props, space, "Bench_Port", 0f, -1f, 3.0f, 0.9f, 0.7f, fixture);
-                        Add(props, space, "Bench_Starboard", 0f, 1f, 3.0f, 0.9f, 0.7f, fixture);
-                        Add(props, space, "ToolRack", 0f, -1f, 2.4f, 1.0f, 0.3f, fixture, 1.2f);
-                        Add(props, space, "PartsPallet", 0.2f, 0f, 1.0f, 0.35f, 1.0f, tint);
-                        break;
-
-                    // 화물칸 — 높이가 다른 스택 넷. 같은 높이로 깔면 바닥 무늬로 보인다.
-                    case LastShiftCompartment.CargoBay:
-                        Add(props, space, "Crate_0", -0.8f, -0.7f, 1.6f, 1.6f, 1.6f, fixture);
-                        Add(props, space, "Crate_1", -0.8f, 0.5f, 1.2f, 2.4f, 1.2f, fixture);
-                        Add(props, space, "Crate_2", 0.7f, -0.4f, 2.0f, 1.0f, 1.8f, fixture);
-                        Add(props, space, "Crate_3", 0.9f, 0.9f, 1.2f, 1.8f, 1.2f, tint);
-                        Add(props, space, "LashRail_Port", -0.5f, -1f, 5.5f, 0.06f, 0.2f, hazard);
-                        Add(props, space, "LashRail_Starboard", -0.5f, 1f, 5.5f, 0.06f, 0.2f, hazard);
-                        break;
-
-                    // 격납고 — 가운데를 비운다. 발진 구역이 비어 있어야 방이 격납고로 읽힌다.
-                    case LastShiftCompartment.Hangar:
-                        Add(props, space, "Cradle_Fore", 0f, -0.45f, 4.5f, 0.5f, 0.4f, fixture);
-                        Add(props, space, "Cradle_Aft", 0f, 0.45f, 4.5f, 0.5f, 0.4f, fixture);
-                        Add(props, space, "LaunchMark_Fore", 0f, -0.75f, 5.0f, 0.03f, 0.18f, hazard);
-                        Add(props, space, "LaunchMark_Aft", 0f, 0.75f, 5.0f, 0.03f, 0.18f, hazard);
-                        Add(props, space, "HangarRack", -1f, 0f, 0.5f, 2.2f, 4.0f, fixture);
-                        Add(props, space, "Gantry", 1f, 0f, 0.4f, 2.6f, 5.0f, tint);
-                        break;
-
-                    // 서버통신실 — 랙 네 열. 문 면에서 한 열 물려 세워 들어서는 자리를 비운다.
-                    case LastShiftCompartment.ServerRoom:
-                        for (var rack = 0; rack < 4; rack++)
-                        {
-                            var uz = -0.35f + rack * 0.45f;
-                            Add(props, space, $"Rack_{rack}", 0f, uz, 2.4f, 2.2f, 0.5f, fixture);
-                            var led = Add(props, space, $"RackIndicator_{rack}", -0.55f, uz,
-                                0.5f, 0.06f, 0.56f, indicator, 1.7f);
-                            led.semantics = LastShiftDressingSemantics.RoomSystemReadout |
-                                            LastShiftDressingSemantics.LightSource;
-                            led.lightIntensity = 1.1f;
-                            led.justification =
-                                "통신 상태 표현이지 압력 계기가 아니다 — 브리프 §6.2. " +
-                                "선체 상태가 아니라 이 방 자체의 정체를 말한다.";
-                        }
-
-                        break;
-
-                    // 화장실 — 폭이 좁고 양 끝이 다 문이라 x 동선(z ≈ 0)을 비워 둬야 한다.
-                    case LastShiftCompartment.Lavatory:
-                        Add(props, space, "Basin", 0f, -1f, 1.2f, 0.9f, 0.5f, fixture);
-                        Add(props, space, "Stall_Fore", 0f, 0.45f, 1.2f, 2.0f, 0.08f, tint);
-                        Add(props, space, "Stall_Aft", 0f, 0.85f, 1.2f, 2.0f, 0.08f, tint);
-                        break;
-
-                    // 숙소 — 2단 침상 두 조 = 네 자리. 4인 승무원과 수를 맞춘다.
-                    case LastShiftCompartment.Quarters:
-                        foreach (var (bunk, uz) in new[] { ("Port", -0.75f), ("Starboard", 0.75f) })
-                        {
-                            Add(props, space, $"Bunk_{bunk}_Lower", 0f, uz, 2.6f, 0.25f, 0.9f, fixture, 0.45f);
-                            Add(props, space, $"Bunk_{bunk}_Upper", 0f, uz, 2.6f, 0.25f, 0.9f, fixture, 1.55f);
-                        }
-
-                        Add(props, space, "Lockers", 0f, -1f, 2.4f, 1.9f, 0.45f, tint);
-                        break;
-
-                    // 휴게실 — 넷이 마주 앉는 자리. 이 배에서 유일하게 일 안 하는 방이다.
-                    case LastShiftCompartment.Lounge:
-                        Add(props, space, "Table", 0f, 0f, 1.6f, 0.75f, 1.2f, fixture);
-                        Add(props, space, "Bench_Port", 0f, -0.75f, 2.0f, 0.45f, 0.5f, tint);
-                        Add(props, space, "Bench_Starboard", 0f, 0.75f, 2.0f, 0.45f, 0.5f, tint);
-                        Add(props, space, "GalleyCounter", 0f, 1f, 3.0f, 1.0f, 0.6f, fixture);
-                        break;
-
-                    // 수경재배·산소재생실 — 그로우 라이트가 이 배에서 가장 밝은 색이다.
-                    case LastShiftCompartment.Hydroponics:
-                        for (var row = 0; row < 2; row++)
-                        {
-                            var uz = row == 0 ? -0.72f : 0.72f;
-                            for (var tier = 0; tier < 3; tier++)
-                            {
-                                Add(props, space, $"Tray_{row}_{tier}", 0f, uz, 4.4f, 0.14f, 1.0f, fixture, 0.45f + tier * 0.8f);
-                                var growth = Add(props, space, $"Growth_{row}_{tier}", 0f, uz, 4.0f, 0.22f, 0.8f, tint, 0.59f + tier * 0.8f);
-                                growth.semantics = LastShiftDressingSemantics.RoomSystemReadout;
-                                growth.justification =
-                                    "방치 시 잎이 마르는 장기관리 축의 표현이다 — 브리프 §5.3. " +
-                                    "압력존 게이지가 아니라 이 방이 원래 갖고 있는 상태다.";
-                                var light = Add(props, space, $"GrowLight_{row}_{tier}", 0f, uz, 4.2f, 0.06f, 0.24f, grow, 0.86f + tier * 0.8f);
-                                light.semantics = LastShiftDressingSemantics.LightSource;
-                                light.lightIntensity = 1.6f;
-                            }
-                        }
-
-                        break;
-
-                    // 의무실 — 침상 하나. 넷이 타는 배에 침상이 하나라는 것 자체가 정보다.
-                    case LastShiftCompartment.MedBay:
-                        Add(props, space, "MedBed", 0f, -0.3f, 2.1f, 0.6f, 0.9f, fixture);
-                        Add(props, space, "ScannerArch", -0.5f, -0.3f, 0.35f, 2.0f, 1.6f, tint);
-                        Add(props, space, "MedCabinet", 1f, 1f, 0.5f, 1.8f, 1.6f, fixture);
-                        break;
-
-                    // 구명정 — 좌석 넷과 해치 링. 색이 배에서 여기 하나뿐인 적색이다.
-                    default:
-                        for (var seat = 0; seat < 4; seat++)
-                            Add(props, space, $"PodSeat_{seat}",
-                                seat < 2 ? -0.55f : 0.15f, seat % 2 == 0 ? -0.55f : 0.55f,
-                                0.7f, 1.0f, 0.7f, fixture);
-                        var console = Add(props, space, "PodConsole", 0f, -1f, 2.4f, 1.1f, 0.4f, tint);
-                        console.semantics = LastShiftDressingSemantics.RoomSystemReadout;
-                        console.justification =
-                            "발진 가능 상태(잠금=적/가능=녹)는 이 방 고유 시스템이고 승패조건에 " +
-                            "직접 관여한다 — 브리프 §4.3. 플레이어가 알아야 하는 유일한 상태등이다.";
-                        Add(props, space, "HatchRing", 1f, 0f, 0.2f, 2.2f, 2.2f, tint);
-                        break;
+                    Add(props, space, $"Bunk_{bunk}_Lower", 0.55f, uz, 2.2f, 0.25f, 0.9f, fixture, 0.45f);
+                    Add(props, space, $"Bunk_{bunk}_Upper", 0.55f, uz, 2.2f, 0.25f, 0.9f, fixture, 1.55f);
                 }
+
+                Add(props, space, "Lockers", 1f, 0f, 0.45f, 1.9f, 1.6f, tint);
+
+                // 위생 — 흡수된 화장실. 문 쪽 좌현 구석이라 들어서면서 바로 보인다.
+                Add(props, space, "Basin", -0.85f, -1f, 0.9f, 0.9f, 0.5f, fixture);
+                Add(props, space, "Stall", -0.85f, 1f, 1.0f, 2.0f, 0.9f, tint);
+
+                // 휴게 — 흡수된 휴게실. 넷이 마주 앉는 자리 하나다. 이 배에서 유일하게
+                // 일 안 하는 소품이고, 그 정서가 숙소 안에 남아야 §3.2 의 흡수가 성립한다.
+                Add(props, space, "Table", -0.1f, 0f, 1.0f, 0.75f, 1.0f, fixture);
+                Add(props, space, "Bench_Port", -0.1f, -0.6f, 1.2f, 0.45f, 0.4f, tint);
+                Add(props, space, "Bench_Starboard", -0.1f, 0.6f, 1.2f, 0.45f, 0.4f, tint);
             }
         }
 
@@ -548,174 +529,5 @@ namespace DoodleUp.Editor
             var light = prefab.GetComponentInChildren<Light>(true);
             return light != null ? light.intensity : 0f;
         }
-
-        // ── 상부 회랑 ─────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// 긴 구간을 뺀 다리 넷. 긴 구간은 다른 넷이 <b>붙는</b> 몸통이라 "입구" 도
-        /// "맞은편 벽" 도 자기 자신에 대해서는 없다.
-        /// </summary>
-        private static IEnumerable<LastShiftGalleryLeg> BranchLegs()
-        {
-            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
-                if (index != LastShiftUpperGallery.RunLeg)
-                    yield return LastShiftUpperGallery.LegAt(index);
-        }
-
-        private static GameObject GalleryPrefab(string name) =>
-            AssetDatabase.LoadAssetAtPath<GameObject>($"{DressingPrefabFolder}/LSDress_{name}.prefab");
-
-        /// <summary>회랑 등기구 외형 치수. 방 등보다 앞뒤로 조금 두껍다(art §4.1).</summary>
-        private static readonly Vector3 GalleryLampSize = new(1.60f, 0.16f, 0.38f);
-
-        private static readonly Vector3 GalleryCeilingRunSize = new(2.40f, 0.12f, 0.62f);
-        private static readonly Vector3 GalleryTrimBandSize = new(2.44f, 0.10f, 0.03f);
-        private static readonly Vector3 GalleryMouthFrameSize = new(2.24f, 3.00f, 0.26f);
-
-        /// <summary>등 간격. art §4.2 가 목표 조도 <c>160 lx</c> 에서 역산한 값이다.</summary>
-        private const float GalleryLampSpacing = 5.1f;
-
-        /// <summary>유도띠 밑면 높이(art §4.4). 손 높이 아래라 통행에 안 걸린다.</summary>
-        private const float GalleryTrimBottomY = 0.45f;
-
-        /// <summary>
-        /// 상부 회랑 드레싱(art <c>last-shift-hull-finish-v1.md</c> §4.4). <b>좌표는 한 줄도
-        /// 안 적는다</b> — 전부 <see cref="LastShiftUpperGallery"/> 에서 뽑는다. 회랑은 구획
-        /// 표에서 파생하는 공간이라 방이 하나만 움직여도 <c>x</c>·<c>z</c> 가 같이 움직이고,
-        /// 리터럴을 적으면 그때 소품만 제자리에 남는다.
-        ///
-        /// <b>넷 다 프리팹이 정본이다.</b> 여기 있는 치수는 스케일이 아니라 경계 검사용
-        /// 바깥 치수이고(art §4.1 표), 밝기 실값은 <see cref="LampIntensityOf"/> 로 프리팹에서
-        /// 읽는다.
-        ///
-        /// 회랑에는 <c>C4</c> 밝기 예산이 안 걸린다 — 그 예산은 "불편해야 하는 길"(우회 통로)
-        /// 의 것이고 회랑은 실사용 이면 동선이다(§27.4, art §4.3). 유도띠에 <c>Comfort</c> 가
-        /// 붙는 것도 같은 이유로 위반이 아니다.
-        /// </summary>
-        private static void AddGalleryProps(List<LastShiftDressingProp> props)
-        {
-            var lamp = GalleryPrefab("Lamp_Gallery");
-            var ceilingRun = GalleryPrefab("GalleryCeilingRun");
-            var trim = GalleryPrefab("GalleryTrimBand");
-            var frame = GalleryPrefab("GalleryMouthFrame");
-
-            var run = LastShiftDressingSpace.OfGalleryRun();
-            var runBounds = LastShiftDressingSpaces.BoundsOf(run);
-            var runLength = runBounds.MaxX - runBounds.MinX;
-
-            // 긴 구간 천장 등. 개수를 간격에서 뽑으므로 회랑이 길어지면 등도 같이 는다.
-            var lampCount = Mathf.Max(1, Mathf.RoundToInt(runLength / GalleryLampSpacing));
-            for (var index = 0; index < lampCount; index++)
-                AddLamp(props, run, $"Lamp_{index}",
-                    new Vector2((index - (lampCount - 1) * 0.5f) * GalleryLampSpacing, 0f),
-                    GalleryLampSize, lamp);
-
-            // 천장 배관. 등과 달리 <b>끊기면 안 되는</b> 줄이라 간격이 곧 부재 길이다.
-            // 남는 자투리는 양 끝에 반씩 두고(가운데 정렬) 개수를 내림으로 잡는다 —
-            // 올림하면 마지막 한 장이 회랑 밖으로 나가 R1_Bounds 에 걸린다.
-            const float ceilingRunPitch = 2.40f;
-            var ceilingRunCount = Mathf.Max(1, Mathf.FloorToInt(runLength / ceilingRunPitch));
-            for (var index = 0; index < ceilingRunCount; index++)
-                props.Add(GalleryProp($"CeilingRun_{index}", run,
-                    new Vector2((index - (ceilingRunCount - 1) * 0.5f) * ceilingRunPitch, 0.5f),
-                    GalleryCeilingRunSize, runBounds.CeilingY - runBounds.FloorY - GalleryCeilingRunSize.y,
-                    0f, ceilingRun));
-
-            // 개구부 프레임 여섯. 다섯은 긴 구간에서 보이는 면이고(격납고 종점 + 다리 넷의
-            // 입구), 하나는 강하 다리 끝의 구명정 면이다. 프레임의 발광 액센트가 로컬 +z 라
-            // 회전이 곧 "어느 쪽에서 보라고 세운 문인가" 다.
-            foreach (var leg in BranchLegs())
-            {
-                // 다리 입구는 긴 구간의 안쪽 벽(z = NearZ)에 뚫린 구멍이다. 프레임을 다리가
-                // 아니라 긴 구간에 다는 것은 이 문들이 <b>긴 구간을 걷는 사람</b>에게 갈림길을
-                // 알리려고 있기 때문이다(art §4.3) — 다리 안에서는 갈림길이 없다.
-                props.Add(GalleryProp($"Mouth_{leg.Name}", run,
-                    new Vector2(leg.CenterX - runBounds.CenterX, runBounds.MinZ - runBounds.CenterZ),
-                    GalleryMouthFrameSize, 0f, 0f, frame));
-            }
-
-            // 격납고 종점. 여기만 문 면이 x 법선이라(§27.4 의 AlongX 분기) 프레임을 돌린다.
-            props.Add(GalleryProp("Mouth_Hangar", run,
-                new Vector2(runBounds.MinX - runBounds.CenterX, 0f),
-                Swizzle(GalleryMouthFrameSize), 0f, 90f, frame));
-
-            // 유도띠. 개구부 맞은편 바깥 벽(z = FarZ)에 붙어 문이 있는 자리를 건너편에서
-            // 비춘다. 긴 구간 양 끝 둘은 문이 아니라 <b>구간이 여기서 끝난다</b> 는 표시다.
-            foreach (var leg in BranchLegs())
-            {
-                props.Add(GalleryProp($"Trim_{leg.Name}", run,
-                    new Vector2(leg.CenterX - runBounds.CenterX, runBounds.MaxZ - runBounds.CenterZ),
-                    GalleryTrimBandSize, GalleryTrimBottomY, 180f, trim,
-                    LastShiftDressingSemantics.Comfort));
-            }
-
-            var halfBand = GalleryTrimBandSize.x * 0.5f;
-            foreach (var (id, x) in new[]
-                     {
-                         ("Trim_ForeEnd", runBounds.MinX + halfBand),
-                         ("Trim_AftEnd", runBounds.MaxX - halfBand)
-                     })
-                props.Add(GalleryProp(id, run,
-                    new Vector2(x - runBounds.CenterX, runBounds.MaxZ - runBounds.CenterZ),
-                    GalleryTrimBandSize, GalleryTrimBottomY, 180f, trim,
-                    LastShiftDressingSemantics.Comfort));
-
-            AddDescentLegProps(props, lamp, trim, frame);
-        }
-
-        /// <summary>
-        /// 강하 다리. 긴 구간과 달리 <b>z 로 달린다</b> — 길쭉한 소품은 전부 90° 돌아가고,
-        /// 그래서 경계 검사에 넣는 치수도 축을 바꿔 적는다(<see cref="Swizzle"/>).
-        /// </summary>
-        private static void AddDescentLegProps(List<LastShiftDressingProp> props,
-            GameObject lamp, GameObject trim, GameObject frame)
-        {
-            var descent = LastShiftDressingSpace.OfGallery(LastShiftUpperGallery.DescentLeg);
-            var bounds = LastShiftDressingSpaces.BoundsOf(descent);
-
-            // 등 둘. 8m 다리에 5.1m 간격을 그대로 쓰면 하나뿐이라 끝이 처진다 —
-            // art §4.4 가 4m 간격 둘로 정했다.
-            var index = 0;
-            foreach (var offset in new[] { 2f, 6f })
-                AddLamp(props, descent, $"Lamp_{index++}",
-                    new Vector2(0f, bounds.MinZ + offset - bounds.CenterZ),
-                    Swizzle(GalleryLampSize), lamp).eulerAngles = new Vector3(0f, 90f, 0f);
-
-            // 구명정 종점. 문 면은 구명정 우현(z 법선)이라 긴 구간 쪽 입구들과 같은 방향이고,
-            // 회전이 없다 — art §4.4 표는 여기 90° 로 적었지만, 그 면은 §27.4 의
-            // AlongZ 분기라 돌리면 프레임이 문 면과 직교한다.
-            props.Add(GalleryProp("Mouth_EscapePod", descent,
-                new Vector2(0f, bounds.MinZ - bounds.CenterZ),
-                GalleryMouthFrameSize, 0f, 0f, frame));
-
-            // 유도띠 하나. 다리가 z 로 달리므로 벽은 x 면이고, 띠는 선미 쪽 벽에 붙어
-            // 안쪽(-x)을 향한다.
-            props.Add(GalleryProp("Trim_Wall", descent,
-                new Vector2(bounds.MaxX - bounds.CenterX, 0f),
-                Swizzle(GalleryTrimBandSize), GalleryTrimBottomY, 270f, trim,
-                LastShiftDressingSemantics.Comfort));
-        }
-
-        /// <summary>
-        /// <c>y</c> 로 90° 돌린 소품의 경계 검사용 치수. <c>x</c> 와 <c>z</c> 를 맞바꾼다 —
-        /// <see cref="LastShiftDressingProp.size"/> 는 선체 축 기준이라 회전을 안 따라간다.
-        /// </summary>
-        private static Vector3 Swizzle(Vector3 size) => new(size.z, size.y, size.x);
-
-        private static LastShiftDressingProp GalleryProp(string id, LastShiftDressingSpace space,
-            Vector2 anchor, Vector3 size, float bottomY, float yaw, GameObject prefab,
-            LastShiftDressingSemantics semantics = LastShiftDressingSemantics.None) =>
-            new()
-            {
-                id = id,
-                space = space,
-                anchorMode = LastShiftDressingAnchorMode.MetersFromSpaceCenter,
-                anchor = anchor,
-                size = size,
-                bottomY = bottomY,
-                eulerAngles = new Vector3(0f, yaw, 0f),
-                prefab = prefab,
-                semantics = semantics
-            };
     }
 }

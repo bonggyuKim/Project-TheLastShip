@@ -303,10 +303,10 @@ namespace DoodleUp.Tests.EditMode
             var cursor = HullAttachedCursor();
             Assert.That(cursor.ParentIndex, Is.EqualTo(-1));
 
-            cursor.AttachTo((int)LastShiftCompartment.Lavatory);
+            cursor.AttachTo((int)LastShiftCompartment.Quarters);
 
             Assert.That(cursor.AutoParent, Is.False);
-            Assert.That(cursor.ParentIndex, Is.EqualTo((int)LastShiftCompartment.Lavatory));
+            Assert.That(cursor.ParentIndex, Is.EqualTo((int)LastShiftCompartment.Quarters));
             Assert.That(cursor.Faults & LastShiftPlacementFault.DoorOutsideParentSpan,
                 Is.EqualTo(LastShiftPlacementFault.DoorOutsideParentSpan),
                 "화장실 벽에는 이 문이 안 닿는다");

@@ -27,7 +27,7 @@ namespace DoodleUp.Tests.EditMode
         private static LastShiftPlacement[] CanonicalTable() =>
             LastShiftPlacementRules.TableOf(LastShiftCompartments.Specs);
 
-        // ── 정본 열한 개가 자기 판정기를 통과한다 ────────────────────────────
+        // ── 정본 고정 표가 자기 판정기를 통과한다 ────────────────────────────
 
         [Test]
         public void EveryCanonicalCompartmentPassesItsOwnJudge()
@@ -63,29 +63,23 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void TheJudgeReadsTheSameEgressTheGuardrailTestsPin()
         {
-            // 승격 대조(§5.3). 기항 개방 대상 셋의 재계산값을 판정기로 다시 읽는다 — 같은 수가
-            // 나와야 사본 둘을 지운 것이 값 갈이가 아니라는 것이 이 파일 안에서도 보인다.
+            // 자 하나 대조. LastShiftRg1GuardrailTests 가 래칫으로 박아 둔 값을 판정기로 다시
+            // 읽는다 — 같은 수가 나와야 두 파일이 같은 자를 쓰고 있다는 것이 여기서도 보인다.
+            //
+            // <b>M-2 로 대상이 셋에서 하나가 됐다.</b> 예전 셋(서버/통신실·수경재배·의무실)은
+            // 기항 개방 대상이었고, 그 계열이 폐지되면서(조항 K-2) 배에 남은 것은 숙소뿐이다.
             var table = CanonicalTable();
-            var expected = new (LastShiftCompartment Compartment, float Meters, LastShiftZone Zone)[]
-            {
-                (LastShiftCompartment.ServerRoom, 16.32f, LastShiftZone.Cockpit),
-                (LastShiftCompartment.Hydroponics, 14.71f, LastShiftZone.LifeSupport),
-                (LastShiftCompartment.MedBay, 25.44f, LastShiftZone.LifeSupport)
-            };
 
-            foreach (var (compartment, meters, expectedZone) in expected)
-            {
-                Assert.That(
-                    LastShiftPlacementRules.TryEgress(
-                        table, table[(int)compartment], out var actual, out var zone),
-                    Is.True, $"{compartment} 사슬이 선체에 안 닿는다.");
+            Assert.That(
+                LastShiftPlacementRules.TryEgress(
+                    table, table[(int)LastShiftCompartment.Quarters], out var actual, out var zone),
+                Is.True, "숙소 사슬이 선체에 안 닿는다.");
 
-                Assert.That(actual, Is.EqualTo(meters).Within(Tolerance),
-                    $"{compartment} 이탈이 {actual:F2}m 다 — 승격 전 EditMode 사본이 내던 " +
-                    $"{meters:F2}m 에서 움직였다(docs/rg1-recalc-voyage-port-unlock-v1.md §2.1).");
-                Assert.That(zone, Is.EqualTo(expectedZone),
-                    $"{compartment} 구역 귀속이 바뀌었다 — 사슬 뿌리의 선체 문이 옮겨간 것이다.");
-            }
+            Assert.That(actual, Is.EqualTo(19.00f).Within(Tolerance),
+                $"숙소 이탈이 {actual:F2}m 다 — LastShiftRg1GuardrailTests 의 래칫 19.00m 와 " +
+                "갈렸다. 두 파일 중 하나만 갱신됐다는 뜻이다.");
+            Assert.That(zone, Is.EqualTo(LastShiftZone.LifeSupport),
+                "숙소 구역 귀속이 바뀌었다 — 사슬 뿌리의 선체 문이 옮겨간 것이다.");
         }
 
         [Test]
@@ -112,28 +106,38 @@ namespace DoodleUp.Tests.EditMode
         public void AModuleDroppedOnAnExistingOneIsRejectedForOverlap()
         {
             var table = CanonicalTable();
-            var hangar = table[(int)LastShiftCompartment.Hangar];
+            var quarters = table[(int)LastShiftCompartment.Quarters];
 
-            // 격납고 자리에 그대로 놓는다. ignoreIndex 를 안 주므로 자기 자신이 아니라 남이다.
-            var verdict = LastShiftPlacementRules.Evaluate(table, hangar);
+            // 숙소 자리에 그대로 놓는다. ignoreIndex 를 안 주므로 자기 자신이 아니라 남이다.
+            var verdict = LastShiftPlacementRules.Evaluate(table, quarters);
 
             Assert.That(verdict.Rejection.HasFlag(LastShiftPlacementRejection.OverlapsPlacement), Is.True,
-                "격납고 자리에 겹쳐 놓았는데 겹침이 안 잡힌다.");
-            Assert.That(verdict.OverlappingIndex, Is.EqualTo((int)LastShiftCompartment.Hangar),
+                "숙소 자리에 겹쳐 놓았는데 겹침이 안 잡힌다.");
+            Assert.That(verdict.OverlappingIndex, Is.EqualTo((int)LastShiftCompartment.Quarters),
                 "겹친 상대를 못 짚는다 — 배치 UI 가 무엇을 강조할지 모르게 된다.");
         }
 
         [Test]
         public void TouchingWallsAreNotAnOverlap()
         {
-            // 사슬로 이어 붙인 구획은 언제나 한 면을 공유한다. 닫힌 구간 비교를 쓰면 정본 열한 개가
+            // 사슬로 이어 붙인 방은 언제나 한 면을 공유한다. 닫힌 구간 비교를 쓰면 사슬 전체가
             // 통째로 물린다 — 그래서 위 EveryCanonicalCompartment... 와 짝인 검사다.
-            var table = CanonicalTable();
-            var cargo = table[(int)LastShiftCompartment.CargoBay];
-            var workshop = table[(int)LastShiftCompartment.Workshop];
+            //
+            // <b>표본을 표에서 못 뽑는다.</b> M-2 로 고정 표가 하나가 되면서 "면을 공유하는
+            // 두 방" 이 시작 배에 없어졌다. 그 짝은 이제 언제나 배치가 만들므로 여기서도
+            // 배치처럼 세운다 — 숙소 좌현 면에 붙는 칸과 그 칸에 다시 붙는 칸이다.
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var first = new LastShiftPlacement(
+                quarters.MinX, quarters.MinX + 3f, quarters.MinZ - 3f, quarters.MinZ,
+                new Vector3(quarters.MinX + 1.5f, 0f, quarters.MinZ),
+                (int)LastShiftCompartment.Quarters);
+            var second = new LastShiftPlacement(
+                quarters.MinX, quarters.MinX + 3f, quarters.MinZ - 6f, quarters.MinZ - 3f,
+                new Vector3(quarters.MinX + 1.5f, 0f, quarters.MinZ - 3f),
+                LastShiftCompartments.FixedCount);
 
-            Assert.That(LastShiftPlacementRules.Overlaps(cargo, workshop), Is.False,
-                "화물칸과 정비창은 문이 놓인 면 하나를 공유할 뿐인데 겹침으로 읽힌다.");
+            Assert.That(LastShiftPlacementRules.Overlaps(first, second), Is.False,
+                "두 칸은 문이 놓인 면 하나를 공유할 뿐인데 겹침으로 읽힌다.");
         }
 
         [Test]
@@ -142,7 +146,7 @@ namespace DoodleUp.Tests.EditMode
             var table = CanonicalTable();
             var inside = new LastShiftPlacement(
                 -2f, 2f, -2f, 2f,
-                new Vector3(-2f, 0f, 0f), (int)LastShiftCompartment.CargoBay);
+                new Vector3(-2f, 0f, 0f), (int)LastShiftCompartment.Quarters);
 
             var verdict = LastShiftPlacementRules.Evaluate(table, inside);
 
@@ -263,16 +267,22 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void CanonicalDepthLeavesTwoLinksUnderTheCap()
+        public void CanonicalDepthLeavesTheWholeCapToThePlayer()
         {
-            // 상한 6 은 "시작 배 최대 깊이 4 + 2" 로 뽑은 수다(§3). 정본 구획표가 깊어지면 그
-            // 유도가 조용히 무너지고, 시작 배만으로 확장 여지가 사라진 배가 나온다 — 그때
-            // 다시 결정해야 하는 것은 상한이지 구획표가 아니다.
+            // 상한 6 은 "시작 배 최대 깊이 4 + 2" 로 뽑은 수였다(§3). <b>M-2 가 그 입력을
+            // 4 에서 1 로 내렸다</b> — 선수·선미 사슬이 통째로 빠지고 숙소가 선체에 직결하면서
+            // 시작 배에 사슬이라는 것이 없어졌다.
+            //
+            // <b>그래서 상한을 안 내린다.</b> 유도식이 "시작 깊이 + 확장 여지" 인데 시작 깊이가
+            // 1 이 됐으므로 여지가 2 에서 5 로 늘었고, 그 여지를 쓰는 것이 이제 플레이어다.
+            // 상한을 1+2=3 으로 좁히면 자유 배치가 세 칸에서 막힌다 — 맵 개편 §3.4 가
+            // "뿌리 자유면이 늘어 깊은 사슬을 만들 이유가 줄어든다" 고 적은 것은 상한이
+            // 덜 걸린다는 뜻이지 상한을 좁혀도 된다는 뜻이 아니다.
             var deepest = LastShiftCompartments.Specs.Max(
                 spec => LastShiftCompartments.DoorDepth(spec.Compartment));
 
-            Assert.That(deepest, Is.EqualTo(4),
-                "정본 최대 깊이가 4 가 아니다 — 상한 유도의 입력이 바뀌었다.");
+            Assert.That(deepest, Is.EqualTo(1),
+                "시작 배 최대 깊이가 1 이 아니다 — 고정 표에 사슬이 다시 생겼다.");
             Assert.That(LastShiftPlacementRules.MaxDoorDepth - deepest, Is.GreaterThanOrEqualTo(2),
                 $"시작 배 최대 깊이가 {deepest} 인데 상한이 {LastShiftPlacementRules.MaxDoorDepth} 다 — " +
                 "가장 깊은 사슬 끝에 두 칸을 못 붙이면 확장 자유도가 시작 상태로 봉인된다.");
@@ -332,18 +342,18 @@ namespace DoodleUp.Tests.EditMode
             // ignoreIndex 를 안 빼면 옮기기 전 자리와 옮긴 자리가 둘 다 세어져 W-1 이 부풀어
             // 오른다 — 커서를 끄는 내내 값이 틀린다.
             var table = CanonicalTable();
-            var moving = (int)LastShiftCompartment.MedBay;
+            var moving = (int)LastShiftCompartment.Quarters;
 
             var inPlace = LastShiftPlacementRules.LongestPairWith(
                 table, table[moving], includeImpassable: true,
                 spine: LastShiftPairSpine.AlongLength, ignoreIndex: moving);
             var zone = LastShiftZoneAtlas.Resolve(
-                LastShiftCompartments.Of(LastShiftCompartment.Lavatory).DoorPosition);
+                LastShiftCompartments.Of(LastShiftCompartment.Quarters).DoorPosition);
             var whole = LastShiftPlacementRules.LongestPairPerZone(
                 table, includeImpassable: true, LastShiftPairSpine.AlongLength)[(int)zone];
 
             Assert.That(inPlace, Is.EqualTo(whole).Within(Tolerance),
-                $"제자리에 다시 놓은 의무실의 W-1 이 {inPlace:F2}m 로 표 전체 값 {whole:F2}m 와 " +
+                $"제자리에 다시 놓은 숙소의 W-1 이 {inPlace:F2}m 로 표 전체 값 {whole:F2}m 와 " +
                 "다르다 — 옮기기 전 자리가 같이 세어졌다는 뜻이다.");
         }
 

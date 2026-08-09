@@ -28,19 +28,11 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void EveryLabelUsesTheKoreanNameFromTheDesignDoc()
         {
+            // M-2 에서 열하나가 하나로 줄었다. 나머지 열의 한글 명칭은 사라진 것이 아니라
+            // 카탈로그(LastShiftModuleCatalog)로 옮겨갔고, 거기서 표와 통째로 대조된다.
             var expected = new (LastShiftCompartment Compartment, string Text)[]
             {
-                (LastShiftCompartment.Observatory, "관측실"),
-                (LastShiftCompartment.Workshop, "정비창"),
-                (LastShiftCompartment.CargoBay, "화물칸"),
-                (LastShiftCompartment.Hangar, "격납고"),
-                (LastShiftCompartment.ServerRoom, "서버·통신실"),
-                (LastShiftCompartment.Lavatory, "화장실"),
-                (LastShiftCompartment.Quarters, "숙소"),
-                (LastShiftCompartment.Lounge, "휴게실"),
-                (LastShiftCompartment.Hydroponics, "수경재배"),
-                (LastShiftCompartment.MedBay, "의무실"),
-                (LastShiftCompartment.EscapePod, "구명정")
+                (LastShiftCompartment.Quarters, "숙소")
             };
 
             Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
@@ -68,28 +60,27 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 이 카드가 답해야 하는 원래 증상 — 화물칸 라벨이 관측 회랑 문 인방을 가로지른다.
-        /// 전제(방 중심 = 문 중심)까지 같이 못박는다. 이 전제가 깨지면 이 검사는 아무것도
-        /// 확인하지 않으면서 통과한다.
+        /// 이 카드가 답해야 했던 원래 증상(화물칸 라벨이 관측 회랑 문 인방을 가로지른다)은
+        /// M-2 에서 대상이 사라졌다 — 화물칸도 관측 회랑도 배에 없다. 회피 규칙 자체는
+        /// <see cref="NoLabelCrossesADoorway"/> 와 아래 검사가 계속 지킨다.
+        ///
+        /// <b>숙소 라벨은 문을 피해 서야 한다.</b> 숙소 라벨 벽(좌현 <c>MinZ</c>)에는 구멍이
+        /// 없으므로 안 움직이는 것이 맞고, 그 "안 움직임" 이 규칙 1(비어 있으면 안 옮긴다)의
+        /// 유일한 실사례다.
         /// </summary>
         [Test]
-        public void TheCargoBayLabelIsOffTheObservationGalleryDoor()
+        public void TheQuartersLabelStaysAtTheRoomCenterBecauseItsWallHasNoDoor()
         {
-            var spec = LastShiftCompartments.Of(LastShiftCompartment.CargoBay);
+            var spec = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
 
-            Assert.That(LastShiftObservationGallery.CargoLandingCenterX,
+            Assert.That(LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec), Is.Empty,
+                "숙소 라벨 벽에 구멍이 생겼다 — 문이 x 면(선미 끝벽)에 있어야 한다.");
+            Assert.That(LastShiftCompartmentLabels.ResolveX(spec),
                 Is.EqualTo(spec.CenterX).Within(Tolerance),
-                "관측 회랑 문이 더는 화물칸 중심에 없다 — 이 검사가 재는 증상이 사라졌다.");
-
-            var x = LastShiftCompartmentLabels.ResolveX(spec);
-            var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.CargoBay);
-            var gap = Mathf.Abs(x - LastShiftObservationGallery.CargoLandingCenterX) - half;
-
-            Assert.That(gap, Is.GreaterThanOrEqualTo(LastShiftZoneDoor.OpeningWidth * 0.5f),
-                "화물칸 라벨이 여전히 관측 회랑 문 폭 안에 있다.");
+                "비어 있는 벽인데 라벨이 옮겨졌다 — 규칙 1 이 안 지켜진다.");
             Assert.That(LastShiftCompartmentLabels.ResolveY(spec),
                 Is.EqualTo(LastShiftCompartmentLabels.WallLabelY).Within(Tolerance),
-                "화물칸은 비켜 놓을 벽이 넉넉한데 라벨이 인방 위로 올라갔다.");
+                "비켜 놓을 벽이 넉넉한데 라벨이 인방 위로 올라갔다.");
         }
 
         /// <summary>
@@ -147,35 +138,73 @@ namespace DoodleUp.Tests.EditMode
 
         /// <summary>
         /// <b>겹칠 때만 움직인다.</b> 라벨 벽에 문이 없는 구획은 예전 좌표 그대로여야 한다 —
-        /// 안 그러면 이 카드가 안 건드려도 되는 방 여섯의 프리팹까지 매번 diff 를 낸다.
+        /// 안 그러면 안 건드려도 되는 방의 프리팹까지 매번 diff 를 낸다.
         /// </summary>
         [Test]
         public void LabelsWithNoDoorOnTheirWallDoNotMove()
         {
-            var moved = 0;
             foreach (var spec in LastShiftCompartments.FixedSpecs)
             {
-                if (LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec).Length == 0)
-                {
-                    Assert.That(LastShiftCompartmentLabels.ResolveX(spec),
-                        Is.EqualTo(spec.CenterX).Within(Tolerance),
-                        $"{spec.Compartment} 벽에 문이 없는데 라벨이 옮겨졌다.");
-                    Assert.That(LastShiftCompartmentLabels.ResolveY(spec),
-                        Is.EqualTo(LastShiftCompartmentLabels.WallLabelY).Within(Tolerance),
-                        $"{spec.Compartment} 벽에 문이 없는데 라벨이 올라갔다.");
-                    continue;
-                }
+                if (LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec).Length != 0) continue;
 
-                if (Mathf.Abs(LastShiftCompartmentLabels.ResolveX(spec) - spec.CenterX) > Tolerance ||
-                    Mathf.Abs(LastShiftCompartmentLabels.ResolveY(spec) -
-                              LastShiftCompartmentLabels.WallLabelY) > Tolerance)
-                    moved++;
+                Assert.That(LastShiftCompartmentLabels.ResolveX(spec),
+                    Is.EqualTo(spec.CenterX).Within(Tolerance),
+                    $"{spec.Compartment} 벽에 문이 없는데 라벨이 옮겨졌다.");
+                Assert.That(LastShiftCompartmentLabels.ResolveY(spec),
+                    Is.EqualTo(LastShiftCompartmentLabels.WallLabelY).Within(Tolerance),
+                    $"{spec.Compartment} 벽에 문이 없는데 라벨이 올라갔다.");
             }
+        }
 
-            Assert.That(moved, Is.GreaterThan(0),
-                "아무 라벨도 안 움직였다 — 회피 규칙이 통째로 안 돌고 있다.");
-            Assert.That(moved, Is.LessThan(LastShiftCompartments.FixedCount),
-                "라벨 열한 개가 전부 움직였다 — '겹칠 때만' 이 안 지켜진다.");
+        /// <summary>
+        /// 그리고 겹치면 <b>실제로 움직인다</b>. 예전에는 고정 표 안에 그런 방이 다섯 있어서
+        /// 위 검사의 뒷단이 그걸 셌는데, M-2 로 고정 표가 숙소 하나가 되면서 그 표본이
+        /// 사라졌다 — 숙소 라벨 벽에는 구멍이 없다.
+        ///
+        /// <b>그래서 표본을 배치 쪽에서 만든다.</b> 이름표가 붙는 방의 대다수가 이제 자유 배치
+        /// 모듈이므로, 회피 규칙이 실제로 도는 자리도 그쪽이다. 숙소 좌현 면에 모듈을 붙여
+        /// 숙소 라벨 벽 한가운데에 구멍을 내고, 그 라벨이 문을 비켜 서는지를 본다.
+        /// </summary>
+        [Test]
+        public void ALabelOnAWallWithADoorActuallyMovesAside()
+        {
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var doorCenter = quarters.CenterX;
+
+            // 숙소 좌현 면(MinZ)에 붙는 모듈. 문이 그 면 한가운데라 라벨 자리와 정면으로 겹친다.
+            var child = new LastShiftCompartmentSpec(
+                LastShiftCompartments.NextModuleIndex,
+                quarters.MinX, quarters.MaxX, quarters.MinZ - 4f, quarters.MinZ,
+                LastShiftDoorPlane.AlongZ, quarters.MinZ, doorCenter,
+                quarters.Index, LastShiftCompartmentAccess.Open);
+
+            Assert.That(LastShiftCompartments.TryRegister(child, out _, out var verdict), Is.True,
+                $"표본이 판정기에 물린다({verdict.Rejection}) — 라벨 규칙과 무관한 사유다.");
+
+            try
+            {
+                var doorways = LastShiftCompartmentLabels.DoorwaysOnLabelWall(quarters);
+                Assert.That(doorways, Is.EqualTo(new[] { doorCenter }),
+                    "붙인 모듈의 문이 숙소 라벨 벽 구멍으로 안 잡힌다 — DoorwaysOnLabelWall 이 " +
+                    "모듈까지 안 보고 있다는 뜻이고, 그러면 씬에서 벽이 통짜로 서서 그 문이 막힌다.");
+
+                var x = LastShiftCompartmentLabels.ResolveX(quarters);
+                var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.Quarters);
+
+                Assert.That(Mathf.Abs(x - quarters.CenterX), Is.GreaterThan(Tolerance),
+                    "문이 라벨 자리 한가운데인데 라벨이 안 움직였다 — 회피 규칙이 안 돌고 있다.");
+                Assert.That(Mathf.Abs(x - doorCenter),
+                    Is.GreaterThanOrEqualTo(half + LastShiftZoneDoor.OpeningWidth * 0.5f),
+                    "라벨이 옮겨지긴 했는데 아직 문 폭 안이다.");
+                Assert.That(x - half, Is.GreaterThanOrEqualTo(quarters.MinX - Tolerance),
+                    "비키다가 라벨이 방 밖으로 나갔다.");
+                Assert.That(x + half, Is.LessThanOrEqualTo(quarters.MaxX + Tolerance),
+                    "비키다가 라벨이 방 밖으로 나갔다.");
+            }
+            finally
+            {
+                LastShiftCompartments.ClearModules();
+            }
         }
     }
 }

@@ -27,7 +27,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var values = Enum.GetValues(typeof(LastShiftCompartment)).Cast<LastShiftCompartment>().ToArray();
             Assert.That(values.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
-                "에어록을 뺀 11 개다(§17.5). 개수가 바뀌면 표와 enum 중 하나가 뒤처진 것이다.");
+                "M-2 이후 고정 표는 숙소 하나다. 개수가 바뀌면 표와 enum 중 하나가 뒤처진 것이다.");
             foreach (var value in values)
                 Assert.That(LastShiftCompartments.Of(value).Compartment, Is.EqualTo(value),
                     $"{value} 의 spec 이 자기 자신을 안 가리킨다 — 표 index 가 어긋났다.");
@@ -55,8 +55,9 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void NoTwoCompartmentsOverlap()
         {
-            // 맞닿는 면은 겹침이 아니다. 사슬(화물칸-정비창-관측실, 화장실-숙소-휴게실-구명정)은
-            // 언제나 한 면을 공유하므로 닫힌 구간 비교를 쓰면 전부 FAIL 한다.
+            // 맞닿는 면은 겹침이 아니다. 사슬로 이어 붙인 방은 언제나 한 면을 공유하므로
+            // 닫힌 구간 비교를 쓰면 전부 FAIL 한다. 고정 표가 하나로 줄어 지금은 쌍이 없지만,
+            // 이 검사가 실제로 도는 자리는 여기가 아니라 배치된 모듈 쪽 판정기다.
             var specs = LastShiftCompartments.FixedSpecs;
             for (var a = 0; a < specs.Length; a++)
             for (var b = a + 1; b < specs.Length; b++)
@@ -150,10 +151,13 @@ namespace DoodleUp.Tests.EditMode
                 Assert.That(depth, Is.LessThanOrEqualTo(LastShiftCompartments.FixedCount));
             }
 
-            // 선체에 직접 붙는 것이 정확히 넷이어야 한다 — 화물칸(선수 끝벽), 서버실·수경재배
-            // (우현 긴 벽), 생활공간 진입로(선미 끝벽). §17.3 도해가 그리는 그림이 이것이다.
+            // 선체에 직접 붙는 것이 정확히 하나여야 한다 — 숙소(선미 끝벽, 조항 S-2).
+            // 예전에는 넷이었고 그 셋(화물칸·서버실·수경재배)이 카탈로그로 이관됐다.
+            //
+            // <b>이 수가 곧 시작 배의 사슬 깊이 상한이다.</b> 뿌리가 하나뿐이므로 배치 전
+            // 배에서 가장 깊은 방이 깊이 1 이고, 그것이 §5.2 의 최악 이탈 재계산을 성립시킨다.
             Assert.That(LastShiftCompartments.FixedSpecs.Count(LastShiftCompartments.ConnectsToHull),
-                Is.EqualTo(4));
+                Is.EqualTo(1));
         }
 
         [Test]
@@ -179,46 +183,29 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void LivingBlockAndTheBowChainAreOpenWhileTheOtherThreeStayLocked()
+        public void TheOpeningLineIsGoneAndEveryFixedRoomIsOpen()
         {
-            // §15.2 는 아홉 개를 언락 대상으로 두었고, 그 중 구명정만 "공간은 열려 있고 기능만
-            // 잠긴다"(§15.4). 생활공간 셋(§9)은 애초에 언락 목록에 없다.
-            //
-            // 선수 사슬 넷은 확장 검토 §2 로 P0 초기값이 Open 이다 — 언락 순서(§15.2)를
-            // 지우는 것이 아니라 "P0 씬 = 언락이 끝난 뒤의 배" 로 정의하는 것이라, 이 넷이
-            // 다시 Locked 로 돌아가는 것은 메타 진행 백본이 붙을 때다(§2.3).
+            // 조항 K-2. 개방 계열이 폐지됐다 — Locked 였던 셋(서버/통신실·수경재배·의무실)이
+            // 전부 자유 배치 카탈로그로 갔고, 배치된 모듈은 언제나 Open 으로 선다.
+            // 기항 화면의 계열은 이제 복구·보급·배치 셋이다(맵 개편 §3.5).
             var open = LastShiftCompartments.FixedSpecs
                 .Where(spec => spec.Access == LastShiftCompartmentAccess.Open)
                 .Select(spec => spec.Compartment)
                 .ToArray();
-            Assert.That(open, Is.EquivalentTo(new[]
-            {
-                LastShiftCompartment.Lavatory,
-                LastShiftCompartment.Quarters,
-                LastShiftCompartment.Lounge,
-                LastShiftCompartment.CargoBay,
-                LastShiftCompartment.Hangar,
-                LastShiftCompartment.Workshop,
-                LastShiftCompartment.Observatory
-            }), "생활공간 셋(§9) + 선수 사슬 넷(확장 검토 §2)이다.");
+            Assert.That(open, Is.EquivalentTo(new[] { LastShiftCompartment.Quarters }),
+                "배와 함께 태어나는 방은 숙소 하나이고 그 하나는 언제나 열려 있다.");
 
-            // 안 여는 셋. 확장 검토 §2.2 가 각각 "정보 우위 접근 비용"·"새 시간 축"·
-            // "두 번째 개인 상태 축" 이 전제라 P0 밖이라고 판정했다 — 이 셋이 같이 열리면
-            // 그 판정이 코드에서 조용히 뒤집힌다.
-            var locked = LastShiftCompartments.FixedSpecs
-                .Where(spec => spec.Access == LastShiftCompartmentAccess.Locked)
-                .Select(spec => spec.Compartment)
-                .ToArray();
-            Assert.That(locked, Is.EquivalentTo(new[]
-            {
-                LastShiftCompartment.ServerRoom,
-                LastShiftCompartment.Hydroponics,
-                LastShiftCompartment.MedBay
-            }), "P0 에서 안 여는 것은 서버/통신실·수경재배·의무실 셋이다(확장 검토 §2.2).");
+            Assert.That(
+                LastShiftCompartments.FixedSpecs.Any(
+                    spec => spec.Access == LastShiftCompartmentAccess.Locked),
+                Is.False,
+                "잠긴 고정 구획이 남았다 — 개방 계열이 폐지됐으므로 그 방을 열 수단이 배에 없다.");
 
-            Assert.That(LastShiftCompartments.Of(LastShiftCompartment.EscapePod).Access,
-                Is.EqualTo(LastShiftCompartmentAccess.SpaceOpenFunctionLocked),
-                "구명정을 Locked 로 묶으면 §15.4 가 기각한 '그동안 탈출 수단도 없이 다녔다'가 된다.");
+            // Access 값 자체가 둘로 줄었다. 셋째 값(SpaceOpenFunctionLocked)은 구명정 하나만을
+            // 위해 있었고 구명정이 제거되면서 enum 에서 빠졌다(맵 개편 §6.2-6) — 값이 다시
+            // 늘면 그 방이 무엇인지부터 물어야 한다.
+            Assert.That(Enum.GetValues(typeof(LastShiftCompartmentAccess)).Length, Is.EqualTo(2),
+                "Access 값이 둘이 아니다 — 구명정 전용 셋째 값이 되살아났는지 본다.");
 
             // 지나갈 수 있는 구획은 부모도 지나갈 수 있어야 한다. 잠긴 방 너머에 열린 방이
             // 있으면 그 방은 영영 못 들어가는 방이고, 씬에는 도달 불가능한 지오메트리가 남는다.
@@ -233,36 +220,26 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void CompartmentCoordinatesFollowTheHullInsteadOfLiterals()
         {
-            // §17.4 표는 전장 38m(반전장 19) 기준인데 선체는 아직 36m 다(§2.2 개정 미반영).
-            // 표 숫자를 박아 두면 개정이 들어오는 순간 열한 개가 통째로 1m 어긋난다.
+            // 표 숫자를 박아 두면 전장 개정이 들어오는 순간 방이 통째로 어긋난다.
             // 여기서는 "선체에 붙어 있는가" 만 본다 — 붙어 있으면 전장이 바뀌어도 따라온다.
-            var bow = -LastShiftShipDimensions.HalfLength;
             var stern = LastShiftShipDimensions.HalfLength;
+            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
 
-            Assert.That(LastShiftCompartments.Of(LastShiftCompartment.CargoBay).MaxX,
-                Is.EqualTo(bow).Within(Tolerance), "화물칸은 조종석 선수 끝벽에 붙는다.");
-            Assert.That(LastShiftCompartments.Of(LastShiftCompartment.Lavatory).MinX,
-                Is.EqualTo(stern).Within(Tolerance), "생활공간은 산소실 선미 끝벽에 붙는다.");
-            Assert.That(LastShiftCompartments.Of(LastShiftCompartment.ServerRoom).DoorCenter,
-                Is.EqualTo(LastShiftShipDimensions.CockpitCenterX).Within(Tolerance),
-                "서버/통신실 문은 조종석 방 중심이다(§17.4 의 x=-15).");
+            // 조항 S-2. 숙소는 선미 끝벽에 <b>직결</b>한다 — 부모(화장실)를 잃은 방이라
+            // ParentIndex 가 -1 이어야 하고, 그 직결이 §5.2 의 이탈 재계산 전제다.
+            Assert.That(quarters.MinX, Is.EqualTo(stern).Within(Tolerance),
+                "숙소가 산소실 선미 끝벽에 안 붙었다.");
+            Assert.That(quarters.ParentIndex, Is.EqualTo(-1),
+                "숙소가 아직 부모를 물고 있다 — 화장실이 빠졌으므로 그 인덱스는 표 밖이다.");
+            Assert.That(quarters.DoorPlaneCoordinate, Is.EqualTo(stern).Within(Tolerance));
+            Assert.That(quarters.DoorCenter, Is.EqualTo(0f).Within(Tolerance),
+                "숙소 문은 선미 끝벽 한가운데다.");
+            Assert.That(LastShiftCompartments.DoorDepth(LastShiftCompartment.Quarters), Is.EqualTo(1),
+                "숙소 깊이가 1 이 아니다 — 선미 사슬이 안 없어졌다.");
 
-            // 표가 확정한 치수도 같이 고정한다 — 붙는 자리만 맞고 크기가 어긋나면
-            // §17.7-1 이 허용한 "art/tech 실측 조정" 과 구분이 안 된다.
-            AssertFootprint(LastShiftCompartment.Observatory, 3f, 4f);
-            AssertFootprint(LastShiftCompartment.Workshop, 5f, 5f);
-            AssertFootprint(LastShiftCompartment.CargoBay, 8f, 8f);
-            AssertFootprint(LastShiftCompartment.Hangar, 8f, 10f);
-            AssertFootprint(LastShiftCompartment.ServerRoom, 4f, 6f);
-            AssertFootprint(LastShiftCompartment.MedBay, 5f, 5f);
-            AssertFootprint(LastShiftCompartment.EscapePod, 4f, 4f);
-            AssertFootprint(LastShiftCompartment.Lavatory, 2f, LastShiftShipDimensions.InteriorWidth);
+            // 발자국은 예전 숙소와 같은 4x6 이다. 화장실·휴게실을 흡수했지만 그건 드레싱이
+            // 하는 일이고, 방을 넓히면 §5 의 이탈 계산이 같이 움직인다(맵 개편 §2.4).
             AssertFootprint(LastShiftCompartment.Quarters, 4f, LastShiftShipDimensions.InteriorWidth);
-            AssertFootprint(LastShiftCompartment.Lounge, 4f, LastShiftShipDimensions.InteriorWidth);
-
-            // 수경재배만 §17.4 표의 치수(`6×5`)와 범위(`+10~+16` / `+3~+9` = `6×6`)가 서로 다르다.
-            // 범위 쪽을 따른다 — 표 두 칸 중 문·인접 관계를 실제로 정하는 것은 범위다.
-            AssertFootprint(LastShiftCompartment.Hydroponics, 6f, 6f);
         }
 
         private static void AssertFootprint(LastShiftCompartment compartment, float lengthX, float widthZ)

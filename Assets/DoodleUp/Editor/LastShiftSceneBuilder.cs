@@ -32,8 +32,6 @@ namespace DoodleUp.Editor
         private static Material starMaterial;
         private static Material voidMaterial;
         private static Material compartmentMaterial;
-        private static Material galleryMaterial;
-        private static Material observationMaterial;
         private static Material discHullMaterial;
 
         // ── 드레싱 재질 ─────────────────────────────────────────────────────────
@@ -130,14 +128,10 @@ namespace DoodleUp.Editor
             if (prefab == null)
                 throw new System.InvalidOperationException($"{ShipPrefabPath} failed to save or import.");
             Debug.Log($"[LAST_SHIFT_SHIP_PREFAB] path={ShipPrefabPath} compartments={LastShiftCompartments.Count} " +
-                      $"gallery_legs={LastShiftUpperGallery.LegCount} gallery_branches={LastShiftUpperGallery.BranchCount} " +
-                      $"observation_bands={LastShiftObservationGallery.BandCount} " +
-                      $"observation_drift={LastShiftObservationGallery.ArcCenterlineDrift:0.##}/{LastShiftObservationGallery.ArcLength:0.##} " +
                       $"disc_hull={LastShiftHullShell.OverallLength:0.#}x{LastShiftHullShell.OverallWidth:0.#} " +
                       $"frame_ribs={LastShiftHullFrames.BuildableRibCount}/{LastShiftHullFrames.RibCount} " +
                       $"frame_girths={LastShiftHullFrames.BuildableRingSegmentCount}/{LastShiftHullShell.SegmentCount} " +
-                      $"port_bays={LastShiftHullFrames.WindowBaySegmentCount} " +
-                      $"bow_bays={LastShiftObservatoryWindow.BowBaySegmentCount} result=PASS");
+                      $"port_bays={LastShiftHullFrames.WindowBaySegmentCount} result=PASS");
             return prefab;
         }
 
@@ -170,8 +164,6 @@ namespace DoodleUp.Editor
             CreateInstrumentPanels(ship.transform);
             CreateDucts(ship.transform);
             CreateCompartments(ship.transform);
-            CreateUpperGallery(ship.transform);
-            CreateObservationGallery(ship.transform);
             CreateBypassDuct(ship.transform);
             CreateDiscHull(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
@@ -513,67 +505,11 @@ namespace DoodleUp.Editor
                 CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
             }
 
-            CreateBowBackdrop(ship);
+            // 관측실 선수 창 밖의 배경막(CreateBowBackdrop)이 여기서 불렸다. 관측실이
+            // 카탈로그로 이관되면서(맵 개편 §3.2) 그 창이 배에서 나갔고, 창이 없으면
+            // 배경막은 아무도 못 보는 판 하나와 별 수십 개일 뿐이다.
         }
 
-        /// <summary>
-        /// 관측실 선수 창 밖의 우주(§7-6). 좌현 배경막과 <b>같은 구성이고 다른 면</b>이다 —
-        /// 좌현은 <c>z</c> 평면, 여기는 <c>x</c> 평면이다.
-        ///
-        /// 관측실이 좌현 창보다 배경막에 훨씬 가깝다(약 <c>10.5m</c> 대 <c>25m</c>). 좌현
-        /// 값을 그대로 옮기면 별이 성기고 크게 보이므로, 개수는 <b>각밀도</b>로 판 크기는
-        /// <b>각크기</b>로 옮긴다 — 좌현 필드가 원래 그렇게 잡혀 있다.
-        /// </summary>
-        private static void CreateBowBackdrop(Transform ship)
-        {
-            var backdropX = LastShiftObservatoryWindow.BackdropX;
-            var halfZ = LastShiftObservatoryWindow.BackdropHalfZ;
-            CreateDecorCube("SpaceVoid_Bow", ship, new Vector3(backdropX, 1.6f, 0f),
-                new Vector3(0.2f, 18f, halfZ * 2f), voidMaterial);
-
-            // 관측실 안에서 창까지의 거리. 방 중심에서 재고, 이 값이 각밀도·각크기의 기준이다.
-            var viewDistance = LastShiftCompartments.Of(LastShiftObservatoryWindow.Compartment).CenterX
-                               - backdropX;
-
-            // 별이 흩어지는 상자. z 는 배경막 안쪽으로 물리고(가장자리가 안 보이게), y 는
-            // 창 높이(0.9~2.4)에서 실제로 훑는 만큼만 잡는다 — 좌현처럼 위아래로 넓게 뿌리면
-            // 문턱 판·인방에 가려 안 보이는 별을 그만큼 더 세우게 된다.
-            var spreadZ = halfZ * 0.5f;
-            const float spreadYMin = -1f;
-            const float spreadYMax = 8f;
-
-            // 좌현 필드의 각밀도. 위 계산이 내는 값(약 150개가 0.9sr 를 덮는다)에서 뽑았고,
-            // 개수가 아니라 이 밀도가 두 창을 같은 하늘로 읽히게 한다.
-            const float starsPerSteradian = 170f;
-            var solidAngle = spreadZ * 2f * (spreadYMax - spreadYMin) / (viewDistance * viewDistance);
-            var starCount = Mathf.RoundToInt(solidAngle * starsPerSteradian);
-
-            // 각크기를 좌현과 맞춘다. 좌현은 배경막이 약 25m 밖이라 4.4 였다.
-            const float portViewDistance = 25f;
-            const float portStarScale = 4.4f;
-            var starScale = portStarScale * viewDistance / portViewDistance;
-
-            var stars = new GameObject("StarField_Bow");
-            stars.transform.SetParent(ship, false);
-
-            // 별 판 앞면이 테두리 유리보다 앞으로 나오면 승무원과 유리 사이에 별이 뜬다.
-            // 좌현 WindowStarNearestZ 와 같은 규칙이고 축만 다르다.
-            var starNearX = backdropX + 0.4f;
-            var starMaxHalfSize = 0.24f * starScale * 0.5f;
-            var starDepth = Mathf.Clamp(
-                LastShiftObservatoryWindow.StarNearestX - starMaxHalfSize - starNearX, 0f, 2.4f);
-
-            var starRandom = new System.Random(20260807);
-            for (var index = 0; index < starCount; index++)
-            {
-                var x = starNearX + (float)starRandom.NextDouble() * starDepth;
-                var y = spreadYMin + (float)starRandom.NextDouble() * (spreadYMax - spreadYMin);
-                var z = (float)(starRandom.NextDouble() * (spreadZ * 2.0) - spreadZ);
-                var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
-                CreateDecorCube($"StarBow_{index}", stars.transform, new Vector3(x, y, z),
-                    Vector3.one * size, starMaterial);
-            }
-        }
 
         /// <summary>
         /// 계기·콘솔 패널. 벽면이 완전히 비어 있으면 큐브 상자로 읽히므로, 각 구역 벽에
@@ -786,9 +722,12 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 좌현 긴 벽의 문턱 판(창 아래 <see cref="WindowSillHeight"/> 구간). 통짜 한 장이
-        /// 아닌 이유는 관측 회랑(§29.4-(2))이 여기 문 하나로 붙기 때문이다 — 선미 끝벽이
-        /// 생활공간 때문에 갈라진 것과 같은 자리다.
+        /// 좌현 긴 벽의 문턱 판(창 아래 <see cref="WindowSillHeight"/> 구간).
+        ///
+        /// <b>통짜 한 장으로 돌아왔다.</b> 여기 문 하나를 뚫던 관측 회랑이 폐지되면서
+        /// (docs/bow-cockpit-central-plaza-layout-v1.md §166) 자를 자리가 없어졌다.
+        /// 개구부 목록을 받는 <see cref="CreateWallWithOpenings"/> 를 그대로 쓰는 것은
+        /// 중앙 광장이 들어올 때 이 벽이 다시 갈라지기 때문이다.
         ///
         /// <b>자르는 것은 문턱뿐이다.</b> 창 위 인방(<c>OuterHull_FrontUpper</c>)은 그대로
         /// 둔다. 문 구멍 높이(<c>2.2</c>)가 창 윗단(<c>2.1</c>)보다 <c>0.1</c> 높아서 인방까지
@@ -798,9 +737,7 @@ namespace DoodleUp.Editor
         /// </summary>
         private static void CreatePortSill(Transform ship)
         {
-            var doorways = LastShiftObservationGallery.CockpitDoorwayIsOpen
-                ? new[] { LastShiftObservationGallery.CockpitLandingCenterX }
-                : System.Array.Empty<float>();
+            var doorways = System.Array.Empty<float>();
 
             const float span = LastShiftShipDimensions.SideWallSpan;
             CreateWallWithOpenings("OuterHull_FrontLower", ship, false, HullFrontZ,
@@ -809,18 +746,14 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 이 x 가 관측 회랑 문 구멍과 겹치는가. 겹치는 창 기둥은 안 세운다 — 세우면 문
+        /// 이 x 가 좌현 벽 문 구멍과 겹치는가. 겹치는 창 기둥은 안 세운다 — 세우면 문
         /// 한가운데 <c>0.35m</c> 기둥이 서서 통행 폭이 갈린다.
         ///
-        /// 기둥 번호를 박지 않는 이유는 문 x 가 조종석 <b>방 중심</b>에서 나오고 기둥 간격은
-        /// <b>전장</b>에서 나오기 때문이다 — 둘 중 하나만 움직여도 겹치는 번호가 바뀐다.
+        /// <b>지금은 좌현 벽에 문이 없다.</b> 유일한 문이던 관측 회랑 조종석 쪽 끝이
+        /// 폐지됐다. 판정을 지우지 않는 것은 중앙 광장이 이 벽을 다시 뚫기 때문이고,
+        /// 그때 여기 좌표 하나만 주면 기둥 회피가 같이 돌아온다.
         /// </summary>
-        private static bool OverlapsPortDoorway(float x, float width)
-        {
-            if (!LastShiftObservationGallery.CockpitDoorwayIsOpen) return false;
-            var half = (LastShiftZoneDoor.OpeningWidth + width) * 0.5f;
-            return Mathf.Abs(x - LastShiftObservationGallery.CockpitLandingCenterX) < half;
-        }
+        private static bool OverlapsPortDoorway(float x, float width) => false;
 
         /// <summary>
         /// 구획 열한 개(§17.4). 에어록은 없다 — 우회 통로 z 경로가 미결이라 좌표가 안 나온다(§17.5).
@@ -839,224 +772,6 @@ namespace DoodleUp.Editor
 
             foreach (var spec in LastShiftCompartments.Specs)
                 CreateCompartment(root.transform, spec);
-        }
-
-        /// <summary>
-        /// 상부 회랑(§25.4(B), §27.4). 좌표 정본은 Runtime 의
-        /// <see cref="LastShiftUpperGallery"/> 이고 여기서는 판으로 세우기만 한다.
-        ///
-        /// <b>속이 빈 관이다.</b> 우회 덕트(<see cref="CreateBypassDuct"/>)와 같은 이유로
-        /// 솔리드 큐브를 쓸 수 없다 — 콜라이더를 붙이면 회랑이 통째로 막힌 블록이 되고,
-        /// 빼면 승무원이 바닥을 뚫고 떨어진다.
-        ///
-        /// <b>문은 여기서 안 뚫는다.</b> 회랑이 구획에 붙는 다섯 자리(§27.4)의 문은 전부
-        /// 구획 쪽 면에 있고, 면 소유 규칙상 그 면은 구획이 세운다 —
-        /// <see cref="ChildDoorwaysOn"/> 이 <see cref="LastShiftUpperGallery.DoorwaysOn"/> 을
-        /// 같이 보는 것이 그 연결이다. 여기서 또 뚫으면 같은 평면에 판이 두 장 겹친다.
-        /// </summary>
-        private static void CreateUpperGallery(Transform ship)
-        {
-            // 구획 회색보다 살짝 푸르고 밝다. 회랑은 방이 아니라 <b>방들을 잇는 길</b>이라
-            // 통로(선체 내부)와 구획 중 어느 쪽으로도 안 읽혀야 한다.
-            // 중성 백색-그레이(4000K 대). 방 색(청록·주황·시안·초록)을 재사용하지 않는 것이
-            // art 결정이다 — 회랑은 방이 아니라 이동 전용 이면 동선이고, 그 정체성을 색으로도
-            // 분리한다. 우회 통로의 저조도 규칙도 여기엔 안 건다(실사용 동선이라 일반 통행 조도).
-            galleryMaterial ??= CreateMaterial("LS_Gallery", new Color(0.62f, 0.62f, 0.60f));
-
-            var root = new GameObject(LastShiftUpperGallery.RootName);
-            root.transform.SetParent(ship, false);
-
-            const float thickness = LastShiftUpperGallery.PanelThickness;
-            const float height = LastShiftUpperGallery.InteriorHeight;
-            var nearZ = LastShiftUpperGallery.NearZ;
-            var farZ = LastShiftUpperGallery.FarZ;
-            var runMinX = LastShiftUpperGallery.RunMinX;
-            var runMaxX = LastShiftUpperGallery.RunMaxX;
-
-            // ── 격납고 끝벽에서 구명정 위까지 달리는 긴 구간 ───────────────────────────
-            CreateGalleryPlate(root.transform, "Run_Floor",
-                runMinX, runMaxX + thickness, nearZ - thickness, farZ + thickness, -thickness, 0f);
-            CreateGalleryPlate(root.transform, "Run_Ceiling",
-                runMinX, runMaxX + thickness, nearZ - thickness, farZ + thickness, height, height + thickness);
-            CreateGalleryPlate(root.transform, "Run_WallFar",
-                runMinX, runMaxX + thickness, farZ, farZ + thickness, 0f, height);
-            CreateGalleryPlate(root.transform, "Run_EndAft",
-                runMaxX, runMaxX + thickness, nearZ, farZ, 0f, height);
-
-            // 안쪽 벽은 다리가 붙는 x 구간을 비운다. 안 비우면 분기 셋과 강하 하나가 벽으로
-            // 막혀 고리가 형상으로만 남고 실제로는 막다른 알코브 넷이 된다.
-            var mouths = LastShiftUpperGallery.Legs
-                .Where((_, index) => index != LastShiftUpperGallery.RunLeg)
-                .OrderBy(leg => leg.MinX)
-                .ToArray();
-            var edge = runMinX;
-            foreach (var mouth in mouths)
-            {
-                CreateGalleryPlate(root.transform, $"Run_WallNear_{mouth.Name}",
-                    edge, mouth.MinX, nearZ - thickness, nearZ, 0f, height);
-                edge = mouth.MaxX;
-            }
-            CreateGalleryPlate(root.transform, "Run_WallNear_End",
-                edge, runMaxX, nearZ - thickness, nearZ, 0f, height);
-
-            // ── z 로 달리는 다리 넷(분기 셋 + 강하 하나) ─────────────────────────────
-            foreach (var leg in mouths)
-                CreateGalleryLegAlongZ(root.transform, leg, nearZ);
-
-            CreateGalleryDressing(root.transform);
-        }
-
-        /// <summary>
-        /// 회랑 소품. <b>다리마다 부모를 따로 준다</b> — 판은 이름에 다리를 달고 있어
-        /// 한 루트 밑에 있어도 안 헷갈리지만, 소품 이름은 art 가 짓고 유일성도 공간
-        /// 안에서만 요구된다(<c>R0_Id</c>). 다리 다섯을 한 부모에 쏟으면 서로 다른
-        /// 다리의 같은 이름이 하이어라키에서 한 자리로 겹쳐 보인다.
-        ///
-        /// 소품이 없는 다리에는 빈 부모를 안 만든다. 분기 셋에는 지금 아무것도 안 붙어서
-        /// (개구부 프레임은 긴 구간 쪽 벽면이다) 빈 노드 셋이 그대로 남는다.
-        /// </summary>
-        private static void CreateGalleryDressing(Transform root)
-        {
-            for (var index = 0; index < LastShiftUpperGallery.LegCount; index++)
-            {
-                var space = LastShiftDressingSpace.OfGallery(index);
-                if (!HasDressing(space)) continue;
-
-                var legRoot = new GameObject($"Dressing_{LastShiftUpperGallery.LegAt(index).Name}");
-                legRoot.transform.SetParent(root, false);
-                CreateDressingProps(legRoot.transform, space);
-            }
-        }
-
-        /// <summary>
-        /// z 축으로 달리는 회랑 다리 하나. 구획 쪽 끝은 구획이 세운 벽이 막고(거기에 문이
-        /// 뚫린다), 회랑 쪽 끝은 열려 있어야 하므로 마구리를 안 세운다.
-        ///
-        /// 바닥·천장이 <paramref name="nearZ"/> 가 아니라 그 <b>한 판 앞</b>에서 끝나는 것은
-        /// 긴 구간의 바닥·천장이 이미 거기까지 나와 있기 때문이다 — 겹치면 같은 높이에
-        /// 판 두 장이 포개져 z-fighting 이 난다.
-        /// </summary>
-        private static void CreateGalleryLegAlongZ(Transform root, LastShiftGalleryLeg leg, float nearZ)
-        {
-            const float thickness = LastShiftUpperGallery.PanelThickness;
-            const float height = LastShiftUpperGallery.InteriorHeight;
-            var slabMinZ = leg.MinZ + thickness;
-            var slabMaxZ = nearZ - thickness;
-
-            CreateGalleryPlate(root, $"{leg.Name}_Floor",
-                leg.MinX - thickness, leg.MaxX + thickness, slabMinZ, slabMaxZ, -thickness, 0f);
-            CreateGalleryPlate(root, $"{leg.Name}_Ceiling",
-                leg.MinX - thickness, leg.MaxX + thickness, slabMinZ, slabMaxZ, height, height + thickness);
-            CreateGalleryPlate(root, $"{leg.Name}_WallFore",
-                leg.MinX - thickness, leg.MinX, leg.MinZ, nearZ, 0f, height);
-            CreateGalleryPlate(root, $"{leg.Name}_WallAft",
-                leg.MaxX, leg.MaxX + thickness, leg.MinZ, nearZ, 0f, height);
-        }
-
-        /// <summary>회랑 판 한 장. 덕트와 같은 이유로 세 축 전부 구간으로 받는다.</summary>
-        private static void CreateGalleryPlate(Transform parent, string name,
-            float minX, float maxX, float minZ, float maxZ, float minY, float maxY) =>
-            CreateGalleryPlate(parent, name, minX, maxX, minZ, maxZ, minY, maxY, galleryMaterial);
-
-        private static void CreateGalleryPlate(Transform parent, string name,
-            float minX, float maxX, float minZ, float maxZ, float minY, float maxY, Material material)
-        {
-            if (maxX - minX <= 0.0001f || maxZ - minZ <= 0.0001f) return;
-            CreateCube(name, parent,
-                new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f),
-                new Vector3(maxX - minX, maxY - minY, maxZ - minZ), material);
-        }
-
-        /// <summary>
-        /// 좌현 관측 회랑(§29.4-(2)). 좌표 정본은 Runtime 의
-        /// <see cref="LastShiftObservationGallery"/> 이고 여기서는 판으로 세우기만 한다.
-        ///
-        /// <b>바깥 벽을 안 세운다.</b> 회랑 바깥면이 곧 테두리 창면이라는 것이 이 회랑의
-        /// 존재 이유다(§29.4-(2) 둘째 항목) — 여기에 판을 한 장 세우면 걸으면서 별을 보는
-        /// 그 한 가지가 사라지고, 남는 것은 원반 자투리에 낀 관 하나다. 대신 바닥·천장
-        /// 슬래브가 칸 안에서 가장 깊은 테두리 위치까지 나가 틈을 없앤다.
-        ///
-        /// <b>문은 여기서 안 뚫는다.</b> 양 끝 문은 선체 좌현 벽(<see cref="CreatePortSill"/>)과
-        /// 화물칸 좌현 벽(<see cref="ChildDoorwaysOn"/>)에 있고, 면 소유 규칙상 그 면들은
-        /// 선체와 구획이 세운다. 상부 회랑과 같은 규칙이다.
-        /// </summary>
-        private static void CreateObservationGallery(Transform ship)
-        {
-            // 상부 회랑보다 살짝 차고 어둡다. 둘 다 "방이 아닌 길" 이지만 상부 회랑은 배 안쪽
-            // 이면 동선이고 이쪽은 껍질에 붙은 관측 동선이라, 같은 색을 주면 하이어라키에서
-            // 어느 회랑의 판인지가 이름으로만 갈린다.
-            observationMaterial ??= CreateMaterial("LS_ObservationGallery", new Color(0.56f, 0.59f, 0.63f));
-
-            var root = new GameObject(LastShiftObservationGallery.RootName);
-            root.transform.SetParent(ship, false);
-
-            const float thickness = LastShiftObservationGallery.PanelThickness;
-            const float height = LastShiftObservationGallery.InteriorHeight;
-            var bands = LastShiftObservationGallery.Bands;
-
-            for (var index = 0; index < bands.Length; index++)
-            {
-                var band = bands[index];
-                var isArc = band.Run == LastShiftObservationGallery.ArcRun;
-
-                // 슬래브는 회랑 양 끝에서 판 한 장만큼 더 나간다 — 마구리 판이 그 위에 선다.
-                var slabMinX = index == 0 ? band.MinX - thickness : band.MinX;
-                var slabMaxX = index == bands.Length - 1 ? band.MaxX + thickness : band.MaxX;
-
-                // 안쪽 끝: 호 구간은 자기 안쪽 벽 밑까지, 착륙 구간은 선체·구획 바닥이
-                // 이어받는 자리까지다. 착륙 구간에서 한 판 더 나가면 선체 갑판과 겹쳐
-                // 같은 높이에 판 두 장이 포개진다.
-                var slabInnerZ = isArc ? band.InnerZ + thickness : band.InnerZ;
-
-                CreateGalleryPlate(root.transform, $"{band.Name}_Floor",
-                    slabMinX, slabMaxX, band.SlabOuterZ, slabInnerZ, -thickness, 0f, observationMaterial);
-                CreateGalleryPlate(root.transform, $"{band.Name}_Ceiling",
-                    slabMinX, slabMaxX, band.SlabOuterZ, slabInnerZ, height, height + thickness, observationMaterial);
-
-                if (isArc)
-                    CreateGalleryPlate(root.transform, $"{band.Name}_WallInner",
-                        band.MinX, band.MaxX, band.InnerZ, band.InnerZ + thickness, 0f, height, observationMaterial);
-            }
-
-            CreateObservationJunction(root.transform, "Junction_Cargo",
-                LastShiftObservationGallery.ArcMinX,
-                LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.CargoLandingRun),
-                LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.ArcRun));
-            CreateObservationJunction(root.transform, "Junction_Cockpit",
-                LastShiftObservationGallery.ArcMaxX,
-                LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.ArcRun),
-                LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.CockpitLandingRun));
-
-            var first = LastShiftObservationGallery.FirstBandOf(LastShiftObservationGallery.CargoLandingRun);
-            var last = LastShiftObservationGallery.LastBandOf(LastShiftObservationGallery.CockpitLandingRun);
-            CreateGalleryPlate(root.transform, "EndCap_Cargo",
-                first.MinX - thickness, first.MinX, first.SlabOuterZ, first.InnerZ, 0f, height, observationMaterial);
-            CreateGalleryPlate(root.transform, "EndCap_Cockpit",
-                last.MaxX, last.MaxX + thickness, last.SlabOuterZ, last.InnerZ, 0f, height, observationMaterial);
-        }
-
-        /// <summary>
-        /// 두 구간이 만나는 면. <b>구멍을 뚫는 것이 아니라 구멍만 남기고 메운다</b> — 착륙
-        /// 구간은 선체까지 깊고 호 구간은 회랑 폭만큼 얕으므로, 그 차이만큼이 안 메우면
-        /// 통째로 열린 옆구리가 된다.
-        ///
-        /// 아래쪽 판이 필요한 이유는 계단 때문이다. 두 칸의 바깥 끝이 한 칸 단차만큼
-        /// 어긋나 있어서, 깊은 쪽 바닥이 얕은 쪽 벽 없이 그대로 노출된다.
-        /// </summary>
-        private static void CreateObservationJunction(Transform root, string name, float plane,
-            LastShiftObservationBand west, LastShiftObservationBand east)
-        {
-            const float thickness = LastShiftObservationGallery.PanelThickness;
-            const float height = LastShiftObservationGallery.InteriorHeight;
-            var minX = plane - thickness * 0.5f;
-            var maxX = plane + thickness * 0.5f;
-
-            CreateGalleryPlate(root, $"{name}_Outer", minX, maxX,
-                Mathf.Min(west.SlabOuterZ, east.SlabOuterZ),
-                Mathf.Max(west.OuterZ, east.OuterZ), 0f, height, observationMaterial);
-            CreateGalleryPlate(root, $"{name}_Inner", minX, maxX,
-                Mathf.Min(west.InnerZ, east.InnerZ),
-                Mathf.Max(west.InnerZ, east.InnerZ), 0f, height, observationMaterial);
         }
 
         /// <summary>
@@ -1089,12 +804,6 @@ namespace DoodleUp.Editor
             if (windowBay == null)
                 Debug.LogWarning("[LastShift] LSHull_WindowBay 프리팹이 없다 — 좌현 창 구간을 예전처럼 비운다.");
 
-            // 선수 창은 아트가 전용 부재를 만들기 전까지 좌현 것을 그대로 쓴다. 형태는 art
-            // 몫이고(§7-6) tech 가 정하는 것은 개구부 좌표뿐이라, 없는 프리팹을 기다리며
-            // 구멍을 안 내면 관측실은 계속 창 없는 방이다.
-            var bowBay = LoadHullPrefab("LSHull_BowWindowBay");
-            if (bowBay == null) bowBay = windowBay;
-
             for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
             {
                 var start = LastShiftHullShell.SegmentStart(segment);
@@ -1124,16 +833,8 @@ namespace DoodleUp.Editor
                     continue;
                 }
 
-                if (LastShiftObservatoryWindow.SegmentIsBowBay(segment) && bowBay != null)
-                {
-                    var bay = (GameObject)PrefabUtility.InstantiatePrefab(bowBay, root.transform);
-                    bay.name = $"BowWindowBay_{segment:00}";
-                    bay.transform.localPosition =
-                        new Vector3(middle.x, LastShiftHullShell.RimBaseY, middle.y);
-                    bay.transform.localScale = new Vector3(chord.magnitude, 1f, 1f);
-                    bay.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-                    continue;
-                }
+                // 선수 창 판(BowWindowBay)이 여기 있었다. 관측실이 배에서 나가면서 그 창을
+                // 보는 자리가 없어졌고, 테두리는 선수 쪽에서 다시 통짜 판이 된다.
 
                 var panel = CreateCube($"Rim_{segment:00}", root.transform,
                     new Vector3(middle.x,
@@ -1146,7 +847,6 @@ namespace DoodleUp.Editor
             }
 
             CreateWindowMullions(root.transform, "WindowMullions", LastShiftHullFrames.WindowMullionSeams());
-            CreateWindowMullions(root.transform, "BowWindowMullions", LastShiftObservatoryWindow.BowMullionSeams());
             CreateHullFrames(root.transform);
         }
 
@@ -1543,11 +1243,11 @@ namespace DoodleUp.Editor
         /// <summary>
         /// 이 면에 뚫어야 하는 구멍의 자유축 로컬 좌표. 잠긴 자식은 구멍을 안 낸다.
         ///
-        /// 자식 구획만으로는 부족하다 — 상부 회랑(§27.4)이 붙는 다섯 자리도 구획 쪽 면에
-        /// 문을 요구하고, 그 면 역시 구획이 소유한다. 회랑을 <see cref="ChildrenOn"/> 의
-        /// 부모-자식 사슬에 넣지 않은 것은 의도다: 회랑은 고리라서 사슬에 넣는 순간
-        /// <c>ParentIndex</c> 가 트리라는 전제(<see cref="LastShiftCompartments.DoorDepth"/>)가
-        /// 깨지고, 깨진 것을 고치려다 §9.4 의 "막다른 방" 이 조용히 사라진다.
+        /// <b>이제 자식 구획만 본다.</b> 예전에는 회랑 둘이 구획 쪽 면에 문을 따로 요구해서
+        /// 그 목록을 합쳐야 했는데, 회랑이 폐지되면서 그 항목이 없어졌다
+        /// (docs/bow-cockpit-central-plaza-layout-v1.md §165·§166) — 구멍을 여는 것은
+        /// <c>ParentIndex</c> 사슬 하나뿐이라 <see cref="LastShiftCompartments.DoorDepth"/> 의
+        /// 트리 전제가 다시 유일한 전제가 됐다.
         /// </summary>
         private static float[] ChildDoorwaysOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
         {
@@ -1555,15 +1255,9 @@ namespace DoodleUp.Editor
             var face = alongX
                 ? (atMax ? spec.MaxX : spec.MinX)
                 : (atMax ? spec.MaxZ : spec.MinZ);
-            var plane = alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ;
-            var gallery = LastShiftUpperGallery.DoorwaysOn(spec.Compartment, plane, face);
-            var observation = LastShiftObservationGallery.DoorwaysOn(spec.Compartment, plane, face);
-
             return ChildrenOn(spec, alongX, atMax)
                 .Where(child => child.IsPassable)
                 .Select(child => child.DoorCenter)
-                .Concat(gallery)
-                .Concat(observation)
                 .Select(doorCenter => doorCenter - origin)
                 .ToArray();
         }
@@ -1590,25 +1284,15 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 이 구획 면에 뚫리는 창. 지금은 관측실 선수 끝벽 하나뿐이고, 좌표 정본은 Runtime 의
-        /// <see cref="LastShiftObservatoryWindow"/> 다 — 같은 상수가 테두리 유리·골조 금지
-        /// 구간도 정하므로 여기 리터럴을 두면 셋이 갈린다.
+        /// 이 구획 면에 뚫리는 창. <b>지금은 없다</b> — 유일한 구획 창이던 관측실 선수 끝벽이
+        /// 그 방과 함께 카탈로그로 이관됐다(맵 개편 §3.2).
+        ///
+        /// 함수를 남겨 두는 것은 벽 빌더가 문과 창을 <see cref="WallAperture"/> 하나로 자르고
+        /// 있기 때문이다. 창을 다시 여는 것은 카탈로그 관측실 프리팹이 올 때이고, 그때
+        /// 좌표는 여기가 아니라 모듈 쪽이 든다.
         /// </summary>
-        private static WallAperture[] WindowsOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
-        {
-            if (spec.Compartment != LastShiftObservatoryWindow.Compartment) return NoApertures;
-            if (!alongX || atMax) return NoApertures;
-            if (Mathf.Abs(spec.MinX - LastShiftObservatoryWindow.WallX) > 0.001f) return NoApertures;
-
-            // 자유축은 z 이고 좌표는 구획 로컬이다. 창은 방 중심선에 온다.
-            return new[]
-            {
-                new WallAperture(0f - spec.CenterZ,
-                    LastShiftObservatoryWindow.OpeningWidth * 0.5f,
-                    LastShiftObservatoryWindow.SillHeight,
-                    LastShiftObservatoryWindow.HeadHeight)
-            };
-        }
+        private static WallAperture[] WindowsOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax) =>
+            NoApertures;
 
         private static readonly WallAperture[] NoApertures = System.Array.Empty<WallAperture>();
 
@@ -1794,7 +1478,6 @@ namespace DoodleUp.Editor
                 LastShiftDressingSpaceKind.Zone => a.zone == b.zone,
                 LastShiftDressingSpaceKind.Compartment => a.compartment == b.compartment,
                 LastShiftDressingSpaceKind.Passage => a.passage == b.passage,
-                LastShiftDressingSpaceKind.UpperGallery => a.galleryLeg == b.galleryLeg,
                 _ => true
             };
         }

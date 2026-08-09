@@ -13,7 +13,7 @@ namespace DoodleUp.Runtime
         /// <summary>압력 구역 넷(조종석·전력·냉각·산소).</summary>
         Zone = 0,
 
-        /// <summary>부속 구획 열한 개(§24 압력존 미편입).</summary>
+        /// <summary>고정 구획(§24 압력존 미편입). M-2 이후로는 숙소 하나다.</summary>
         Compartment = 1,
 
         /// <summary>구역 사이 통로 둘.</summary>
@@ -23,19 +23,12 @@ namespace DoodleUp.Runtime
         BypassRun = 3,
 
         /// <summary>우회 통로 끝의 에어록.</summary>
-        AirlockBranch = 4,
+        AirlockBranch = 4
 
-        /// <summary>
-        /// 상부 회랑(§27.4)의 다리 하나. 어느 다리인지는
-        /// <see cref="LastShiftDressingSpace.galleryLeg"/> 가 정한다.
-        ///
-        /// <b>긴 구간도 다리 중 하나다</b> — <see cref="LastShiftUpperGallery.Legs"/> 의
-        /// <c>0</c>번(<see cref="LastShiftUpperGallery.RunLeg"/>)이 그것이라, 종류를
-        /// <c>Run</c> 과 <c>Leg</c> 로 쪼개면 <c>Leg[0]</c> 와 <c>Run</c> 이 같은 공간을
-        /// 가리키는 서로 다른 이름이 된다. 그러면 이름 중복 검사와 빌더의 공간 대조가
-        /// 둘 다 같은 자리를 다른 자리로 보고 지나간다.
-        /// </summary>
-        UpperGallery = 5
+        // `UpperGallery = 5` 가 여기 있었다. 상부 회랑이 폐지되면서 빠졌다
+        // (docs/bow-cockpit-central-plaza-layout-v1.md §165). 번호는 다시 안 쓴다 —
+        // 씬에 구워진 드레싱 데이터가 옛 값 `5` 를 들고 있을 수 있고, 그 번호를 다른
+        // 종류에 물려주면 회랑 소품이 조용히 그 종류로 되살아난다.
     }
 
     /// <summary>
@@ -139,13 +132,6 @@ namespace DoodleUp.Runtime
         /// <summary>통로 번호. 0 = 조종석↔전력실, 1 = 냉각실↔산소실.</summary>
         [Range(0, 1)] public int passage;
 
-        /// <summary>
-        /// 회랑 다리 번호. <see cref="LastShiftUpperGallery.RunLeg"/>·
-        /// <see cref="LastShiftUpperGallery.DescentLeg"/> 같은 상수를 쓰고 숫자를 안 적는다 —
-        /// 다리 순서는 <see cref="LastShiftUpperGallery.Legs"/> 가 정하고 늘어날 수 있다.
-        /// </summary>
-        [Range(0, LastShiftUpperGallery.LegCount - 1)] public int galleryLeg;
-
         public static LastShiftDressingSpace Of(LastShiftZone zone) =>
             new() { kind = LastShiftDressingSpaceKind.Zone, zone = zone };
 
@@ -161,27 +147,12 @@ namespace DoodleUp.Runtime
         public static LastShiftDressingSpace OfAirlock() =>
             new() { kind = LastShiftDressingSpaceKind.AirlockBranch };
 
-        /// <summary>회랑 다리 하나. 번호는 <see cref="LastShiftUpperGallery"/> 의 상수를 쓴다.</summary>
-        public static LastShiftDressingSpace OfGallery(int leg) =>
-            new()
-            {
-                kind = LastShiftDressingSpaceKind.UpperGallery,
-                galleryLeg = Mathf.Clamp(leg, 0, LastShiftUpperGallery.LegCount - 1)
-            };
-
-        /// <summary>회랑 긴 구간. 소품 대부분이 여기 붙어서 따로 이름을 준다.</summary>
-        public static LastShiftDressingSpace OfGalleryRun() =>
-            OfGallery(LastShiftUpperGallery.RunLeg);
-
         public override string ToString() => kind switch
         {
             LastShiftDressingSpaceKind.Zone => $"Zone.{zone}",
             LastShiftDressingSpaceKind.Compartment => $"Compartment.{compartment}",
             LastShiftDressingSpaceKind.Passage => $"Passage[{passage}]",
             LastShiftDressingSpaceKind.BypassRun => "BypassRun",
-            // 번호가 아니라 다리 이름으로 찍는다. 위반 로그에서 "Gallery[3]" 은 어느 자리인지
-            // 알려면 다리 표를 찾아봐야 하고, 그 한 단계가 로그를 안 읽게 만든다.
-            LastShiftDressingSpaceKind.UpperGallery => $"Gallery.{LastShiftUpperGallery.LegAt(galleryLeg).Name}",
             _ => "AirlockBranch"
         };
     }
@@ -290,16 +261,6 @@ namespace DoodleUp.Runtime
                         minZ, maxZ,
                         LastShiftBypassDuct.FloorY,
                         LastShiftBypassDuct.CeilingY);
-                }
-
-                case LastShiftDressingSpaceKind.UpperGallery:
-                {
-                    // 다리 발자국 그대로다. 회랑은 방이 아니라 관이라 벽이 곧 경계이고,
-                    // 바닥·천장은 전 구간 공통이라 다리별로 다르지 않다(§27.4).
-                    var leg = LastShiftUpperGallery.LegAt(space.galleryLeg);
-                    return new LastShiftDressingBounds(
-                        leg.MinX, leg.MaxX, leg.MinZ, leg.MaxZ,
-                        0f, LastShiftUpperGallery.InteriorHeight);
                 }
 
                 default:

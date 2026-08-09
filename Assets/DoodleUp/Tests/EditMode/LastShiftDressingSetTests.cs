@@ -61,14 +61,25 @@ namespace DoodleUp.Tests.EditMode
             // 검증기도 같은 것을 보지만, 여기서 한 번 더 세는 이유는 사유가 <b>비어 있지만
             // 않으면</b> 통과하기 때문이다. 실제로 뭐라고 적혀 있는지는 사람이 읽어야 하고,
             // 그 읽을 대상이 몇 개인지가 리뷰에서 먼저 보여야 한다.
+            //
+            // <b>M-2 에서 이 목록이 비었다.</b> 브리프 §1.3 이 인정한 예외 넷(수경재배 식물
+            // 열화 · 서버 LED · 의무실 · 구명정 발진 상태등)은 셋이 카탈로그로 가고 하나가
+            // 배에서 제거되면서 전부 배를 떠났다(맵 개편 §3.2) — 그래서 "하나는 있어야 한다"
+            // 를 못 건다. 대신 <b>있으면 사유가 있어야 한다</b>만 남긴다. 그게 원래 이
+            // 테스트가 지키던 것이고, 예외가 다시 생길 때 그대로 작동한다.
             var exceptions = Load().Props
                 .Where(p => (p.semantics & LastShiftDressingSemantics.RoomSystemReadout) != 0)
                 .ToArray();
 
-            Assert.That(exceptions, Is.Not.Empty, "고유 시스템 표시가 하나도 없다 — 브리프 §1.3 이 " +
-                                                  "인정한 예외(수경재배 식물 열화, 서버 LED, 구명정 발진 상태등)가 사라졌다.");
             foreach (var prop in exceptions)
                 Assert.That(prop.justification, Is.Not.Empty, $"{prop.space}/{prop.id} 에 사유가 없다.");
+
+            // 그리고 고정 구획에는 붙으면 안 된다 — 예외를 인정받은 방이 배에 하나도 없다
+            // (LastShiftDressingRules.AllowsRoomSystemReadout 가 지금 언제나 false 다).
+            foreach (var prop in exceptions)
+                Assert.That(prop.space.kind, Is.Not.EqualTo(LastShiftDressingSpaceKind.Compartment),
+                    $"{prop.space}/{prop.id} 가 고정 구획에 고유 시스템 계기를 달았다 — " +
+                    "지금 그 예외를 쓸 수 있는 방은 없다.");
         }
     }
 }

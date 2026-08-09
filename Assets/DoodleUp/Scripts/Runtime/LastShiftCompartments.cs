@@ -4,55 +4,52 @@ using UnityEngine;
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 그레이박스 구획. 기획 정본은 <c>docs/corridor-4p-redesign-v1.md</c> §17.4 이고
-    /// 에어록은 빠져 있다 — 우회 통로 z 경로가 아직 미결이라 좌표를 못 박을 수 없다(§17.5).
-    /// 그래서 12 항목 중 11 이다.
+    /// 배와 함께 태어나는 방. <b>M-2 에서 열하나가 하나로 줄었다</b> —
+    /// <c>docs/core-four-rooms-and-hull-schematic-v1.md</c> §2.4·§3.2 가 정본이고, 나머지 열은
+    /// 카탈로그로 이관되거나(일곱) 폐지됐다(화장실·휴게실은 숙소 프리팹에 흡수, 구명정은
+    /// 배에서 제거).
     ///
-    /// 여기서 "구획"은 <see cref="LastShiftZone"/>(압력 구역)과 다른 것이다. §17.6 이 명시한 대로
-    /// 그레이박스가 답하는 것은 "방이 어디 있는가" 뿐이고, 그 방이 <c>ZonePressure</c>·게이지·
-    /// <c>SIMUL_ZONES</c>·<c>RG-1</c> 중 무엇을 따르는지는 아직 정해지지 않았다. 이 enum 이
-    /// <see cref="LastShiftZone"/> 과 섞이면 그 미결이 조용히 "편입됨"으로 굳는다.
+    /// <b>"고정 4실" 은 방 넷이 아니라 <c>방 1 + 압력 스파인 4구역</c> 이다</b>(§2.1 조항 S-1).
+    /// 조종석·산소실은 <see cref="LastShiftZone"/> 항목이지 이 표의 항목이 아니었고, 중앙 광장은
+    /// 아직 코드에 없다(§2.2 — 통로A 가 그 자리를 맡는다). 그래서 이 enum 에 남는 것은 숙소
+    /// 하나다.
+    ///
+    /// 여기서 "구획"은 <see cref="LastShiftZone"/>(압력 구역)과 다른 것이다 — 그레이박스가
+    /// 답하는 것은 "방이 어디 있는가" 뿐이고, 그 방이 <c>ZonePressure</c>·게이지·
+    /// <c>SIMUL_ZONES</c>·<c>RG-1</c> 중 무엇을 따르는지는 별개다. 이 enum 이
+    /// <see cref="LastShiftZone"/> 과 섞이면 그 구분이 조용히 무너진다.
+    ///
+    /// <b>값이 하나뿐이어도 enum 을 안 지운다.</b> <see cref="LastShiftCompartmentSpec.Compartment"/>
+    /// 가 <c>[0, FixedCount)</c> 를 "이름이 있는 방" 으로 가르는 자리이고, 그 경계가 사라지면
+    /// 자유 배치 모듈과 고정 방을 나누는 규약(<see cref="LastShiftCompartmentSpec.IsFixed"/>)이
+    /// 같이 사라진다.
     /// </summary>
     public enum LastShiftCompartment
     {
-        Observatory = 0,
-        Workshop = 1,
-        CargoBay = 2,
-        Hangar = 3,
-        ServerRoom = 4,
-        Lavatory = 5,
-        Quarters = 6,
-        Lounge = 7,
-        Hydroponics = 8,
-        MedBay = 9,
-        EscapePod = 10
+        Quarters = 0
     }
 
     /// <summary>
-    /// 초기 접근 상태. §15.2 의 언락 트리거 자체는 메타 진행 백본(구현은 P0 이후, §15.5)이
-    /// 들고 있을 것이므로 여기서는 <b>그레이박스가 무엇을 세워야 하는지</b>만 구분한다 —
+    /// 초기 접근 상태. <b>그레이박스가 무엇을 세워야 하는지</b>만 구분한다 —
     /// 문 구멍을 뚫을지, 잠긴 판으로 메울지가 갈린다.
+    ///
+    /// <b>값이 셋에서 둘로 줄었다</b>(맵 개편 §6.2-6). 셋째 값
+    /// <c>SpaceOpenFunctionLocked</c>("공간은 열려 있고 발진만 잠긴다")는 구명정 하나만을
+    /// 위해 있었고, 구명정이 배에서 제거되면서 사용처가 <c>0</c> 이 됐다.
+    ///
+    /// <b>개방 계열도 대상이 <c>0</c> 이다</b>(조항 K-2). <see cref="Locked"/> 였던 셋
+    /// (서버/통신실·수경재배·의무실)은 전부 자유 배치 카탈로그로 갔고, 배치된 모듈은
+    /// 언제나 <see cref="Open"/> 으로 선다. 값을 남겨 두는 것은 판정·씬 빌더가 "잠긴 면은
+    /// 구멍이 아니라 메운 판" 규칙을 그대로 들고 있기 때문이고, 그 규칙이 다시 쓰일 자리는
+    /// 메타 진행 백본이다.
     /// </summary>
     public enum LastShiftCompartmentAccess
     {
-        /// <summary>
-        /// 처음부터 드나든다. 생활공간 셋(§9)과 선수 사슬 넷(화물칸·격납고·정비창·관측실)이
-        /// 여기다 — 뒤 넷은 §15.2 언락 대상이지만 트리거가 P0 이후라 확장 검토 §2 가
-        /// P0 초기값을 열어 두기로 했다.
-        /// </summary>
+        /// <summary>처음부터 드나든다. 고정 숙소와 배치된 모듈 전부가 여기다.</summary>
         Open = 0,
 
-        /// <summary>
-        /// 공간은 있되 문이 안 열린다. §15.2 언락 대상 중 P0 에서 안 여는 셋
-        /// (서버/통신실·수경재배·의무실)이 여기다.
-        /// </summary>
-        Locked = 1,
-
-        /// <summary>
-        /// 공간은 처음부터 열려 있고 "발진 가능 상태" 만 잠긴다(§15.4). 구명정 전용이다 —
-        /// 나머지 여덟과 언락의 <b>종류</b>가 다르므로 <see cref="Locked"/> 로 뭉뚱그리지 않는다.
-        /// </summary>
-        SpaceOpenFunctionLocked = 2
+        /// <summary>공간은 있되 문이 안 열린다. 지금 이 값을 쓰는 방은 없다.</summary>
+        Locked = 1
     }
 
     /// <summary>문이 놓인 평면의 법선 축. 그레이박스에서는 둘뿐이다.</summary>
@@ -196,16 +193,19 @@ namespace DoodleUp.Runtime
         public const float PanelThickness = LastShiftShipDimensions.HullThickness;
 
         /// <summary>
-        /// enum 이 덮는 고정 구획 수. 에어록을 뺀 `11` 이다(§17.5).
+        /// enum 이 덮는 고정 구획 수. <b>M-2 에서 <c>11 → 1</c> 이 됐다</b> — 숙소 하나다
+        /// (맵 개편 §2.4).
         ///
         /// <b><see cref="Count"/> 와 다른 것이 이 표가 이중인 이유다.</b> 자유 배치 모듈은
         /// 컴파일 타임에 enum 값을 가질 수 없으므로 <c>[0, FixedCount)</c> 를 enum 영역으로
-        /// 두고 그 위를 append 영역으로 연다 — <see cref="Of"/> 를 부르는 `37` 자리와
-        /// 그 값을 리터럴로 물고 있는 넷(<c>UpperGallery</c>·<c>ObservationGallery</c>·
-        /// <c>ObservatoryWindow</c>·<c>DressingRules</c>)을 한 줄도 안 고치기 위해서다.
-        /// 근거는 <c>docs/tech/free-placement-runtime-chain-estimate-v1.md</c> §3.2.
+        /// 두고 그 위를 append 영역으로 연다. 근거는
+        /// <c>docs/tech/free-placement-runtime-chain-estimate-v1.md</c> §3.2.
+        ///
+        /// <b>이 값이 줄면 모듈 인덱스가 통째로 앞당겨진다.</b> 세이브 파일·네트워크 복제가
+        /// 모듈 슬롯을 <c>인덱스 - FixedCount</c> 로 싣고 있으므로, 옛 세이브는 이 개편을
+        /// 건너뛸 수 없다 — 그래서 M-2 가 되돌리기 비싼 단계다(§8).
         /// </summary>
-        public const int FixedCount = 11;
+        public const int FixedCount = 1;
 
         private static readonly LastShiftCompartmentSpec[] fixedSpecs = BuildSpecs();
 
@@ -235,7 +235,7 @@ namespace DoodleUp.Runtime
         public static int Revision { get; private set; }
 
         /// <summary>
-        /// <b>고정 구획 열하나만.</b> 선체가 자기 몸으로 세우는 것들 — 선체 골조·문틀·
+        /// <b>고정 구획만.</b> 선체가 자기 몸으로 세우는 것들 — 선체 골조·문틀·
         /// 드레싱처럼 <b>배와 함께 태어난 것만</b> 훑어야 하는 자리가 이쪽이다.
         /// </summary>
         public static LastShiftCompartmentSpec[] FixedSpecs => fixedSpecs;
@@ -259,22 +259,13 @@ namespace DoodleUp.Runtime
         /// <summary>
         /// 구획 이름. 씬 오브젝트 이름과 로그가 같은 문자열을 봐야 검증이 성립한다.
         ///
-        /// <b>범위 밖 값은 모듈 이름이 된다.</b> 예전 <c>_ =&gt; "Compartment_EscapePod"</c> 를
-        /// 그대로 뒀으면 모듈 열 개가 전부 구명정 이름을 달았을 것이다.
+        /// <b>범위 밖 값은 모듈 이름이 된다.</b> 고정 표가 하나로 줄면서 이 함수에 들어오는
+        /// 값의 대다수가 모듈이 됐다 — 기본 갈래가 고정 방 이름을 내놓으면 배치된 모듈
+        /// 전부가 숙소 이름을 단다.
         /// </summary>
         public static string NameOf(LastShiftCompartment compartment) => compartment switch
         {
-            LastShiftCompartment.Observatory => "Compartment_Observatory",
-            LastShiftCompartment.Workshop => "Compartment_Workshop",
-            LastShiftCompartment.CargoBay => "Compartment_CargoBay",
-            LastShiftCompartment.Hangar => "Compartment_Hangar",
-            LastShiftCompartment.ServerRoom => "Compartment_ServerRoom",
-            LastShiftCompartment.Lavatory => "Compartment_Lavatory",
             LastShiftCompartment.Quarters => "Compartment_Quarters",
-            LastShiftCompartment.Lounge => "Compartment_Lounge",
-            LastShiftCompartment.Hydroponics => "Compartment_Hydroponics",
-            LastShiftCompartment.MedBay => "Compartment_MedBay",
-            LastShiftCompartment.EscapePod => "Compartment_EscapePod",
             _ => ModuleName((int)compartment)
         };
 
@@ -305,106 +296,28 @@ namespace DoodleUp.Runtime
         private static LastShiftCompartmentSpec[] BuildSpecs()
         {
             // 붙는 자리. 전부 선체 치수 정본에서 뽑고, 여기서만 이름을 짧게 준다.
-            var bow = -LastShiftShipDimensions.HalfLength;   // 조종석 선수 끝벽 안쪽 면 (§17.4 의 -19)
-            var stern = LastShiftShipDimensions.HalfLength;  // 산소실 선미 끝벽 안쪽 면 (§17.4 의 +19)
-            var starboard = LastShiftShipDimensions.HalfWidth;   // 우현 긴 벽 (§17.4 의 +3)
-            var port = -LastShiftShipDimensions.HalfWidth;       // 좌현 긴 벽 — 창이 있는 쪽이다
-            var cockpitCenter = LastShiftShipDimensions.CockpitCenterX;                     // §17.4 의 -15
-            var lifeSupportMin = LastShiftShipDimensions.RoomMinX(LastShiftZone.LifeSupport); // §17.4 의 +11
+            var stern = LastShiftShipDimensions.HalfLength;    // 산소실 선미 끝벽 안쪽 면 (+19)
+            var starboard = LastShiftShipDimensions.HalfWidth; // 우현 긴 벽 (+3)
+            var port = -LastShiftShipDimensions.HalfWidth;     // 좌현 긴 벽 (-3)
 
             var result = new LastShiftCompartmentSpec[FixedCount];
 
-            // ── 선수 쪽 사슬 — 조종석 끝벽에서 화물칸 → 정비창 → 관측실 로 뻗고,
-            //    격납고만 화물칸 우현으로 갈라진다(§17.3 도해).
+            // ── 숙소. 배에 남는 유일한 고정 방이다(맵 개편 조항 S-2).
             //
-            //    <b>넷 다 P0 에서 상시 개방이다</b>(확장 검토 §2). §15.2 는 이 넷을 언락
-            //    순서 1·2·3·4 로 두었지만 그 트리거가 메타 진행 백본에 걸려 있고 구현이
-            //    P0 이후(§15.5)라, 잠가 두면 P0 기간 내내 안 열린다 — 지어 놓은 `181m²`
-            //    가 통째로 메운 판이 되고, 폭 `8m` 이상인 방 둘(화물칸·격납고)이 거기
-            //    들어 있어 "열린 공간 중 가장 넓은 방이 폭 `6m`" 가 된다. 회랑 둘도
-            //    같이 죽는다: 관측 회랑은 화물칸 쪽 끝이, 상부 회랑은 격납고 쪽 끝이
-            //    메운 판이라 지어만 놓고 못 쓰는 `195.5m²` 였다.
+            //    <b>부모를 잃었기 때문에 옮긴 것이다.</b> 예전 숙소는 화장실을 부모로 물고
+            //    선미 사슬 한가운데(`x +21~+25`)에 있었는데, 화장실이 배에서 빠지면서
+            //    <c>ParentIndex</c> 가 표 밖을 가리키게 됐다. 그래서 사슬을 없애고 선미
+            //    끝벽에 직결한다 — 깊이가 <c>2 → 1</c> 로 줄고, 그 감소가 §5.2 최악 이탈
+            //    `8.45초 → 6.05초` 의 실체다.
             //
-            //    <b>언락 설계를 폐기하는 것이 아니라 "P0 씬 = 언락이 끝난 뒤의 배" 로
-            //    정의하는 것이다</b>(확장 검토 §2.3). §15.2 의 순서 근거는 그대로 살아
-            //    있고, 메타 진행 백본이 붙을 때 여기 초기 <c>Access</c> 값만 되돌리면
-            //    설계가 복원된다 — 그래서 사슬 넷만 바꾸고 §15.2 표는 안 건드린다.
-            //    안 여는 셋(서버/통신실·수경재배·의무실)은 §2.2 대로 <c>Locked</c> 다.
-            result[(int)LastShiftCompartment.CargoBay] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.CargoBay,
-                bow - 8f, bow, -4f, 4f,
-                LastShiftDoorPlane.AlongX, bow, 0f,
-                -1, LastShiftCompartmentAccess.Open);
-
-            result[(int)LastShiftCompartment.Hangar] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Hangar,
-                bow - 8f, bow, 4f, 14f,
-                LastShiftDoorPlane.AlongZ, 4f, bow - 4f,
-                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Open);
-
-            result[(int)LastShiftCompartment.Workshop] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Workshop,
-                bow - 13f, bow - 8f, -2.5f, 2.5f,
-                LastShiftDoorPlane.AlongX, bow - 8f, 0f,
-                (int)LastShiftCompartment.CargoBay, LastShiftCompartmentAccess.Open);
-
-            result[(int)LastShiftCompartment.Observatory] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Observatory,
-                bow - 16f, bow - 13f, -2f, 2f,
-                LastShiftDoorPlane.AlongX, bow - 13f, 0f,
-                (int)LastShiftCompartment.Workshop, LastShiftCompartmentAccess.Open);
-
-            // ── 조종석 분기. §17.4 는 좌현(`z -9~-3`)이라고 적었지만 <b>이 선체의 좌현은 벽이
-            //    아니라 창이다</b> — `OuterHull_Front*` 는 전장 전체에 걸쳐 눈높이 구간이 비어
-            //    있고 그 너머에 `SpaceVoid` 와 `StarField` 가 놓여 있다. 좌현에 구획을 붙이면
-            //    조종석에서 보이는 별이 통째로 회색 상자로 막힌다. 치수(`4×6×3`)와 문 x(조종석
-            //    방 중심)는 표 그대로 두고 <b>부호만 우현으로 뒤집는다</b>. §9.2 가 부속 블록
-            //    위치를 "구조적으로 동일, art/tech 판단" 으로 넘긴 것과 같은 종류의 판단이다.
-            result[(int)LastShiftCompartment.ServerRoom] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.ServerRoom,
-                cockpitCenter - 2f, cockpitCenter + 2f, starboard, starboard + 6f,
-                LastShiftDoorPlane.AlongZ, starboard, cockpitCenter,
-                -1, LastShiftCompartmentAccess.Locked);
-
-            // ── 산소실 우현 분기. 문은 산소실 방 선수 끝에서 2m 들어간 자리다.
-            result[(int)LastShiftCompartment.Hydroponics] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Hydroponics,
-                lifeSupportMin - 1f, lifeSupportMin + 5f, starboard, starboard + 6f,
-                LastShiftDoorPlane.AlongZ, starboard, lifeSupportMin + 2f,
-                -1, LastShiftCompartmentAccess.Locked);
-
-            // ── 선미 쪽 사슬 — 생활공간 셋(§9)이 일렬로 붙고 그 끝에 구명정이 온다.
-            //    생활공간은 §15.2 언락 목록에 없다. 처음부터 드나드는 공간이다.
-            result[(int)LastShiftCompartment.Lavatory] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Lavatory,
-                stern, stern + 2f, port, starboard,
-                LastShiftDoorPlane.AlongX, stern, 0f,
-                -1, LastShiftCompartmentAccess.Open);
-
+            //    발자국은 현행과 같은 `4×6`(`24m²`)이다. 화장실·휴게실이 폐지되면서 침상·
+            //    위생·휴게가 이 한 방으로 들어오지만(§3.2), 그건 드레싱이 하는 일이지
+            //    치수가 하는 일이 아니다 — 방을 넓히면 §5 의 이탈 계산이 같이 움직인다.
             result[(int)LastShiftCompartment.Quarters] = new LastShiftCompartmentSpec(
                 LastShiftCompartment.Quarters,
-                stern + 2f, stern + 6f, port, starboard,
-                LastShiftDoorPlane.AlongX, stern + 2f, 0f,
-                (int)LastShiftCompartment.Lavatory, LastShiftCompartmentAccess.Open);
-
-            result[(int)LastShiftCompartment.Lounge] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.Lounge,
-                stern + 6f, stern + 10f, port, starboard,
-                LastShiftDoorPlane.AlongX, stern + 6f, 0f,
-                (int)LastShiftCompartment.Quarters, LastShiftCompartmentAccess.Open);
-
-            result[(int)LastShiftCompartment.EscapePod] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.EscapePod,
-                stern + 10f, stern + 14f, -2f, 2f,
-                LastShiftDoorPlane.AlongX, stern + 10f, 0f,
-                (int)LastShiftCompartment.Lounge, LastShiftCompartmentAccess.SpaceOpenFunctionLocked);
-
-            // ── 숙소 우현 분기.
-            result[(int)LastShiftCompartment.MedBay] = new LastShiftCompartmentSpec(
-                LastShiftCompartment.MedBay,
-                stern + 2f, stern + 7f, starboard, starboard + 5f,
-                LastShiftDoorPlane.AlongZ, starboard, stern + 4f,
-                (int)LastShiftCompartment.Quarters, LastShiftCompartmentAccess.Locked);
+                stern, stern + 4f, port, starboard,
+                LastShiftDoorPlane.AlongX, stern, 0f,
+                -1, LastShiftCompartmentAccess.Open);
 
             return result;
         }

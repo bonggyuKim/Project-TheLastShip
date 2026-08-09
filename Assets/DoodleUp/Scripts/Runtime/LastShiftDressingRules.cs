@@ -73,15 +73,19 @@ namespace DoodleUp.Runtime
         public const float AirlockLightBudget = 5.7f;
 
         /// <summary>
-        /// 제약 3의 예외를 쓸 수 있는 방. 브리프 §1.3·§4.2·§4.3·§5.3·§6.2 가 이름을 댄
-        /// 넷뿐이다 — 예외를 방 이름으로 못 박아 두지 않으면 "이것도 그 방 고유 시스템"
-        /// 이라는 말로 열한 개 전부에 계기가 붙는다.
+        /// 제약 3의 예외를 쓸 수 있는 방. 브리프 §1.3·§4.2·§4.3·§5.3·§6.2 가 넷(수경재배·
+        /// 서버통신실·의무실·구명정)의 이름을 댔었다.
+        ///
+        /// <b>M-2 에서 대상이 <c>0</c> 이 됐다.</b> 넷 중 셋은 자유 배치 카탈로그로 갔고
+        /// 하나(구명정)는 배에서 제거됐다(맵 개편 §3.2). 남은 고정 방은 숙소뿐이고, 숙소는
+        /// 브리프가 예외로 지명한 적이 없다 — 침상·위생·휴게에 계기가 붙을 이유가 없다.
+        ///
+        /// <b>함수를 안 지운다.</b> 예외를 <b>방 이름으로 못 박는다</b>는 규칙 자체가 제약 3의
+        /// 실체이고, 지우면 "이것도 그 방 고유 시스템" 이라는 말로 계기를 다는 것을 막는
+        /// 자리가 사라진다. 모듈에 고유 계기를 허용할지는 <c>game-planning</c> 결정이 있어야
+        /// 열리는 문이다 — 그때 여기 조건이 다시 붙는다.
         /// </summary>
-        public static bool AllowsRoomSystemReadout(LastShiftCompartment compartment) => compartment
-            is LastShiftCompartment.Hydroponics
-            or LastShiftCompartment.ServerRoom
-            or LastShiftCompartment.MedBay
-            or LastShiftCompartment.EscapePod;
+        public static bool AllowsRoomSystemReadout(LastShiftCompartment compartment) => false;
 
         private const float Epsilon = 0.001f;
 
@@ -309,7 +313,8 @@ namespace DoodleUp.Runtime
             {
                 violations.Add(new LastShiftDressingViolation("C3_ReadoutRoom", prop.id, prop.space,
                     $"{LastShiftCompartments.NameOf(prop.space.compartment)} 는 브리프가 고유 시스템 " +
-                    "표시를 인정한 방이 아니다 — 수경재배·서버통신실·의무실·구명정 넷뿐이다."));
+                    "표시를 인정한 방이 아니다 — 브리프가 이름을 댄 넷(수경재배·서버통신실·의무실·" +
+                    "구명정)은 M-2 에서 전부 배를 떠났으므로 지금 이 예외를 쓸 수 있는 방은 없다."));
             }
 
             if (string.IsNullOrWhiteSpace(prop.justification))

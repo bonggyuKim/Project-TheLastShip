@@ -19,7 +19,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.7, y: 0.03, z: 0.5}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -31,1324 +30,12 @@ MonoBehaviour:
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: SightingConsole
-    space:
-      kind: 1
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.84, y: 0.9, z: 0.54}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2064790285583894254, guid: 016d1b4684c85dc468a6f34e12e3ba36, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ObserverSeat
-    space:
-      kind: 1
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 0.9, z: 0.5}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.2}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4588657775770116122, guid: 5bc3a0752cc41cbfe5fa1c054fde680a, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: InstrumentColumn
-    space:
-      kind: 1
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 1.72, z: 0.5}
-    anchorMode: 0
-    anchor: {x: 1, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5027595553479779633, guid: d760a8a55329848d4dc4351882e15b72, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 4.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: c50b5f53ccc30a649901baef92311f5a, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bench_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 1.08, z: 0.72}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2715284541054516062, guid: c36af2f1daa4c93939809d85bf243115, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bench_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 1.08, z: 0.72}
-    anchorMode: 0
-    anchor: {x: 0, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2715284541054516062, guid: c36af2f1daa4c93939809d85bf243115, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ToolRack
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.4, y: 1.1, z: 0.05}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 1.2
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8716872079594184890, guid: 8c0a9d90ffb9d8b7c87b11a130090b46, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 7.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 72c0b98b268eedd46bbf9362701d8c45, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Crate_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.92, y: 0.72, z: 0.77}
-    anchorMode: 0
-    anchor: {x: -0.8, y: -0.7}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5965746930993733184, guid: 0e281b2f42143d3517ca6c69ebd0064d, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Crate_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.92, y: 0.72, z: 0.77}
-    anchorMode: 0
-    anchor: {x: -0.8, y: 0.5}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5965746930993733184, guid: 0e281b2f42143d3517ca6c69ebd0064d, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Crate_3
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.92, y: 0.72, z: 0.77}
-    anchorMode: 0
-    anchor: {x: 0.9, y: 0.9}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5965746930993733184, guid: 0e281b2f42143d3517ca6c69ebd0064d, type: 3}
-    material: {fileID: 2100000, guid: 72c0b98b268eedd46bbf9362701d8c45, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 0.03, z: 9.7}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: ecd411b51f5000d4d92ec27562d760e3, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Cradle_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.2, y: 0.8, z: 1.45}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.45}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2152939979809226001, guid: 9664fb14683d321345560e5e5c7a9b93, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Cradle_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.2, y: 0.8, z: 1.45}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.45}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2152939979809226001, guid: 9664fb14683d321345560e5e5c7a9b93, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LaunchMark_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 5, y: 0.03, z: 0.18}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.75}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5096009974830982094, guid: 467c808b3066d5f33b5dc2a9ef0fef67, type: 3}
-    material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LaunchMark_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 5, y: 0.03, z: 0.18}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.75}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5096009974830982094, guid: 467c808b3066d5f33b5dc2a9ef0fef67, type: 3}
-    material: {fileID: 2100000, guid: 2f330eb4f2e5aeb4e894fcbdea8812ef, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HangarRack
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.5, y: 2, z: 0.64}
-    anchorMode: 0
-    anchor: {x: -1, y: 0}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2804412872335870669, guid: c9aec127395dee60b013b6edff566fdf, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 0.03, z: 5.7}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 4b868dc24b217e74d8a380b7fccd0ddf, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Rack_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.76, y: 2, z: 0.87}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.35}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2782809650877131688, guid: 72aca6c380a8b8abaf556b2514d748d1, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RackIndicator_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.56, y: 0.09, z: 0.03}
-    anchorMode: 0
-    anchor: {x: -0.55, y: -0.35}
-    bottomY: 1.7
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7694498971317370785, guid: 66650c720a2396eac0d2ff54fa41ee4f, type: 3}
-    material: {fileID: 2100000, guid: 7873f5a4d25368f43a489dc5ce0d1824, type: 2}
-    semantics: 80
-    lightIntensity: 1.1
-    justification: "\uD1B5\uC2E0 \uC0C1\uD0DC \uD45C\uD604\uC774\uC9C0 \uC555\uB825
-      \uACC4\uAE30\uAC00 \uC544\uB2C8\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA76.2. \uC120\uCCB4
-      \uC0C1\uD0DC\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29 \uC790\uCCB4\uC758 \uC815\uCCB4\uB97C
-      \uB9D0\uD55C\uB2E4."
-  - id: Rack_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.76, y: 2, z: 0.87}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.099999994}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2782809650877131688, guid: 72aca6c380a8b8abaf556b2514d748d1, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RackIndicator_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.56, y: 0.09, z: 0.03}
-    anchorMode: 0
-    anchor: {x: -0.55, y: 0.099999994}
-    bottomY: 1.7
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7694498971317370785, guid: 66650c720a2396eac0d2ff54fa41ee4f, type: 3}
-    material: {fileID: 2100000, guid: 7873f5a4d25368f43a489dc5ce0d1824, type: 2}
-    semantics: 80
-    lightIntensity: 1.1
-    justification: "\uD1B5\uC2E0 \uC0C1\uD0DC \uD45C\uD604\uC774\uC9C0 \uC555\uB825
-      \uACC4\uAE30\uAC00 \uC544\uB2C8\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA76.2. \uC120\uCCB4
-      \uC0C1\uD0DC\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29 \uC790\uCCB4\uC758 \uC815\uCCB4\uB97C
-      \uB9D0\uD55C\uB2E4."
-  - id: Rack_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.76, y: 2, z: 0.87}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.54999995}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2782809650877131688, guid: 72aca6c380a8b8abaf556b2514d748d1, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RackIndicator_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.56, y: 0.09, z: 0.03}
-    anchorMode: 0
-    anchor: {x: -0.55, y: 0.54999995}
-    bottomY: 1.7
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7694498971317370785, guid: 66650c720a2396eac0d2ff54fa41ee4f, type: 3}
-    material: {fileID: 2100000, guid: 7873f5a4d25368f43a489dc5ce0d1824, type: 2}
-    semantics: 80
-    lightIntensity: 1.1
-    justification: "\uD1B5\uC2E0 \uC0C1\uD0DC \uD45C\uD604\uC774\uC9C0 \uC555\uB825
-      \uACC4\uAE30\uAC00 \uC544\uB2C8\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA76.2. \uC120\uCCB4
-      \uC0C1\uD0DC\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29 \uC790\uCCB4\uC758 \uC815\uCCB4\uB97C
-      \uB9D0\uD55C\uB2E4."
-  - id: Rack_3
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.76, y: 2, z: 0.87}
-    anchorMode: 0
-    anchor: {x: 0, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2782809650877131688, guid: 72aca6c380a8b8abaf556b2514d748d1, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RackIndicator_3
-    space:
-      kind: 1
-      zone: 0
-      compartment: 4
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.56, y: 0.09, z: 0.03}
-    anchorMode: 0
-    anchor: {x: -0.55, y: 1}
-    bottomY: 1.7
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7694498971317370785, guid: 66650c720a2396eac0d2ff54fa41ee4f, type: 3}
-    material: {fileID: 2100000, guid: 7873f5a4d25368f43a489dc5ce0d1824, type: 2}
-    semantics: 80
-    lightIntensity: 1.1
-    justification: "\uD1B5\uC2E0 \uC0C1\uD0DC \uD45C\uD604\uC774\uC9C0 \uC555\uB825
-      \uACC4\uAE30\uAC00 \uC544\uB2C8\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA76.2. \uC120\uCCB4
-      \uC0C1\uD0DC\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29 \uC790\uCCB4\uC758 \uC815\uCCB4\uB97C
-      \uB9D0\uD55C\uB2E4."
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 5
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 7b9c423b20a5ca0448919754acd8cf06, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Basin
-    space:
-      kind: 1
-      zone: 0
-      compartment: 5
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.62, y: 1.75, z: 0.46}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7550863172284726046, guid: 2540df5ced29b2a41af17b4e912b3b25, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Stall_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 5
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 2, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.45}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2370164969612121691, guid: 2a0dc4a16af6d9c7ff8b817a38663091, type: 3}
-    material: {fileID: 2100000, guid: 7b9c423b20a5ca0448919754acd8cf06, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Stall_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 5
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 2, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.85}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2370164969612121691, guid: 2a0dc4a16af6d9c7ff8b817a38663091, type: 3}
-    material: {fileID: 2100000, guid: 7b9c423b20a5ca0448919754acd8cf06, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 3.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bunk_Port_Lower
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 0.45, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.75}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3016195482230068416, guid: a8dd6cf05c178401b9a343c6c830da39, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bunk_Port_Upper
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 0.45, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.75}
-    bottomY: 1.55
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3016195482230068416, guid: a8dd6cf05c178401b9a343c6c830da39, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bunk_Starboard_Lower
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 0.45, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.75}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3016195482230068416, guid: a8dd6cf05c178401b9a343c6c830da39, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bunk_Starboard_Upper
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 0.45, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.75}
-    bottomY: 1.55
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3016195482230068416, guid: a8dd6cf05c178401b9a343c6c830da39, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Lockers
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 1.9, z: 0.44}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4529041978261289867, guid: d858a3bfa6f6daa54e5460810560eb65, type: 3}
-    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 3.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 81da4fabac1fbdf4096b064ceb2f20aa, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Table
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.82, y: 0.78, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0, y: 0}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2248827567677805333, guid: acfa457e28afc94cca45d3934ef4fe76, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bench_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.72, y: 0.5, z: 0.44}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.75}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2320516647030953466, guid: ce7461d6ce4665926c0a174742edbbe1, type: 3}
-    material: {fileID: 2100000, guid: 81da4fabac1fbdf4096b064ceb2f20aa, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Bench_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.72, y: 0.5, z: 0.44}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.75}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2320516647030953466, guid: ce7461d6ce4665926c0a174742edbbe1, type: 3}
-    material: {fileID: 2100000, guid: 81da4fabac1fbdf4096b064ceb2f20aa, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: GalleyCounter
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.66, y: 2.02, z: 0.64}
-    anchorMode: 0
-    anchor: {x: 0, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5917206722245705974, guid: b229170dc6c286c0d054860507d4c2f0, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 0.03, z: 5.7}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Tray_0_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_0_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 0.59
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_0_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 0.86
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: Tray_0_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 1.25
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_0_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 1.39
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_0_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 1.6600001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: Tray_0_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 2.05
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_0_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 2.19
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_0_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.72}
-    bottomY: 2.46
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: Tray_1_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_1_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 0.59
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_1_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 0.86
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: Tray_1_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 1.25
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_1_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 1.39
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_1_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 1.6600001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: Tray_1_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.22, y: 0.9, z: 0.62}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 2.05
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2177275664380497336, guid: a25783836b5ac5e446ff3da737f7515f, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Growth_1_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.04, y: 0.22, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 2.19
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3813255440248951265, guid: 0b0326e2578f5ce674754f2e0ffc29d1, type: 3}
-    material: {fileID: 2100000, guid: 0d3a9008c4a396045b91e257c4a4aed6, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC29\uCE58 \uC2DC \uC78E\uC774 \uB9C8\uB974\uB294 \uC7A5\uAE30\uAD00\uB9AC
-      \uCD95\uC758 \uD45C\uD604\uC774\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA75.3. \uC555\uB825\uC874
-      \uAC8C\uC774\uC9C0\uAC00 \uC544\uB2C8\uB77C \uC774 \uBC29\uC774 \uC6D0\uB798
-      \uAC16\uACE0 \uC788\uB294 \uC0C1\uD0DC\uB2E4."
-  - id: GrowLight_1_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 8
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.16, y: 0.09, z: 0.24}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.72}
-    bottomY: 2.46
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4973506044715263361, guid: 1897c669a05707542605b19ec23268a6, type: 3}
-    material: {fileID: 2100000, guid: 56669ae1a9f1197418cb1b3ddbb3d0dc, type: 2}
-    semantics: 64
-    lightIntensity: 1.1
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 9
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.5, y: 0.03, z: 4.7}
-    anchorMode: 1
-    anchor: {x: -0.5, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: f712dd694af1e504b9d1ece61a74b9db, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: MedBed
-    space:
-      kind: 1
-      zone: 0
-      compartment: 9
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.02, y: 1.04, z: 0.78}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.3}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8435883074828233301, guid: eea6b1d1ecebdf31ecb1993a395c4f11, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ScannerArch
-    space:
-      kind: 1
-      zone: 0
-      compartment: 9
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.36, y: 1.6, z: 1.46}
-    anchorMode: 0
-    anchor: {x: -0.5, y: -0.3}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1849434502200008604, guid: 87b56cfd305446a11c21e69328d6372c, type: 3}
-    material: {fileID: 2100000, guid: f712dd694af1e504b9d1ece61a74b9db, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: MedCabinet
-    space:
-      kind: 1
-      zone: 0
-      compartment: 9
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.92, y: 1.82, z: 0.38}
-    anchorMode: 0
-    anchor: {x: 1, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5153691494466924581, guid: 4ab94a5b2bf1c82dbe4fe933332d437c, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: FloorBand
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 3.7, y: 0.03, z: 0.5}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 2100000, guid: d3e263103e18a444696aecbd474e7a4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PodSeat_0
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.6, y: 1, z: 0.6}
-    anchorMode: 0
-    anchor: {x: -0.55, y: -0.55}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5053671031594510509, guid: 711dced5a460490cc32ca5402b72fea2, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PodSeat_1
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.6, y: 1, z: 0.6}
-    anchorMode: 0
-    anchor: {x: -0.55, y: 0.55}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5053671031594510509, guid: 711dced5a460490cc32ca5402b72fea2, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PodSeat_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.6, y: 1, z: 0.6}
-    anchorMode: 0
-    anchor: {x: 0.15, y: -0.55}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5053671031594510509, guid: 711dced5a460490cc32ca5402b72fea2, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PodSeat_3
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.6, y: 1, z: 0.6}
-    anchorMode: 0
-    anchor: {x: 0.15, y: 0.55}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5053671031594510509, guid: 711dced5a460490cc32ca5402b72fea2, type: 3}
-    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PodConsole
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.02, y: 1.17, z: 0.42}
-    anchorMode: 0
-    anchor: {x: 0, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2604736184393241522, guid: 829bad448fe8b60d6e230e857de0c75f, type: 3}
-    material: {fileID: 2100000, guid: d3e263103e18a444696aecbd474e7a4c, type: 2}
-    semantics: 16
-    lightIntensity: 0
-    justification: "\uBC1C\uC9C4 \uAC00\uB2A5 \uC0C1\uD0DC(\uC7A0\uAE08=\uC801/\uAC00\uB2A5=\uB179)\uB294
-      \uC774 \uBC29 \uACE0\uC720 \uC2DC\uC2A4\uD15C\uC774\uACE0 \uC2B9\uD328\uC870\uAC74\uC5D0
-      \uC9C1\uC811 \uAD00\uC5EC\uD55C\uB2E4 \u2014 \uBE0C\uB9AC\uD504 \xA74.3. \uD50C\uB808\uC774\uC5B4\uAC00
-      \uC54C\uC544\uC57C \uD558\uB294 \uC720\uC77C\uD55C \uC0C1\uD0DC\uB4F1\uC774\uB2E4."
-  - id: HatchRing
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.48, y: 0.15, z: 1.48}
-    anchorMode: 0
-    anchor: {x: 1, y: 0}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3770197026010637229, guid: 524d96115cfafe3fb205e6e166aaff3c, type: 3}
-    material: {fileID: 2100000, guid: d3e263103e18a444696aecbd474e7a4c, type: 2}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
   - id: Frost_Deck
     space:
       kind: 0
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2, y: 0.04, z: 1.2}
     anchorMode: 1
     anchor: {x: -1.3, y: -2}
@@ -1367,7 +54,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 1.1, z: 0.06}
     anchorMode: 1
     anchor: {x: 0.6, y: -2.89}
@@ -1386,7 +72,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.14, z: 0.14}
     anchorMode: 1
     anchor: {x: -1.6, y: -1.6}
@@ -1405,7 +90,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.8, y: 0.04, z: 1.4}
     anchorMode: 1
     anchor: {x: 1.2, y: -1.8}
@@ -1424,7 +108,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2, y: 1.4, z: 0.06}
     anchorMode: 1
     anchor: {x: -0.8, y: -2.89}
@@ -1443,7 +126,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.18, z: 0.18}
     anchorMode: 1
     anchor: {x: 1.5, y: -1}
@@ -1462,7 +144,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 23.1, y: 0.03, z: 0.3}
     anchorMode: 1
     anchor: {x: 0, y: 1.5}
@@ -1480,7 +161,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.3, y: 0.03, z: 2.55}
     anchorMode: 1
     anchor: {x: -12, y: -0.22500005}
@@ -1498,7 +178,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.16, y: 2.6999998, z: 0.16}
     anchorMode: 1
     anchor: {x: -1.5, y: -1.5}
@@ -1516,7 +195,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.16, y: 2.6999998, z: 0.16}
     anchorMode: 1
     anchor: {x: -1.5, y: 1.5}
@@ -1534,7 +212,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.16, y: 2.6999998, z: 0.16}
     anchorMode: 1
     anchor: {x: 1.5, y: -1.5}
@@ -1552,7 +229,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.16, y: 2.6999998, z: 0.16}
     anchorMode: 1
     anchor: {x: 1.5, y: 1.5}
@@ -1570,7 +246,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1588,7 +263,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1606,7 +280,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1624,7 +297,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1642,7 +314,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1660,7 +331,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1674,83 +344,10 @@ MonoBehaviour:
     justification: 
   - id: Lamp
     space:
-      kind: 1
-      zone: 0
-      compartment: 5
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 6770363897356591816, guid: 93cd26d65187868d8834091fc8d7eee9, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 3.48
-    justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 6
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3164178924218493660, guid: cde5e1775ac6067e5c9c2e764ed575c1, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.99
-    justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 7
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 6163461992081819494, guid: f34342e6f80a00dc9022c104d3938319, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 4.15
-    justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 10
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7120139092460378410, guid: 8f21cae5c9a605e0abb690d656fb7ea7, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 3.14
-    justification: 
-  - id: Lamp
-    space:
       kind: 4
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -1768,7 +365,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.3, y: 0.09, z: 0.2}
     anchorMode: 1
     anchor: {x: 0, y: 1.5}
@@ -1786,7 +382,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: -0.8759, y: -0.3552}
@@ -1804,7 +399,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.146, y: -0.3552}
@@ -1822,7 +416,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.9854, y: 0.3197}
@@ -1840,7 +433,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.8964, y: -1}
@@ -1858,7 +450,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.6723, y: -1}
@@ -1876,7 +467,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.7283, y: 1}
@@ -1894,7 +484,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.8, y: 0.9, z: 0.088}
     anchorMode: 0
     anchor: {x: -0.8553, y: 1}
@@ -1912,7 +501,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: -0.7463, y: -1}
@@ -1930,7 +518,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: 0.4019, y: -1}
@@ -1948,7 +535,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.988, y: -0.6426}
@@ -1966,7 +552,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.5988, y: 0.9839}
@@ -1984,7 +569,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.4, y: 0.905, z: 0.875}
     anchorMode: 0
     anchor: {x: -0.8951, y: 0.5994}
@@ -2002,7 +586,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.46, y: 1.0498, z: 0.54}
     anchorMode: 0
     anchor: {x: -0.3504, y: -0.6067}
@@ -2020,7 +603,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.46, y: 1.0498, z: 0.54}
     anchorMode: 0
     anchor: {x: -0.3504, y: 0.6067}
@@ -2038,7 +620,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.5, y: 0.9, z: 0.5}
     anchorMode: 0
     anchor: {x: -0.0813, y: -0.632}
@@ -2056,7 +637,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.5, y: 0.9, z: 0.5}
     anchorMode: 0
     anchor: {x: -0.0813, y: 0.632}
@@ -2074,7 +654,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: 0.5523, y: 0.9449}
@@ -2092,7 +671,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: -0.977, y: -0.4954}
@@ -2110,7 +688,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.8046, y: -0.4954}
@@ -2128,7 +705,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.1556, y: 1}
@@ -2146,7 +722,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.9728, y: 1}
@@ -2164,7 +739,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.1556, y: -1}
@@ -2182,7 +756,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.8, y: 0.9, z: 0.088}
     anchorMode: 0
     anchor: {x: -0.1961, y: 1}
@@ -2200,7 +773,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: 0.5776, y: 1}
@@ -2218,7 +790,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.2564, y: 0.9302}
@@ -2236,7 +807,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0.4274, y: 0.6202}
@@ -2254,7 +824,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0, y: -0.3552}
@@ -2272,7 +841,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0, y: 0.2131}
@@ -2290,7 +858,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.7246, y: -1}
@@ -2308,7 +875,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: 0.4537, y: -1}
@@ -2326,7 +892,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.1, y: 0.81, z: 0.23}
     anchorMode: 0
     anchor: {x: -0.0559, y: -1}
@@ -2344,7 +909,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.0543, y: -0.241}
@@ -2362,7 +926,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.9783, y: 0.7229}
@@ -2380,7 +943,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.92, y: 1.94, z: 0.455}
     anchorMode: 0
     anchor: {x: -0.7497, y: 1}
@@ -2398,7 +960,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.12, y: 0.4, z: 0.92}
     anchorMode: 0
     anchor: {x: -0.266, y: -0.8871}
@@ -2416,7 +977,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: -0.9794, y: -0.8661}
@@ -2434,7 +994,6 @@ MonoBehaviour:
       zone: 1
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: 0.9278, y: -0.2362}
@@ -2452,7 +1011,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0, y: -0.3552}
@@ -2470,7 +1028,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0, y: 0.2131}
@@ -2488,7 +1045,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.7246, y: -1}
@@ -2506,7 +1062,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: -0.4537, y: -1}
@@ -2524,7 +1079,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.1, y: 0.81, z: 0.23}
     anchorMode: 0
     anchor: {x: 0.0559, y: -1}
@@ -2542,7 +1096,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0.163, y: 0.1606}
@@ -2560,7 +1113,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: -0.8152, y: 0.1606}
@@ -2578,7 +1130,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.16, y: 1.7, z: 0.56}
     anchorMode: 0
     anchor: {x: 0.9677, y: 0.4887}
@@ -2596,7 +1147,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.52, y: 1.87, z: 0.52}
     anchorMode: 0
     anchor: {x: -0.7143, y: -0.1493}
@@ -2614,7 +1164,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.2, z: 0.12}
     anchorMode: 0
     anchor: {x: 0, y: -0.8333}
@@ -2632,7 +1181,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: -0.0515, y: 0.9843}
@@ -2650,7 +1198,6 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.12, y: 0.4, z: 0.92}
     anchorMode: 0
     anchor: {x: 0.0532, y: 0.6452}
@@ -2668,7 +1215,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.3448, y: 0}
@@ -2686,7 +1232,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.977, y: -0.743}
@@ -2704,7 +1249,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.3891, y: -1}
@@ -2722,7 +1266,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.856, y: -1}
@@ -2740,7 +1283,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 1.8, y: 0.9, z: 0.088}
     anchorMode: 0
     anchor: {x: 0.5882, y: 1}
@@ -2758,7 +1300,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: 0.6601, y: 1}
@@ -2776,7 +1317,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 1.1, y: 0.81, z: 0.23}
     anchorMode: 0
     anchor: {x: -0.1674, y: 1}
@@ -2794,7 +1334,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0, y: 0.6202}
@@ -2812,7 +1351,6 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 1
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0.8547, y: 0.6202}
@@ -2830,7 +1368,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: -0.9854, y: -0.3552}
@@ -2848,7 +1385,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0, y: -0.3552}
@@ -2866,7 +1402,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.4, y: 0.155, z: 0.25}
     anchorMode: 0
     anchor: {x: 0.9489, y: 0.3197}
@@ -2884,7 +1419,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: -0.7283, y: -1}
@@ -2902,7 +1436,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.7843, y: -1}
@@ -2920,7 +1453,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.74, y: 0.64, z: 0.27}
     anchorMode: 0
     anchor: {x: 0.7283, y: 1}
@@ -2938,7 +1470,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.8, y: 0.9, z: 0.088}
     anchorMode: 0
     anchor: {x: 0.8553, y: 1}
@@ -2956,7 +1487,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: -0.1722, y: -1}
@@ -2974,7 +1504,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
     anchor: {x: 0.7463, y: -1}
@@ -2992,7 +1521,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0.2994, y: -0.0803}
@@ -3010,7 +1538,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.2, y: 0.045, z: 0.9}
     anchorMode: 0
     anchor: {x: 0.2695, y: 0.4819}
@@ -3028,7 +1555,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.42, y: 1.83, z: 0.58}
     anchorMode: 0
     anchor: {x: -0.0162, y: 1}
@@ -3046,7 +1572,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.72, y: 1.16, z: 0.52}
     anchorMode: 0
     anchor: {x: -0.4545, y: -0.8209}
@@ -3064,7 +1589,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.72, y: 1.16, z: 0.52}
     anchorMode: 0
     anchor: {x: 0.9416, y: -0.8209}
@@ -3082,7 +1606,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.02, y: 1.9, z: 0.44}
     anchorMode: 0
     anchor: {x: -0.9878, y: 1}
@@ -3100,7 +1623,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 2.02, y: 1.9, z: 0.44}
     anchorMode: 0
     anchor: {x: 0.9319, y: 1}
@@ -3118,7 +1640,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: -0.5814, y: -0.1575}
@@ -3136,7 +1657,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: 0.2907, y: -0.5906}
@@ -3154,7 +1674,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1, y: 1.55, z: 0.8}
     anchorMode: 0
     anchor: {x: 0.6977, y: 0.5512}
@@ -3172,7 +1691,6 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.12, y: 0.4, z: 0.92}
     anchorMode: 0
     anchor: {x: -0.2367, y: 0.6452}
@@ -3184,841 +1702,12 @@ MonoBehaviour:
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: Lamp_0
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: -22.949999, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_1
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: -17.85, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_2
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: -12.75, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_3
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: -7.6499996, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_4
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: -2.55, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_5
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: 2.55, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_6
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: 7.6499996, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_7
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: 12.75, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_8
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: 17.85, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_9
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.38}
-    anchorMode: 1
-    anchor: {x: 22.949999, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: CeilingRun_0
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -24, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_1
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -21.6, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_2
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -19.2, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_3
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -16.800001, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_4
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -14.400001, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_5
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -12, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_6
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -9.6, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_7
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -7.2000003, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_8
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -4.8, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_9
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: -2.4, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_10
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 0, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_11
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 2.4, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_12
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 4.8, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_13
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 7.2000003, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_14
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 9.6, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_15
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 12, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_16
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 14.400001, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_17
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 16.800001, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_18
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 19.2, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_19
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 21.6, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CeilingRun_20
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.12, z: 0.62}
-    anchorMode: 1
-    anchor: {x: 24, y: 0.5}
-    bottomY: 2.88
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1800000000000137, guid: 8e31504fd628153e86073ad5e421f70d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Mouth_Descent
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.24, y: 3, z: 0.26}
-    anchorMode: 1
-    anchor: {x: 24.5, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Mouth_Spur_ServerRoom
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.24, y: 3, z: 0.26}
-    anchorMode: 1
-    anchor: {x: -21.5, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Mouth_Spur_Hydroponics
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.24, y: 3, z: 0.26}
-    anchorMode: 1
-    anchor: {x: 6.5, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Mouth_Spur_MedBay
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.24, y: 3, z: 0.26}
-    anchorMode: 1
-    anchor: {x: 17, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Mouth_Hangar
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.26, y: 3, z: 2.24}
-    anchorMode: 1
-    anchor: {x: -25.5, y: 0}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Trim_Descent
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: 24.5, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Trim_Spur_ServerRoom
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: -21.5, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Trim_Spur_Hydroponics
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: 6.5, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Trim_Spur_MedBay
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: 17, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Trim_ForeEnd
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: -24.28, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Trim_AftEnd
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.44, y: 0.1, z: 0.03}
-    anchorMode: 1
-    anchor: {x: 24.28, y: 1}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 180, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
-  - id: Lamp_0
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 1
-    size: {x: 0.38, y: 0.16, z: 1.6}
-    anchorMode: 1
-    anchor: {x: 0, y: -2}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Lamp_1
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 1
-    size: {x: 0.38, y: 0.16, z: 1.6}
-    anchorMode: 1
-    anchor: {x: 0, y: 2}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 1500000000000137, guid: 5b0e271ca3f5e20b53d407a2b1fec4da, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.26
-    justification: 
-  - id: Mouth_EscapePod
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 1
-    size: {x: 2.24, y: 3, z: 0.26}
-    anchorMode: 1
-    anchor: {x: 0, y: -4}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1700000000000137, guid: 7d20493ec517042d75f629c4d310e6fc, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Trim_Wall
-    space:
-      kind: 5
-      zone: 0
-      compartment: 0
-      passage: 0
-      galleryLeg: 1
-    size: {x: 0.03, y: 0.1, z: 2.44}
-    anchorMode: 1
-    anchor: {x: 1, y: 0}
-    bottomY: 0.45
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 270, z: 0}
-    prefab: {fileID: 1600000000000137, guid: 6c1f382db406f31c64e518b3c20fd5eb, type: 3}
-    material: {fileID: 0}
-    semantics: 32
-    lightIntensity: 0
-    justification: 
   - id: Lamp
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
     size: {x: 1.6, y: 0.16, z: 0.34}
     anchorMode: 1
     anchor: {x: 0, y: 0}
@@ -4030,939 +1719,173 @@ MonoBehaviour:
     semantics: 64
     lightIntensity: 0.57
     justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8448776385375104042, guid: a774f4ad8aa4ac0936d33efaa5bcba61, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 7.74
-    justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3363766123402897167, guid: 4c5cf66b2e2219c8e76160ddcfb4b4ff, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 0.87
-    justification: 
-  - id: Lamp
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.6, y: 0.16, z: 0.34}
-    anchorMode: 1
-    anchor: {x: 0, y: 0}
-    bottomY: 2.84
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5881032841759203014, guid: 8c4bd2d9286c01f2806a89c8934f6411, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 1.65
-    justification: 
-  - id: StarChart
+  - id: Bunk_Port_Lower
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 0.06, y: 1.1, z: 1.5}
+    size: {x: 2.2, y: 0.25, z: 0.9}
     anchorMode: 0
-    anchor: {x: -1, y: 0}
-    bottomY: 1
+    anchor: {x: 0.55, y: -0.75}
+    bottomY: 0.45
     clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 7081859567971884620, guid: 9facbebda98466c725d7e1d84bdead0a, type: 3}
-    material: {fileID: 0}
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: PersonalShelf
+  - id: Bunk_Port_Upper
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 0.72, y: 0.58, z: 0.255}
+    size: {x: 2.2, y: 0.25, z: 0.9}
     anchorMode: 0
-    anchor: {x: -0.7407, y: 1}
-    bottomY: 1.1
+    anchor: {x: 0.55, y: -0.75}
+    bottomY: 1.55
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3097881185320254481, guid: af06d283419c4b57902e6d1c85f37b40, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: RibFrame_Starboard
+  - id: Bunk_Starboard_Lower
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 0.71, y: 2.1, z: 0.2}
+    size: {x: 2.2, y: 0.25, z: 0.9}
     anchorMode: 0
-    anchor: {x: 0.5076, y: 1}
-    bottomY: 0
-    clearance: 0.16
+    anchor: {x: 0.55, y: 0.75}
+    bottomY: 0.45
+    clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: CableTray
+  - id: Bunk_Starboard_Upper
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
+    size: {x: 2.2, y: 0.25, z: 0.9}
     anchorMode: 0
-    anchor: {x: 0, y: 0.6061}
-    bottomY: 2.66
+    anchor: {x: 0.55, y: 0.75}
+    bottomY: 1.55
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: DeckGrate
+  - id: Lockers
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 0.04, z: 0.9}
+    size: {x: 0.45, y: 1.9, z: 1.6}
     anchorMode: 0
-    anchor: {x: -0.8333, y: 0.604}
-    bottomY: 0.001
+    anchor: {x: 1, y: 0}
+    bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: StowageNet_Port
+  - id: Basin
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
+    size: {x: 0.9, y: 0.9, z: 0.5}
     anchorMode: 0
-    anchor: {x: -0.1266, y: -1}
-    bottomY: 1
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PartsPallet
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.12, y: 0.4, z: 0.92}
-    anchorMode: 0
-    anchor: {x: 0.1064, y: 0.5808}
+    anchor: {x: -0.85, y: -1}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3236684652590518806, guid: c25eb55d71e461602b65ded697d0f2ed, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: TaskSpot_Bench_Port
+  - id: Stall
     space:
       kind: 1
       zone: 0
-      compartment: 1
+      compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 0.32, y: 0.34, z: 0.32}
+    size: {x: 1, y: 2, z: 0.9}
     anchorMode: 0
-    anchor: {x: 0, y: -0.8333}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8882016386935448944, guid: f62a521db638bae6559f982d368de11c, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 4.2
-    justification: 
-  - id: PanelBank_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.8, y: 0.9, z: 0.09}
-    anchorMode: 0
-    anchor: {x: 0, y: 1}
-    bottomY: 1.25
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: GasCylinderBank
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 1.49, z: 0.4}
-    anchorMode: 0
-    anchor: {x: -0.9239, y: 0.9821}
+    anchor: {x: -0.85, y: 1}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2378913409549295814, guid: 2e7b41d95f3c40a6ba18d9c07e35f4b1, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: CableTray_Fore
+  - id: Table
     space:
       kind: 1
       zone: 0
-      compartment: 1
+      compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
+    size: {x: 1, y: 0.75, z: 1}
     anchorMode: 0
-    anchor: {x: -0.8871, y: 0.3888}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.8871, y: -0.3888}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Aisle
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 0.04, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.1087, y: -0.5025}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: StowageNet_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
-    anchorMode: 0
-    anchor: {x: -0.9497, y: -1}
-    bottomY: 1
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 1
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.7729, y: 1}
-    bottomY: 2.2
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Crate_2
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.92, y: 0.72, z: 0.77}
-    anchorMode: 0
-    anchor: {x: 0.4885, y: -0.7314}
+    anchor: {x: -0.1, y: 0}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5965746930993733184, guid: 0e281b2f42143d3517ca6c69ebd0064d, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: LashRail_Port
+  - id: Bench_Port
     space:
       kind: 1
       zone: 0
-      compartment: 2
+      compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.2, z: 0.12}
+    size: {x: 1.2, y: 0.45, z: 0.4}
     anchorMode: 0
-    anchor: {x: -0.9124, y: -1}
+    anchor: {x: -0.1, y: -0.6}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: LashRail_Starboard
+  - id: Bench_Starboard
     space:
       kind: 1
       zone: 0
-      compartment: 2
+      compartment: 0
       passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.2, z: 0.12}
+    size: {x: 1.2, y: 0.45, z: 0.4}
     anchorMode: 0
-    anchor: {x: -0.9124, y: 1}
+    anchor: {x: -0.1, y: 0.6}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LashRail_Port_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.2, z: 0.12}
-    anchorMode: 0
-    anchor: {x: 0.8759, y: -1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LashRail_Starboard_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.2, z: 0.12}
-    anchorMode: 0
-    anchor: {x: 0.8759, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CargoNetBay_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.8, y: 2, z: 0.405}
-    anchorMode: 0
-    anchor: {x: -0.9539, y: -1}
-    bottomY: 0.25
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2640735427473724522, guid: b48e15c0d9a24f7cb2e6083a5d17cf92, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CargoNetBay_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.8, y: 2, z: 0.405}
-    anchorMode: 0
-    anchor: {x: -0.9539, y: 1}
-    bottomY: 0.25
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2640735427473724522, guid: b48e15c0d9a24f7cb2e6083a5d17cf92, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PartsBinShelf
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.41, y: 1.94, z: 1.5}
-    anchorMode: 0
-    anchor: {x: -1, y: 0.627}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 8364141983280211146, guid: 9d5f38a6c07b4e12b8a3ef4170c962d8, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PalletJack
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.95, y: 1.0405, z: 0.7008}
-    anchorMode: 0
-    anchor: {x: 0.5772, y: 0.5293}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8873157183769014242, guid: 6c2a70f4b1d84e39ad50c7e2f9b3164d, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: TaskSpot_Manifest
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.32, y: 0.34, z: 0.32}
-    anchorMode: 0
-    anchor: {x: 0.5291, y: 0.5026}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8882016386935448944, guid: f62a521db638bae6559f982d368de11c, type: 3}
-    material: {fileID: 0}
-    semantics: 64
-    lightIntensity: 4.2
-    justification: 
-  - id: CrateStack_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1, y: 1.55, z: 0.8}
-    anchorMode: 0
-    anchor: {x: -0.4651, y: -0.4802}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1, y: 1.55, z: 0.8}
-    anchorMode: 0
-    anchor: {x: 0.6105, y: 0.8475}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.71, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.7837, y: -1}
-    bottomY: 0
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.71, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.7837, y: 1}
-    bottomY: 0
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.8029, y: -0.3145}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.7299, y: 0.3145}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Port
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 0.04, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.5389, y: -0.2292}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: StowageNet_Starboard
-    space:
-      kind: 1
-      zone: 0
-      compartment: 2
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
-    anchorMode: 0
-    anchor: {x: 0.5231, y: 1}
-    bottomY: 1.3
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: Gantry
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.3, y: 2.84, z: 4.1}
-    anchorMode: 0
-    anchor: {x: 1, y: -0.692}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3703118619579961240, guid: 6c344d8e5c80f03705bccf1ebea028f8, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HangarTug
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 3.01, y: 1.24, z: 1.56}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.456}
-    bottomY: 0.8
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8667985738184790438, guid: 3f1c9a2b7e604d8fa15c3d0b62e7481a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: EvaSuitRack_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.61, y: 2.1, z: 1.2}
-    anchorMode: 0
-    anchor: {x: -1, y: -0.6912}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 1009685958311531423, guid: 80079336bad79693801ca47d90928b96, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: EvaSuitRack_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.61, y: 2.1, z: 1.2}
-    anchorMode: 0
-    anchor: {x: -1, y: 0.6912}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 90, z: 0}
-    prefab: {fileID: 1009685958311531423, guid: 80079336bad79693801ca47d90928b96, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: GasCylinderBank
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 1.49, z: 0.4}
-    anchorMode: 0
-    anchor: {x: -0.7485, y: 1}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2378913409549295814, guid: 2e7b41d95f3c40a6ba18d9c07e35f4b1, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PanelBank_Far
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.8, y: 0.9, z: 0.09}
-    anchorMode: 0
-    anchor: {x: 0.3448, y: 1}
-    bottomY: 1.25
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PanelBank_Near
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.8, y: 0.9, z: 0.09}
-    anchorMode: 0
-    anchor: {x: -0.8621, y: -1}
-    bottomY: 1.25
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Near
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.71, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.6967, y: -1}
-    bottomY: 0
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Far
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 0.71, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.6967, y: 1}
-    bottomY: 0
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.365, y: -0.7061}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Mid
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.5474, y: -0.1246}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 2.4, y: 0.15, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.365, y: 0.6646}
-    bottomY: 2.66
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Fore
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 0.04, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.5389, y: -0.5791}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Aft
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.2, y: 0.04, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.3293, y: 0.98}
-    bottomY: 0.001
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: StowageNet_Far
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
-    anchorMode: 0
-    anchor: {x: -0.1538, y: 1}
-    bottomY: 1.3
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Far
-    space:
-      kind: 1
-      zone: 0
-      compartment: 3
-      passage: 0
-      galleryLeg: 0
-    size: {x: 1, y: 1.55, z: 0.8}
-    anchorMode: 0
-    anchor: {x: -0.7558, y: 0.5507}
-    bottomY: 0
-    clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
-    material: {fileID: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 
