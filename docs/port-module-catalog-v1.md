@@ -5,6 +5,7 @@
 > 닫는 미결: `voyage-run-structure-v1.md` §10-7 중 **여력 사용처와 가격** · `free-placement-expansion-feasibility-v1.md` §3.5(카탈로그) · §12-6(배치 비용)
 > 실측 기준: `LastShiftModuleCatalog.cs` · `LastShiftCompartments.cs`(고정 표 `11`) · `LastShiftPlacementCursorTests.cs` · `free-placement-chain-depth-cap-v1.md`(`maxDoorDepth = 6`) · `rg1-recalc-voyage-port-unlock-v1.md` §5·§6 (전부 이번 확정에서 직접 읽었다)
 > **환산 계수의 최종 수치는 `game-balance` 소관이다. 이 문서는 구조와 기본값을 정본으로 박고, 어느 값이 튜닝 대상인지 표시한다.**
+> **개정 제안 있음 (`2026-08-09`): `core-four-rooms-and-hull-schematic-v1.md`.** 고정 구획 열을 자유 배치로 이관하면 §3.3 목록이 `6 → 10`종이 되고, 조항 `C-1`(이름 충돌 금지)이 소멸하며, §4.3 의 **개방 계열이 대상 `0`개로 폐지**된다. 그 문서가 확정될 때까지 이 문서가 정본이다.
 
 ## 0. 결론 먼저
 
