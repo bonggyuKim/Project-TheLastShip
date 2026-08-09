@@ -126,6 +126,8 @@
 
 ### 4.1 위치: 별도 씬이 아니라 에어록 바깥. 근거 넷
 
+> **부분 갱신 (`2026-08-10`, 카드 `af778a45`). `airlock-hall-sortie-room-v1.md` 가 에어록의 좌표만 바꾼다 — 이 절의 결론(같은 씬 · 에어록 바깥 · 근거 넷)과 조항 `O-4`·`O-5`·`O-7` 은 전부 그대로 산다.** 아래 근거 `1` 이 인용한 `LastShiftBypassDuct` 좌표(`AirlockCenterX = ForeShaftX` 등)는 폐기된다: 에어록은 갑판 하부 덕트 분기가 아니라 **조종석 좌현 갑판층 전용 방 `에어록 홀`** 로 옮기고, 선외 보행면은 `y -4.2 → -3.0` 으로 올라온다. 잔해까지 편도가 `29.97m → 20.67m` 로 줄어드는 것이 §6 밸런스에 남는 유일한 실질 변화다.
+
 1. **에어록이 이미 좌표까지 있다.** `LastShiftBypassDuct` 가 `AirlockSize = 3`, `AirlockCenterX = ForeShaftX`, `AirlockCenterZ = RunZ`, `AirlockCeilingY = FloorY` 를 확정해 뒀고 `IsInside()` 가 덕트·에어록 내부 판정을 한다. **막고 있는 것은 `AirlockInnerHatchSealed = true` 상수 하나**이고, 그 옆 주석이 "EVA 감압 시퀀스는 §24.7-2 가 별도 카드로 남긴 항목"이라고 적어 뒀다. **이 카드가 그 별도 카드다.**
 
 2. **비가압 시계가 이미 돈다.** `SuitOxygen 80초` 는 `RG-1(4-b)` 가 재고 있는 기존 예산이고, 덕트·에어록이 비가압이라 `SuitOxygen` 을 소모하는 규칙도 이미 있다. **선외 체류 제한이 새 시스템이 아니라 이미 있는 시계의 연장이다.**
