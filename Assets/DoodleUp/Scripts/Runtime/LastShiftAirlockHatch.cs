@@ -32,6 +32,18 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float PanelThickness = LastShiftDeckHatch.PanelThickness;
 
+        /// <summary>
+        /// 해치 한 짝의 한 변. <b>두 짝이 다르다.</b>
+        ///
+        /// 안쪽은 덕트 바닥에 뚫린 칸을 메우므로 통로 단면(<see cref="LastShiftBypassDuct.Section"/>)
+        /// 이어야 한다 — 더 넓게 잡으면 문짝이 관 밖으로 나가고, 좁게 잡으면 닫아도 발밑에 틈이
+        /// 남는다. 바깥쪽은 <c>3m</c> 짜리 에어록 바닥이라 그런 제약이 없고 문 개구 치수를 쓴다.
+        /// </summary>
+        public static float SpanOf(LastShiftAirlockSide side) =>
+            side == LastShiftAirlockSide.Inner
+                ? LastShiftBypassDuct.Section
+                : LastShiftZoneDoor.OpeningWidth;
+
         [SerializeField] private LastShiftAirlockSide side;
         [SerializeField] private Transform panel;
         [SerializeField] private BoxCollider blocker;
@@ -82,8 +94,10 @@ namespace DoodleUp.Runtime
         private void ApplyPanelPose()
         {
             // 판은 x 로 미끄러진다. 승강구와 같은 방향이라 두 판이 같은 동작으로 읽힌다.
+            // 물러나는 거리는 자기 한 변이다 — 짝마다 폭이 다르므로 상수 하나로 두면 안쪽 판이
+            // 구멍을 덜 비우거나 더 멀리 나간다.
             if (panel != null)
-                panel.localPosition = new Vector3(LastShiftZoneDoor.OpeningWidth * openAmount, 0f, 0f);
+                panel.localPosition = new Vector3(SpanOf(side) * openAmount, 0f, 0f);
 
             // 문·승강구와 같은 규칙 — 완전히 닫혔을 때만 막는다.
             if (blocker != null) blocker.enabled = openAmount <= 0.001f;

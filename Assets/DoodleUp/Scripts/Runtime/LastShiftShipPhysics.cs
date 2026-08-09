@@ -55,6 +55,23 @@ namespace DoodleUp.Runtime
         public const float CrewRadius = 0.28f;
 
         /// <summary>
+        /// 승무원 CharacterController 의 skinWidth. 프리팹(<c>LastShiftNetworkPlayer</c>)의
+        /// <c>m_SkinWidth</c> 와 같은 값이어야 한다.
+        ///
+        /// <b>여기 있는 이유는 캡슐이 자기 치수보다 크기 때문이다.</b> PhysX 컨트롤러는 이 값만큼
+        /// 떨어진 자리에서 접촉을 만들므로, 통로 단면을 <see cref="CrewRadius"/>·
+        /// <see cref="CrouchHeight"/> 만으로 재면 실제로 필요한 공간을 그만큼 적게 잡는다.
+        /// </summary>
+        public const float CrewSkinWidth = 0.08f;
+
+        /// <summary>
+        /// 승무원 CharacterController 의 stepOffset. 프리팹의 <c>m_StepOffset</c> 과 같은 값이고,
+        /// <b>점프가 아니라 걸어서</b> 넘을 수 있는 턱의 상한이다. 문턱·데칼·해치 판이 통행
+        /// 방해가 되는지를 재는 쪽이 전부 이 값을 본다.
+        /// </summary>
+        public const float CrewStepOffset = 0.3f;
+
+        /// <summary>
         /// 서 있을 때의 승무원 높이. 씬 빌더와 플레이어 프리팹이 CharacterController 에 쓰던
         /// 리터럴 <c>1.7</c> 을 여기로 올린다 — 웅크림이 생기면서 이 값이 "기본 높이" 라는
         /// 뜻을 갖게 됐고, 두 자리에 흩어져 있으면 웅크림 복귀가 한쪽에서만 맞는다.
@@ -62,11 +79,28 @@ namespace DoodleUp.Runtime
         public const float StandingHeight = 1.7f;
 
         /// <summary>
-        /// 웅크렸을 때의 승무원 높이. 우회 통로 단면(<c>0.9m</c>, docs §5)과 같은 값이다 —
-        /// 덕트가 통과 가능한 최소 단면이고, 웅크림은 그 단면을 지나기 위한 자세다.
-        /// 이 둘이 어긋나면 "웅크렸는데도 안 들어가는" 통로가 생긴다.
+        /// 웅크린 승무원이 지나야 하는 <b>통로</b> 최소 단면(폭·높이 공통). docs §5 확정값
+        /// <c>0.9m</c> 이고 <see cref="LastShiftBypassDuct.Section"/> 이 이 값을 그대로 쓴다.
+        ///
+        /// 웅크림 높이와 <b>같은 상수가 아니다.</b> 예전에는 하나였는데, 그러면 캡슐 높이가
+        /// 통로 높이와 정확히 같아져 여유가 <c>0</c> 이 된다 — 사용자 플레이에서
+        /// "Ctrl 로 웅크려도 덕트에 못 들어가는" 것으로 나왔다. 통로가 정본이고 승무원이
+        /// 그 안에 들어가야 하므로, 방향은 <c>단면 → 높이</c> 한쪽뿐이다.
         /// </summary>
-        public const float CrouchHeight = 0.9f;
+        public const float CrouchSection = 0.9f;
+
+        /// <summary>
+        /// 웅크린 캡슐과 통로 단면 사이 여유. 위아래(그리고 좌우) 각각 skinWidth 한 겹이다 —
+        /// 컨트롤러가 접촉을 만드는 거리가 그것이라 그보다 좁으면 관 안에서 천장에 닿은 채
+        /// 걷는 것이 되고, 실제로는 못 들어간다.
+        /// </summary>
+        public const float CrouchClearance = CrewSkinWidth * 2f;
+
+        /// <summary>
+        /// 웅크렸을 때의 승무원 높이. <see cref="CrouchSection"/> 에서 여유를 뺀 값이다 —
+        /// 리터럴로 적으면 단면이 바뀔 때 여유가 조용히 사라진다.
+        /// </summary>
+        public const float CrouchHeight = CrouchSection - CrouchClearance;
 
         /// <summary>
         /// 웅크림 눈높이. 서 있을 때(<see cref="EyeHeight"/> <c>1.55</c>)와 같은 비율을 유지한다 —

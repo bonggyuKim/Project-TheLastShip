@@ -125,8 +125,7 @@ namespace DoodleUp.Tests.EditMode
             // 에어록 안쪽 해치가 열리면 최저점이 3m 더 내려간다. 예전에는 그것을 "여는 날
             // 이 검사가 깨진다" 로 적어 뒀는데, EVA 카드가 실제로 열었으므로 이제 그 3m 를
             // 두 가지가 함께 막는다 — 인터록(동시 개방 금지)과 에어록 계단이다.
-            var riseFromAirlock = LastShiftBypassDuct.DeckY - LastShiftBypassDuct.AirlockFloorY
-                                  - LastShiftBypassDuct.StepHeight;
+            var riseFromAirlock = LastShiftBypassDuct.DeckY - LastShiftBypassDuct.AirlockFloorY;
             Assert.That(riseFromAirlock, Is.GreaterThan(LastShiftShipPhysics.JumpApexHeight),
                 "에어록 바닥이 점프로 한 번에 나올 수 있는 깊이면 계단이 필요 없다는 뜻이다.");
             Assert.That(LastShiftBypassDuct.AirlockStepRise,
@@ -190,7 +189,7 @@ namespace DoodleUp.Tests.EditMode
 
             // 열어 둔 판은 갑판 위에 얹힌다. stepOffset 기본값을 넘으면 걸림돌이 된다.
             Assert.That(LastShiftDeckHatch.PanelThickness,
-                Is.LessThan(LastShiftBypassDuct.StepHeight),
+                Is.LessThan(LastShiftShipPhysics.CrewStepOffset),
                 "열어 둔 해치 판을 걸어서 못 넘는다.");
 
             Teardown(setup);
@@ -203,8 +202,11 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftDeckHatch.OpeningSpan,
                 Is.EqualTo(LastShiftBypassDuct.Section).Within(Tolerance));
             Assert.That(LastShiftDeckHatch.OpeningSpan,
-                Is.EqualTo(LastShiftShipPhysics.CrouchHeight).Within(Tolerance),
-                "구멍이 웅크림 자세와 어긋나면 통로 단면과 갑판 구멍 중 하나가 거짓이다.");
+                Is.EqualTo(LastShiftShipPhysics.CrouchSection).Within(Tolerance),
+                "구멍이 웅크림 단면과 어긋나면 통로 단면과 갑판 구멍 중 하나가 거짓이다.");
+            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth,
+                Is.LessThan(LastShiftDeckHatch.OpeningSpan),
+                "웅크린 캡슐이 갑판 구멍을 꽉 채우면 내려가다 목에서 걸린다.");
 
             // 판은 구멍 밖으로 완전히 물러나야 한다. 덜 물러나면 열려 있는데 절반이 막힌다.
             Assert.That(LastShiftDeckHatch.PanelTravel,

@@ -980,7 +980,10 @@ namespace DoodleUp.Editor
             // ── 선미로 달리는 긴 구간(x 축). 꺾임 모서리는 이쪽이 갖는다(§23.4) ──────────
             var runMinX = foreX - half;
             var runMaxX = aftX + half;
-            CreateDuctPlate(root.transform, "Run_Floor", runMinX, runMaxX, runZ - half, runZ + half, floor - thickness, floor);
+            // 바닥은 에어록 자리를 비운다 — 안 비우면 안쪽 해치를 열어도 판이 그대로 남아
+            // 에어록으로 못 내려간다. 구멍은 <c>L</c> 자 모서리 한 칸(<c>Section</c> 정사각형)이고
+            // 그 자리가 곧 에어록 중심이라, 닫힌 안쪽 해치의 차단면이 그 칸을 그대로 메운다.
+            CreateDuctPlate(root.transform, "Run_Floor", foreX + half, runMaxX, runZ - half, runZ + half, floor - thickness, floor);
             // 천장은 선미 승강구 자리를 비운다 — 안 비우면 올라갈 구멍이 천장 판에 막힌다.
             CreateDuctPlate(root.transform, "Run_Ceiling", runMinX, aftX - half, runZ - half, runZ + half, ceiling, ceiling + thickness);
             CreateDuctPlate(root.transform, "Run_WallStarboard", runMinX, runMaxX, runZ + half, runZ + half + thickness, floor, ceiling);
@@ -1141,8 +1144,12 @@ namespace DoodleUp.Editor
         /// 목만 세운다 — 그 아래는 덕트 본체이고 그 위는 슬래브에 뚫은 구멍이라 이미 벽이 있다.
         /// 목을 안 두면 <c>0.1m</c> 띠가 옆으로 열려 물건이 슬래브 밑으로 끼어든다.
         ///
-        /// 바닥의 단은 §23.6 의 권고다. <c>CharacterController.stepOffset</c> 기본값과 같아 걸어서
-        /// 오르내리고, 상승이 <c>1.2 → 0.9m</c> 로 줄어 점프 여유가 두 배가 된다.
+        /// <b>바닥에 단을 두지 않는다.</b> §23.6 은 단을 권고했고 한 번 세웠는데, 승강구 발밑은
+        /// 한 변이 <see cref="LastShiftBypassDuct.Section"/>(<c>0.9m</c>)인 정사각형뿐이다 —
+        /// 단을 밟고 선 승무원은 머리가 덕트 천장 위로 나오고, 단에서 내려설 자리가 캡슐 지름
+        /// (<c>0.56m</c>)보다 좁아 단과 천장 사이에 낀다. 실제로 "승강구까지는 내려가는데
+        /// 웅크려도 통로로 안 들어가진다" 가 여기서 났다. 단이 없어도 상승 <c>1.2m</c> 는
+        /// 점프 정점(<c>1.49m</c>) 안이라 §23.6 의 결론은 그대로다.
         /// </summary>
         private static void CreateShaft(Transform parent, int shaft)
         {
@@ -1161,10 +1168,6 @@ namespace DoodleUp.Editor
                 mouth.x - half - thickness, mouth.x + half + thickness, mouth.z - half - thickness, mouth.z - half, neckMin, neckMax);
             CreateDuctPlate(parent, $"ShaftNeck_{name}_Starboard",
                 mouth.x - half - thickness, mouth.x + half + thickness, mouth.z + half, mouth.z + half + thickness, neckMin, neckMax);
-
-            CreateCube($"Step_{name}", parent,
-                new Vector3(mouth.x, LastShiftBypassDuct.FloorY + LastShiftBypassDuct.StepHeight * 0.5f, mouth.z),
-                new Vector3(LastShiftBypassDuct.Section, LastShiftBypassDuct.StepHeight, half), bypassMaterial);
 
             CreateDeckHatch(parent, shaft);
         }
@@ -1190,13 +1193,24 @@ namespace DoodleUp.Editor
             //
             // 안쪽 해치는 덕트 바닥 판 <b>바로 아래</b>에 매단다. 예전처럼 덕트 바닥과 같은 y 에
             // 두면 판과 겹쳐 z-fighting 이 난다.
-            var hatch = new Vector3(LastShiftZoneDoor.OpeningWidth,
-                LastShiftAirlockHatch.PanelThickness, LastShiftZoneDoor.OpeningWidth);
-            CreateAirlockHatch(parent, LastShiftAirlockSide.Inner, new Vector3(centre.x,
-                LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness
-                - LastShiftAirlockHatch.PanelThickness * 0.5f, centre.z), hatch);
+            //
+            // 안쪽 해치는 <b>덕트 바닥 판에 뚫어 둔 칸을 그대로 메운다</b> — 판 폭이 통로 단면
+            // (0.9m)이라 그보다 넓은 문짝을 달면 관 밖으로 삐져나오고, 좁게 달면 닫아도 발밑에
+            // 틈이 남는다. 그래서 안쪽만 단면 치수이고 바깥쪽은 문 개구 치수 그대로다.
+            var innerSpan = LastShiftAirlockHatch.SpanOf(LastShiftAirlockSide.Inner);
+            var innerRootY = LastShiftBypassDuct.AirlockCeilingY - LastShiftBypassDuct.PanelThickness
+                - LastShiftAirlockHatch.PanelThickness * 0.5f;
+            CreateAirlockHatch(parent, LastShiftAirlockSide.Inner,
+                new Vector3(centre.x, innerRootY, centre.z),
+                new Vector3(innerSpan, LastShiftAirlockHatch.PanelThickness, innerSpan),
+                new Vector3(innerSpan, LastShiftBypassDuct.PanelThickness, innerSpan),
+                LastShiftBypassDuct.FloorY - LastShiftBypassDuct.PanelThickness * 0.5f - innerRootY);
+
+            var outerSpan = LastShiftAirlockHatch.SpanOf(LastShiftAirlockSide.Outer);
             CreateAirlockHatch(parent, LastShiftAirlockSide.Outer,
-                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z), hatch);
+                new Vector3(centre.x, LastShiftBypassDuct.AirlockFloorY, centre.z),
+                new Vector3(outerSpan, LastShiftAirlockHatch.PanelThickness, outerSpan),
+                new Vector3(outerSpan, LastShiftShipDimensions.HullThickness, outerSpan), 0f);
 
             // 에어록 계단. 안쪽 해치가 열리면 최저점이 에어록 바닥으로 3m 내려가는데, 그
             // 3m 는 점프 정점(1.49m)으로 못 오른다 — 단 둘이면 한 걸음이 1m 로 갈린다.
@@ -1219,7 +1233,8 @@ namespace DoodleUp.Editor
         /// 차단면이 <b>기본으로 켜져 있다</b>(둘 다 닫힌 것이 시작 상태다).
         /// </summary>
         private static void CreateAirlockHatch(
-            Transform parent, LastShiftAirlockSide side, Vector3 centre, Vector3 size)
+            Transform parent, LastShiftAirlockSide side, Vector3 centre, Vector3 size,
+            Vector3 blockerSize, float blockerLocalY)
         {
             var name = $"AirlockHatch_{side}";
             var root = new GameObject(name);
@@ -1232,8 +1247,11 @@ namespace DoodleUp.Editor
 
             var blockerObject = new GameObject($"{name}_Blocker");
             blockerObject.transform.SetParent(root.transform, false);
+            // 차단면은 판이 아니라 <b>뚫린 자리</b>를 메운다. 판은 미끄러지는 연출이라 두께가
+            // 얇고, 그걸 그대로 막으면 저중력에서 뜬 물건이 터널링으로 빠진다.
+            blockerObject.transform.localPosition = new Vector3(0f, blockerLocalY, 0f);
             var blocker = blockerObject.AddComponent<BoxCollider>();
-            blocker.size = new Vector3(size.x, LastShiftShipDimensions.HullThickness, size.z);
+            blocker.size = blockerSize;
 
             root.AddComponent<LastShiftAirlockHatch>().Configure(side, panel.transform, blocker);
         }

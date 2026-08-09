@@ -30,11 +30,15 @@ namespace DoodleUp.Runtime
     public static class LastShiftBypassDuct
     {
         /// <summary>
-        /// 덕트 단면(폭·높이 공통). §5 확정값 <c>0.9m</c> 이고
-        /// <see cref="LastShiftShipPhysics.CrouchHeight"/> 와 같은 값이어야 한다 —
-        /// 웅크린 승무원이 지나는 최소 단면이 곧 이 통로의 정의다.
+        /// 덕트 단면(폭·높이 공통). §5 확정값 <c>0.9m</c> 이고 정본은
+        /// <see cref="LastShiftShipPhysics.CrouchSection"/> 이다.
+        ///
+        /// <b>웅크림 높이와 같은 값이 아니다.</b> 예전에는 <c>CrouchHeight</c> 를 그대로 썼는데,
+        /// 그러면 캡슐이 관 안에서 천장에 딱 붙어 여유가 <c>0</c> 이 된다 — 웅크려도 안 들어가는
+        /// 통로가 그렇게 만들어졌다. 승무원 쪽이 <see cref="LastShiftShipPhysics.CrouchClearance"/>
+        /// 만큼 작아지는 것이 맞는 방향이다.
         /// </summary>
-        public const float Section = LastShiftShipPhysics.CrouchHeight;
+        public const float Section = LastShiftShipPhysics.CrouchSection;
 
         /// <summary>
         /// 덕트 껍데기 판의 두께. 갑판 슬래브 아래 남은 여유(<see cref="FloorY"/> 식의 <c>0.1</c>)가
@@ -52,7 +56,14 @@ namespace DoodleUp.Runtime
         ///
         /// 여기서 갑판까지 올라오는 높이가 <c>1.2m</c> 이고, 저중력 점프 정점
         /// <c>1.494m</c>(§23.6 실측) 안이라 사다리 같은 새 조작 동사가 필요 없다.
-        /// 여유가 <c>0.294m</c> 로 얇아 승강구 바닥에 단을 하나 둔다(<see cref="StepHeight"/>).
+        ///
+        /// <b>승강구 바닥에 단을 두지 않는다.</b> §23.6 은 여유를 늘리려고 단을 권고했고 실제로
+        /// 한 번 세웠는데, 승강구 발밑은 한 변이 <see cref="Section"/> 인 정사각형뿐이다 —
+        /// 단을 밟고 선 승무원은 머리가 덕트 천장보다 단 높이만큼 위에 있고,
+        /// 단에서 내려설 자리(캡슐 지름 <c>0.56m</c>)가 남지 않아 단과 천장 사이에 낀다.
+        /// 사용자 플레이에서 "웅크려도 통로로 못 들어간다" 로 나온 두 원인 중 하나다.
+        /// 단이 없어도 상승 <c>1.2m</c> 는 점프 정점 안이라 §23.6 의 결론(새 조작 동사 없음)은
+        /// 그대로 성립한다.
         /// </summary>
         public const float FloorY = -(LastShiftShipDimensions.HullThickness + 0.1f + Section);
 
@@ -60,20 +71,35 @@ namespace DoodleUp.Runtime
         public const float CeilingY = FloorY + Section;
 
         /// <summary>
-        /// 승강구 바닥의 단 높이. <c>CharacterController.stepOffset</c> 기본값과 같아서
-        /// 점프가 아니라 <b>걸어서</b> 오르내리는 높이다(§23.6 권고). 급할 때 점프 타이밍을
-        /// 놓쳐도 나올 수 있고, 하강도 <c>1.2m</c> 낙하가 아니라 두 단이 된다.
-        /// </summary>
-        public const float StepHeight = 0.3f;
-
-        /// <summary>
         /// 덕트가 달리는 z. 선체 중심에서 살짝 우현으로 밀어 <see cref="ForeShaftZ"/> 와
         /// 함께 <c>L</c> 자를 만든다.
         /// </summary>
         public const float RunZ = 1.5f;
 
-        /// <summary>선수 쪽 승강구의 z. <see cref="RunZ"/> 와 달라야 꺾임이 생긴다.</summary>
-        public const float ForeShaftZ = -1.5f;
+        /// <summary>
+        /// 갑판 위 설비와 승강구 사이에 두는 여유. 구멍 가장자리에 설비가 붙어 있으면 캡슐이
+        /// 들어갈 <see cref="Section"/> 은 남아도 승무원이 그 자리에 서서 내려설 수가 없다.
+        /// </summary>
+        public const float DeckPropClearance = 0.15f;
+
+        /// <summary>
+        /// 선수 쪽 승강구의 z. <see cref="RunZ"/> 와 달라야 꺾임이 생기고(§23.4), 갑판 위에서는
+        /// <b>Tether 받침대를 비켜야 한다.</b>
+        ///
+        /// 예전 값 <c>-1.5</c> 는 받침대(z <c>-1.3</c>, 폭 <c>0.9</c>)와 x·z 양쪽에서 겹쳤다 —
+        /// 구멍 <c>0.9m</c> 중 <c>0.3m</c> 를 받침대가 덮어 승무원 캡슐(지름 <c>0.56</c>,
+        /// skinWidth 포함 <c>0.72</c>)이 들어갈 자리가 안 남는다. 사용자 플레이에서 조종석
+        /// 승강구가 막혀 있던 세 원인 중 하나다.
+        ///
+        /// <b>받침대가 아니라 승강구를 옮긴다.</b> 받침대 자리는 스폰 조준 사거리(잡기
+        /// <c>2.2m</c> 안)와 도킹 트리거 반경(<c>1.6m</c> 밖) 사이의 얇은 고리에 묶여 있어
+        /// 옮길 여지가 거의 없고, 옮기면 씬에 이미 놓인 Tether 아이템까지 따라와야 한다.
+        /// 승강구는 프리팹 안에서 끝나고 §5 가 z 에 건 조건은 "RunZ 와 다를 것" 하나뿐이다.
+        /// </summary>
+        public static float ForeShaftZ =>
+            LastShiftShipDimensions.TetherRackPosition.z
+            - (LastShiftShipDimensions.TetherRackScale.z + Section) * 0.5f
+            - DeckPropClearance;
 
         /// <summary>
         /// 선수 쪽 진입점 x. §5 가 정한 대로 <b>조종석 방 안</b>(개구부 0 근처)이고,
@@ -236,9 +262,11 @@ namespace DoodleUp.Runtime
         /// 에어록 안 계단의 단 수. 안쪽 해치가 열리면 최저점이 에어록 바닥으로 <c>3m</c>
         /// 내려가는데, 그 <c>3m</c> 를 한 번에 뛰어오를 수는 없다(점프 정점 <c>1.49m</c>).
         ///
-        /// <b>사다리를 안 만드는 것이 요점이다.</b> 승강구가 새 조작 동사 대신 단
-        /// (<see cref="StepHeight"/>)을 쓴 것과 같은 선택이고(§23.6), 단 둘이면 상승이
-        /// <see cref="AirlockStepRise"/> 로 갈라져 점프 정점 안에 들어온다.
+        /// <b>사다리를 안 만드는 것이 요점이다.</b> 승강구가 기존 점프로 나오는 것과 같은
+        /// 선택이고(§23.6), 단 둘이면 상승이 <see cref="AirlockStepRise"/> 로 갈라져 점프 정점
+        /// 안에 들어온다. 여기서는 단이 성립한다 — 에어록은 한 변이 <see cref="AirlockSize"/>
+        /// 라 단을 밟고도 내려설 자리가 남는다(승강구가 <see cref="Section"/> 이라 못 그런 것과
+        /// 대비된다).
         /// </summary>
         public const int AirlockStepCount = 2;
 
@@ -261,11 +289,13 @@ namespace DoodleUp.Runtime
         /// <summary>
         /// 최저점에서 갑판까지 되올라오는 경로에서 <b>한 번에 뛰어야 하는 최대 상승.</b>
         /// 예전에는 최저점이 하나뿐이라 총 상승과 같았는데, 에어록이 열리면서 경로가 두 구간
-        /// (에어록 계단 → 덕트 바닥 → 승강구 단 → 갑판)이 되어 <b>가장 높은 한 걸음</b>이
-        /// 판정 대상이 됐다. 이 값이 점프 정점 안이면 회수는 우회일 뿐 손실이 아니다.
+        /// (에어록 계단 → 덕트 바닥 → 갑판)이 되어 <b>가장 높은 한 걸음</b>이 판정 대상이 됐다.
+        /// 이 값이 점프 정점 안이면 회수는 우회일 뿐 손실이 아니다.
+        ///
+        /// 승강구 쪽 한 걸음이 <c>1.2m</c> 전부인 것은 단을 뺐기 때문이다(<see cref="FloorY"/>).
         /// </summary>
         public static float RecoveryRise => Mathf.Max(
-            DeckY - FloorY - StepHeight,
+            DeckY - FloorY,
             AirlockInnerHatchSealed ? 0f : AirlockStepRise);
 
         /// <summary>

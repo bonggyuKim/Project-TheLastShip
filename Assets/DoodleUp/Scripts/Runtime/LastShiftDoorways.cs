@@ -200,10 +200,10 @@ namespace DoodleUp.Runtime
         /// <summary>
         /// 윗면이 이 높이 아래면 밟고 지나간다. 갑판 띠·격자·서리 데칼이 여기 걸리는데,
         /// 그것들을 세면 문 앞 갑판 표시가 전부 통행 방해가 되어 검사가 소음이 된다.
-        /// <see cref="LastShiftBypassDuct.StepHeight"/> 와 같은 값이고 근거도 같다 —
-        /// <c>CharacterController.stepOffset</c> 이다.
+        /// 근거는 <c>CharacterController.stepOffset</c> 이고 정본은
+        /// <see cref="LastShiftShipPhysics.CrewStepOffset"/> 이다.
         /// </summary>
-        public const float WalkOverHeight = LastShiftBypassDuct.StepHeight;
+        public const float WalkOverHeight = LastShiftShipPhysics.CrewStepOffset;
 
         /// <summary>
         /// 무는 구간들을 합치고 구멍에 남는 <b>가장 긴 연속</b> 통행 폭을 돌려준다.

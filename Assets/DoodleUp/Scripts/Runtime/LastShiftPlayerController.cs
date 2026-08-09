@@ -598,18 +598,36 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 일어설 자리가 있는가. 웅크린 캡슐 머리 위로 서 있을 높이만큼 비어 있는지 본다.
+        /// 일어설 자리가 있는가. 웅크린 캡슐 <b>머리 위</b>로 서 있을 높이만큼 비어 있는지 본다.
         /// 반지름을 조금 줄여 쏘는 것은 벽에 붙어 선 상태에서 벽 자체를 짚어 영영 못 일어서는
         /// 것을 막기 위해서다.
+        ///
+        /// <b>자기 콜라이더를 걸러야 한다.</b> CharacterController 는 물리 질의에 그대로 잡히므로,
+        /// 걸러내지 않으면 웅크린 자기 캡슐이 검사에 걸려 <b>어디서도 못 일어선다</b> — 웅크림이
+        /// 누르고 있는 동안만 유지되는 조작이라(Ctrl) 그 순간 승무원이 영영 웅크린 채로 남는다.
+        /// 들고 있는 부품도 승무원 아래에 붙으므로 같이 뺀다.
         /// </summary>
         private bool HasStandingHeadroom()
         {
             var probeRadius = LastShiftShipPhysics.CrewRadius * 0.9f;
-            var bottom = transform.position + Vector3.up * (LastShiftShipPhysics.CrouchHeight - probeRadius);
+            // 아래 끝은 웅크린 캡슐의 정수리다. 그보다 낮게 잡으면 몸통 옆에 붙은 설비가
+            // "머리 위 공간 없음" 으로 읽힌다.
+            var bottom = transform.position + Vector3.up * (LastShiftShipPhysics.CrouchHeight + probeRadius);
             var top = transform.position + Vector3.up * (LastShiftShipPhysics.StandingHeight - probeRadius);
-            return !UnityEngine.Physics.CheckCapsule(bottom, top, probeRadius, ~0,
-                QueryTriggerInteraction.Ignore);
+            var hits = UnityEngine.Physics.OverlapCapsuleNonAlloc(bottom, top, probeRadius,
+                HeadroomHits, ~0, QueryTriggerInteraction.Ignore);
+            for (var index = 0; index < hits; index++)
+            {
+                var hit = HeadroomHits[index];
+                if (hit == null || hit.transform.IsChildOf(transform)) continue;
+                return false;
+            }
+
+            return true;
         }
+
+        /// <summary>머리 위 공간 검사 버퍼. 매 프레임 도는 자리라 할당을 남기지 않는다.</summary>
+        private static readonly Collider[] HeadroomHits = new Collider[8];
 
         public bool IsCarryingBulkyItem
         {

@@ -17,11 +17,27 @@ namespace DoodleUp.Tests.EditMode
         private const float Tolerance = 0.0001f;
 
         [Test]
-        public void DuctSectionMatchesTheCrouchPosture()
+        public void CrouchedCrewActuallyFitsInsideTheDuctSection()
         {
-            // 단면과 웅크림 높이가 어긋나면 "웅크렸는데도 안 들어가는" 통로가 된다.
+            // 이 검사가 원래 "단면 == 웅크림 높이" 였고, 그게 곧 버그였다 — 캡슐이 관에 딱
+            // 맞으면 여유가 0 이라 CharacterController 는 천장에 닿은 채로 못 움직인다.
+            // 지켜야 하는 것은 같음이 아니라 <b>들어간다</b> 이고, 여유는 컨트롤러가 접촉을
+            // 만드는 거리(skinWidth) 위아래 한 겹이다.
             Assert.That(LastShiftBypassDuct.Section,
-                Is.EqualTo(LastShiftShipPhysics.CrouchHeight).Within(Tolerance));
+                Is.EqualTo(LastShiftShipPhysics.CrouchSection).Within(Tolerance),
+                "덕트 단면과 웅크림 단면 정본이 갈라졌다.");
+            Assert.That(LastShiftShipPhysics.CrouchHeight + LastShiftShipPhysics.CrewSkinWidth,
+                Is.LessThan(LastShiftBypassDuct.Section),
+                "웅크린 캡슐이 덕트 천장에 닿는다 — 웅크려도 못 들어가는 통로다.");
+
+            // 폭도 같은 단면이다. 높이만 보고 폭을 안 보면 L 자 모서리에서 걸린다.
+            Assert.That(LastShiftShipPhysics.CrewRadius * 2f + LastShiftShipPhysics.CrewSkinWidth,
+                Is.LessThan(LastShiftBypassDuct.Section),
+                "승무원 캡슐 지름이 덕트 폭을 채운다 — 관 안에서 옆으로 낀다.");
+
+            Assert.That(LastShiftShipPhysics.CrouchHeight,
+                Is.GreaterThan(LastShiftShipPhysics.CrewRadius * 2f),
+                "웅크림 높이가 캡슐 지름보다 낮으면 CharacterController 가 높이를 되돌린다.");
             Assert.That(LastShiftShipPhysics.CrouchHeight,
                 Is.LessThan(LastShiftShipPhysics.StandingHeight),
                 "웅크림이 서 있는 높이보다 낮아야 자세가 의미를 갖는다.");
@@ -82,17 +98,47 @@ namespace DoodleUp.Tests.EditMode
         public void ShaftRiseStaysInsideTheJumpEnvelope()
         {
             // §23.6 의 판정. 사다리 같은 새 조작 동사 없이 기존 점프로 나올 수 있어야 한다.
+            // 승강구 바닥에 단을 두지 않으므로 이 상승이 전부다.
             var rise = -LastShiftBypassDuct.FloorY;
             Assert.That(rise, Is.LessThan(LastShiftShipPhysics.JumpApexHeight),
                 $"승강구 깊이 {rise:F2}m 가 점프 정점 {LastShiftShipPhysics.JumpApexHeight:F2}m 를 넘는다 — 새 조작 동사가 필요해진다.");
 
-            // 단을 밟고 오르면 여유가 두 배가 된다. 단 높이는 걸어서 오르는 높이여야 한다.
-            var riseFromStep = rise - LastShiftBypassDuct.StepHeight;
-            Assert.That(LastShiftShipPhysics.JumpApexHeight - riseFromStep,
-                Is.GreaterThan(LastShiftShipPhysics.JumpApexHeight - rise),
-                "단이 여유를 안 늘린다.");
-            Assert.That(LastShiftBypassDuct.StepHeight, Is.LessThanOrEqualTo(0.3f),
-                "CharacterController.stepOffset 기본값을 넘으면 걸어서 못 오른다.");
+            // 승강구 발밑은 한 변이 Section 인 정사각형뿐이다. 여기에 단을 세우면 그 위에 선
+            // 승무원의 머리가 덕트 천장 위로 나오고, 내려설 자리가 캡슐 지름보다 좁아 낀다 —
+            // 실제로 "웅크려도 통로에 못 들어간다" 가 그렇게 났다. 이 검사가 그 자리를 지킨다.
+            Assert.That(LastShiftBypassDuct.Section,
+                Is.GreaterThan(LastShiftShipPhysics.CrewRadius * 2f + LastShiftShipPhysics.CrewSkinWidth),
+                "승강구 발밑에 캡슐 하나가 안 들어간다.");
+            Assert.That(LastShiftBypassDuct.RecoveryRise,
+                Is.EqualTo(rise).Within(Tolerance),
+                "승강구 상승이 단으로 쪼개졌다 — 그 단이 천장과 승무원을 낀다.");
+        }
+
+        /// <summary>
+        /// 갑판 위에서 승강구를 덮는 것이 없어야 한다. 통로 안 치수가 다 맞아도 구멍 위에
+        /// 설비가 걸쳐 있으면 들어갈 방법이 없다 — Tether 받침대가 실제로 <c>0.3m</c> 를
+        /// 덮고 있었고, 좌표 검사가 전부 통과하는 채로 조종석 승강구가 막혀 있었다.
+        /// </summary>
+        [Test]
+        public void ForeShaftIsNotCoveredByTheTetherRack()
+        {
+            var rackHalf = LastShiftShipDimensions.TetherRackScale * 0.5f;
+            var rackCenter = LastShiftShipDimensions.TetherRackPosition;
+            var shaftHalf = LastShiftBypassDuct.Section * 0.5f;
+            var mouth = LastShiftBypassDuct.ShaftMouth(LastShiftBypassDuct.ForeShaft);
+
+            var gapX = Mathf.Abs(rackCenter.x - mouth.x) - rackHalf.x - shaftHalf;
+            var gapZ = Mathf.Abs(rackCenter.z - mouth.z) - rackHalf.z - shaftHalf;
+            Assert.That(Mathf.Max(gapX, gapZ),
+                Is.GreaterThanOrEqualTo(LastShiftBypassDuct.DeckPropClearance - Tolerance),
+                $"받침대가 선수 승강구 위에 걸친다 — x 여유 {gapX:F2}, z 여유 {gapZ:F2}.");
+
+            // 반대쪽으로 밀려 벽에 붙어도 안 된다. 구멍 옆에 설 자리가 없으면 결과가 같다.
+            Assert.That(mouth.z - shaftHalf,
+                Is.GreaterThan(-LastShiftShipDimensions.HalfWidth),
+                "승강구가 좌현 벽을 파고든다.");
+            Assert.That(LastShiftZoneAtlas.Resolve(mouth), Is.EqualTo(LastShiftZone.Cockpit),
+                "승강구가 조종석 방 밖으로 나갔다.");
         }
 
         [Test]
