@@ -118,9 +118,14 @@ namespace DoodleUp.Tests.EditMode
             // 경로와 갈라져 있어 따로 잰다 — 선체 판은 구획 안이 아니라 배 바로 밑에 있다.
             var ship = NewShip();
             const float hullHeight = LastShiftShipDimensions.CeilingInnerHeight;
-            BakeSlab(ship.transform, "OuterHull_Back",
-                new Vector3(0f, hullHeight * 0.5f, LastShiftShipDimensions.SideWallZ),
-                new Vector3(LastShiftShipDimensions.SideWallSpan, hullHeight, Thickness));
+
+            // 냉각실 바깥 면 판. <b>선체 긴 벽이 아니다</b> — 방사형에는 전장을 덮는 벽이 없고
+            // 방마다 자기 바깥 면을 든다(§7-(a)). 배 루트 바로 밑에 두는 것이 요점이라
+            // 구획 루트 경로가 아니라 선체 경로로 풀린다.
+            var face = LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling);
+            BakeSlab(ship.transform, "OuterHull_CoolingBack",
+                new Vector3(0f, hullHeight * 0.5f, face + Thickness * 0.5f),
+                new Vector3(LastShiftShipDimensions.RoomLengthOf(LastShiftZone.Cooling), hullHeight, Thickness));
 
             var spec = CoolingSpur(LastShiftCompartments.NextModuleIndex);
             Register(spec);
@@ -144,7 +149,7 @@ namespace DoodleUp.Tests.EditMode
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             var root = CompartmentRoot(ship, quarters);
             var decor = BakeSlab(root, "DeckBand",
-                new Vector3(0f, Height * 0.5f, -quarters.WidthZ * 0.5f - Thickness * 0.5f),
+                new Vector3(0f, Height * 0.5f, quarters.WidthZ * 0.5f + Thickness * 0.5f),
                 new Vector3(quarters.LengthX, Height, Thickness));
             Object.DestroyImmediate(decor.GetComponent<Collider>());
 
@@ -362,7 +367,7 @@ namespace DoodleUp.Tests.EditMode
             return index;
         }
 
-        /// <summary>숙소 좌현 면에서 바깥으로 뻗는 칸. 표 테스트의 같은 이름 표본과 같은 자리다.</summary>
+        /// <summary>숙소 바깥(<c>MaxZ</c>) 면에서 뻗는 칸. 표 테스트의 같은 이름 표본과 같은 자리다.</summary>
         private static LastShiftCompartmentSpec SternSpur(int index, int parentIndex)
         {
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
@@ -388,7 +393,7 @@ namespace DoodleUp.Tests.EditMode
                 -1, LastShiftCompartmentAccess.Open);
         }
 
-        /// <summary>숙소 좌현 면의 <paramref name="doorX"/> 에 문을 내는 칸. 겹치지 않게 얕게 눕힌다.</summary>
+        /// <summary>숙소 바깥 면의 <paramref name="doorX"/> 에 문을 내는 칸. 겹치지 않게 얕게 눕힌다.</summary>
         private static LastShiftCompartmentSpec SpurOnQuarters(int index, float doorX)
         {
             var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
@@ -429,14 +434,19 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 이 구획의 좌현(<c>ZMin</c>) 면을 통짜 판으로 굽는다. 씬 빌더
+        /// 이 구획의 <b>바깥(<c>ZMax</c>) 면</b>을 통짜 판으로 굽는다. 씬 빌더
         /// <c>CreateWallWithOpenings</c> 가 구멍 없이 세울 때와 같은 자리·크기다.
+        ///
+        /// <b><c>ZMin</c> 에서 <c>ZMax</c> 로 옮겼다.</b> 중앙 광장 허브에서 숙소가 광장 우현
+        /// 변에 직결하면서 <c>ZMin</c> 면이 광장 쪽(자기 문이 뚫린 면)이 됐고, 표본이 붙는
+        /// 바깥 면은 반대쪽이다 — <see cref="SternSpur"/> 가 이미 <c>MaxZ</c> 에 문을 내고 있으므로
+        /// 판을 <c>ZMin</c> 에 구우면 문 자리가 애초에 안 막혀 이 파일 전체가 아무것도 안 잰다.
         /// </summary>
         private static GameObject BakeCompartmentWall(GameObject ship, in LastShiftCompartmentSpec spec)
         {
             var root = CompartmentRoot(ship, spec);
-            return BakeSlab(root, "Wall_ZMin_0",
-                new Vector3(0f, Height * 0.5f, -spec.WidthZ * 0.5f - Thickness * 0.5f),
+            return BakeSlab(root, "Wall_ZMax_0",
+                new Vector3(0f, Height * 0.5f, spec.WidthZ * 0.5f + Thickness * 0.5f),
                 new Vector3(spec.LengthX + 2f * Thickness, Height, Thickness));
         }
 

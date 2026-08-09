@@ -320,14 +320,8 @@ namespace DoodleUp.Runtime
         // ── RG-1(1) 이탈 ────────────────────────────────────────────────────
 
         /// <summary>
-        /// 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 사슬 거리에 선체 문에서 그 구역
-        /// 반대쪽 끝까지의 스파인을 더한다. 가드레일 <c>(1)</c> 이 실제로 재는 것이 이 값이다.
-        ///
-        /// <b>스파인의 <c>max()</c> 는 조종석·산소실에서만 정확하다.</b> 두 구역은 바깥쪽 끝이
-        /// 선체 끝벽이라 출구가 하나뿐이고 그 하나가 곧 먼 쪽이다. 전력실·냉각실은 양쪽이 다
-        /// 출구라 이 근사가 실제보다 길게 나오는데, 둘 다 <c>5m</c> 라 지금은 영향이 없다.
-        /// 최악이 그쪽으로 옮겨가면 <c>max()</c> 를 출구 중 최소로 바꿔야 한다 —
-        /// <c>docs/rg1-1-measurement-definition-v1.md</c> §1.2.
+        /// 가장 먼 구석에서 자기 구역을 빠져나갈 때까지의 거리. 사슬 거리에 선체 문에서 그 구역의
+        /// 이탈구까지를 더한다. 가드레일 <c>(1)</c> 이 실제로 재는 것이 이 값이다.
         /// </summary>
         public static bool TryEgress(
             IReadOnlyList<LastShiftPlacement> table, in LastShiftPlacement placement,
@@ -343,14 +337,37 @@ namespace DoodleUp.Runtime
             return true;
         }
 
-        /// <summary>선체 문에서 그 구역 반대쪽 끝까지. 이탈과 최장 쌍이 같은 자를 쓰게 하는 자리다.</summary>
-        public static float SpineToZoneEnd(Vector3 hullDoor, LastShiftZone zone) => Mathf.Max(
-            Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMinX(zone)),
-            Mathf.Abs(hullDoor.x - LastShiftShipDimensions.ZoneMaxX(zone)));
+        /// <summary>
+        /// 선체 문에서 그 구역을 <b>벗어나는 압력문</b>까지. 이탈과 최장 쌍이 같은 자를 쓰게
+        /// 하는 자리다.
+        ///
+        /// <b>x 스파인이 여기서 없어졌다.</b> 일자 스파인에서는 구역이 <c>x</c> 밴드라 "구역
+        /// 반대쪽 끝" 이 <c>max(|x - ZoneMinX|, |x - ZoneMaxX|)</c> 였다. 방사형에서는 그 식이
+        /// 두 번 틀린다 — 조종석 구역 경계 상자가 넷의 합집합이라 <c>x</c> 로 <c>23m</c> 를
+        /// 걸치지만 그중 대부분이 다른 방이고, 전력실·냉각실은 같은 <c>x</c> 범위를 <c>z</c>
+        /// 좌우로 나눠 써서 <c>x</c> 차가 이탈과 아무 상관이 없다.
+        ///
+        /// 남은 실제 요건은 <c>RG-1(1)</c> 정의 그대로다: <b>구역 밖으로 나가는 거리</b>.
+        /// 방사형에서 그것은 광장 변 압력문 셋 중 이 구역의 이탈구까지이고, 어느 셋인지는
+        /// <see cref="LastShiftPlazaLayout.IsExitFor"/> 가 고른다 — 고정 발자국을 재는
+        /// <see cref="LastShiftPlazaLayout.WorstEgressMeters(LastShiftZone)"/> 와 같은 자다.
+        /// </summary>
+        public static float SpineToZoneEnd(Vector3 hullDoor, LastShiftZone zone)
+        {
+            var from = new Vector2(hullDoor.x, hullDoor.z);
+            var best = float.MaxValue;
+            foreach (var door in LastShiftPlazaLayout.Doors)
+            {
+                if (!LastShiftPlazaLayout.IsExitFor(door, zone)) continue;
+                best = Mathf.Min(best, Vector2.Distance(from, door.Waypoint));
+            }
+
+            return best == float.MaxValue ? 0f : best;
+        }
 
         /// <summary>
         /// 구역별 최장 이탈과 그 출발점. <c>Index</c> 가 <c>-1</c> 이면 붙은 구획이 아니라
-        /// <b>구역 자체의 <c>x</c> 길이</b>가 최악이라는 뜻이다.
+        /// <b>고정 발자국 자체</b>가 최악이라는 뜻이다.
         ///
         /// 사슬이 끊긴 배치는 세지 않는다 — 그건 이 자가 답할 물음이 아니라
         /// <see cref="Evaluate"/> 가 먼저 물릴 것이다.
@@ -362,7 +379,7 @@ namespace DoodleUp.Runtime
 
             var worst = new (LastShiftZone Zone, float Meters, int Index)[LastShiftZoneAtlas.ZoneCount];
             for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                worst[(int)zone] = (zone, LastShiftShipDimensions.ZoneLength(zone), -1);
+                worst[(int)zone] = (zone, LastShiftPlazaLayout.WorstEgressMeters(zone), -1);
 
             for (var index = 0; index < table.Count; index++)
             {
@@ -381,7 +398,7 @@ namespace DoodleUp.Runtime
         /// 구역별 "같은 구역 안 두 점 사이 최장 거리". <b>가드레일 판정이 아니라 설계 신호다</b> —
         /// 측정법 v1.1 §2.4·§2.5. 한도는 없고 래칫만 있다.
         ///
-        /// 후보 셋 중 최대다. (가) 구역 자체의 <c>x</c> 길이, (나) 배치 안쪽 구석 → 구역 끝
+        /// 후보 셋 중 최대다. (가) 고정 발자국만으로 나오는 최악 이탈, (나) 배치 안쪽 구석 → 구역 끝
         /// (= 이탈값), (다) 같은 구역에 붙은 배치 둘의 안쪽 구석끼리 — 각자의 사슬에 두 선체 문
         /// 사이 스파인을 더한다. (다) 의 스파인을 무엇으로 재는지가 <paramref name="spine"/> 다.
         ///
@@ -396,7 +413,7 @@ namespace DoodleUp.Runtime
 
             var longest = new float[LastShiftZoneAtlas.ZoneCount];
             for (var zone = (LastShiftZone)0; (int)zone < LastShiftZoneAtlas.ZoneCount; zone++)
-                longest[(int)zone] = LastShiftShipDimensions.ZoneLength(zone);
+                longest[(int)zone] = LastShiftPlazaLayout.WorstEgressMeters(zone);
 
             var open = CollectOpen(table, includeImpassable);
             AccumulatePairs(longest, open, spine);
@@ -425,7 +442,7 @@ namespace DoodleUp.Runtime
 
             var longest = new float[LastShiftZoneAtlas.ZoneCount];
             for (var each = (LastShiftZone)0; (int)each < LastShiftZoneAtlas.ZoneCount; each++)
-                longest[(int)each] = LastShiftShipDimensions.ZoneLength(each);
+                longest[(int)each] = LastShiftPlazaLayout.WorstEgressMeters(each);
 
             AccumulatePairs(longest, open, spine);
             return longest[(int)zone];

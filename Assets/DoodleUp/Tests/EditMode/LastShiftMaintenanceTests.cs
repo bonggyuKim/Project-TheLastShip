@@ -374,17 +374,19 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 선체 좌현 면에 문을 얹은 표본 커서 —
+        /// 냉각실 바깥 면(<c>z = +11</c>)에 문을 얹은 표본 커서 —
         /// <see cref="LastShiftPlacementCursorTests"/> 가 쓰는 것과 같은 자리다.
         /// </summary>
         private static LastShiftPlacementCursor HullAttachedCursor(int catalogIndex = 0)
         {
             var cursor = new LastShiftPlacementCursor();
             cursor.Select(catalogIndex);
-            cursor.Rotate(1);
+            cursor.Rotate(3);
 
-            var depth = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(1).WidthZ;
-            cursor.MoveAnchorTo(new Vector3(0f, 0f, -LastShiftShipDimensions.HalfWidth - depth));
+            var footprint = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(3);
+            cursor.MoveAnchorTo(new Vector3(
+                -footprint.LengthX * 0.5f, 0f,
+                LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling)));
             return cursor;
         }
     }

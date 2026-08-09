@@ -28,11 +28,13 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void EveryLabelUsesTheKoreanNameFromTheDesignDoc()
         {
-            // M-2 에서 열하나가 하나로 줄었다. 나머지 열의 한글 명칭은 사라진 것이 아니라
-            // 카탈로그(LastShiftModuleCatalog)로 옮겨갔고, 거기서 표와 통째로 대조된다.
+            // M-2 에서 열하나가 하나로 줄었고, 중앙 광장 허브가 에어록 홀을 부속으로 되살려
+            // 둘이 됐다. 나머지 열의 한글 명칭은 사라진 것이 아니라 카탈로그
+            // (LastShiftModuleCatalog)로 옮겨갔고, 거기서 표와 통째로 대조된다.
             var expected = new (LastShiftCompartment Compartment, string Text)[]
             {
-                (LastShiftCompartment.Quarters, "숙소")
+                (LastShiftCompartment.Quarters, "숙소"),
+                (LastShiftCompartment.AirlockHall, "출정소")
             };
 
             Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
@@ -64,20 +66,26 @@ namespace DoodleUp.Tests.EditMode
         /// M-2 에서 대상이 사라졌다 — 화물칸도 관측 회랑도 배에 없다. 회피 규칙 자체는
         /// <see cref="NoLabelCrossesADoorway"/> 와 아래 검사가 계속 지킨다.
         ///
-        /// <b>숙소 라벨은 문을 피해 서야 한다.</b> 숙소 라벨 벽(좌현 <c>MinZ</c>)에는 구멍이
-        /// 없으므로 안 움직이는 것이 맞고, 그 "안 움직임" 이 규칙 1(비어 있으면 안 옮긴다)의
-        /// 유일한 실사례다.
+        /// <b>숙소 라벨 벽에 문이 생겼다.</b> 중앙 광장 허브에서 숙소가 광장 우현 변에
+        /// 직결하면서 자기 문이 라벨 벽(좌현 <c>MinZ</c> = 광장 쪽 <c>z = +6</c>)으로 올라왔다 —
+        /// 예전에는 선미 끝벽(<c>x</c> 면)이라 이 벽이 통짜였다.
+        ///
+        /// 그래도 라벨은 안 움직인다. 문 중심이 <c>x = 4.5</c> 고 방 중심이 <c>x = 6</c> 이라
+        /// 두 글자 이름표가 문 폭 밖에 이미 서 있기 때문이다 — <b>그것이 규칙 1(겹치지 않으면
+        /// 안 옮긴다)의 실사례다.</b> 문이 있는 벽이라는 것과 라벨이 걸린다는 것은 다른 말이고,
+        /// 그 구분이 무너지면 라벨 좌표가 문이 생길 때마다 흔들린다.
         /// </summary>
         [Test]
-        public void TheQuartersLabelStaysAtTheRoomCenterBecauseItsWallHasNoDoor()
+        public void TheQuartersLabelStaysPutBecauseItsDoorIsClearOfTheLettering()
         {
             var spec = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
 
-            Assert.That(LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec), Is.Empty,
-                "숙소 라벨 벽에 구멍이 생겼다 — 문이 x 면(선미 끝벽)에 있어야 한다.");
+            Assert.That(LastShiftCompartmentLabels.DoorwaysOnLabelWall(spec),
+                Is.EqualTo(new[] { spec.DoorCenter }),
+                "숙소 자기 문이 라벨 벽 구멍으로 안 잡힌다 — 문이 광장 변에서 떨어졌다는 뜻이다.");
             Assert.That(LastShiftCompartmentLabels.ResolveX(spec),
                 Is.EqualTo(spec.CenterX).Within(Tolerance),
-                "비어 있는 벽인데 라벨이 옮겨졌다 — 규칙 1 이 안 지켜진다.");
+                "문이 이름표 폭 밖인데 라벨이 옮겨졌다 — 규칙 1 이 안 지켜진다.");
             Assert.That(LastShiftCompartmentLabels.ResolveY(spec),
                 Is.EqualTo(LastShiftCompartmentLabels.WallLabelY).Within(Tolerance),
                 "비켜 놓을 벽이 넉넉한데 라벨이 인방 위로 올라갔다.");
@@ -162,43 +170,46 @@ namespace DoodleUp.Tests.EditMode
         /// 사라졌다 — 숙소 라벨 벽에는 구멍이 없다.
         ///
         /// <b>그래서 표본을 배치 쪽에서 만든다.</b> 이름표가 붙는 방의 대다수가 이제 자유 배치
-        /// 모듈이므로, 회피 규칙이 실제로 도는 자리도 그쪽이다. 숙소 좌현 면에 모듈을 붙여
-        /// 숙소 라벨 벽 한가운데에 구멍을 내고, 그 라벨이 문을 비켜 서는지를 본다.
+        /// 모듈이므로, 회피 규칙이 실제로 도는 자리도 그쪽이다.
+        ///
+        /// <b>표본을 에어록 홀 좌현 면으로 옮겼다.</b> 숙소 좌현 면은 이제 광장 변이라 그 밖에
+        /// 모듈을 붙이면 광장을 파고들어(<c>OverlapsHullInterior</c>) 라벨과 무관한 사유로
+        /// 물린다. 에어록 홀 좌현 면(<c>z = -12</c>)은 배 바깥이고, 문을 방 중심 <c>x</c> 에
+        /// 내면 라벨 자리와 정면으로 겹친다.
         /// </summary>
         [Test]
         public void ALabelOnAWallWithADoorActuallyMovesAside()
         {
-            var quarters = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
-            var doorCenter = quarters.CenterX;
+            var hall = LastShiftCompartments.Of(LastShiftCompartment.AirlockHall);
+            var doorCenter = hall.CenterX;
 
-            // 숙소 좌현 면(MinZ)에 붙는 모듈. 문이 그 면 한가운데라 라벨 자리와 정면으로 겹친다.
             var child = new LastShiftCompartmentSpec(
                 LastShiftCompartments.NextModuleIndex,
-                quarters.MinX, quarters.MaxX, quarters.MinZ - 4f, quarters.MinZ,
-                LastShiftDoorPlane.AlongZ, quarters.MinZ, doorCenter,
-                quarters.Index, LastShiftCompartmentAccess.Open);
+                hall.MinX, hall.MaxX, hall.MinZ - 4f, hall.MinZ,
+                LastShiftDoorPlane.AlongZ, hall.MinZ, doorCenter,
+                hall.Index, LastShiftCompartmentAccess.Open);
 
             Assert.That(LastShiftCompartments.TryRegister(child, out _, out var verdict), Is.True,
                 $"표본이 판정기에 물린다({verdict.Rejection}) — 라벨 규칙과 무관한 사유다.");
 
             try
             {
-                var doorways = LastShiftCompartmentLabels.DoorwaysOnLabelWall(quarters);
+                var doorways = LastShiftCompartmentLabels.DoorwaysOnLabelWall(hall);
                 Assert.That(doorways, Is.EqualTo(new[] { doorCenter }),
-                    "붙인 모듈의 문이 숙소 라벨 벽 구멍으로 안 잡힌다 — DoorwaysOnLabelWall 이 " +
+                    "붙인 모듈의 문이 에어록 홀 라벨 벽 구멍으로 안 잡힌다 — DoorwaysOnLabelWall 이 " +
                     "모듈까지 안 보고 있다는 뜻이고, 그러면 씬에서 벽이 통짜로 서서 그 문이 막힌다.");
 
-                var x = LastShiftCompartmentLabels.ResolveX(quarters);
-                var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.Quarters);
+                var x = LastShiftCompartmentLabels.ResolveX(hall);
+                var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.AirlockHall);
 
-                Assert.That(Mathf.Abs(x - quarters.CenterX), Is.GreaterThan(Tolerance),
+                Assert.That(Mathf.Abs(x - hall.CenterX), Is.GreaterThan(Tolerance),
                     "문이 라벨 자리 한가운데인데 라벨이 안 움직였다 — 회피 규칙이 안 돌고 있다.");
                 Assert.That(Mathf.Abs(x - doorCenter),
                     Is.GreaterThanOrEqualTo(half + LastShiftZoneDoor.OpeningWidth * 0.5f),
                     "라벨이 옮겨지긴 했는데 아직 문 폭 안이다.");
-                Assert.That(x - half, Is.GreaterThanOrEqualTo(quarters.MinX - Tolerance),
+                Assert.That(x - half, Is.GreaterThanOrEqualTo(hall.MinX - Tolerance),
                     "비키다가 라벨이 방 밖으로 나갔다.");
-                Assert.That(x + half, Is.LessThanOrEqualTo(quarters.MaxX + Tolerance),
+                Assert.That(x + half, Is.LessThanOrEqualTo(hall.MaxX + Tolerance),
                     "비키다가 라벨이 방 밖으로 나갔다.");
             }
             finally

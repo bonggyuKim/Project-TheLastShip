@@ -16,21 +16,27 @@ namespace DoodleUp.Runtime
     }
 
     /// <summary>
-    /// 상태 단서 하나의 자리. <b>x 는 방 중심 상대</b>이고 y·z 는 선체 절대다 —
-    /// 전장이 바뀌면 방은 움직이지만 선체 폭(<c>6m</c>)과 안전대(<c>z ≤ +1.40</c>)는 안 움직인다.
-    /// 셋을 다 상대로 적으면 폭이 안 바뀌었는데도 단서가 z 로 흘러 안전대를 벗어난다.
+    /// 상태 단서 하나의 자리. <b>x·z 가 둘 다 방 중심 상대</b>이고 y 만 갑판 절대다.
+    ///
+    /// <b>z 가 절대에서 상대로 바뀌었다.</b> 일자 스파인에서는 방 넷이 전폭을 다 써서 z 가
+    /// 안 움직였고, 안전대(<c>z ≤ +1.40</c>)도 절대값이라 절대 z 로 적는 것이 맞았다.
+    /// 중앙 광장 허브에서 전력실·냉각실이 <c>z [-11,-6]</c>·<c>z [+6,+11]</c> 로 갈라져
+    /// 나가면서 그 전제가 깨졌다 — 옛 절대값을 그대로 두면 냉각실 서리가 광장 한복판에 선다.
+    ///
+    /// 드레싱 에셋(<c>LastShiftDressingSet</c>)이 이 값을 <c>MetersFromSpaceCenter</c> 앵커로
+    /// 그대로 싣고 있고, 씬은 그 에셋에서 선다 — 그래서 <b>둘이 같은 규약이어야 한다</b>.
     /// </summary>
     public readonly struct LastShiftStateCueSpec
     {
         public LastShiftStateCueSpec(string name, LastShiftZone room, LastShiftStateCue kind,
-            float offsetX, float centerY, float centerZ, Vector3 size)
+            float offsetX, float centerY, float offsetZ, Vector3 size)
         {
             Name = name;
             Room = room;
             Kind = kind;
             OffsetX = offsetX;
             CenterY = centerY;
-            CenterZ = centerZ;
+            OffsetZ = offsetZ;
             Size = size;
         }
 
@@ -42,17 +48,20 @@ namespace DoodleUp.Runtime
         public float OffsetX { get; }
 
         public float CenterY { get; }
-        public float CenterZ { get; }
+
+        /// <summary>방 중심에서의 z 오프셋.</summary>
+        public float OffsetZ { get; }
+
         public Vector3 Size { get; }
 
         public Vector3 Center => new(
-            LastShiftShipDimensions.RoomCenterX(Room) + OffsetX, CenterY, CenterZ);
-
-        /// <summary>이 단서가 차지하는 가장 큰 z. 안전대 판정은 중심이 아니라 이 값으로 한다.</summary>
-        public float MaxZ => CenterZ + Size.z * 0.5f;
+            LastShiftShipDimensions.RoomCenterX(Room) + OffsetX, CenterY,
+            LastShiftShipDimensions.RoomCenterZ(Room) + OffsetZ);
 
         public float MinX => Center.x - Size.x * 0.5f;
         public float MaxX => Center.x + Size.x * 0.5f;
+        public float MinZ => Center.z - Size.z * 0.5f;
+        public float MaxZ => Center.z + Size.z * 0.5f;
     }
 
     /// <summary>
@@ -139,35 +148,41 @@ namespace DoodleUp.Runtime
         public static LastShiftStateCueSpec[] StateCues => stateCues;
 
         /// <summary>
-        /// 냉각실·전력실 상태 단서. 전부 좌현(창 쪽, z 음수)에 몰려 있다 —
-        /// <see cref="StateCueSafeMaxZ"/> 가 상한이므로 음수 z 는 언제나 안전하고,
-        /// 그 자리가 마침 창가라 서리·그을음이 역광으로 실루엣이 선다.
+        /// 냉각실·전력실 상태 단서. <b>전부 문 구멍 정면을 비켜 방 선수 쪽으로 몰려 있다</b> —
+        /// 두 방은 이제 광장 변에 문 하나씩만 내고 있고, 광장에서 그 구멍을 지나는 직선에
+        /// 걸리는 단서는 게이지가 없어도 세 번째 게이지가 된다(§4). 구멍 반폭이 <c>0.8</c> 이라
+        /// <c>x</c> 로 그만큼 비켜난 자리가 안전한 자리이고, 그 판정은
+        /// <see cref="LastShiftDressingRules"/> 의 <c>C1_ExposureCone</c> 이 기계로 한다.
         ///
-        /// 우현(z+)에 하나도 안 둔 것이 의도다. 안전대는 <see cref="StateCueSafeMaxZ"/> 까지
-        /// 열려 있지만 경계에 붙여 두면 방 배치가 조금만 바뀌어도 원뿔 안으로 넘어간다.
+        /// 벽에 붙는 둘은 <b>광장 반대쪽 바깥 벽</b>이다(냉각실 <c>z = +11</c> · 전력실
+        /// <c>z = -11</c>). 문이 난 벽에 붙이면 그 자체로 구멍 정면이 된다.
         ///
-        /// <b>x 오프셋은 방 반치수 안에 들어가야 한다.</b> 전력실·냉각실은 §2.1 분할로 각
-        /// <c>5m</c>(반치수 <c>2.5</c>)뿐이라, 8m 방을 가정하고 적은 오프셋은 그대로 벽을
-        /// 뚫는다. 뒷벽 소품(배전반·열교환기)은 전부 <c>z+</c> 라 여기 단서와 안 겹친다.
+        /// <b>오프셋은 방 반치수 안에 들어가야 한다.</b> 전력실·냉각실은 <c>6 x 5</c> 라
+        /// 반치수가 <c>x 3</c> · <c>z 2.5</c> 뿐이고, 더 넓은 방을 가정하고 적은 오프셋은
+        /// 그대로 벽을 뚫는다.
         /// </summary>
         private static LastShiftStateCueSpec[] BuildStateCues()
         {
-            // 창이 있는 좌현 벽 안쪽 면. 벽에 붙는 단서는 전부 여기 기준이다.
-            var portWall = -LastShiftShipDimensions.HalfWidth;
+            // 광장 반대쪽 바깥 벽 안쪽 면까지의 z 오프셋. 벽 단서 자체의 두께 절반만 안으로
+            // 들어온다. 방 반치수를 발자국에서 뽑는 것이 요점이다 — 리터럴로 두면 두 방이
+            // 깊어질 때 단서만 제자리에 남아 벽에서 떨어진다.
+            const float wallCueHalfThickness = 0.03f;
+            var outerWall =
+                LastShiftPlazaLayout.Of(LastShiftPlazaSpace.CoolingRoom).WidthZ * 0.5f - wallCueHalfThickness;
 
             return new[]
             {
                 new LastShiftStateCueSpec("Frost_Deck", LastShiftZone.Cooling, LastShiftStateCue.Frost,
-                    -1.3f, 0.02f, -2.0f, new Vector3(2.0f, 0.04f, 1.2f)),
-                new LastShiftStateCueSpec("Frost_PortWall", LastShiftZone.Cooling, LastShiftStateCue.Frost,
-                    0.6f, 0.55f, portWall + 0.11f, new Vector3(2.4f, 1.1f, 0.06f)),
+                    -1.9f, 0.02f, -2.0f, new Vector3(2.0f, 0.04f, 1.2f)),
+                new LastShiftStateCueSpec("Frost_StarboardWall", LastShiftZone.Cooling, LastShiftStateCue.Frost,
+                    -1.9f, 0.55f, outerWall, new Vector3(2.0f, 1.1f, 0.06f)),
                 new LastShiftStateCueSpec("Frost_Conduit", LastShiftZone.Cooling, LastShiftStateCue.Frost,
                     -1.6f, 1.90f, -1.6f, new Vector3(1.6f, 0.14f, 0.14f)),
 
                 new LastShiftStateCueSpec("Scorch_Deck", LastShiftZone.Power, LastShiftStateCue.Scorch,
-                    1.2f, 0.02f, -1.8f, new Vector3(1.8f, 0.04f, 1.4f)),
+                    1.9f, 0.02f, -1.8f, new Vector3(1.8f, 0.04f, 1.4f)),
                 new LastShiftStateCueSpec("Scorch_PortWall", LastShiftZone.Power, LastShiftStateCue.Scorch,
-                    -0.8f, 1.20f, portWall + 0.11f, new Vector3(2.0f, 1.4f, 0.06f)),
+                    -1.9f, 1.20f, -outerWall, new Vector3(2.0f, 1.4f, 0.06f)),
                 new LastShiftStateCueSpec("Scorch_Conduit", LastShiftZone.Power, LastShiftStateCue.Scorch,
                     1.5f, 2.20f, -1.0f, new Vector3(1.2f, 0.18f, 0.18f))
             };

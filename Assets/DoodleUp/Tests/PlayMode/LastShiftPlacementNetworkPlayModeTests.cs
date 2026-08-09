@@ -104,7 +104,7 @@ namespace DoodleUp.Tests.PlayMode
 
             var anchor = HullAnchor(LastShiftModuleCatalog.Corridor);
             var placed = placement.ServerPlace(
-                host, LastShiftModuleCatalog.Corridor, 1, anchor.x, anchor.z, -1, true);
+                host, LastShiftModuleCatalog.Corridor, HullTurns, anchor.x, anchor.z, -1, true);
             Assert.That(placed.Accepted, Is.True, placed.Message);
             Assert.That(LastShiftCompartments.ModuleCount, Is.EqualTo(1));
             Assert.That(LastShiftMaintenance.Balance,
@@ -155,11 +155,22 @@ namespace DoodleUp.Tests.PlayMode
         /// 선체 좌현 면에 딱 붙는 최소 모서리. 회전 <c>1</c> 이 기준 자세의 <c>MinX</c> 문을
         /// <c>MaxZ</c> 면으로 보내고, 그 면이 선체를 향한다 — EditMode 배치 테스트와 같은 표본이다.
         /// </summary>
+        /// <summary>
+        /// 냉각실 바깥 면(<c>z = +11</c>)에 문을 얹는 최소 모서리. <b>"선체 좌현 긴 벽" 이
+        /// 없어져서 자리를 옮겼다</b> — 방사형 선체는 사각형 하나가 아니라 고정 공간 일곱이고
+        /// 확장 모듈은 고정 방의 바깥 면에 붙는다(중앙 광장 허브 §7-(a)).
+        /// <see cref="LastShiftPlacementCursorTests"/> 표본과 같은 자리다.
+        /// </summary>
         private static Vector3 HullAnchor(int catalogIndex)
         {
-            var depth = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(1).WidthZ;
-            return new Vector3(0f, 0f, -LastShiftShipDimensions.HalfWidth - depth);
+            var footprint = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(HullTurns);
+            return new Vector3(
+                -footprint.LengthX * 0.5f, 0f,
+                LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling));
         }
+
+        /// <summary>기준 자세의 <c>MinX</c> 문을 <c>MinZ</c> 면으로 보내는 회전. 그 면이 냉각실을 향한다.</summary>
+        private const int HullTurns = 3;
 
         private static IEnumerator WaitFor(
             System.Func<bool> predicate, string phase, float timeoutSeconds = 10f)

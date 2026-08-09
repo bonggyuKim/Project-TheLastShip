@@ -205,7 +205,7 @@ namespace DoodleUp.Tests.EditMode
 
         // ── 확정 ────────────────────────────────────────────────────────────
 
-        /// <summary>선체 좌현 면에 딱 붙인 모듈. 부모가 자동으로 선체(<c>-1</c>)로 잡힌다.</summary>
+        /// <summary>고정 방 바깥 면에 딱 붙인 모듈. 부모가 자동으로 선체(<c>-1</c>)로 잡힌다.</summary>
         [Test]
         public void ModuleOnTheHullFaceAttachesToTheHull()
         {
@@ -282,11 +282,8 @@ namespace DoodleUp.Tests.EditMode
             var first = HullAttachedCursor();
             Assert.That(first.TryCommit(out var firstIndex, out var firstVerdict), Is.True);
 
-            var kind = LastShiftModuleCatalog.At(0);
-            var depth = kind.Footprint.Rotated(1).WidthZ;
-            var second = new LastShiftPlacementCursor();
-            second.Rotate(1);
-            second.MoveAnchorTo(new Vector3(0f, 0f, -LastShiftShipDimensions.HalfWidth - 2f * depth));
+            // 같은 면의 한 겹 바깥. 문이 첫 칸의 바깥 면에 얹히므로 부모가 첫 칸이 된다.
+            var second = HullAttachedCursor(rings: 1);
 
             Assert.That(second.ParentIndex, Is.EqualTo(firstIndex));
             Assert.That(second.Faults, Is.EqualTo(LastShiftPlacementFault.None));
@@ -309,7 +306,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(cursor.ParentIndex, Is.EqualTo((int)LastShiftCompartment.Quarters));
             Assert.That(cursor.Faults & LastShiftPlacementFault.DoorOutsideParentSpan,
                 Is.EqualTo(LastShiftPlacementFault.DoorOutsideParentSpan),
-                "화장실 벽에는 이 문이 안 닿는다");
+                "숙소 벽에는 이 문이 안 닿는다");
 
             cursor.AttachAutomatically();
             Assert.That(cursor.ParentIndex, Is.EqualTo(-1));
@@ -434,18 +431,26 @@ namespace DoodleUp.Tests.EditMode
         // ── 표본 ────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 선체 좌현(<c>z = -HalfWidth</c>) 면에 문을 얹은 커서. 좌현을 고른 것은 정본 구획이
-        /// 하나도 안 붙어 있는 유일한 긴 면이라 표본이 기존 구획과 안 부딪히기 때문이다.
+        /// 냉각실 바깥 면(<c>z = +11</c>)에 문을 얹은 커서.
+        ///
+        /// <b>"선체 좌현 긴 벽" 이 없어져서 자리를 옮겼다.</b> 방사형 선체는 사각형 하나가
+        /// 아니라 고정 공간 일곱이고, 확장 모듈은 <b>고정 방의 바깥 면</b>에 붙는다(§7-(a)).
+        /// 냉각실 바깥 면을 고른 것은 그 밖이 통째로 비어 있어 카탈로그에서 가장 큰 격납고
+        /// (<c>10 x 8</c>)를 대도 부속 둘·다른 방 어느 것과도 안 부딪히는 유일한 면이기 때문이다.
+        ///
+        /// <paramref name="rings"/> 는 같은 면에서 바깥으로 몇 겹째인가다 — 사슬 표본이 쓴다.
         /// </summary>
-        private static LastShiftPlacementCursor HullAttachedCursor(int catalogIndex = 0)
+        private static LastShiftPlacementCursor HullAttachedCursor(int catalogIndex = 0, int rings = 0)
         {
             var cursor = new LastShiftPlacementCursor();
             cursor.Select(catalogIndex);
 
-            // 회전 1 이 기준 자세의 MinX 문을 MaxZ 면으로 보낸다 — 그 면이 선체를 향한다.
-            cursor.Rotate(1);
-            var depth = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(1).WidthZ;
-            cursor.MoveAnchorTo(new Vector3(0f, 0f, -LastShiftShipDimensions.HalfWidth - depth));
+            // 회전 3 이 기준 자세의 MinX 문을 MinZ 면으로 보낸다 — 그 면이 냉각실을 향한다.
+            cursor.Rotate(3);
+            var footprint = LastShiftModuleCatalog.At(catalogIndex).Footprint.Rotated(3);
+            cursor.MoveAnchorTo(new Vector3(
+                -footprint.LengthX * 0.5f, 0f,
+                LastShiftShipDimensions.RoomMaxZ(LastShiftZone.Cooling) + rings * footprint.WidthZ));
             return cursor;
         }
     }

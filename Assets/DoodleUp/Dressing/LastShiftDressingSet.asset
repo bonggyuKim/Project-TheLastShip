@@ -38,7 +38,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 2, y: 0.04, z: 1.2}
     anchorMode: 1
-    anchor: {x: -1.3, y: -2}
+    anchor: {x: -1.9, y: -2}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -48,15 +48,15 @@ MonoBehaviour:
     lightIntensity: 0
     justification: "\uC0C1\uD0DC \uC5F0\uB3D9 \uC774\uD399\uD2B8\uAC00 \uBD99\uC744
       \uC790\uB9AC. \uC9C0\uAE08\uC740 \uC815\uC801 \uD310\uC774\uB2E4."
-  - id: Frost_PortWall
+  - id: Frost_StarboardWall
     space:
       kind: 0
       zone: 2
       compartment: 0
       passage: 0
-    size: {x: 2.4, y: 1.1, z: 0.06}
+    size: {x: 2, y: 1.1, z: 0.06}
     anchorMode: 1
-    anchor: {x: 0.6, y: -2.89}
+    anchor: {x: -1.9, y: 2.47}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -92,7 +92,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 1.8, y: 0.04, z: 1.4}
     anchorMode: 1
-    anchor: {x: 1.2, y: -1.8}
+    anchor: {x: 1.9, y: -1.8}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -110,7 +110,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 2, y: 1.4, z: 0.06}
     anchorMode: 1
-    anchor: {x: -0.8, y: -2.89}
+    anchor: {x: -1.9, y: -2.47}
     bottomY: 0.50000006
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -144,9 +144,9 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-    size: {x: 23.1, y: 0.03, z: 0.3}
+    size: {x: 19, y: 0.03, z: 0.3}
     anchorMode: 1
-    anchor: {x: 0, y: 1.5}
+    anchor: {x: 0, y: 1.925}
     bottomY: 0.005
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -161,9 +161,9 @@ MonoBehaviour:
       zone: 0
       compartment: 0
       passage: 0
-    size: {x: 0.3, y: 0.03, z: 2.55}
+    size: {x: 0.3, y: 0.03, z: 3.85}
     anchorMode: 1
-    anchor: {x: -12, y: -0.22500005}
+    anchor: {x: -9.5, y: 0}
     bottomY: 0.005
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -350,7 +350,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 0.3, y: 0.09, z: 0.2}
     anchorMode: 1
-    anchor: {x: 0, y: 1.5}
+    anchor: {x: 0, y: 1.925}
     bottomY: 0.80999994
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -741,7 +741,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 1.8, y: 0.9, z: 0.088}
     anchorMode: 0
-    anchor: {x: -0.1961, y: 1}
+    anchor: {x: -0.5, y: 1}
     bottomY: 1.26
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1047,7 +1047,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 0.7123, y: 2.1, z: 0.2}
     anchorMode: 0
-    anchor: {x: -0.4537, y: -1}
+    anchor: {x: -0.7, y: -1}
     bottomY: 0
     clearance: 0.16
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1642,7 +1642,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 0.9, y: 0.9, z: 0.5}
     anchorMode: 0
-    anchor: {x: -0.85, y: -1}
+    anchor: {x: -0.85, y: 0.3}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1716,6 +1716,91 @@ MonoBehaviour:
     eulerAngles: {x: 0, y: 0, z: 0}
     prefab: {fileID: 0}
     material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification: 
+  - id: FloorBand
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+    size: {x: 2.7, y: 0.03, z: 0.5}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: bff1ba33b649f71419fd50e0fcd06fa4, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification: 
+  - id: Lamp
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+    size: {x: 1.6, y: 0.16, z: 0.34}
+    anchorMode: 1
+    anchor: {x: 0, y: 0}
+    bottomY: 2.84
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3569927200902818171, guid: 954c052f1b3e7a565c7acca1c99ca1ba, type: 3}
+    material: {fileID: 0}
+    semantics: 64
+    lightIntensity: 0.57
+    justification: 
+  - id: SuitRack_Fore
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+    size: {x: 0.5, y: 2, z: 1.6}
+    anchorMode: 0
+    anchor: {x: -1, y: 0}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification: 
+  - id: ToolBoard_Port
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+    size: {x: 1.6, y: 0.9, z: 0.12}
+    anchorMode: 0
+    anchor: {x: -0.5, y: -1}
+    bottomY: 1
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification: 
+  - id: PrepBench
+    space:
+      kind: 1
+      zone: 0
+      compartment: 1
+      passage: 0
+    size: {x: 2, y: 0.9, z: 0.6}
+    anchorMode: 0
+    anchor: {x: 0.6, y: -0.8}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 639cd5c4b4dadd94fb366837fe9f5c4c, type: 2}
     semantics: 0
     lightIntensity: 0
     justification: 

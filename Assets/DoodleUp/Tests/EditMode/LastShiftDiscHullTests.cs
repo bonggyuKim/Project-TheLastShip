@@ -52,11 +52,13 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void TheDiscIsNowMostlyEmptyAndTheTightestCornerIsTheQuarters()
+        public void TheDiscIsNowMostlyEmptyAndTheTightestCornerIsTheAirlockHall()
         {
             // §27.2 는 타원 치수를 격납고 모서리(-27, +14)에서 뽑았고 여유가 10% 였다.
-            // <b>그 방이 배에서 나갔다.</b> 남은 고정 방은 숙소뿐이고 모서리가 (+23, ±3) 이라
-            // 원반 안이 통째로 빈다 — 여유가 10% 에서 68% 로 뛴다.
+            // <b>그 방이 배에서 나갔다.</b> 남은 고정 부속 둘 중 원반에 가장 가까운 것은
+            // 에어록 홀이고 그 모서리가 (-11, -12) — 중앙 광장 허브 §9.2 가 반지름 19m 를
+            // 뽑을 때 쓴 바로 그 최원 모서리다. 실측 여유 <c>0.266</c>(반지름 제곱비 기준,
+            // 원점에서 16.28m / 19m).
             //
             // <b>타원을 다시 잡지 않는다.</b> 원반 크기는 자유 배치가 쓸 자리이고(맵 개편
             // §3.4 "원반 밖" 판정), 배가 비었다고 껍질을 줄이면 플레이어가 지을 자리를
@@ -66,8 +68,8 @@ namespace DoodleUp.Tests.EditMode
                 .First();
             Assert.That(worst.Compartment, Is.EqualTo(LastShiftCompartment.AirlockHall));
 
-            Assert.That(LastShiftHullShell.FootprintMargin(worst), Is.EqualTo(0.678f).Within(0.005f),
-                "숙소 모서리 여유가 움직였다 — 발자국이나 선미 붙는 자리가 바뀌었다.");
+            Assert.That(LastShiftHullShell.FootprintMargin(worst), Is.EqualTo(0.266f).Within(0.005f),
+                "에어록 홀 모서리 여유가 움직였다 — 발자국이나 원반 반지름이 바뀌었다.");
         }
 
         [Test]

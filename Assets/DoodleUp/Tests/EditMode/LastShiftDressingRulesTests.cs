@@ -34,48 +34,54 @@ namespace DoodleUp.Tests.EditMode
 
         // ── 제약 1 · 노출 원뿔 ───────────────────────────────────────────────────────
 
+        // <b>기준이 절대 z 밴드에서 문 쐐기로 바뀌었다.</b> 옛 상한(StateCueSafeMaxZ = 1.40)은
+        // 전력실↔냉각실 방-방 개구부의 원뿔에서 나온 값인데 그 개구부가 폐지됐고, 두 방이
+        // z 6~11 / -11~-6 대역으로 옮겨가 그 상한을 그대로 두면 단서를 어디에도 못 놓는다.
+        // 지금 재는 것은 "광장에서 문 구멍을 지나는 직선이 이 소품에 닿는가" 이고, 문 평면이
+        // z 라서 자유축은 x 다 — 그래서 아래 표본들이 전부 x 로 움직인다.
+
         [Test]
-        public void StateResponsivePropPastTheSafeBandIsRejected()
+        public void StateResponsivePropInFrontOfTheDoorIsRejected()
         {
-            // 안전대 바로 밖. 중심이 아니라 상자가 차지하는 가장 큰 z 로 걸려야 한다.
+            // 문 구멍 정면. 중심이 아니라 상자가 차지하는 x 구간으로 걸려야 한다.
             var cue = Prop("Frost", LastShiftDressingSpace.Of(LastShiftZone.Cooling),
                 LastShiftDressingSemantics.StateResponsive);
-            cue.anchor = new Vector2(0f, LastShiftDressingRules.StateCueSafeMaxZ + 0.5f);
+            cue.anchor = new Vector2(0f, -1.5f);
 
             Assert.That(HasRule(Validate(cue), "C1_ExposureCone"), Is.True);
         }
 
         [Test]
-        public void StateResponsivePropWhoseEdgeCrossesTheBandIsRejected()
+        public void StateResponsivePropWhoseEdgeCrossesTheWedgeIsRejected()
         {
-            // 중심은 안전대 안이지만 폭이 커서 모서리가 넘어가는 경우. 중심만 재는 검사로
+            // 중심은 쐐기 밖이지만 폭이 커서 모서리가 넘어오는 경우. 중심만 재는 검사로
             // 되돌아가면 이 테스트가 먼저 죽는다.
             var cue = Prop("WideFrost", LastShiftDressingSpace.Of(LastShiftZone.Cooling),
                 LastShiftDressingSemantics.StateResponsive);
-            cue.anchor = new Vector2(0f, LastShiftDressingRules.StateCueSafeMaxZ - 0.1f);
-            cue.size = new Vector3(1f, 0.1f, 1.2f);
+            cue.anchor = new Vector2(-1f, 0f);
+            cue.size = new Vector3(1.2f, 0.1f, 1f);
 
             Assert.That(HasRule(Validate(cue), "C1_ExposureCone"), Is.True);
         }
 
         [Test]
-        public void StateResponsivePropInsideTheSafeBandPasses()
+        public void StateResponsivePropOffToTheSideWallPasses()
         {
             var cue = Prop("Frost", LastShiftDressingSpace.Of(LastShiftZone.Cooling),
                 LastShiftDressingSemantics.StateResponsive);
-            cue.anchor = new Vector2(0f, -2f);
+            cue.anchor = new Vector2(-2f, 0f);
 
             Assert.That(Validate(cue), Is.Empty);
         }
 
         [Test]
-        public void StaticFixturePastTheSafeBandPasses()
+        public void StaticFixtureInFrontOfTheDoorPasses()
         {
             // 제한 대상은 상태에 반응하는 단서뿐이다. 열교환기·배전반은 늘 같은 모습이라
-            // 원뿔 안에 있어도 새는 정보가 없다 — 여기서 걸리기 시작하면 두 방의 설비를
-            // 전부 좌현으로 몰아야 하고 방이 텅 빈다.
+            // 쐐기 안에 있어도 새는 정보가 없다 — 여기서 걸리기 시작하면 두 방의 설비를
+            // 전부 옆벽으로 몰아야 하고 방이 텅 빈다.
             var fixtureProp = Prop("HeatExchanger", LastShiftDressingSpace.Of(LastShiftZone.Cooling));
-            fixtureProp.anchor = new Vector2(0f, 2.5f);
+            fixtureProp.anchor = new Vector2(0f, 1.5f);
 
             Assert.That(Validate(fixtureProp), Is.Empty);
         }
@@ -83,7 +89,7 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void StateResponsivePropInAnUnwatchedZonePasses()
         {
-            // 원뿔은 개구부 2(전력실↔냉각실)의 것이다. 조종석·산소실에는 안 걸린다.
+            // 쐐기는 전력실·냉각실 문의 것이다. 조종석·산소실에는 안 걸린다.
             var cue = Prop("Readout", LastShiftDressingSpace.Of(LastShiftZone.Cockpit),
                 LastShiftDressingSemantics.StateResponsive);
             cue.anchor = new Vector2(0f, 2.5f);

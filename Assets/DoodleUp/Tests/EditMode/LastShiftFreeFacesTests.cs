@@ -63,51 +63,64 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>창이 있는 좌현 긴 벽은 통째로 비어 있다.</b> 정본 구획표가 좌현에 아무것도 안
-        /// 붙였으므로(<c>ServerRoom</c>·<c>Hydroponics</c>·<c>MedBay</c> 전부 우현) 선체
-        /// <c>z = -3</c> 면은 전장 <c>38m</c> 가 한 구간이어야 한다.
+        /// <b>"좌현 긴 벽 한 장" 이 없어졌다.</b> 일자 스파인에서는 선체가 <c>38 x 6</c> 사각형
+        /// 하나라 <c>z</c> 가 작은 쪽 면이 전장 하나였는데, 방사형 선체는 고정 공간 일곱이라
+        /// 좌현을 보는 면이 <b>팔마다 따로</b> 난다. 그래서 여기서 재는 것은 구간 <b>하나</b>가
+        /// 아니라 <b>구간 여섯이 정확히 어디인가</b> 다 — 광장 변에서 부속·방이 먹고 남은 자투리
+        /// 둘과, 팔 넷이 통째로 내놓는 바깥 면 넷이다.
+        ///
+        /// 광장 변 좌현(<c>z = -6</c>)에서 남는 것이 <c>x [3, 6]</c> 하나뿐인 것이 §5.1 의
+        /// "여섯 구간 <c>18m</c>" 을 좌현 쪽에서 본 모습이고, 그 자투리가 사라지면 확장이
+        /// 광장 둘레에서 한 번 더 막힌다.
         /// </summary>
         [Test]
-        public void PortSideHullFaceIsOneUnbrokenRun()
+        public void EveryArmExposesItsOwnPortFace()
         {
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
-            var portSide = faces.Where(face =>
-                face.OwnerIndex == LastShiftFreeFaces.HullOwner &&
-                face.Face == LastShiftModuleFace.MinZ).ToArray();
+            var portSide = faces
+                .Where(face => face.OwnerIndex == LastShiftFreeFaces.HullOwner &&
+                               face.Face == LastShiftModuleFace.MinZ)
+                .Select(face => (face.PlaneCoordinate, face.SpanMin, face.SpanMax))
+                .ToArray();
 
-            Assert.That(portSide.Length, Is.EqualTo(1), "좌현 선체 면이 쪼개졌다");
-            Assert.That(portSide[0].Length, Is.EqualTo(LastShiftShipDimensions.InteriorLength).Within(Tolerance));
+            Assert.That(portSide, Is.EquivalentTo(new[]
+            {
+                (-6f, 3f, 6f),      // 광장 좌현 변에서 에어록 홀·전력실이 먹고 남은 자투리
+                (-3f, -14f, -6f),   // 조종석 방 좌현 면
+                (-3f, 6f, 14f),     // 산소실 좌현 면
+                (-11f, -3f, 3f),    // 전력실 바깥 면
+                (-12f, -11f, -3f),  // 에어록 홀 바깥 면
+                (6f, 6f, 9f)        // 숙소가 냉각실 옆에 남긴 자투리
+            }), "좌현을 보는 자유면 여섯이 §2.2 발자국표와 갈렸다");
         }
 
         /// <summary>
-        /// 우현은 정본 구획 둘(서버/통신실 <c>x -17~-13</c> · 수경재배 <c>x +10~+16</c>)이
-        /// 물고 있으므로 셋으로 갈리고, 그 자리는 <b>정확히 그 둘의 발자국</b>이다.
-        /// 맞닿음만 보는 계산이면 이 시험이 통과하지만, 띠를 안 보면 <c>0.5m</c> 떨어져 선 방
-        /// 뒤에 못 쓰는 굵은 선이 남는다 — 다음 시험이 그것을 건다.
+        /// 우현도 같은 이유로 여섯이다. <b>둘을 따로 재는 것이 의도다</b> — 좌현은 창이 있어
+        /// (§29.4) 붙이는 것이 실루엣을 가리고, 우현은 그런 제약이 없다. 두 쪽 수가 같아야
+        /// "방사형은 어느 쪽으로도 대칭으로 자란다" 가 성립하고, 한쪽만 줄면 확장이 한 방향으로
+        /// 몰린다.
         /// </summary>
         [Test]
-        public void StarboardHullFaceIsOneUnbrokenRunNow()
+        public void EveryArmExposesItsOwnStarboardFace()
         {
-            // <b>M-2 가 이 검사의 부호를 뒤집었다.</b> 예전에는 서버실·수경재배가 우현 벽에
-            // 구워져 있어 그 면이 셋으로 갈렸고, 이 테스트는 "갈린다" 를 지켰다. 둘 다
-            // 카탈로그로 이관되면서 우현 벽은 통짜 한 구간이 됐다.
-            //
-            // 그게 맵 개편 §4.1-3 이 적은 "이관이 자유면을 몇 배로 늘린다" 의 실체다 —
-            // 선체 바깥 둘레가 거의 전부 붙일 수 있는 면이 된다.
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
             var starboard = faces
                 .Where(face => face.OwnerIndex == LastShiftFreeFaces.HullOwner &&
                                face.Face == LastShiftModuleFace.MaxZ)
-                .OrderBy(face => face.SpanMin)
+                .Select(face => (face.PlaneCoordinate, face.SpanMin, face.SpanMax))
                 .ToArray();
 
-            Assert.That(starboard.Length, Is.EqualTo(1), "우현 선체 면이 아직 갈려 있다");
-            Assert.That(starboard[0].SpanMin,
-                Is.EqualTo(-LastShiftShipDimensions.HalfLength).Within(Tolerance));
-            Assert.That(starboard[0].SpanMax,
-                Is.EqualTo(LastShiftShipDimensions.HalfLength).Within(Tolerance));
+            Assert.That(starboard, Is.EquivalentTo(new[]
+            {
+                (6f, -6f, -3f),     // 광장 우현 변에서 냉각실·숙소가 먹고 남은 자투리
+                (3f, -14f, -6f),    // 조종석 방 우현 면
+                (3f, 6f, 14f),      // 산소실 우현 면
+                (11f, -3f, 3f),     // 냉각실 바깥 면
+                (-6f, -11f, -6f),   // 에어록 홀이 광장 변 아래에 남긴 자투리
+                (10f, 3f, 9f)       // 숙소 바깥 면
+            }), "우현을 보는 자유면 여섯이 §2.2 발자국표와 갈렸다");
         }
 
         /// <summary>
@@ -204,9 +217,14 @@ namespace DoodleUp.Tests.EditMode
         public void PlacingAModuleConsumesTheFaceItAteAndOpensItsOwn()
         {
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
-            var before = faces.Single(item =>
-                item.OwnerIndex == LastShiftFreeFaces.HullOwner &&
-                item.Face == LastShiftModuleFace.MinZ);
+
+            // 선체 자유면이 여럿이므로 <see cref="ModulePlacedOnAFreeFacePassesTheVerdict"/> 와
+            // 같은 자리를 고른다 — Single 은 방사형에서 그 순간 터진다.
+            var before = faces
+                .Where(item => item.OwnerIndex == LastShiftFreeFaces.HullOwner &&
+                               item.Face == LastShiftModuleFace.MinZ)
+                .OrderByDescending(item => item.SpanMax - item.SpanMin)
+                .First();
 
             var footprint = LastShiftModuleCatalog.At(LastShiftModuleCatalog.Observatory).Footprint.Rotated(1);
             var cursor = new LastShiftPlacementCursor();
@@ -220,10 +238,13 @@ namespace DoodleUp.Tests.EditMode
 
             LastShiftFreeFaces.Collect(LastShiftCompartments.Specs, faces);
 
+            // <b>평면까지 같이 본다.</b> 방사형에서는 같은 방향 면이 팔마다 있어서 x 구간만
+            // 보면 다른 팔의 면이 "아직 자유면" 으로 잡힌다 — 그건 이 모듈이 안 덮은 벽이다.
             var covered = cursor.Candidate;
             var stillFree = faces.Any(item =>
                 item.OwnerIndex == LastShiftFreeFaces.HullOwner &&
                 item.Face == LastShiftModuleFace.MinZ &&
+                Mathf.Abs(item.PlaneCoordinate - before.PlaneCoordinate) < Tolerance &&
                 item.SpanMin < covered.MaxX - Tolerance &&
                 item.SpanMax > covered.MinX + Tolerance);
 

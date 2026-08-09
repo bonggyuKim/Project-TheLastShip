@@ -19,6 +19,8 @@ namespace DoodleUp.Tests.EditMode
     /// </summary>
     public sealed class LastShiftDressingTests
     {
+        private const float Tolerance = 0.0001f;
+
         private static LastShiftCompartment[] AllCompartments =>
             Enum.GetValues(typeof(LastShiftCompartment)).Cast<LastShiftCompartment>().ToArray();
 
@@ -26,41 +28,69 @@ namespace DoodleUp.Tests.EditMode
             Enum.GetValues(typeof(LastShiftZone)).Cast<LastShiftZone>().ToArray();
 
         [Test]
-        public void StateCuesStayOutOfTheOpeningExposureCone()
+        public void StateCuesStayOutOfTheDoorwayWedge()
         {
-            // 중심이 아니라 단서가 차지하는 가장 큰 z 로 본다 — 중심이 안전대 안이어도 폭이
-            // 크면 모서리가 원뿔로 넘어간다.
+            // <b>절대 z 밴드가 문 쐐기로 바뀌었다.</b> 옛 상한(StateCueSafeMaxZ)은 전력실↔냉각실
+            // 방-방 개구부의 원뿔에서 나온 값인데 그 개구부가 §3.4 에서 폐지됐다. 지금 남은
+            // 요건은 "광장에서 문 구멍을 지나는 직선이 이 단서에 닿는가" 이고, 두 방의 문은
+            // z 평면이라 자유축이 x 다.
+            //
+            // 중심이 아니라 단서가 차지하는 x 구간으로 본다 — 중심이 쐐기 밖이어도 폭이 크면
+            // 모서리가 넘어온다.
+            var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
             foreach (var cue in LastShiftDressing.StateCues)
-                Assert.That(cue.MaxZ, Is.LessThanOrEqualTo(LastShiftDressing.StateCueSafeMaxZ),
-                    $"{cue.Name} 이 개구부 노출 원뿔로 넘어간다 — 상태에 반응하는 단서는 " +
-                    $"z ≤ {LastShiftDressing.StateCueSafeMaxZ} 안에만 둘 수 있다(§19.4/§19.7).");
+            {
+                var door = LastShiftPlazaLayout.DoorOf(LastShiftPlazaLayout.RoomOf(cue.Room));
+                Assert.That(door.PlaneIsX, Is.False,
+                    $"{cue.Room} 문이 x 평면으로 옮겨갔다 — 이 검사의 자유축이 x 라는 전제가 깨진다.");
+
+                Assert.That(
+                    cue.MaxX <= door.Center - half + Tolerance ||
+                    cue.MinX >= door.Center + half - Tolerance, Is.True,
+                    $"{cue.Name} 이 {cue.Room} 문 구멍 정면" +
+                    $"([{door.Center - half:0.##}, {door.Center + half:0.##}])에 걸친다 — " +
+                    "광장에서 읽히면 게이지가 없어도 세 번째 게이지가 된다(§4).");
+            }
         }
 
         [Test]
         public void StateCuesStayInsideTheirOwnRoom()
         {
             // 방 밖으로 새면 서리가 전력실에서, 그을음이 냉각실에서 보인다 — 상태가 엉뚱한
-            // 방의 정보로 읽히는 것이 원뿔 위반보다 나쁘다.
+            // 방의 정보로 읽히는 것이 쐐기 위반보다 나쁘다.
+            //
+            // <b>z 도 같이 본다.</b> 일자 스파인에서는 방 넷이 전폭을 다 써서 z 를 볼 것이
+            // 없었는데, 전력실·냉각실이 z 로 갈라지면서 z 가 방을 가르는 축이 됐다.
             foreach (var cue in LastShiftDressing.StateCues)
             {
                 Assert.That(cue.MinX, Is.GreaterThanOrEqualTo(LastShiftShipDimensions.RoomMinX(cue.Room)),
                     $"{cue.Name} 이 {cue.Room} 선수 쪽 벽을 넘는다.");
                 Assert.That(cue.MaxX, Is.LessThanOrEqualTo(LastShiftShipDimensions.RoomMaxX(cue.Room)),
                     $"{cue.Name} 이 {cue.Room} 선미 쪽 벽을 넘는다.");
+                // <b>z 는 중심만 본다</b> — 검증기(<c>R1_Bounds</c>)와 같은 규약이다. 문턱에
+                // 걸치는 갑판 데칼과 벽에 박히는 판은 상자가 경계를 넘는 것이 정상이라,
+                // 상자 전체를 재면 정상 단서가 전부 걸린다.
+                Assert.That(cue.Center.z, Is.GreaterThanOrEqualTo(LastShiftShipDimensions.RoomMinZ(cue.Room) - Tolerance),
+                    $"{cue.Name} 중심이 {cue.Room} 좌현 벽 밖이다.");
+                Assert.That(cue.Center.z, Is.LessThanOrEqualTo(LastShiftShipDimensions.RoomMaxZ(cue.Room) + Tolerance),
+                    $"{cue.Name} 중심이 {cue.Room} 우현 벽 밖이다.");
             }
         }
 
         [Test]
         public void StateCuesStayInsideTheHull()
         {
-            const float halfWidth = LastShiftShipDimensions.HalfWidth;
             foreach (var cue in LastShiftDressing.StateCues)
             {
-                var minZ = cue.CenterZ - cue.Size.z * 0.5f;
-                Assert.That(minZ, Is.GreaterThanOrEqualTo(-halfWidth - 0.0001f),
-                    $"{cue.Name} 이 좌현 벽 밖으로 나간다.");
-                Assert.That(cue.CenterY - cue.Size.y * 0.5f, Is.GreaterThanOrEqualTo(-0.0001f),
+                Assert.That(LastShiftHullShell.InscribedContains(cue.MinX, cue.MinZ), Is.True,
+                    $"{cue.Name} 의 선수·좌현 모서리가 원반 밖이다.");
+                Assert.That(LastShiftHullShell.InscribedContains(cue.MaxX, cue.MaxZ), Is.True,
+                    $"{cue.Name} 의 선미·우현 모서리가 원반 밖이다.");
+                Assert.That(cue.CenterY - cue.Size.y * 0.5f, Is.GreaterThanOrEqualTo(-Tolerance),
                     $"{cue.Name} 이 갑판 아래로 내려간다.");
+                Assert.That(cue.CenterY + cue.Size.y * 0.5f,
+                    Is.LessThanOrEqualTo(LastShiftShipDimensions.CeilingInnerHeight + Tolerance),
+                    $"{cue.Name} 이 천장을 뚫는다.");
             }
         }
 

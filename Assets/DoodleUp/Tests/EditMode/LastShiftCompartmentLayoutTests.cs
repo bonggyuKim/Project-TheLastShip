@@ -27,7 +27,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var values = Enum.GetValues(typeof(LastShiftCompartment)).Cast<LastShiftCompartment>().ToArray();
             Assert.That(values.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
-                "M-2 이후 고정 표는 숙소 하나다. 개수가 바뀌면 표와 enum 중 하나가 뒤처진 것이다.");
+                "중앙 광장 허브 이후 고정 표는 부속 둘이다. 개수가 바뀌면 표와 enum 중 하나가 뒤처진 것이다.");
             foreach (var value in values)
                 Assert.That(LastShiftCompartments.Of(value).Compartment, Is.EqualTo(value),
                     $"{value} 의 spec 이 자기 자신을 안 가리킨다 — 표 index 가 어긋났다.");
@@ -93,7 +93,7 @@ namespace DoodleUp.Tests.EditMode
             {
                 if (LastShiftCompartments.ConnectsToHull(spec))
                 {
-                    AssertDoorMeetsHull(spec);
+                    AssertDoorMeetsThePlaza(spec);
                     continue;
                 }
 
@@ -119,20 +119,30 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
-        private static void AssertDoorMeetsHull(LastShiftCompartmentSpec spec)
+        /// <summary>
+        /// <b>"부모가 없다" 가 이제 "광장 변에 직결" 이다</b>(중앙 광장 허브 §2.3). 일자
+        /// 스파인에서는 그 자리가 선체 내면(<c>HalfLength</c>·<c>HalfWidth</c>)이었는데,
+        /// 방사형에서 그 두 값은 배를 덮는 사각형이 아니라 <b>고정 발자국 경계 상자</b>라
+        /// 벽이 서 있는 자리가 아니다 — 숙소 문은 <c>z = +6</c>(광장 우현 변)이고 경계 상자
+        /// 가장자리 <c>z = +12</c> 와 아무 관계가 없다.
+        /// </summary>
+        private static void AssertDoorMeetsThePlaza(LastShiftCompartmentSpec spec)
         {
-            var plane = spec.DoorPlane == LastShiftDoorPlane.AlongX
-                ? LastShiftShipDimensions.HalfLength
-                : LastShiftShipDimensions.HalfWidth;
-            Assert.That(Mathf.Abs(Mathf.Abs(spec.DoorPlaneCoordinate) - plane), Is.LessThan(Tolerance),
-                $"{spec.Compartment} 는 선체에 직접 붙는데 문 평면이 선체 내면과 다르다.");
+            var (near, far) = spec.DoorPlane == LastShiftDoorPlane.AlongX
+                ? (LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX)
+                : (LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ);
 
-            // 선체에 붙는 문은 선체 내부 범위 안에서 열려야 한다. 끝벽 밖이나 긴 벽 밖으로
-            // 나가면 씬 빌더가 판을 못 뚫고, 뚫어도 방이 아니라 솔리드 쪽으로 열린다.
+            Assert.That(
+                Mathf.Abs(spec.DoorPlaneCoordinate - near) < Tolerance ||
+                Mathf.Abs(spec.DoorPlaneCoordinate - far) < Tolerance, Is.True,
+                $"{spec.Compartment} 는 광장에 직결인데 문 평면이 광장 변과 다르다.");
+
+            // 광장 변에 나는 문은 그 변 안에서 열려야 한다. 변 밖으로 나가면 씬 빌더가 뚫을
+            // 판이 없고, 뚫어도 광장이 아니라 팔 사이 빈 사분면 쪽으로 열린다.
             var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
             var (freeMin, freeMax) = spec.DoorPlane == LastShiftDoorPlane.AlongX
-                ? (-LastShiftShipDimensions.HalfWidth, LastShiftShipDimensions.HalfWidth)
-                : (-LastShiftShipDimensions.HalfLength, LastShiftShipDimensions.HalfLength);
+                ? (LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ)
+                : (LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX);
             Assert.That(spec.DoorCenter - half, Is.GreaterThanOrEqualTo(freeMin - Tolerance));
             Assert.That(spec.DoorCenter + half, Is.LessThanOrEqualTo(freeMax + Tolerance));
         }
@@ -193,8 +203,12 @@ namespace DoodleUp.Tests.EditMode
                 .Where(spec => spec.Access == LastShiftCompartmentAccess.Open)
                 .Select(spec => spec.Compartment)
                 .ToArray();
-            Assert.That(open, Is.EquivalentTo(new[] { LastShiftCompartment.Quarters }),
-                "배와 함께 태어나는 방은 숙소 하나이고 그 하나는 언제나 열려 있다.");
+            Assert.That(open, Is.EquivalentTo(new[]
+                {
+                    LastShiftCompartment.Quarters,
+                    LastShiftCompartment.AirlockHall
+                }),
+                "배와 함께 태어나는 부속은 숙소·에어록 홀 둘이고 둘 다 언제나 열려 있다.");
 
             Assert.That(
                 LastShiftCompartments.FixedSpecs.Any(

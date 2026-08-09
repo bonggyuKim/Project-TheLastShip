@@ -318,9 +318,9 @@ namespace DoodleUp.Editor
         // ── 상태 단서 ────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 냉각실·전력실 상태 단서. 좌표는 <see cref="LastShiftDressing.StateCues"/> 에 있던
-        /// 값 그대로다 — 이 값들이 §19.7 안전대와의 여유가 곧 설계라 단위좌표로 바꾸지 않고
-        /// 미터 앵커로 옮긴다. 방 중심 기준이므로 전장이 바뀌어도 방을 따라간다.
+        /// 냉각실·전력실 상태 단서. 좌표는 <see cref="LastShiftDressing.StateCues"/> 값 그대로다 —
+        /// 문 구멍 정면과의 여유가 곧 설계라 단위좌표로 바꾸지 않고 미터 앵커로 옮긴다.
+        /// 두 축 다 방 중심 기준이므로 발자국이 움직여도 방을 따라간다.
         /// </summary>
         private static void AddStateCues(List<LastShiftDressingProp> props)
         {
@@ -332,7 +332,7 @@ namespace DoodleUp.Editor
                     id = cue.Name,
                     space = LastShiftDressingSpace.Of(cue.Room),
                     anchorMode = LastShiftDressingAnchorMode.MetersFromSpaceCenter,
-                    anchor = new Vector2(cue.OffsetX, cue.CenterZ),
+                    anchor = new Vector2(cue.OffsetX, cue.OffsetZ),
                     size = cue.Size,
                     bottomY = cue.CenterY - cue.Size.y * 0.5f,
                     material = material,

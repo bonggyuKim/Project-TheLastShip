@@ -61,25 +61,42 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void TheJudgeReadsTheSameEgressTheGuardrailTestsPin()
+        public void TheJudgeReadsTheSameEgressThePlazaLayoutPins()
         {
-            // 자 하나 대조. LastShiftRg1GuardrailTests 가 래칫으로 박아 둔 값을 판정기로 다시
-            // 읽는다 — 같은 수가 나와야 두 파일이 같은 자를 쓰고 있다는 것이 여기서도 보인다.
+            // 자 하나 대조. 좌표 정본(LastShiftPlazaLayout)이 발자국으로 재는 이탈을 판정기가
+            // 사슬로 다시 읽는다 — 같은 수가 나와야 두 파일이 같은 자를 쓴다는 것이 보인다.
             //
-            // <b>M-2 로 대상이 셋에서 하나가 됐다.</b> 예전 셋(서버/통신실·수경재배·의무실)은
-            // 기항 개방 대상이었고, 그 계열이 폐지되면서(조항 K-2) 배에 남은 것은 숙소뿐이다.
+            // <b>부속 둘 다 광장 직결이라 사슬 깊이가 1 이다</b>(§2.3). 그래서 판정기 값은
+            // "가장 먼 구석 → 자기 문 → 이탈 압력문" 이고, 그것이 정본이 그 발자국에 대해
+            // 재는 값과 한 자도 안 달라야 한다.
+            //
+            // <b>구역 귀속이 산소실에서 조종석으로 옮겨왔다.</b> 예전 숙소는 산소실 선미
+            // 끝벽에 붙어 있었고, 지금은 광장 우현 변이라 조항 S-1 대로 조종석 구역이다.
             var table = CanonicalTable();
+            var expected = new (LastShiftCompartment Compartment, float Meters)[]
+            {
+                (LastShiftCompartment.AirlockHall, 13.35f),
+                (LastShiftCompartment.Quarters, 10.52f)
+            };
 
-            Assert.That(
-                LastShiftPlacementRules.TryEgress(
-                    table, table[(int)LastShiftCompartment.Quarters], out var actual, out var zone),
-                Is.True, "숙소 사슬이 선체에 안 닿는다.");
+            foreach (var (compartment, meters) in expected)
+            {
+                Assert.That(
+                    LastShiftPlacementRules.TryEgress(
+                        table, table[(int)compartment], out var actual, out var zone),
+                    Is.True, $"{compartment} 사슬이 광장에 안 닿는다.");
 
-            Assert.That(actual, Is.EqualTo(19.00f).Within(Tolerance),
-                $"숙소 이탈이 {actual:F2}m 다 — LastShiftRg1GuardrailTests 의 래칫 19.00m 와 " +
-                "갈렸다. 두 파일 중 하나만 갱신됐다는 뜻이다.");
-            Assert.That(zone, Is.EqualTo(LastShiftZone.LifeSupport),
-                "숙소 구역 귀속이 바뀌었다 — 사슬 뿌리의 선체 문이 옮겨간 것이다.");
+                Assert.That(actual, Is.EqualTo(meters).Within(Tolerance),
+                    $"{compartment} 이탈이 {actual:F2}m 로 §9.4 실측 {meters:F2}m 에서 움직였다 — " +
+                    "판정기와 좌표 정본 중 하나만 갱신됐다는 뜻이다.");
+                Assert.That(zone, Is.EqualTo(LastShiftZone.Cockpit),
+                    $"{compartment} 구역 귀속이 바뀌었다 — 사슬 뿌리의 광장 문이 옮겨간 것이다.");
+                Assert.That(actual,
+                    Is.LessThanOrEqualTo(
+                        LastShiftPlazaLayout.WorstEgressMeters(LastShiftZone.Cockpit) + Tolerance),
+                    $"{compartment} 이탈이 구역 최악(LastShiftRg1GuardrailTests 의 래칫 17.03m)을 " +
+                    "넘는다 — 그러면 그쪽 래칫이 먼저 걸렸어야 한다.");
+            }
         }
 
         [Test]
@@ -311,29 +328,30 @@ namespace DoodleUp.Tests.EditMode
             // 자유 배치 확장 검토 조항 F-1. 모듈이 어느 구역 오버레이에 등록되는지는 <b>사슬
             // 뿌리가 선체에 내는 문</b>이 정한다 — 모듈 자신이 어디 떠 있는지가 아니다. 둘을
             // 섞으면 문을 닫아도 격리가 안 되는 배가 나온다(타당성 검토 §11-1).
+            // 조종석 방 선수 면(x = -14)에 문을 내고 배 밖으로 뻗는 뿌리.
+            var bowFace = LastShiftShipDimensions.RoomMinX(LastShiftZone.Cockpit);
             var bowRoot = new LastShiftPlacement(
-                -LastShiftShipDimensions.HalfLength - 6f, -LastShiftShipDimensions.HalfLength,
-                -2f, 2f,
-                new Vector3(-LastShiftShipDimensions.HalfLength, 0f, 0f), -1);
+                bowFace - 6f, bowFace, -2f, 2f, new Vector3(bowFace, 0f, 0f), -1);
 
-            // 뿌리에 붙되 몸통은 선미 쪽으로 멀리 나간 모듈. 자기 x 로 읽으면 산소실이다.
+            // 뿌리에 붙되 <b>몸통을 산소실 발자국 안에 놓는다</b>. 실제 배치라면 선체 침범으로
+            // 물리겠지만 여기서 재는 것은 구역 귀속 하나이고, 방사형에서 "자기 좌표로 읽으면
+            // 다른 구역" 을 만들려면 몸통이 실제로 다른 방 발자국 안에 있어야 한다 — 발자국
+            // 밖은 전부 조종석 구역으로 떨어지므로(§6.2) 옛 표본처럼 배 밖에 두면 안 갈린다.
+            var lifeSupport = LastShiftShipDimensions.RoomCenter(LastShiftZone.LifeSupport);
             var sternBody = new LastShiftPlacement(
-                LastShiftShipDimensions.HalfLength + 4f, LastShiftShipDimensions.HalfLength + 8f,
-                20f, 24f,
-                new Vector3(-LastShiftShipDimensions.HalfLength - 3f, 0f, 2f), 0);
+                lifeSupport.x - 2f, lifeSupport.x + 2f, lifeSupport.y - 2f, lifeSupport.y + 2f,
+                new Vector3(bowFace - 3f, 0f, 0f), 0);
 
             var table = new[] { bowRoot, sternBody };
             var verdict = LastShiftPlacementRules.Evaluate(table, sternBody, ignoreIndex: 1);
 
-            var byOwnPosition = LastShiftZoneAtlas.Resolve(
-                new Vector3(LastShiftShipDimensions.HalfLength + 6f, 0f, 22f));
+            var byOwnPosition = LastShiftZoneAtlas.Resolve(new Vector3(lifeSupport.x, 0f, lifeSupport.y));
 
             Assert.That(byOwnPosition, Is.EqualTo(LastShiftZone.LifeSupport),
-                "표본이 잘못됐다 — 몸통이 산소실 x 에 안 놓였으면 이 테스트가 아무것도 안 가른다.");
+                "표본이 잘못됐다 — 몸통이 산소실 발자국 안에 안 놓였으면 이 테스트가 아무것도 안 가른다.");
             Assert.That(verdict.Zone, Is.EqualTo(LastShiftZone.Cockpit),
                 "구역 귀속이 사슬 뿌리가 아니라 모듈 자기 좌표를 따랐다 — 조항 F-1 위반이다.");
-            Assert.That(verdict.HullDoor.x,
-                Is.EqualTo(-LastShiftShipDimensions.HalfLength).Within(Tolerance));
+            Assert.That(verdict.HullDoor.x, Is.EqualTo(bowFace).Within(Tolerance));
         }
 
         [Test]

@@ -134,9 +134,14 @@ namespace DoodleUp.Tests.EditMode
         {
             // 프리팹은 문을 MinX 에 두고 z 로 길게 누워 있고, 표의 칸은 문을 MinZ 에 두고 x 로
             // 길게 눕는다. 270° 에서 MinX 가 MinZ 로 가고 발자국의 x·z 가 맞바뀐다.
+            //
+            // <b>문 오프셋이 <c>0</c> 인 것이 표본 조건이다.</b> 냉각실 바깥 면에 붙는 칸은
+            // 문이 면 한가운데(<c>DoorCenter == CenterX</c>)라, 프리팹이 그것과 다른 오프셋을
+            // 선언하면 회전으로는 절대 못 맞춘다 — 옛 <c>-4</c> 는 방 폭이 그만큼 넓던
+            // 일자 스파인 표본의 값이고 지금은 DoorFits 부터 걸린다.
             var spec = CoolingSpur(LastShiftCompartments.FixedCount, link: 0, parentIndex: -1);
             var sideways = new LastShiftModuleFootprint(
-                spec.WidthZ, spec.LengthX, LastShiftModuleFace.MinX, -4f);
+                spec.WidthZ, spec.LengthX, LastShiftModuleFace.MinX, 0f);
 
             Assert.That(LastShiftModuleAssembler.TryFit(sideways, spec, out var turns, out var fit),
                 Is.True, $"눕힌 프리팹이 안 맞았다({fit}).");
@@ -279,7 +284,7 @@ namespace DoodleUp.Tests.EditMode
 
             // 눕혀 만든 프리팹을 준다. 조립기가 270° 를 골라야 문이 부모 쪽을 본다.
             var sideways = SpawnPrefab("Sideways", spec.WidthZ, spec.LengthX,
-                LastShiftModuleFace.MinX, -4f);
+                LastShiftModuleFace.MinX, 0f);
             var root = Build(spec, Palette(sideways));
 
             var shell = Child(root, "Shell");
