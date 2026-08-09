@@ -589,6 +589,24 @@ namespace DoodleUp.Runtime
             return true;
         }
 
+        /// <summary>
+        /// 모듈 칸 하나가 어느 카탈로그 항목으로 섰는가. 표는 종류를 안 들고 오버레이가 드는데
+        /// (<see cref="LastShiftPlacedModule.CatalogIndex"/>), 그 둘을 잇는 핸들 배열이 여기
+        /// 비공개라 밖에서는 종류를 읽을 길이 없었다.
+        ///
+        /// <b>복제가 이 문으로 종류를 싣는다</b>(<see cref="LastShiftPlacementReplication"/>) —
+        /// 종류를 안 실으면 클라이언트에 선 모듈은 발자국만 같고 효과가 하나도 안 붙는다.
+        /// 고정 구획과 범위 밖은 <see cref="LastShiftPlacedModule.NoCatalogIndex"/> 다.
+        /// </summary>
+        public static int CatalogIndexOf(int index)
+        {
+            if (index < FixedCount || index >= specs.Length) return LastShiftPlacedModule.NoCatalogIndex;
+
+            return LastShiftPlacedModules.TryGet(moduleHandles[index - FixedCount], out var module)
+                ? module.CatalogIndex
+                : LastShiftPlacedModule.NoCatalogIndex;
+        }
+
         /// <summary>모듈을 전부 뺀다. 씬을 다시 세울 때와 테스트가 부른다.</summary>
         public static void ClearModules()
         {

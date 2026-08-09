@@ -176,6 +176,25 @@ namespace DoodleUp.Runtime
             return LastTransition;
         }
 
+        /// <summary>
+        /// 서버가 정한 항해 진행을 그대로 앉힌다. <b>클라이언트 전용이고 원장을 안 건드린다</b> —
+        /// 여기서 <see cref="SettleSegment"/> 를 다시 돌리면 <see cref="LastShiftMaintenance.ArriveAtPort"/>
+        /// 가 클라이언트에서 한 번 더 돌아 잔액이 서버보다 커진다. 원장은 원장대로
+        /// <see cref="LastShiftMaintenance.ApplyNetworkLedger"/> 가 받는다.
+        ///
+        /// 시뮬레이션이 서버에만 도는 것과 같은 이유다 — 클라이언트의
+        /// <see cref="LastShiftSandboxController"/> 는 <c>enabled = IsServer</c> 로 꺼져 있어서
+        /// 구간 판정 자체를 안 내고, 그래서 이 값들은 받아 적는 것 말고 나올 데가 없다.
+        /// </summary>
+        public static void ApplyNetworkState(
+            int segment, LastShiftSegmentTransition transition, int latches, bool running)
+        {
+            SegmentIndex = Mathf.Clamp(segment, FirstSegment, SegmentCount);
+            LastTransition = transition;
+            LastLatchCount = Mathf.Clamp(latches, 0, LastShiftMaintenance.MaxLatches);
+            IsRunning = running;
+        }
+
         /// <summary>전부 되돌린다. 원장까지 비운다 — 테스트와 플레이 진입이 부른다.</summary>
         public static void Clear()
         {

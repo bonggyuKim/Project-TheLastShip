@@ -68,8 +68,24 @@ namespace DoodleUp.Runtime
         /// 주인을 무시하고 푼다. <b>호스트 전용이고, 잡은 사람이 나간 자리를 위한 것이다</b> —
         /// 접속이 끊긴 클라이언트가 커서를 들고 나가면 아무도 배치를 못 하게 되고, 그 상태는
         /// 기항을 벗어날 방법이 없다.
+        ///
+        /// <see cref="LastShiftNetworkPlacement"/> 가 <c>OnClientDisconnectCallback</c> 에서
+        /// 이것을 부른다 — 그 배선이 붙으면서 이 함수의 "호스트 전용" 이 주석이 아니라 실제
+        /// 경로가 됐다.
         /// </summary>
         public static void Revoke() => HolderId = NoHolder;
+
+        /// <summary>
+        /// 서버가 정한 주인을 그대로 앉힌다. <b>클라이언트 전용 복원 문이다</b> —
+        /// <see cref="LastShiftSandboxController.ApplyNetworkSnapshot"/> 와 같은 규약이고,
+        /// 여기로 들어오는 값은 이미 서버에서 <see cref="TryClaim"/> 을 통과한 결과다.
+        ///
+        /// <b>여기서 다시 판정하지 않는다.</b> 클라이언트가 자기 판정으로 주인을 거르면
+        /// 서버가 넘긴 커서를 받는 쪽만 화면이 안 열리는, 어느 쪽 화면에도 안 보이는 어긋남이
+        /// 생긴다. 권위는 서버 하나다.
+        /// </summary>
+        public static void ApplyNetworkHolder(int clientId) =>
+            HolderId = clientId < 0 ? NoHolder : clientId;
 
         /// <summary>
         /// 정적 상태라 초기화 훅이 있어야 한다 — 도메인 리로드를 끈 에디터에서는 플레이를

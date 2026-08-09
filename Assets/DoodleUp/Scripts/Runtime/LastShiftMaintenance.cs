@@ -243,6 +243,36 @@ namespace DoodleUp.Runtime
             return true;
         }
 
+        // ── 네트워크 복원 ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// 서버가 보낸 원장 숫자를 그대로 앉힌다. <b>클라이언트 전용이고 여기서 산수를 하지
+        /// 않는다</b> — 수입식(<see cref="IncomeFor"/>)을 클라이언트에서 다시 돌리면 래치 수가
+        /// 한 tick 어긋난 순간 두 화면의 잔액이 갈리고, 그 차이는 배치를 눌러 봐야 드러난다.
+        /// </summary>
+        public static void ApplyNetworkLedger(int balance, int portIndex, int lastIncome, int lastCarried)
+        {
+            Balance = balance;
+            PortIndex = portIndex;
+            LastPortIncome = lastIncome;
+            LastCarriedOver = lastCarried;
+        }
+
+        /// <summary>
+        /// 서버가 보낸 배치 기록을 통째로 갈아 끼운다. 환수 힌트(<see cref="RefundFor"/>)가
+        /// 기항 회차를 보므로 잔액만 맞춰서는 클라이언트가 "뜯으면 얼마" 를 못 적는다.
+        ///
+        /// <b>기록은 표 모듈 자리의 앞부분이다.</b> <see cref="TryChargeModule"/> 이 꼬리에만
+        /// 붙이므로 기록 수는 언제나 모듈 수 이하이고, 그 앞뒤가 뒤집힌 입력은 이미 서버에서
+        /// 갈린 상태라 여기서 메워 봐야 어느 쪽이 옳은지 모른다.
+        /// </summary>
+        public static void ApplyNetworkPurchases(IReadOnlyList<LastShiftMaintenancePurchase> records)
+        {
+            purchases.Clear();
+            if (records == null) return;
+            for (var index = 0; index < records.Count; index++) purchases.Add(records[index]);
+        }
+
         // ── 초기화 ──────────────────────────────────────────────────────────
 
         /// <summary>전부 되돌린다. 항해 시작과 테스트가 부른다.</summary>
