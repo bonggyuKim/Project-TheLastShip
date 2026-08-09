@@ -193,11 +193,14 @@ namespace DoodleUp.Tests.PlayMode
                            $"roles={string.Join(",", all.Select(i => $"{i.Grabbable?.Role}:{(i.NetworkObject != null && i.NetworkObject.IsSpawned ? 1 : 0)}"))} scenes={SceneManager.sceneCount}";
                 });
             // Tether 가 시작 사거리 안에 놓이면서 spawn 조준에는 Tether 가 먼저 걸린다.
-            // 이 테스트가 보려는 것은 "멀리 있는 대상은 접근이 필요하다"는 안내이므로,
+            // 이 테스트가 보려는 것은 "사거리 밖에서는 아무것도 안 뜬다" 이므로,
             // 다른 loose 아이템이 조준 후보로 끼어들지 않는 자리에서 CoolingCanister 만 조준한다.
             StandOffFacingOnly(player, controller, cooling);
             AimAtItem(controller, cooling);
-            Assert.That(controller.InteractionPrompt, Does.Contain("접근 필요"));
+            // 정조준하고 있어도 사거리(GrabDistance) 밖이면 빈 문자열이다. 예전에는 여기서
+            // "접근 필요 1.6m" 가 떴고, 그 단계가 화면을 상시로 채우는 원인이었다.
+            Assert.That(controller.InteractionPrompt, Is.Empty,
+                "사거리 밖 정조준에서 문장이 뜨면 접근 힌트 단계가 이름만 바꿔 돌아온 것이다.");
 
             yield return HoldKey(Key.W, 0.5f);
 
@@ -350,15 +353,15 @@ namespace DoodleUp.Tests.PlayMode
         }
 
         /// <summary>
-        /// 대상 아이템은 사거리 밖에 두고, 다른 loose 아이템은 조준 후보로 끼어들지 않을 만큼
-        /// 떨어진 자리로 옮긴다. "접근 필요" 안내를 대상 아이템 기준으로 확인하기 위한 준비다.
+        /// 대상 아이템만 조준 후보가 되는 자리에 선다. 대상은 사거리 밖에 두어 <b>정조준해도
+        /// 아무것도 안 뜬다</b>를 확인할 수 있게 하고, 다른 loose 아이템이 조준선 근처에
+        /// 들어오지 않는 방향을 고른다. 아이템의 collider 나 Rigidbody 를 건드리면 loose 물체가
+        /// 낙하하거나 nominal 이 흔들려 이후 grab·secure 단계가 깨지므로, 플레이어 배치만으로
+        /// 격리한다.
         /// </summary>
-        /// <summary>
-        /// 대상 아이템만 조준 후보가 되는 자리에 선다. 대상은 사거리 밖에 두어 "접근 필요" 안내를
-        /// 확인할 수 있게 하고, 다른 loose 아이템이 조준 원뿔(dot 0.7)에 들어오지 않는 방향을 고른다.
-        /// 아이템의 collider 나 Rigidbody 를 건드리면 loose 물체가 낙하하거나 nominal 이 흔들려
-        /// 이후 grab·secure 단계가 깨지므로, 플레이어 배치만으로 격리한다.
-        /// </summary>
+        /// <summary>설 자리를 고를 때 다른 loose 아이템을 훑는 범위. 표시 판정과 무관하다.</summary>
+        private const float StandOffScanRange = 8f;
+
         private static void StandOffFacingOnly(
             LastShiftNetworkPlayer player,
             LastShiftPlayerController controller,
@@ -383,7 +386,9 @@ namespace DoodleUp.Tests.PlayMode
                 foreach (var other in others)
                 {
                     var offset = other.transform.position - aimOrigin;
-                    if (offset.magnitude > LastShiftPlayerController.AwarenessDistance) continue;
+                    // 자리 고르기용 훑는 범위일 뿐 프롬프트 사거리가 아니다. 프롬프트 쪽의
+                    // 8m 접근 힌트 상수는 제거됐고, 여기 값은 "이 방 안쪽" 정도의 의미다.
+                    if (offset.magnitude > StandOffScanRange) continue;
                     penalty += Mathf.Max(0f, Vector3.Dot(aim, offset.normalized));
                 }
                 if (penalty >= bestPenalty) continue;

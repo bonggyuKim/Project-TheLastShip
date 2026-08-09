@@ -74,6 +74,51 @@ namespace DoodleUp.Tests.EditMode
             Object.DestroyImmediate(player.gameObject);
         }
 
+        /// <summary>
+        /// 프롬프트 상자는 시야 한가운데를 비켜 있어야 한다 — 사용자 피드백이 정확히
+        /// "너무 가운데에 뜨면 다 가리니까" 였다. 예전 자리는 <c>Screen.height * 0.5 + 24</c> 로
+        /// 조준점 바로 아래였고, 조준한 대상과 그 대상을 설명하는 문장이 같은 자리를 다퉜다.
+        /// </summary>
+        [TestCase(1920f, 1080f)]
+        [TestCase(1280f, 720f)]
+        [TestCase(2560f, 1440f)]
+        public void PromptSitsInTheLowerEdgeNotTheCenter(float width, float height)
+        {
+            var box = LastShiftPlayerController.ResolvePromptRect(width, height, 240f);
+
+            Assert.That(box.yMin, Is.GreaterThan(height * 0.7f),
+                "상자가 화면 위쪽 70% 안으로 들어오면 조준선 주변 시야를 다시 덮는다.");
+            Assert.That(box.Overlaps(LastShiftPlayerController.ResolveCrosshairRect(width, height)), Is.False,
+                "조준점과 겹치면 대상을 보는 자리와 문장을 읽는 자리가 같아진다.");
+
+            // 상시 조작 안내 줄 위에 앉아야 한다 — 겹치면 둘 다 못 읽는다.
+            var inputBarTop = height - LastShiftPlayerController.InputBarMargin
+                                     - LastShiftPlayerController.InputBarHeight;
+            Assert.That(box.yMax, Is.LessThanOrEqualTo(inputBarTop),
+                "조작 안내 줄과 겹치면 하단에서 두 줄이 포개진다.");
+            Assert.That(box.center.x, Is.EqualTo(width * 0.5f).Within(0.01f));
+        }
+
+        /// <summary>
+        /// 폭은 문장을 따라간다. <c>[E] 놓기</c> 같은 짧은 줄에 화면 폭짜리 띠가 깔리면
+        /// 프롬프트가 아니라 띠가 먼저 보인다.
+        /// </summary>
+        [Test]
+        public void PromptWidthFollowsTheSentenceAndStaysOnScreen()
+        {
+            var narrow = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 80f);
+            var wide = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 400f);
+
+            Assert.That(narrow.width, Is.LessThan(wide.width));
+            Assert.That(narrow.width, Is.LessThan(1920f * 0.25f),
+                "짧은 문장이 화면 1/4 을 먹으면 폭이 문장을 따라간다고 할 수 없다.");
+
+            // 문장이 아무리 길어도 화면 밖으로 나가지 않는다.
+            var huge = LastShiftPlayerController.ResolvePromptRect(1920f, 1080f, 9000f);
+            Assert.That(huge.xMin, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(huge.xMax, Is.LessThanOrEqualTo(1920f));
+        }
+
         private static LastShiftGrabbable CreateGrabbable()
         {
             var itemObject = GameObject.CreatePrimitive(PrimitiveType.Cube);

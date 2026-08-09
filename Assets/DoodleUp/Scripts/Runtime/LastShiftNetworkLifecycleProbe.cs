@@ -252,8 +252,17 @@ namespace DoodleUp.Runtime
             }
 
             AimAtItem(controller, cooling);
+            // 사거리 밖에서는 <b>아무것도 안 뜨는 것</b>이 통과 조건이다. 예전에는 여기서
+            // "접근 필요 3.1m" 를 기대했는데, 그 안내 단계 자체가 제거됐다(누를 수 없는 것을
+            // 말하는 상시 UI 였다). 프로브 시작 위치가 프리셋에 따라 사거리 안일 수도 있으므로
+            // 거리를 직접 재서 기대를 정한다.
             var initialPrompt = controller.InteractionPrompt;
-            var initialPromptPass = initialPrompt.Contains("접근 필요");
+            var initialDistance = Vector3.Distance(controller.AimOrigin, cooling.transform.position);
+            // 사거리 경계(구체 캐스트는 표면까지 재고 여기서는 중심까지 잰다)에서는 어느 쪽도
+            // 정답이라 판정하지 않는다. 확실히 밖일 때 "안 뜬다", 확실히 안일 때 "뜬다" 만 본다.
+            var initialPromptPass = initialDistance > LastShiftPlayerController.GrabDistance + 1f
+                ? initialPrompt.Length == 0
+                : initialDistance >= LastShiftPlayerController.GrabDistance - 0.5f || initialPrompt.Length > 0;
             QueueKey(keyboard, Key.W, true);
             controller.ProcessKeyboardInput(keyboard, 1f / 60f);
             QueueKey(keyboard, Key.W, false);
