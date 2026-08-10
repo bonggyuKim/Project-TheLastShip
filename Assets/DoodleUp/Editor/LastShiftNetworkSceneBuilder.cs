@@ -15,6 +15,7 @@ namespace DoodleUp.Editor
     {
         public const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity";
         public const string PlayerPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftNetworkPlayer.prefab";
+        public const string LimeAlienPrefabPath = "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Animated.prefab";
 
         [MenuItem("Last Shift/SP-02A/Rebuild Network Sandbox")]
         public static void RebuildSandbox()
@@ -153,14 +154,18 @@ namespace DoodleUp.Editor
             player.AddComponent<NetworkObject>();
             player.AddComponent<LastShiftOwnerNetworkTransform>();
 
-            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            var bodyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LimeAlienPrefabPath);
+            if (bodyPrefab == null)
+                throw new System.InvalidOperationException($"Lime Alien animated prefab missing: {LimeAlienPrefabPath}");
+            var body = PrefabUtility.InstantiatePrefab(bodyPrefab) as GameObject;
+            if (body == null) throw new System.InvalidOperationException("Could not instantiate Lime Alien player visual");
             body.name = "Remote Body";
             body.transform.SetParent(player.transform, false);
-            body.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity;
-            body.transform.localScale = new Vector3(0.52f, 0.80f, 0.52f);
-            Object.DestroyImmediate(body.GetComponent<Collider>());
-            var bodyRenderer = body.GetComponent<MeshRenderer>();
+            body.transform.localScale = Vector3.one * 1.5f;
+            var bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
+                .First(renderer => renderer.name.Contains("Combined"));
 
             var cameraObject = new GameObject("Player Camera");
             cameraObject.tag = "MainCamera";
@@ -178,6 +183,8 @@ namespace DoodleUp.Editor
             controller.Configure(camera, socket);
             var networkPlayer = player.AddComponent<LastShiftNetworkPlayer>();
             networkPlayer.Configure(controller, camera, bodyRenderer);
+            var animatorBridge = player.AddComponent<LastShiftPlayerAnimator>();
+            animatorBridge.Configure(body.GetComponent<Animator>(), controller, networkPlayer);
             PrefabUtility.SaveAsPrefabAsset(player, PlayerPrefabPath);
             Object.DestroyImmediate(player);
             // ForceUpdate 가 붙어 있는 이유는 NetworkObject.GlobalObjectIdHash 다. 그 값은 NGO 의

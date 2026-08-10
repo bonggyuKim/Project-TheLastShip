@@ -94,14 +94,17 @@ namespace DoodleUp.Editor
 
             var body = playerPrefab.transform.Find("Remote Body");
             Require(body != null, "network player remote body missing");
-            Require(Approximately(body.localPosition, new Vector3(0f, 0.85f, 0f), tolerance), "network player remote body position mismatch");
+            Require(Approximately(body.localPosition, Vector3.zero, tolerance), "network player remote body position mismatch");
             Require(Approximately(body.localRotation, Quaternion.identity, tolerance), "network player remote body rotation mismatch");
-            Require(Approximately(body.localScale, new Vector3(0.52f, 0.80f, 0.52f), tolerance), "network player remote body scale mismatch");
-            var bodyRenderer = body.GetComponent<MeshRenderer>();
+            Require(Approximately(body.localScale, Vector3.one * 1.5f, tolerance), "network player remote body scale mismatch");
+            var bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
+                .FirstOrDefault(renderer => renderer.name.Contains("Combined"));
             Require(bodyRenderer != null, "network player remote body renderer missing");
             Require(bodyRenderer.enabled, "network player remote body renderer must default enabled");
-            Require(body.GetComponent<MeshFilter>()?.sharedMesh != null, "network player remote body mesh missing");
+            Require(bodyRenderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null, "network player remote body skinned mesh missing");
             Require(networkPlayer.BodyRenderer == bodyRenderer, "network player remote body renderer reference mismatch");
+            var animation = playerPrefab.GetComponent<LastShiftPlayerAnimator>();
+            Require(animation != null && animation.Animator != null, "network player animation bridge missing");
 
             var characterController = playerPrefab.GetComponent<CharacterController>();
             Require(characterController != null, "network player CharacterController missing");
