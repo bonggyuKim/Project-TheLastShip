@@ -34,7 +34,10 @@ namespace DoodleUp.Runtime
         /// 고정 방 바깥 면에 가장 얇은 모듈이 한 겹 붙어도 원반 안이라는 §9.2 의 결론이
         /// 그 여백에서 나온다.
         /// </summary>
-        public const float InteriorLength = 28f;
+        /// <b><c>28 -> 32</c></b>(2026-08-10). 기능실 확장으로 발자국 경계 상자가 커졌다 —
+        /// 조종석 <c>-16</c> ~ 산소실 <c>+16</c>. 이 값이 안 따라오면 선체가 발자국보다 좁아
+        /// 방이 배 밖으로 판정된다.
+        public const float InteriorLength = 32f;
 
         /// <summary>
         /// 내부 전폭(z). 경계 상자의 z 폭이며 <b>원점 대칭이 아니다</b> — 에어록 홀이
@@ -42,7 +45,8 @@ namespace DoodleUp.Runtime
         /// 많아 <b>더 먼 쪽</b>(<c>12</c>)의 두 배로 둔다: 상자가 넓은 쪽으로 틀리면 "배 밖"
         /// 판정이 보수적일 뿐이지만, 좁은 쪽으로 틀리면 에어록 홀이 배 밖으로 판정된다.
         /// </summary>
-        public const float InteriorWidth = 24f;
+        /// <b><c>24 -> 28</c></b>(2026-08-10). 전력실 <c>-14</c> ~ 냉각실 <c>+14</c>.
+        public const float InteriorWidth = 28f;
 
         /// <summary>천장 내면. 정본은 <see cref="LastShiftShipPhysics"/> 다 — 점프 정점이 여기 걸린다.</summary>
         public const float CeilingInnerHeight = LastShiftShipPhysics.CeilingInnerHeight;

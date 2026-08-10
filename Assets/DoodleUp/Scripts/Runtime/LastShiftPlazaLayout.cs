@@ -10,8 +10,16 @@ namespace DoodleUp.Runtime
         LifeSupportRoom = 2,
         PowerRoom = 3,
         CoolingRoom = 4,
-        AirlockHall = 5,
-        Quarters = 6
+
+        /// <summary>
+        /// <b><c>AirlockHall</c> 이 여기 있었다</b>(2026-08-10 폐지, 정본 지도 <c>2cbe132</c>).
+        /// 번호를 비우지 않고 당긴다 — 이 값은 <see cref="LastShiftPlazaLayout.Of"/> 가
+        /// <see cref="LastShiftPlazaLayout.Footprints"/> 를 찌르는 인덱스라 구멍을 남기면
+        /// 표와 열거형이 어긋난다. 당겨도 안전한 것은 이 열거형이 세이브에도 스냅샷에도
+        /// 안 실리기 때문이다. <b>구획 쪽(<see cref="LastShiftCompartment"/>)은 반대로 번호를
+        /// 남긴다</b> — 그쪽은 실리므로 폐지 슬롯을 묘비로 둔다.
+        /// </summary>
+        Quarters = 5
     }
 
     /// <summary>
@@ -178,17 +186,18 @@ namespace DoodleUp.Runtime
         {
             new(LastShiftPlazaSpace.Plaza, PlazaMinX, PlazaMaxX, PlazaMinZ, PlazaMaxZ,
                 MainHeight, LastShiftZone.Cockpit),
-            new(LastShiftPlazaSpace.CockpitRoom, -14f, -6f, -3f, 3f,
+            // 기능실 넷은 사용자 지시로 넓혔다(2026-08-10). 정본은
+            // Assets/DoodleUp/Data/LastShiftModularMap.json 의 space.bounds 이고 여기가 그 사본이다 —
+            // 콜라이더가 그 JSON 에서 파생되므로 두 벌이 갈리면 통행 영역과 판정 영역이 어긋난다.
+            new(LastShiftPlazaSpace.CockpitRoom, -16f, -6f, -4f, 4f,
                 MainHeight, LastShiftZone.Cockpit),
-            new(LastShiftPlazaSpace.LifeSupportRoom, 6f, 14f, -3f, 3f,
+            new(LastShiftPlazaSpace.LifeSupportRoom, 6f, 16f, -4f, 4f,
                 MainHeight, LastShiftZone.LifeSupport),
-            new(LastShiftPlazaSpace.PowerRoom, -3f, 3f, -11f, -6f,
+            new(LastShiftPlazaSpace.PowerRoom, -4f, 4f, -14f, -6f,
                 MainHeight, LastShiftZone.Power),
-            new(LastShiftPlazaSpace.CoolingRoom, -3f, 3f, 6f, 11f,
+            new(LastShiftPlazaSpace.CoolingRoom, -4f, 4f, 6f, 14f,
                 MainHeight, LastShiftZone.Cooling),
-            new(LastShiftPlazaSpace.AirlockHall, -11f, -3f, -12f, -6f,
-                AnnexHeight, LastShiftZone.Cockpit),
-            new(LastShiftPlazaSpace.Quarters, 3f, 9f, 6f, 10f,
+            new(LastShiftPlazaSpace.Quarters, 4f, 12f, 6f, 12f,
                 AnnexHeight, LastShiftZone.Cockpit)
         };
 
@@ -204,15 +213,18 @@ namespace DoodleUp.Runtime
         {
             new(LastShiftPlazaSpace.CockpitRoom, planeIsX: true, plane: -6f, center: 0f,
                 LastShiftPlazaDoorKind.Opening, Vector2.zero),
+            // 게이지는 문틀이 아니라 문 너머 방 안쪽 끝벽이다(§4.1). 방을 넓히면 끝벽도 같이
+            // 물러나므로 이 좌표가 따라간다 — 안 옮기면 게이지가 방 한가운데 떠 있게 되고,
+            // SIMUL_ZONES 가 세는 쐐기가 실제보다 넓어져 판정이 느슨해진다.
             new(LastShiftPlazaSpace.LifeSupportRoom, planeIsX: true, plane: 6f, center: 0f,
-                LastShiftPlazaDoorKind.PressureDoor, new Vector2(14f, 0f)),
+                LastShiftPlazaDoorKind.PressureDoor, new Vector2(16f, 0f)),
             new(LastShiftPlazaSpace.PowerRoom, planeIsX: false, plane: -6f, center: 0f,
-                LastShiftPlazaDoorKind.PressureDoor, new Vector2(0f, -11f)),
+                LastShiftPlazaDoorKind.PressureDoor, new Vector2(0f, -14f)),
             new(LastShiftPlazaSpace.CoolingRoom, planeIsX: false, plane: 6f, center: 0f,
-                LastShiftPlazaDoorKind.PressureDoor, new Vector2(0f, 11f)),
-            new(LastShiftPlazaSpace.AirlockHall, planeIsX: false, plane: -6f, center: -4.5f,
-                LastShiftPlazaDoorKind.PlainDoor, Vector2.zero),
-            new(LastShiftPlazaSpace.Quarters, planeIsX: false, plane: 6f, center: 4.5f,
+                LastShiftPlazaDoorKind.PressureDoor, new Vector2(0f, 14f)),
+            // 중심이 4.5 에서 4.8 로 갔다(2026-08-10, JSON 018bd26). 숙소 발자국이 x 4 부터라
+            // 4.5 로는 구멍 왼쪽이 방 밖으로 나갔다 — 4.8 이면 구멍이 x 4.0~5.6 으로 발자국 안에 겨우 든다.
+            new(LastShiftPlazaSpace.Quarters, planeIsX: false, plane: 6f, center: 4.8f,
                 LastShiftPlazaDoorKind.PlainDoor, Vector2.zero)
         };
 
@@ -469,19 +481,22 @@ namespace DoodleUp.Runtime
         /// 원반 반지름. 확정값 <c>19m</c>(전장·전폭 <c>38m</c>, 정원).
         ///
         /// <code>
-        ///   최원 모서리   에어록 홀 (-11, -12)          16.279m
+        ///   최원 모서리   숙소 (12, 12)                 16.971m
         ///   판 두께 둘    MinInscribedClearance          0.400m
         ///   확장 한 겹    ExpansionAllowance             2.000m
         ///   내접 보정     / cos(pi / 48)                x1.00215
         ///                                             ----------
-        ///   요구 하한                                   18.719m  ->  올림 19m
+        ///   요구 하한                                   19.413m  ->  올림 20m
         /// </code>
         ///
-        /// 실제로 남는 내접 여유는 최원 모서리에서 <c>2.68m</c> 다(요구 <c>2.40m</c> 대비 <c>+0.28</c>).
+        /// <b><c>19 -> 20m</c> 로 키웠다</b>(2026-08-10). 에어록 홀이 폐지되고 기능실이 넓어지면서
+        /// 최원 모서리가 에어록 홀 <c>16.279m</c> 에서 숙소 <c>16.971m</c> 로 옮겨 갔고, <c>19m</c>
+        /// 에서는 내접 여유가 <c>1.989m</c> 로 요구 <c>2.40m</c> 를 밑돌았다. <c>20m</c> 는 외피 패널
+        /// <c>4m</c> 모듈과도 눈금이 맞아 새 자산이 안 든다(game-art 판단).
         /// <see cref="LastShiftHullShell"/> 이 이 값을 그대로 반지름으로 쓴다 — 껍질에 리터럴을
         /// 남겨 두면 발자국이 움직여도 원이 안 따라온다.
         /// </summary>
-        public const float HullRadius = 19f;
+        public const float HullRadius = 20f;
 
         public const float HullDiameter = HullRadius * 2f;
 

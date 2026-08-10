@@ -55,11 +55,11 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftTutorialObservation
     {
         public LastShiftTutorialObservation(
-            bool crewLeftCockpit, bool crewInAirlockHall, bool crewOutside,
+            bool crewLeftCockpit, bool crewBelowDeck, bool crewOutside,
             int carried, int carryCapacity, int remaining, int balance)
         {
             CrewLeftCockpit = crewLeftCockpit;
-            CrewInAirlockHall = crewInAirlockHall;
+            CrewBelowDeck = crewBelowDeck;
             CrewOutside = crewOutside;
             Carried = carried;
             CarryCapacity = Mathf.Max(1, carryCapacity);
@@ -70,8 +70,16 @@ namespace DoodleUp.Runtime
         /// <summary>승무원 하나라도 조종석 공간 밖에 있는가. <c>1 → 2</c> 신호다.</summary>
         public bool CrewLeftCockpit { get; }
 
-        /// <summary>승무원 하나라도 에어록 홀 안에 있는가. <c>2 → 3</c> 신호다.</summary>
-        public bool CrewInAirlockHall { get; }
+        /// <summary>
+        /// 승무원 하나라도 <b>갑판 아래</b>에 있는가. <c>2 → 3</c> 신호다.
+        ///
+        /// <b>출처가 에어록 홀에서 승강구로 옮겨 왔다</b>(2026-08-10). 에어록 홀이 폐지되고
+        /// 중앙 승강구 단일 출입이 되면서, "우물에 발을 딛는 순간 <c>SuitOxygen</c> 이 처음
+        /// 뜬다" 는 <c>3</c>단계의 뜻을 이제 승강구가 그대로 낸다. 단계 번호는 안 건드린다 —
+        /// 조항 <c>T-9</c> 로그가 <c>step=&lt;n&gt;</c> 로 나가고 §6 판정이 그 번호로 구간을
+        /// 자르므로, 번호는 튜토리얼 재설계가 문서와 함께 통째로 갈 때 움직인다.
+        /// </summary>
+        public bool CrewBelowDeck { get; }
 
         /// <summary>승무원 하나라도 선외에 있는가. <c>3 → 4</c> 신호이자 "우물을 넘었다" 다.</summary>
         public bool CrewOutside { get; }
@@ -247,7 +255,7 @@ namespace DoodleUp.Runtime
             // 달라서 발자국 표가 둘을 가른다.
             LastShiftTutorialStep.SightSalvage => o.CrewLeftCockpit,
 
-            LastShiftTutorialStep.CrossPlaza => o.CrewInAirlockHall,
+            LastShiftTutorialStep.CrossPlaza => o.CrewBelowDeck,
 
             // 바닥 우물을 넘는 것이 곧 선외다. 산소 게이지가 뜨는 조건과 같은 판정을 쓴다 —
             // 따로 재면 화면에 게이지가 뜬 단계와 상태기가 센 단계가 갈린다.

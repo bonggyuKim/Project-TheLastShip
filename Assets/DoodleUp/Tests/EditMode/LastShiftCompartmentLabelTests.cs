@@ -33,8 +33,7 @@ namespace DoodleUp.Tests.EditMode
             // (LastShiftModuleCatalog)로 옮겨갔고, 거기서 표와 통째로 대조된다.
             var expected = new (LastShiftCompartment Compartment, string Text)[]
             {
-                (LastShiftCompartment.Quarters, "숙소"),
-                (LastShiftCompartment.AirlockHall, "출정소")
+                (LastShiftCompartment.Quarters, "숙소")
             };
 
             Assert.That(expected.Length, Is.EqualTo(LastShiftCompartments.FixedCount),
@@ -180,13 +179,15 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ALabelOnAWallWithADoorActuallyMovesAside()
         {
-            var hall = LastShiftCompartments.Of(LastShiftCompartment.AirlockHall);
+            var hall = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
             var doorCenter = hall.CenterX;
 
             var child = new LastShiftCompartmentSpec(
                 LastShiftCompartments.NextModuleIndex,
-                hall.MinX, hall.MaxX, hall.MinZ - 4f, hall.MinZ,
-                LastShiftDoorPlane.AlongZ, hall.MinZ, doorCenter,
+                // 안쪽(MinZ) 면은 이제 광장과 겹친다 — 숙소가 z 6~12 이고 광장이 -6~6 이라
+                // MinZ - 4 는 광장 안이다. 바깥(MaxZ) 면에 붙여 같은 것을 잰다.
+                hall.MinX, hall.MaxX, hall.MaxZ, hall.MaxZ + 4f,
+                LastShiftDoorPlane.AlongZ, hall.MaxZ, doorCenter,
                 hall.Index, LastShiftCompartmentAccess.Open);
 
             Assert.That(LastShiftCompartments.TryRegister(child, out _, out var verdict), Is.True,
@@ -200,7 +201,7 @@ namespace DoodleUp.Tests.EditMode
                     "모듈까지 안 보고 있다는 뜻이고, 그러면 씬에서 벽이 통짜로 서서 그 문이 막힌다.");
 
                 var x = LastShiftCompartmentLabels.ResolveX(hall);
-                var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.AirlockHall);
+                var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.Quarters);
 
                 Assert.That(Mathf.Abs(x - hall.CenterX), Is.GreaterThan(Tolerance),
                     "문이 라벨 자리 한가운데인데 라벨이 안 움직였다 — 회피 규칙이 안 돌고 있다.");

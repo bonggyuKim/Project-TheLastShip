@@ -266,8 +266,8 @@ namespace DoodleUp.Tests.EditMode
                 LastShiftZoneAtlas.Resolve(new Vector3(LastShiftShipDimensions.CockpitCenterX, 0f, 0f)),
                 Is.EqualTo(LastShiftZone.Cockpit));
 
-            // 광장에 일반문으로 붙은 부속 둘도 같은 구역을 따라온다.
-            foreach (var space in new[] { LastShiftPlazaSpace.AirlockHall, LastShiftPlazaSpace.Quarters })
+            // 광장에 일반문으로 붙은 부속(숙소)도 같은 구역을 따라온다. 에어록 홀은 폐지됐다.
+            foreach (var space in new[] { LastShiftPlazaSpace.Quarters })
             {
                 var room = LastShiftPlazaLayout.Of(space);
                 Assert.That(

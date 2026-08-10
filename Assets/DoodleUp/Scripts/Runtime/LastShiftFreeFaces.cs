@@ -239,7 +239,6 @@ namespace DoodleUp.Runtime
             {
                 if (part == hullPart) continue;
                 var footprint = LastShiftPlazaLayout.Footprints[part];
-                if (footprint.Space == LastShiftPlazaSpace.AirlockHall) continue;
                 if (footprint.Space == LastShiftPlazaSpace.Quarters) continue;
 
                 var depthMin = onXFace ? footprint.MinX : footprint.MinZ;

@@ -205,10 +205,9 @@ namespace DoodleUp.Tests.EditMode
                 .ToArray();
             Assert.That(open, Is.EquivalentTo(new[]
                 {
-                    LastShiftCompartment.Quarters,
-                    LastShiftCompartment.AirlockHall
+                    LastShiftCompartment.Quarters
                 }),
-                "배와 함께 태어나는 부속은 숙소·에어록 홀 둘이고 둘 다 언제나 열려 있다.");
+                "배와 함께 태어나는 부속은 숙소 하나이고 언제나 열려 있다(에어록 홀 폐지).");
 
             Assert.That(
                 LastShiftCompartments.FixedSpecs.Any(
@@ -242,12 +241,10 @@ namespace DoodleUp.Tests.EditMode
             // 에어록 홀은 언더덱 통로에 있었는데, 둘 다 광장 변으로 올라오면서 사슬 깊이가
             // 전부 <c>1</c> 이 됐다 — 그것이 최악 이탈 <c>6.05 → 4.26초</c> 의 실체다.
             foreach (var compartment in new[]
-                     { LastShiftCompartment.AirlockHall, LastShiftCompartment.Quarters })
+                     { LastShiftCompartment.Quarters })
             {
                 var spec = LastShiftCompartments.Of(compartment);
-                var space = compartment == LastShiftCompartment.AirlockHall
-                    ? LastShiftPlazaSpace.AirlockHall
-                    : LastShiftPlazaSpace.Quarters;
+                var space = LastShiftPlazaSpace.Quarters;
                 var footprint = LastShiftPlazaLayout.Of(space);
                 var door = LastShiftPlazaLayout.DoorOf(space);
 
@@ -268,9 +265,8 @@ namespace DoodleUp.Tests.EditMode
                     $"{compartment} 문이 자기 발자국 경계 위가 아니다.");
             }
 
-            // 발자국은 확정표 그대로다(§2.2). 에어록 홀 8x6, 숭소 6x4.
-            AssertFootprint(LastShiftCompartment.AirlockHall, 8f, 6f);
-            AssertFootprint(LastShiftCompartment.Quarters, 6f, 4f);
+            // 발자국은 정본 지도 그대로다. 숙소는 확장으로 8x6 이 됐다(2026-08-10).
+            AssertFootprint(LastShiftCompartment.Quarters, 8f, 6f);
         }
 
         private static void AssertFootprint(LastShiftCompartment compartment, float lengthX, float widthZ)

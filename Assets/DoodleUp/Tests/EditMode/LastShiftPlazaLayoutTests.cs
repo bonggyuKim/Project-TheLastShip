@@ -31,7 +31,7 @@ namespace DoodleUp.Tests.EditMode
         public void SevenStructuresDoNotOverlapInAnyPair()
         {
             var footprints = LastShiftPlazaLayout.Footprints;
-            Assert.That(footprints.Length, Is.EqualTo(7),
+            Assert.That(footprints.Length, Is.EqualTo(6),
                 "고정 구조물이 일곱이 아니다 — 광장 + 고정 방 여섯이 §2.2 좌표표 전부다.");
 
             var pairs = 0;
@@ -44,7 +44,7 @@ namespace DoodleUp.Tests.EditMode
                     "아니므로(열린 구간 비교) 이건 실제로 부피가 겹친 것이다.");
             }
 
-            Assert.That(pairs, Is.EqualTo(21));
+            Assert.That(pairs, Is.EqualTo(15));
         }
 
         // ── 부록 2·3. 문 여섯 ────────────────────────────────────────────────
@@ -56,7 +56,7 @@ namespace DoodleUp.Tests.EditMode
             // 동시에 광장 변이면 그 방은 광장에 직결한다 — 두 조건 중 하나만 성립하면 사이에
             // 무언가가 낀 것이고, 그러면 "각 방으로 바로" 가 깨진다.
             var plaza = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Plaza);
-            Assert.That(LastShiftPlazaLayout.Doors.Length, Is.EqualTo(6));
+            Assert.That(LastShiftPlazaLayout.Doors.Length, Is.EqualTo(5));
 
             foreach (var door in LastShiftPlazaLayout.Doors)
             {
@@ -112,7 +112,7 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(pressure, Is.EqualTo(3), "압력문이 셋이 아니다 — 조항 S-1 이 깨졌다.");
             Assert.That(openings, Is.EqualTo(1), "문 없는 개구부는 조종석↔광장 하나뿐이다(§3.2).");
-            Assert.That(plain, Is.EqualTo(2), "비압력 일반문은 에어록 홀·숙소 둘이다.");
+            Assert.That(plain, Is.EqualTo(1), "비압력 일반문은 숙소 하나다(에어록 홀 폐지).");
             Assert.That(pressure, Is.EqualTo(LastShiftZoneAtlas.BoundaryCount),
                 "압력문 수가 구역 경계 수와 다르다 — LastShiftZoneDoor 인스턴스 수가 움직인다.");
         }
@@ -134,10 +134,10 @@ namespace DoodleUp.Tests.EditMode
                     meters += max - min;
                 }
 
-            Assert.That(spans, Is.EqualTo(6), "광장 변 유효 자유면이 6구간이 아니다.");
-            Assert.That(meters, Is.EqualTo(18f).Within(Tolerance),
+            Assert.That(spans, Is.EqualTo(7), "광장 변 유효 자유면이 7구간이 아니다(에어록 홀 폐지).");
+            Assert.That(meters, Is.EqualTo(14f).Within(Tolerance),
                 "자유면 합이 18.0m 에서 움직였다 — 고정 구조물이 광장 변을 먹는 길이가 30m 가 아니다.");
-            Assert.That(LastShiftPlazaLayout.PlazaPerimeter - meters, Is.EqualTo(30f).Within(Tolerance));
+            Assert.That(LastShiftPlazaLayout.PlazaPerimeter - meters, Is.EqualTo(34f).Within(Tolerance));
         }
 
         // ── 부록 5·6. SIMUL_ZONES ────────────────────────────────────────────
@@ -149,7 +149,7 @@ namespace DoodleUp.Tests.EditMode
             // 이 다섯 줄이다</b> — 3.2 x 3.2 로 한 눈금만 줄여도 위반이 128점 남는다.
             var expected = new (float Half, int Three)[]
             {
-                (0f, 3688), (1.0f, 2088), (1.4f, 630), (1.6f, 128),
+                (0f, 2738), (1.0f, 1138), (1.4f, 0), (1.6f, 0),
                 (LastShiftPlazaLayout.CoreHalfExtent, 0)
             };
 
@@ -172,9 +172,9 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(counts[4], Is.EqualTo(51200), "코어 제외 유효 표본이 51,200점이 아니다.");
             Assert.That(counts[3], Is.Zero, "SIMUL_ZONES 위반 — 3구역이 동시에 읽히는 자리가 남았다.");
-            Assert.That(counts[2], Is.EqualTo(7168));
-            Assert.That(counts[1], Is.EqualTo(17184));
-            Assert.That(counts[0], Is.EqualTo(26848));
+            Assert.That(counts[2], Is.EqualTo(6400));
+            Assert.That(counts[1], Is.EqualTo(13310));
+            Assert.That(counts[0], Is.EqualTo(31490));
         }
 
         [Test]
@@ -198,16 +198,16 @@ namespace DoodleUp.Tests.EditMode
             // 유일하게 두 다리를 쓰는 경로이고 그래서 최악이다.
             var worst = LastShiftPlazaLayout.WorstEgressMeters();
 
-            Assert.That(worst, Is.EqualTo(17.03f).Within(Tolerance),
+            Assert.That(worst, Is.EqualTo(19.26f).Within(Tolerance),
                 "배 전체 최악 이탈이 17.03m 에서 움직였다.");
-            Assert.That(LastShiftPlazaLayout.EgressWalkSeconds(worst), Is.EqualTo(4.26f).Within(Tolerance),
+            Assert.That(LastShiftPlazaLayout.EgressWalkSeconds(worst), Is.EqualTo(4.81f).Within(Tolerance),
                 "RG-1(1) 개산이 4.26초에서 움직였다 — 한도 10초 대비 여유 2.35배다.");
 
             // 정식 판정은 압력문 통과 0.8초를 더한다. 개산과 판정을 같은 자리에서 고정해 두지
             // 않으면 §6.1 표(개산)와 가드레일(판정)이 어느 쪽 정의인지가 다음 사람에게 안 보인다.
             Assert.That(LastShiftPlacementRules.EgressSeconds(worst),
-                Is.EqualTo(5.06f).Within(Tolerance),
-                "문 페널티를 포함한 RG-1(1) 판정값이 5.06초에서 움직였다.");
+                Is.EqualTo(5.61f).Within(Tolerance),
+                "문 페널티를 포함한 RG-1(1) 판정값이 5.61초에서 움직였다.");
             Assert.That(LastShiftPlacementRules.EgressSeconds(worst),
                 Is.LessThan(LastShiftPlacementRules.TraverseLimitSeconds));
         }
@@ -220,10 +220,10 @@ namespace DoodleUp.Tests.EditMode
             // (문이 광장 변에서 떨어지면) 여기가 먼저 걸린다.
             var expected = new (LastShiftZone Zone, float Meters)[]
             {
-                (LastShiftZone.Cockpit, 17.03f),
-                (LastShiftZone.Power, 5.83f),
-                (LastShiftZone.Cooling, 5.83f),
-                (LastShiftZone.LifeSupport, 8.54f)
+                (LastShiftZone.Cockpit, 19.26f),
+                (LastShiftZone.Power, 8.94f),
+                (LastShiftZone.Cooling, 8.94f),
+                (LastShiftZone.LifeSupport, 10.77f)
             };
 
             foreach (var (zone, meters) in expected)
@@ -250,13 +250,13 @@ namespace DoodleUp.Tests.EditMode
                 maxZ = Mathf.Max(maxZ, footprint.MaxZ);
             }
 
-            Assert.That(area, Is.EqualTo(372f).Within(Tolerance), "발자국 합이 372m2 가 아니다.");
-            Assert.That(area - LastShiftPlazaLayout.CoreArea, Is.EqualTo(356f).Within(Tolerance));
+            Assert.That(area, Is.EqualTo(480f).Within(Tolerance), "발자국 합이 372m2 가 아니다.");
+            Assert.That(area - LastShiftPlazaLayout.CoreArea, Is.EqualTo(464f).Within(Tolerance));
 
-            Assert.That(maxX - minX, Is.EqualTo(28f).Within(Tolerance));
-            Assert.That(maxZ - minZ, Is.EqualTo(23f).Within(Tolerance));
-            Assert.That((maxX - minX) / (maxZ - minZ), Is.EqualTo(1.22f).Within(Tolerance),
-                "종횡비가 1.22:1 에서 움직였다 — 현행 6.33:1 을 뒤집은 것이 원형 껍질의 근거다(§0-8).");
+            Assert.That(maxX - minX, Is.EqualTo(32f).Within(Tolerance));
+            Assert.That(maxZ - minZ, Is.EqualTo(28f).Within(Tolerance));
+            Assert.That((maxX - minX) / (maxZ - minZ), Is.EqualTo(1.143f).Within(0.01f),
+                "종횡비가 1.14:1 에서 움직였다 — 현행 6.33:1 을 뒤집은 것이 원형 껍질의 근거다(§0-8).");
         }
 
         // ── 원형 껍질 (§7 미결 1) ────────────────────────────────────────────
@@ -279,12 +279,13 @@ namespace DoodleUp.Tests.EditMode
                 thinnestSpace = footprint.Space;
             }
 
-            Assert.That(thinnestSpace, Is.EqualTo(LastShiftPlazaSpace.AirlockHall),
-                "최원 모서리가 에어록 홀이 아니다 — 반지름을 정한 구조물이 바뀌었다.");
+            // 에어록 홀 폐지 + 기능실 확장으로 최원 모서리가 숙소로 옮겨 갔다(2026-08-10).
+            Assert.That(thinnestSpace, Is.EqualTo(LastShiftPlazaSpace.Quarters),
+                "최원 모서리가 숙소가 아니다 — 반지름을 정한 구조물이 바뀌었다.");
             Assert.That(thinnest, Is.GreaterThanOrEqualTo(required),
                 $"최빡빡 구획 여유가 {thinnest:F3}m 로 요구 {required:F3}m 아래다. 원반을 키우거나 " +
                 "확장 한 겹 가정을 다시 봐야 한다.");
-            Assert.That(thinnest, Is.EqualTo(2.680f).Within(0.001f),
+            Assert.That(thinnest, Is.EqualTo(2.933f).Within(0.001f),
                 "실측 여유가 2.680m 에서 움직였다.");
 
             // 한 눈금 아래(18m)로는 요구를 못 맞춘다는 것이 19m 를 고른 이유다.
@@ -303,7 +304,7 @@ namespace DoodleUp.Tests.EditMode
             var sag = LastShiftPlazaLayout.HullRadius *
                       (1f - Mathf.Cos(Mathf.PI / LastShiftPlazaLayout.SegmentCount));
 
-            Assert.That(sag, Is.EqualTo(0.0407f).Within(0.0005f));
+            Assert.That(sag, Is.EqualTo(0.0963f).Within(0.0005f));
             Assert.That(sag, Is.LessThan(LastShiftCompartments.PanelThickness),
                 "테두리 새그가 판 두께보다 크다 — 판 수를 늘려야 곡선으로 읽힌다.");
         }
@@ -356,7 +357,6 @@ namespace DoodleUp.Tests.EditMode
             {
                 (LastShiftPlazaSpace.Plaza, LastShiftZone.Cockpit),
                 (LastShiftPlazaSpace.CockpitRoom, LastShiftZone.Cockpit),
-                (LastShiftPlazaSpace.AirlockHall, LastShiftZone.Cockpit),
                 (LastShiftPlazaSpace.Quarters, LastShiftZone.Cockpit),
                 (LastShiftPlazaSpace.PowerRoom, LastShiftZone.Power),
                 (LastShiftPlazaSpace.CoolingRoom, LastShiftZone.Cooling),
@@ -376,13 +376,13 @@ namespace DoodleUp.Tests.EditMode
             {
                 sealedArea[(int)footprint.Zone] += footprint.Area;
                 if (footprint.Space is LastShiftPlazaSpace.Plaza or
-                    LastShiftPlazaSpace.AirlockHall or LastShiftPlazaSpace.Quarters) continue;
+                    LastShiftPlazaSpace.Quarters) continue;
                 judged[(int)footprint.Zone] += footprint.Area;
             }
 
-            Assert.That(Ratio(judged), Is.EqualTo(1.6f).Within(Tolerance),
+            Assert.That(Ratio(judged), Is.EqualTo(1.25f).Within(Tolerance),
                 "RG-1(3) 현행 조문(정적 발자국) 기준 부피비가 1.6배에서 움직였다.");
-            Assert.That(Ratio(sealedArea), Is.EqualTo(8.8f).Within(Tolerance),
+            Assert.That(Ratio(sealedArea), Is.EqualTo(4.25f).Within(Tolerance),
                 "실 기밀 체적 기준 부피비가 8.8배에서 움직였다 — B-2 개정이 닫아야 하는 값이다.");
         }
 

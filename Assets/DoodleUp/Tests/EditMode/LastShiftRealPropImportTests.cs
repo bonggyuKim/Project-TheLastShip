@@ -34,7 +34,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
             var linked = set.Props.Where(prop => prop?.prefab != null && prop.prefab.name.StartsWith("LSReal_")).ToArray();
-            Assert.That(linked.Length, Is.EqualTo(14));
+            Assert.That(linked.Length, Is.EqualTo(13));
 
             var scene = EditorSceneManager.OpenScene(LastShiftNetworkSceneBuilder.ScenePath);
             var shipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/DoodleUp/Prefabs/LastShiftShipGraybox.prefab");

@@ -64,6 +64,21 @@ namespace DoodleUp.Runtime
         [SerializeField] private Transform panelAft;
         [SerializeField] private BoxCollider blocker;
 
+        /// <summary>
+        /// 아트 킷 문(<c>LPK_Door_Airlock_2m</c>)의 <see cref="UnityEngine.Animator"/>. 판 두 짝을
+        /// 직접 미는 대신 클립을 <see cref="openAmount"/> 로 <b>스크럽</b>한다(§아트 규약 1).
+        ///
+        /// <b>파라미터도 블렌드 트리도 안 쓴다.</b> 클립이 <c>0 → 90°</c> 한 줄이라 정규화 시간이
+        /// 곧 열림량이고, 여기에 파라미터를 하나 더 두면 <b>0.8초라는 시간이 두 벌</b>이 된다 —
+        /// <see cref="Update"/> 가 이미 <see cref="LastShiftRecoveryTuning.ZoneDoorTransitionSeconds"/>
+        /// 로 <see cref="openAmount"/> 를 움직이고 있고, 컨트롤러 전이가 그 값을 또 정하면 둘이
+        /// 어긋나는 날 문이 압력 판정보다 늦게 닫힌다. 시간 정본은 튜닝 상수 하나로 남긴다.
+        /// </summary>
+        [SerializeField] private Animator animator;
+
+        /// <summary>스크럽 대상 상태. 아트 킷 컨트롤러의 유일한 상태 이름이다.</summary>
+        private static readonly int DoorClipState = Animator.StringToHash("LP_Door_OpenClose");
+
         private LastShiftSandboxController sandbox;
 
         /// <summary>0 = 완전히 닫힘, 1 = 완전히 열림. 판 위치와 통행 가능 여부가 이 값에서 나온다.</summary>
@@ -99,6 +114,20 @@ namespace DoodleUp.Runtime
             blocker = doorBlocker;
         }
 
+        /// <summary>
+        /// 아트 킷 문으로 세우는 경로. 판 두 짝이 없고 <paramref name="doorAnimator"/> 가 그 자리를
+        /// 대신한다. 차단 콜라이더는 <b>비주얼이 아니라 통행 판정</b>이라 킷 프리팹이 아니라
+        /// 문 루트가 계속 들고 있는다(§아트 규약 2).
+        /// </summary>
+        public void Configure(int boundaryIndex, Animator doorAnimator, BoxCollider doorBlocker)
+        {
+            boundary = boundaryIndex;
+            panelFore = null;
+            panelAft = null;
+            animator = doorAnimator;
+            blocker = doorBlocker;
+        }
+
         private void Awake()
         {
             openAmount = IsOpen ? 1f : 0f;
@@ -125,6 +154,16 @@ namespace DoodleUp.Runtime
                 panelFore.localPosition = new Vector3(PanelFaceOffset, OpeningHeight * 0.5f, -PanelTravel * 0.5f - offset);
             if (panelAft != null)
                 panelAft.localPosition = new Vector3(PanelFaceOffset, OpeningHeight * 0.5f, PanelTravel * 0.5f + offset);
+
+            // 아트 킷 문은 클립을 정규화 시간으로 스크럽한다. speed = 0 이라 Play 만으로는 다음
+            // 프레임에야 반영되므로 Update(0) 으로 그 자리에서 평가시킨다 — 안 하면 판 위치가
+            // 한 프레임 늦고, 문이 닫힌 순간과 차단 콜라이더가 켜지는 순간이 어긋나 보인다.
+            if (animator != null)
+            {
+                animator.speed = 0f;
+                animator.Play(DoorClipState, 0, Mathf.Clamp01(openAmount));
+                animator.Update(0f);
+            }
 
             // 통행 차단은 완전히 닫혔을 때만 건다. 움직이는 콜라이더로 막으면 CharacterController 가
             // 판에 끼거나 밀려나고, 문틈으로 빠져나가는 순간이 사라진다. 여기서 막고 싶은 것은

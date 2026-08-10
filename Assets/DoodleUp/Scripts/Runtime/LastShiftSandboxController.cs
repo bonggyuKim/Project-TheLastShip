@@ -1080,7 +1080,7 @@ namespace DoodleUp.Runtime
             // 접는다 — 따로 돌면 "선외인가" 판정이 두 벌이 되고, 그 둘이 갈리는 순간
             // 화면에 산소 게이지가 뜬 단계와 상태기가 센 단계가 어긋난다.
             var crewLeftCockpit = false;
-            var crewInAirlockHall = false;
+            var crewBelowDeck = false;
             var crewOutside = false;
 
             foreach (var targetPlayer in players)
@@ -1092,7 +1092,9 @@ namespace DoodleUp.Runtime
                 var position = targetPlayer.transform.position;
                 var resolved = LastShiftPlazaLayout.TryResolveSpace(position.x, position.z, out var space);
                 crewLeftCockpit |= !resolved || space != LastShiftPlazaSpace.CockpitRoom;
-                crewInAirlockHall |= resolved && space == LastShiftPlazaSpace.AirlockHall;
+                // 에어록 홀이 폐지돼 중앙 승강구가 하강 경로다. 갑판 아래에 발을 딛는
+                // 순간이 그 신호이고, 진공 판정이 이미 같은 술어를 쓰고 있어 두 벌이 안 된다.
+                crewBelowDeck |= LastShiftBypassDuct.IsUnpressurizedSpace(position);
                 crewOutside |= LastShiftAirlock.IsOutside(position);
 
                 if (!IsZoneVacuum(position))
@@ -1118,7 +1120,7 @@ namespace DoodleUp.Runtime
 
             LastShiftTutorial.Observe(
                 new LastShiftTutorialObservation(
-                    crewLeftCockpit, crewInAirlockHall, crewOutside,
+                    crewLeftCockpit, crewBelowDeck, crewOutside,
                     LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                     LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
                 deltaTime);

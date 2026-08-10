@@ -71,10 +71,10 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(worst, Is.EqualTo(LastShiftZone.Cockpit),
                 "최악 이탈이 조종석 구역이 아니다 — 사슬 깊이가 1 인 방에 경유가 생겼다.");
-            Assert.That(worstMeters, Is.EqualTo(17.03f).Within(0.01f),
+            Assert.That(worstMeters, Is.EqualTo(19.26f).Within(0.01f),
                 "최악 이탈 거리가 17.03m 에서 움직였다(§9.4). 조종석 방 선수 구석 → 개구부 → " +
                 "전력실 문이 그 경로다.");
-            Assert.That(EgressSeconds(worstMeters), Is.EqualTo(5.06f).Within(0.01f),
+            Assert.That(EgressSeconds(worstMeters), Is.EqualTo(5.61f).Within(0.01f),
                 "RG-1(1) 판정값이 5.06초에서 움직였다. 한도 10초까지 남은 여유가 4.94초다.");
             Assert.That(EgressSeconds(worstMeters),
                 Is.LessThanOrEqualTo(LastShiftPlacementRules.TraverseLimitSeconds));
@@ -88,9 +88,9 @@ namespace DoodleUp.Tests.EditMode
             // 이 값이 두 배로 뛰므로, 여기가 "직결" 을 수치로 지키는 자리다.
             var expected = new (LastShiftZone Zone, float Meters)[]
             {
-                (LastShiftZone.Power, 5.83f),
-                (LastShiftZone.Cooling, 5.83f),
-                (LastShiftZone.LifeSupport, 8.54f)
+                (LastShiftZone.Power, 8.94f),
+                (LastShiftZone.Cooling, 8.94f),
+                (LastShiftZone.LifeSupport, 10.77f)
             };
 
             foreach (var (zone, meters) in expected)
@@ -117,7 +117,7 @@ namespace DoodleUp.Tests.EditMode
                 max = Mathf.Max(max, footprint.Area);
             }
 
-            Assert.That(max / min, Is.EqualTo(1.60f).Within(0.01f),
+            Assert.That(max / min, Is.EqualTo(1.25f).Within(0.01f),
                 "정적 발자국비가 1.60배에서 움직였다(§9.4).");
             Assert.That(max / min, Is.LessThanOrEqualTo(3f),
                 "RG-1(3) 위반 — EQUALIZE_RATE 를 부피 가중으로 재검토해야 한다.");
@@ -145,7 +145,7 @@ namespace DoodleUp.Tests.EditMode
             }
 
             var ratio = max / min;
-            Assert.That(ratio, Is.EqualTo(8.80f).Within(0.05f),
+            Assert.That(ratio, Is.EqualTo(4.25f).Within(0.05f),
                 $"실 기밀 체적비가 {ratio:F2}배로 §9.4 실측 8.80배에서 움직였다. 방이 커졌거나 " +
                 "구역 소속이 바뀌었다는 뜻이므로 §3.3 회피의 크기를 다시 봐야 한다.");
             Assert.That(ratio, Is.LessThanOrEqualTo(AttachedVolumeRatioRatchet),

@@ -75,8 +75,7 @@ namespace DoodleUp.Tests.EditMode
             var table = CanonicalTable();
             var expected = new (LastShiftCompartment Compartment, float Meters)[]
             {
-                (LastShiftCompartment.AirlockHall, 13.35f),
-                (LastShiftCompartment.Quarters, 10.52f)
+                (LastShiftCompartment.Quarters, 14.17f)
             };
 
             foreach (var (compartment, meters) in expected)

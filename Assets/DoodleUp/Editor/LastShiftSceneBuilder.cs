@@ -25,6 +25,15 @@ namespace DoodleUp.Editor
         private static Material floorMaterial;
         private static Material cockpitMaterial;
         private static Material powerMaterial;
+        /// <summary>
+        /// 구역 문 비주얼. 그레이박스 판 두 짝을 대체하는 아트 킷 프리팹이다(game-art 인계).
+        /// 정면이 로컬 <c>+X</c>, up 이 <c>+Y</c> 라 <see cref="CreateZoneDoor"/> 의 yaw 보정을
+        /// 그대로 탄다 — 이 규약이 깨지면 z 평면 문 둘만 90° 돌아간 채 서고, 정지 화면에서는
+        /// 안 보인다.
+        /// </summary>
+        private const string DoorKitPrefabPath =
+            "Assets/DoodleUp/Prefabs/LastShiftModularKit/LPK_Door_Airlock_2m.prefab";
+
         private static Material coolingMaterial;
         private static Material lifeSupportMaterial;
         private static Material ceilingMaterial;
@@ -394,7 +403,6 @@ namespace DoodleUp.Editor
             const float thickness = LastShiftZoneDoor.PanelThickness;
             const float opening = LastShiftZoneDoor.OpeningWidth;
             const float openingHeight = LastShiftZoneDoor.OpeningHeight;
-            var doorMaterial = CreateMaterial($"LS_Door_{boundary}", new Color(0.46f, 0.44f, 0.30f));
 
             var door = new GameObject(name);
             door.transform.SetParent(ship, false);
@@ -412,23 +420,23 @@ namespace DoodleUp.Editor
             // 중 하나만 빠져도 그 조각이 구멍에서 어긋난 채 조용히 통과한다.
             door.transform.localPosition = new Vector3(plazaDoor.Waypoint.x, 0f, plazaDoor.Waypoint.y);
 
-            // 판은 구멍 절반씩 덮는다. 위치는 LastShiftZoneDoor 가 매 프레임 다시 쓰므로
-            // 여기서는 크기와 재질만 정해 두면 된다.
-            var panelScale = new Vector3(thickness * 1.1f, openingHeight, opening * 0.5f);
-            var fore = CreateCube($"{name}_PanelFore", door.transform, Vector3.zero, panelScale, doorMaterial);
-            var aft = CreateCube($"{name}_PanelAft", door.transform, Vector3.zero, panelScale, doorMaterial);
-            Object.DestroyImmediate(fore.GetComponent<Collider>());
-            Object.DestroyImmediate(aft.GetComponent<Collider>());
+            // 비주얼은 아트 킷 프리팹이 통째로 낸다. 그레이박스 판 두 짝과 문틀은 여기서
+            // 영구히 빠졌다 — 씬에서 지우는 것으로는 다음 리빌드에 되살아나므로 삭제 지점은
+            // 이 함수여야 한다(game-art 인계 §7).
+            //
+            // 프리팹 정면은 로컬 +X, up 은 +Y 다(아트 규약 2). z 평면 문을 위에서 yaw 90° 로
+            // 세우므로 프리팹은 보정 없이 문 루트에 그대로 붙인다.
+            var kit = AssetDatabase.LoadAssetAtPath<GameObject>(DoorKitPrefabPath);
+            if (kit == null)
+                throw new System.IO.FileNotFoundException($"문 킷 프리팹이 없다: {DoorKitPrefabPath}");
+            var visual = (GameObject)PrefabUtility.InstantiatePrefab(kit, door.transform);
+            visual.name = $"{name}_Kit";
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;
 
-            // 문틀. 판이 물러난 자리를 감싸 "여기가 문" 이라는 것이 닫혀 있지 않을 때도 읽히게 한다.
-            panelMaterial ??= CreateMaterial("LS_Panel", new Color(0.14f, 0.16f, 0.19f));
-            foreach (var sign in new[] { -1f, 1f })
-            {
-                var jamb = CreateCube($"{name}_Jamb_{(sign < 0f ? "Fore" : "Aft")}", door.transform,
-                    new Vector3(0f, openingHeight * 0.5f, sign * (opening * 0.5f + 0.06f)),
-                    new Vector3(thickness * 1.4f, openingHeight, 0.12f), panelMaterial);
-                Object.DestroyImmediate(jamb.GetComponent<Collider>());
-            }
+            var doorAnimator = visual.GetComponentInChildren<Animator>(true);
+            if (doorAnimator == null)
+                throw new MissingComponentException($"{DoorKitPrefabPath} 에 Animator 가 없다 — 문이 조용히 안 움직인다.");
 
             var blockerObject = new GameObject($"{name}_Blocker");
             blockerObject.transform.SetParent(door.transform, false);
@@ -437,7 +445,7 @@ namespace DoodleUp.Editor
             blocker.size = new Vector3(thickness, openingHeight, opening);
             blocker.enabled = false;
 
-            door.AddComponent<LastShiftZoneDoor>().Configure(boundary, fore.transform, aft.transform, blocker);
+            door.AddComponent<LastShiftZoneDoor>().Configure(boundary, doorAnimator, blocker);
         }
         /// <summary>
         /// 조종석 좌현 창과 그 너머 별. 별은 실제 스카이박스 대신 창 밖에 놓은 점 격자다.

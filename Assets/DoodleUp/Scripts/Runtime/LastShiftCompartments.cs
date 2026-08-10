@@ -44,8 +44,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         Quarters = 0,
 
-        /// <summary>파밍 출정소. 광장 좌현 변에 직결한다(<c>docs/airlock-hall-sortie-room-v1.md</c>).</summary>
-        AirlockHall = 1
+        // AirlockHall = 1 이 여기 있었다(2026-08-10 폐지). 에어록 홀이 정본 지도에서 빠지면서
+        // 붙일 발자국이 없어졌고, 확장된 전력실과 x 1m · z 6m 겹치기까지 했다.
+        // Quarters 가 0 이라 남은 값은 안 밀리고 드레싱의 compartment: 0 도 그대로 숙소다.
     }
 
     /// <summary>
@@ -140,6 +141,7 @@ namespace DoodleUp.Runtime
         /// <summary>enum 이 있는 구획인가. <see cref="Compartment"/> 를 믿어도 되는지가 이것이다.</summary>
         public bool IsFixed => Index < LastShiftCompartments.FixedCount;
 
+
         /// <summary><see cref="IsFixed"/> 일 때만 뜻이 있다. 모듈에서는 범위 밖 값이다.</summary>
         public LastShiftCompartment Compartment { get; }
 
@@ -224,7 +226,9 @@ namespace DoodleUp.Runtime
         /// 모듈 슬롯을 <c>인덱스 - FixedCount</c> 로 싣고 있으므로, 옛 세이브는 이 개편을
         /// 건너뛸 수 없다 — 그래서 M-2 가 되돌리기 비싼 단계다(§8).
         /// </summary>
-        public const int FixedCount = 2;
+        /// <b><c>2 → 1</c></b>(2026-08-10, 에어록 홀 폐지). 옛 세이브를 못 읽는 변경이지만
+        /// <c>persistentDataPath</c> 에 세이브 파일이 하나도 없는 시점이라 깨지는 판이 없다.
+        public const int FixedCount = 1;
 
         private static readonly LastShiftCompartmentSpec[] fixedSpecs = BuildSpecs();
 
@@ -284,7 +288,6 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string NameOf(LastShiftCompartment compartment) => compartment switch
         {
-            LastShiftCompartment.AirlockHall => "Compartment_AirlockHall",
             LastShiftCompartment.Quarters => "Compartment_Quarters",
             _ => ModuleName((int)compartment)
         };
@@ -319,8 +322,6 @@ namespace DoodleUp.Runtime
             // (§2.3), 사슬 깊이가 전부 1 인 것이 최악 이탈 `6.05 → 4.26초` 의 실체다.
             // 좌표는 한 줄도 새로 안 적고 발자국표에서 그대로 옮긴다.
             var result = new LastShiftCompartmentSpec[FixedCount];
-            result[(int)LastShiftCompartment.AirlockHall] =
-                AnnexOf(LastShiftCompartment.AirlockHall, LastShiftPlazaSpace.AirlockHall);
             result[(int)LastShiftCompartment.Quarters] =
                 AnnexOf(LastShiftCompartment.Quarters, LastShiftPlazaSpace.Quarters);
             return result;
@@ -332,6 +333,7 @@ namespace DoodleUp.Runtime
         /// (<see cref="DoorSitsOnOwnBoundary"/> 와 <see cref="LastShiftModuleAttachment"/> 의
         /// 선체 면 판정이 같은 좌표에서 둘 다 성립한다) 축만 옮겨 담으면 된다.
         /// </summary>
+
         private static LastShiftCompartmentSpec AnnexOf(
             LastShiftCompartment compartment, LastShiftPlazaSpace space)
         {
@@ -383,7 +385,6 @@ namespace DoodleUp.Runtime
                 // 있어서, 세면 그 방이 자기 자신을 파고든 것으로 판정된다 — 고정 좌표가 자기
                 // 판정기를 통과 못 하는 상태이고 실제로 그렇게 났다. 모듈이 부속을 파고드는
                 // 경우는 표 대 표 <see cref="VolumesOverlap"/> 가 이미 잡는다(부속이 표 안에 있다).
-                if (footprint.Space == LastShiftPlazaSpace.AirlockHall) continue;
                 if (footprint.Space == LastShiftPlazaSpace.Quarters) continue;
 
                 if (VolumesOverlap(minX, maxX, minZ, maxZ,
