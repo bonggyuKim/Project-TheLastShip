@@ -123,6 +123,10 @@ namespace DoodleUp.Runtime
             LastShiftOutpost.BeginVoyage();
             LastLatchCount = 0;
             EnterSegment(FirstSegment);
+            // 튜토리얼 무장은 <b>맨 끝</b>이어야 한다 — 바로 위 EnterSegment 가 출항으로 치고
+            // LastShiftTutorial.LeavePort() 를 부르므로, 앞에 두면 그 자리에서 도로 꺼진다.
+            // 이미 끝낸 세이브면 무장 자체가 안 선다(조항 T-6).
+            LastShiftTutorial.BeginVoyage();
         }
 
         /// <summary>
@@ -139,6 +143,9 @@ namespace DoodleUp.Runtime
             // 그 순간 RG-1 이탈 시간 계산의 종점이 배 밖이 된다.
             LastShiftAirlock.SealForSegment();
             LastShiftSalvage.LeavePort();
+            // 튜토리얼은 첫 기항 하나다. 출항하면 조항 T-5·T-8 예외도 같이 닫힌다 —
+            // 안 닫으면 둘째 기항 잔해가 계속 4 × 인원수 로 뜨고 O-7 대가가 영영 안 물린다.
+            LastShiftTutorial.LeavePort();
         }
 
         /// <summary>
@@ -191,6 +198,9 @@ namespace DoodleUp.Runtime
                 // 잔해는 뜬다: 견인의 대가는 여력 수입 0 이고(조항 M-3), 자재는 여력이
                 // 아니라서(조항 O-1) 그 대가에 안 걸린다 — 걸면 최악 항해의 회복 경로가
                 // 통째로 사라져 RG-3 의 항해판 위반이 된다.
+                // 튜토리얼이 먼저다 — 잔해 총량이 조항 T-5 의 인원 배수를 타므로
+                // (LastShiftSalvage.FieldChunks) 1단계가 이미 열려 있어야 배수가 걸린다.
+                LastShiftTutorial.ArriveAtPort();
                 LastShiftSalvage.ArriveAtPort(CurrentPreset);
             }
 
@@ -224,6 +234,7 @@ namespace DoodleUp.Runtime
             LastShiftOutpost.ClearPieces();
             LastShiftSalvage.Clear();
             LastShiftAirlock.Clear();
+            LastShiftTutorial.Clear();
             SegmentIndex = FirstSegment;
             LastTransition = LastShiftSegmentTransition.Pending;
             LastLatchCount = 0;

@@ -69,6 +69,17 @@ namespace DoodleUp.Runtime
 
         /// <summary>배치물 표. 씬 참조도 핸들도 없다 — 핸들은 프로세스 안에서만 뜻이 있다.</summary>
         public LastShiftPlacementRecord[] Modules = Array.Empty<LastShiftPlacementRecord>();
+
+        /// <summary>
+        /// 튜토리얼을 끝냈는가 — 조항 <c>T-6</c>
+        /// (<c>docs/tutorial-o3-free-placement-farming-deposit-v1.md</c> §3). 초안의 "세션 메모리"
+        /// 결정과 그 대가("껐다 켜면 다시 뜬다")를 이 <c>bool</c> 하나가 폐기한다.
+        ///
+        /// <b><c>schemaA</c> 를 안 올린다.</b> 없던 키는 <see cref="UnityEngine.JsonUtility"/> 에서
+        /// <c>false</c> 로 읽히고, 그것이 "아직 안 했다" 라 옛 세이브가 정확히 옳은 값으로 실린다 —
+        /// 올리면 §4.4 의 "명시적 실패" 규약에 따라 옛 파일이 통째로 안 실린다.
+        /// </summary>
+        public bool TutorialCompleted;
     }
 
     /// <summary>

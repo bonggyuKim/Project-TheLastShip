@@ -45,8 +45,23 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static int LifetimeSalvaged { get; private set; }
 
-        /// <summary>가장 최근 기항에서 반입한 몫. 화면이 "이번에 N" 을 적는 자리다.</summary>
+        /// <summary>
+        /// 가장 최근 기항에서 반입한 몫. 화면이 "이번에 N" 을 적는 자리다.
+        /// <b>기항 안에서는 쌓인다</b> — <see cref="ArriveAtPort"/> 가 <c>0</c> 으로 비우는 것이
+        /// 그 규약이고, 튜토리얼이 왕복을 두 번 시키므로(조항 <c>T-1</c>) 덮어쓰면 두 번 다녀온
+        /// 뒤에도 화면이 <c>2</c> 로 남는다.
+        /// </summary>
         public static int LastPortSalvaged { get; private set; }
+
+        /// <summary>
+        /// 반입이 몇 번 일어났는가. <b>화면이 "방금 들어왔다" 를 잡는 유일한 신호다</b>
+        /// (조항 <c>T-2</c>) — 잔액 변화로 잡으면 지불·환수와 구분이 안 되고, 같은 프레임에
+        /// 둘이 겹치면 아무 일도 없던 것으로 읽힌다.
+        /// </summary>
+        public static int DepositRevision { get; private set; }
+
+        /// <summary>가장 최근 반입 한 번의 몫. 배지가 <c>+N</c> 으로 적는 값이다(조항 <c>T-2</c>).</summary>
+        public static int LastDeposited { get; private set; }
 
         // ── 획득 ────────────────────────────────────────────────────────────
 
@@ -63,7 +78,9 @@ namespace DoodleUp.Runtime
 
             Balance += chunks;
             LifetimeSalvaged += chunks;
-            LastPortSalvaged = chunks;
+            LastPortSalvaged += chunks;
+            LastDeposited = chunks;
+            DepositRevision++;
             return chunks;
         }
 
@@ -138,6 +155,8 @@ namespace DoodleUp.Runtime
             Balance = 0;
             LifetimeSalvaged = 0;
             LastPortSalvaged = 0;
+            LastDeposited = 0;
+            DepositRevision = 0;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

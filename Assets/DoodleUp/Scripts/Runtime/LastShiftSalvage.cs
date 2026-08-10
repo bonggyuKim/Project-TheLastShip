@@ -99,6 +99,20 @@ namespace DoodleUp.Runtime
         public static float DistanceFromAirlock =>
             Vector3.Distance(LastShiftAirlock.ReturnPoint, FieldCenter);
 
+        /// <summary>
+        /// 이번 기항의 잔해 총량. 평시에는 <see cref="ChunksPerField"/> 그대로이고,
+        /// <b>튜토리얼 기항에서만 인원 배수가 걸린다</b> — 조항 <c>T-5</c>
+        /// (<c>docs/tutorial-o3-free-placement-farming-deposit-v1.md</c> §3).
+        ///
+        /// <b>배수 하나로 <c>4</c>인을 덮는 것이 요점이다.</b> 총량이 인원에 비례하므로
+        /// 한 사람당 왕복이 <c>2</c>번인 것이 유지되고, 계류 골조 가격도 같은 식이라
+        /// (<see cref="LastShiftOutpostCatalog"/>) 튜토리얼이 끝났을 때 잔액이 <c>0</c> 인 것도
+        /// 같이 유지된다. 새로 드는 상수가 배수 하나뿐인 이유다.
+        /// </summary>
+        public static int FieldChunks => LastShiftTutorial.IsTutorialPort
+            ? ChunksPerField * Mathf.Max(1, LastShiftTutorial.CrewCount)
+            : ChunksPerField;
+
         /// <summary>이번 기항에 잔해가 떠 있는가. 구간 중에는 언제나 거짓이다.</summary>
         public static bool HasField { get; private set; }
 
@@ -153,7 +167,10 @@ namespace DoodleUp.Runtime
             Carried = 0;
             harvestCooldown = 0f;
             Kind = KindOf(settledPreset);
-            Remaining = ChunksPerField;
+            // 총량은 조회 하나로 갈린다(조항 T-5). 부르는 쪽이 튜토리얼인지 안 따지는 것이
+            // 조건이다 — 갈래를 부르는 자리에 두면 나중에 기항을 여는 경로가 하나 늘 때
+            // 그쪽만 평시 총량으로 뜬다.
+            Remaining = FieldChunks;
             HasField = true;
             LastShiftMaterials.ArriveAtPort();
         }
@@ -235,14 +252,24 @@ namespace DoodleUp.Runtime
         /// <b>잔해에 되돌리지 않는다.</b> 잃은 몫이 잔해로 복귀하면 산소가 마른 것이 시간
         /// 손해로만 남고, 그러면 "산소가 허락하는 만큼 최대한 뜯고 오는 것" 이 다시 최적이
         /// 된다 — §3.2-2 가 경계한 그것이다.
+        ///
+        /// <b>튜토리얼 기항만 예외다</b> — 조항 <c>T-8</c>. 그 기항은 필드 총량과 골조 가격이
+        /// 정확히 같아서(<see cref="FieldChunks"/> · 조항 <c>T-5</c>) 되돌리지 않으면 한 덩이만
+        /// 잃어도 판이 진행 불능이 된다. 위 문단이 막으려던 "최대한 뜯고 오기" 는 <b>총량이
+        /// 필요량과 같은 필드에는 최적화할 여지가 없어서</b> 성립하지 않는다 — 조문의 대상이
+        /// 아니다. 튜토리얼이 끝나면 예외도 끝난다.
         /// </summary>
         /// <returns>잃은 몫.</returns>
         public static int AbandonCarried()
         {
             var lost = Carried;
             Carried = 0;
-            if (lost > 0)
-                Debug.Log($"[LAST_SHIFT_SALVAGE] action=ABANDON chunks={lost} reason=suit-oxygen-depleted");
+            if (lost <= 0) return 0;
+
+            var returned = LastShiftTutorial.IsTutorialPort;
+            if (returned) Remaining += lost;
+            Debug.Log($"[LAST_SHIFT_SALVAGE] action=ABANDON chunks={lost} reason=suit-oxygen-depleted " +
+                      $"returnedToField={returned} remaining={Remaining}");
             return lost;
         }
 

@@ -86,7 +86,8 @@ namespace DoodleUp.Runtime
                 Campaign = new LastShiftCampaignSave
                 {
                     Ledger = ledger,
-                    Modules = records.ToArray()
+                    Modules = records.ToArray(),
+                    TutorialCompleted = LastShiftTutorial.HasCompleted
                 }
             };
 
@@ -171,6 +172,10 @@ namespace DoodleUp.Runtime
             var clock = Stopwatch.StartNew();
             var complete = LastShiftPlacementReplication.Apply(campaign.Modules);
             LastShiftPlacementReplication.ApplyLedger(campaign.Ledger);
+            // 조항 T-6 — 완료 플래그. 파일에 실리는 튜토리얼 상태는 이것 하나이고, 단계 번호는
+            // 안 싣는다: 중간에 저장한 판을 그 단계로 되세우려면 승무원 위치·잔해 잔량·잔액이
+            // 전부 그 단계와 맞아야 하는데, 그건 이미 B층이 하는 일이라 두 벌이 된다.
+            LastShiftTutorial.RestoreCompleted(campaign.TutorialCompleted);
             var built = 0;
             if (moduleYard != null) built = LastShiftModuleAssembler.Rebuild(moduleYard, palette);
             var reassemble = clock.Elapsed.TotalMilliseconds;

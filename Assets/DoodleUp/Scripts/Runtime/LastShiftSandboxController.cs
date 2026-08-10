@@ -31,6 +31,13 @@ namespace DoodleUp.Runtime
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
         private GUIStyle sirenStyle;
+        private GUIStyle depositBadgeStyle;
+
+        /// <summary>자재 배지가 튀어 있는 시간. 왕복 한 번이 <c>24</c>초대라 이 정도면 겹치지 않는다.</summary>
+        private const float DepositBadgePopSeconds = 1.8f;
+
+        private int seenDepositRevision;
+        private float depositBadgePopSeconds;
         private float dockingSecondsRemaining;
         private LastShiftMeteorStimulus appliedMeteor;
         private LastShiftImpactFeedback impactFeedback;
@@ -952,6 +959,10 @@ namespace DoodleUp.Runtime
             if (value == LastShiftVerdict.Pending || IsResolved) return;
             verdict = value;
             CaptureRunSummary();
+            // 조항 T-5 의 인원 배수는 잔해가 뜨기 전에 서 있어야 한다 — 바로 아래
+            // SettleSegment 안에서 LastShiftSalvage.ArriveAtPort 가 총량을 확정하고, 그 총량이
+            // 이 값을 곱한다.
+            LastShiftTutorial.SetCrewCount(LivingCrewCount);
             // 구간 판정 → 항해 전이. 여기가 정본 자리다(§5 표) — 배치 화면이 처음 열릴 때
             // 임시로 기항을 열던 다리를 이 한 줄이 대신한다. 래치 수는 판정 순간의 구역
             // 압력이고, 상태를 얼린 직후라 결과 화면이 읽는 값과 같은 시점이다.
@@ -1069,6 +1080,13 @@ namespace DoodleUp.Runtime
             LastShiftSalvage.Tick(deltaTime);
             if (!LastShiftAirlock.IsAtPort || players == null) return;
 
+            // 튜토리얼 관측 셋. 이 루프가 이미 승무원마다 좌표를 한 번씩 보므로 여기서 같이
+            // 접는다 — 따로 돌면 "선외인가" 판정이 두 벌이 되고, 그 둘이 갈리는 순간
+            // 화면에 산소 게이지가 뜬 단계와 상태기가 센 단계가 어긋난다.
+            var crewLeftCockpit = false;
+            var crewInAirlockHall = false;
+            var crewOutside = false;
+
             foreach (var targetPlayer in players)
             {
                 if (targetPlayer == null) continue;
@@ -1076,6 +1094,11 @@ namespace DoodleUp.Runtime
                 if (crew == null || crew.IsDead) continue;
 
                 var position = targetPlayer.transform.position;
+                var resolved = LastShiftPlazaLayout.TryResolveSpace(position.x, position.z, out var space);
+                crewLeftCockpit |= !resolved || space != LastShiftPlazaSpace.CockpitRoom;
+                crewInAirlockHall |= resolved && space == LastShiftPlazaSpace.AirlockHall;
+                crewOutside |= LastShiftAirlock.IsOutside(position);
+
                 if (!IsZoneVacuum(position))
                 {
                     // 배 안으로 들어오는 것이 곧 반입이다. 에어록 안에서 받지 않는 이유는
@@ -1096,6 +1119,32 @@ namespace DoodleUp.Runtime
 
                 crew.Tick(true, deltaTime);
             }
+
+            LastShiftTutorial.Observe(
+                new LastShiftTutorialObservation(
+                    crewLeftCockpit, crewInAirlockHall, crewOutside,
+                    LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
+                    LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
+                deltaTime);
+            AdvanceDepositBadge(deltaTime);
+        }
+
+        /// <summary>
+        /// 자재 배지의 팝 — 조항 <c>T-2</c> 의 결과 셋 중 하나다. <b>반입 횟수를 보고
+        /// 잔액을 안 본다</b>: 잔액 차이로 잡으면 골조를 사서 줄어든 것과 구분이 안 되고,
+        /// 같은 프레임에 반입과 지불이 겹치면 아무 일도 없던 것으로 읽힌다.
+        /// </summary>
+        private void AdvanceDepositBadge(float deltaTime)
+        {
+            if (LastShiftMaterials.DepositRevision != seenDepositRevision)
+            {
+                seenDepositRevision = LastShiftMaterials.DepositRevision;
+                depositBadgePopSeconds = DepositBadgePopSeconds;
+                return;
+            }
+
+            if (depositBadgePopSeconds > 0f)
+                depositBadgePopSeconds = Mathf.Max(0f, depositBadgePopSeconds - deltaTime);
         }
 
         /// <summary>
@@ -1932,8 +1981,65 @@ namespace DoodleUp.Runtime
                 LastShiftResultScreen.Draw(runSummary, NextPreset, SecondsSinceVerdict);
             }
 
+            DrawTutorialBanner();
+
             if (debugHudVisible) DrawDebugHud();
         }
+
+        /// <summary>
+        /// 튜토리얼 띠 — 조항 <c>T-2</c> 가 요구한 결과 셋 중 <b>화면 몫 둘</b>이다.
+        /// 들고 있는 개수와 잔액 배지 팝. 셋째(하치대 누적 프롭)는 아트 몫이라 여기 없다.
+        ///
+        /// <b>판정 화면 갈래 밖에 그린다.</b> 기항은 구간 판정이 이미 난 뒤라
+        /// <see cref="IsResolved"/> 가 참이고, 그 갈래 안에 두면 결과 화면과 같은 층에 겹친다.
+        ///
+        /// <b>문안은 임시다</b> — 단계 안내 문구 전부가 <c>game-writer</c> 몫이고
+        /// (기획 §8-<c>5</c>), 여기 있는 것은 그때까지 단계가 눈에 보이게 하는 자리표다.
+        ///
+        /// <b>호스트 화면에만 뜬다.</b> 클라이언트는 이 컴포넌트가 꺼져 있고
+        /// (<c>LastShiftNetworkSandbox</c> 의 <c>sandbox.enabled = IsServer</c>), 잔해·자재 자체가
+        /// 아직 복제 경로를 안 탄다 — 선외 파밍을 서버 권위로 옮기는 카드와 같이 붙는다.
+        /// </summary>
+        private void DrawTutorialBanner()
+        {
+            if (!LastShiftTutorial.IsRunning) return;
+
+            depositBadgeStyle ??= new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 16, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.6f, 1f, 0.7f) }
+            };
+
+            var top = Screen.height - 96f;
+            GUI.Box(new Rect(16f, top, 680f, 80f), GUIContent.none);
+            GUI.Label(new Rect(28f, top + 8f, 660f, 26f),
+                $"튜토리얼 {(int)LastShiftTutorial.Step}/{(int)LastShiftTutorialStep.HandsOff} · " +
+                $"{TutorialStepText(LastShiftTutorial.Step)}", headingStyle);
+
+            GUI.Label(new Rect(28f, top + 44f, 200f, 24f),
+                $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}", bodyStyle);
+            GUI.Label(new Rect(232f, top + 44f, 200f, 24f),
+                $"잔해 남음 {LastShiftSalvage.Remaining}", bodyStyle);
+
+            var popping = depositBadgePopSeconds > 0f;
+            GUI.Label(new Rect(436f, top + 44f, 250f, 24f),
+                popping
+                    ? $"자재 {LastShiftMaterials.Balance}  ▲ +{LastShiftMaterials.LastDeposited}"
+                    : $"자재 {LastShiftMaterials.Balance}",
+                popping ? depositBadgeStyle : bodyStyle);
+        }
+
+        /// <summary>단계 자리표 문안. 확정 문안은 <c>game-writer</c> 몫이다(기획 §8-<c>5</c>).</summary>
+        private static string TutorialStepText(LastShiftTutorialStep step) => step switch
+        {
+            LastShiftTutorialStep.SightSalvage => "창 밖에 잔해가 있다",
+            LastShiftTutorialStep.CrossPlaza => "광장 왼쪽 앞 문이 에어록 홀이다",
+            LastShiftTutorialStep.AirlockHall => "바닥 우물을 넘으면 밖이다",
+            LastShiftTutorialStep.Harvest => "자재를 뜯는다 — 한 번에 둘이다",
+            LastShiftTutorialStep.Deposit => "홀 바닥에 서면 들어간다",
+            LastShiftTutorialStep.SecondTrip => "한 번 더 — 왕복이 루프의 단위다",
+            LastShiftTutorialStep.Schematic => "도면이 열린다",
+            _ => "도면"
+        };
 
         /// <summary>
         /// 층1-a 목표 줄. 성공 조건 둘과 남은 시간. <b>숫자는 시간만 노출한다</b>(§5.2) —
