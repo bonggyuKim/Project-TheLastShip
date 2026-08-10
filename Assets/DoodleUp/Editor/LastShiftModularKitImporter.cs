@@ -360,12 +360,39 @@ namespace DoodleUp.Editor
             for (var x = startX; x < endX; x += tile[0])
             for (var z = startZ; z < endZ; z += tile[1])
             {
+                if (CoversDeckHatch(x, z, tile, y)) continue;
                 var facing = BoundaryFacing(space, x, z, tile);
                 var instance = Place(prefab, root, name, new Vector3(x, y, z), facing ?? 0f);
                 // 접지면 <b>아래</b>에 깔리는 층(밑깔개)에는 마감을 안 붙인다. 그 층은 반 칸
                 // 어긋나 있어 판 경계가 방 외곽과 안 맞고, 마감 띠가 위층 바닥을 뚫고 올라온다.
                 ApplyEdgeTrim(instance, facing.HasValue && y >= 0f);
             }
+        }
+
+        /// <summary>
+        /// 이 판이 갑판 승강구를 덮는가. 덮으면 깔지 않는다.
+        ///
+        /// <b>갑판에는 구멍이 둘 있다.</b> 예전에는 그레이박스 바닥이 그 자리를 비워 뒀는데,
+        /// 그 바닥을 지우고 지도의 바닥 판이 방을 빈틈없이 덮으면서 승강구가 통째로 메워졌다.
+        /// 해치는 열리는데 발밑이 막혀 있으니 갑판 아래로 내려갈 수가 없고, 튜토리얼
+        /// <c>CrossPlaza</c> 단계(<c>CrewBelowDeck</c>)가 거기서 멈춘다. PlayMode 검사 둘이
+        /// 정확히 그것을 잡았다.
+        ///
+        /// 접지면 아래 층(밑깔개)에도 같이 적용한다 — 그쪽만 남으면 구멍이 다시 막힌다.
+        /// </summary>
+        private static bool CoversDeckHatch(float x, float z, float[] tile, float y)
+        {
+            if (y > 0.5f) return false;                       // 천장은 갑판이 아니다
+            var halfX = tile[0] * 0.5f;
+            var halfZ = tile[1] * 0.5f;
+            var half = LastShiftBypassDuct.Section * 0.5f;
+            for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
+            {
+                var sx = LastShiftBypassDuct.ShaftX(shaft);
+                var sz = LastShiftBypassDuct.ShaftZ(shaft);
+                if (Mathf.Abs(sx - x) < halfX + half && Mathf.Abs(sz - z) < halfZ + half) return true;
+            }
+            return false;
         }
 
         /// <summary>
