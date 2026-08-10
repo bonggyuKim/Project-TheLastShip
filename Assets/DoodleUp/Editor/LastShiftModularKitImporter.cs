@@ -38,19 +38,44 @@ namespace DoodleUp.Editor
         private static GameObject CreatePrefab(string name)
         {
             var modelPath = $"{ModelFolder}/{name}.fbx";
+            ConfigureModelAxisConversion(modelPath);
             AssetDatabase.ImportAsset(modelPath, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
             if (model == null) throw new InvalidOperationException($"Modular kit model missing: {modelPath}");
             var root = new GameObject(name);
-            var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
-            visual.name = "Visual";
+            // Visual은 씬 배치가 참조하는 중립 래퍼다. FBX 모델 루트는 Importer가 관리하므로
+            // 그 루트를 Visual로 이름만 바꾸면 축 회전을 래퍼에도 남긴 채 저장하게 된다.
+            var visual = new GameObject("Visual");
             visual.transform.SetParent(root.transform, false);
+            // Blender → Unity 축 처리는 FBX ModelImporter가 유일한 정본이다. 모델 루트가
+            // 내보내기 과정에서 가진 회전은 모델 자식에만 남긴다. Visual은 항상 원점/무회전이다.
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localScale = Vector3.one;
+            var modelInstance = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            modelInstance.name = "Model";
+            modelInstance.transform.SetParent(visual.transform, false);
             if (TryCreateAnimator(name, root, out var controller))
                 root.AddComponent<Animator>().runtimeAnimatorController = controller;
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{name}.prefab");
             UnityEngine.Object.DestroyImmediate(root);
             if (prefab == null) throw new InvalidOperationException($"Could not create prefab for {name}");
             return prefab;
+        }
+
+        private static void ConfigureModelAxisConversion(string modelPath)
+        {
+            var importer = AssetImporter.GetAtPath(modelPath) as ModelImporter;
+            if (importer == null)
+                throw new InvalidOperationException($"Model importer missing: {modelPath}");
+
+            // Unity의 ModelImporter가 좌표계 변환과 meter 단위를 한 번만 적용한다.
+            // FBX 루트에 기록된 Blender→Unity 축 보정은 Importer가 유지한다. 이를 메시로
+            // bake하면 이 키트의 기존 루트 규약(XZ 바닥)이 XY 평면으로 다시 눕는다.
+            importer.bakeAxisConversion = false;
+            importer.useFileUnits = true;
+            importer.globalScale = 1f;
+            AssetDatabase.WriteImportSettingsIfDirty(modelPath);
         }
 
         private static bool TryCreateAnimator(string name, GameObject root, out AnimatorController controller)
