@@ -3,7 +3,7 @@
   "coordinateSystem": "Unity x,y,z; metres; y-up; asset pivot=bottom-center",
   "sourceOfTruth": "DoodleUp.Runtime.LastShiftPlazaLayout",
   "cockpitCamera": { "spawn": [-7.6, 0.1, 0], "lookAt": [0, 1.65, 0] },
-  "plaza": { "bounds": [-7, 7, -7, 7], "ceiling": 3.2, "core": [-2, 2, -2, 2] },
+  "plaza": { "bounds": [-6, 6, -6, 6], "ceiling": 3.2, "core": [-2, 2, -2, 2] },
   "spaces": [
     { "id": "cockpit", "bounds": [-16, -6, -4, 4], "ceiling": 3.2, "door": { "position": [-6, 0, 0], "rotationY": 90, "kind": "opening" }, "feature": "LPK_Cockpit_ControlConsole" },
     { "id": "lifeSupport", "bounds": [6, 16, -4, 4], "ceiling": 3.2, "door": { "position": [6, 0, 0], "rotationY": -90, "kind": "pressure" }, "feature": "LPK_LifeSupport_Scrubber" },
