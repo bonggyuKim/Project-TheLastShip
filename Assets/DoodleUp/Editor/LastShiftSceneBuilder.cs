@@ -85,8 +85,8 @@ namespace DoodleUp.Editor
         /// 조명은 안 들어간다. 등과 <c>RenderSettings</c> 는 씬 소관으로 남긴다.
         /// </summary>
         public const string ShipPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftShipGraybox.prefab";
-        public const string SpaceSkyMaterialPath = "Assets/DoodleUp/Materials/SpaceSky_Starfield_360.mat";
-        public const string SpaceSkyShaderName = "Skybox/Procedural";
+        public const string SpaceSkyMaterialPath = "Assets/DoodleUp/Materials/LS_SpaceSky.mat";
+        public const string SpaceSkyShaderName = "DoodleUp/Last Shift Space Sky";
 
         /// <summary>
         /// 선체 프리팹을 다시 굽는다. <b>지우고 만들지 않는다</b> — 지우면 GUID 가 새로 찍혀
@@ -456,57 +456,8 @@ namespace DoodleUp.Editor
         /// </summary>
         private static void CreateCockpitWindows(Transform ship)
         {
-            voidMaterial ??= CreateMaterial("LS_Void", new Color(0.012f, 0.016f, 0.030f));
-            // 별은 발광이어야 한다. 실내 조명이 창 밖까지 닿지 않으므로 일반 재질로 두면
-            // 검은 벽과 구분되지 않는다(첫 렌더에서 확인). 자기발광으로 두면 조명과 무관하게 보인다.
-            starMaterial ??= CreateEmissiveMaterial("LS_Star", new Color(0.92f, 0.95f, 1f), 2.2f);
-
-            // 창 밖 우주. 좌표 정본은 LastShiftHullFrames 다 — 예전에는 여기 리터럴이
-            // 따로 있어서 배경막이 옮겨질 때 프레임만 옛 값을 믿는 구조였다.
-            const float backdropZ = LastShiftHullFrames.WindowBackdropZ;
-            var voidWidth = LastShiftHullFrames.WindowBackdropHalfX * 2f;
-            CreateDecorCube("SpaceVoid", ship, new Vector3(0f, 1.6f, backdropZ), new Vector3(voidWidth, 18f, 0.2f), voidMaterial);
-
-            var starRandom = new System.Random(20260804);
-            var stars = new GameObject("StarField");
-            stars.transform.SetParent(ship, false);
-            var starSpreadX = voidWidth * 0.44f;
-
-            // 별 개수는 <b>각밀도</b>를 유지하도록 잡는다. 판이 멀어진 만큼 같은 화각 안에
-            // 더 많은 별이 들어오므로 개수를 그대로 두면 조종석에서 촘촘해 보인다.
-            // 각밀도 = 표면밀도 x 거리^2 이므로, 폭이 k배 거리가 d배 커지면 개수는 (k/d)^2 배다.
-            //
-            // 기준은 <b>창에서 배경막까지</b>이지 원점에서가 아니다. 창이 z=-3 으로 들어오면서
-            // 그 거리가 19m 가 됐다 — 원점 기준(22m)으로 재면 별이 15% 성기게 깔린다.
-            const float previousWindowZ = -3.1f;
-            const float previousBackdropZ = -9.1f;
-            const float previousVoidWidth = 50f;
-            var windowZ = LastShiftShipDimensions.RoomMinZ(LastShiftZone.Cockpit);
-            var widthRatio = voidWidth / previousVoidWidth;
-            var distanceRatio = Mathf.Abs(backdropZ - windowZ) / Mathf.Abs(previousBackdropZ - previousWindowZ);
-            var densityScale = (widthRatio / distanceRatio) * (widthRatio / distanceRatio);
-            var starCount = Mathf.RoundToInt(90f * LastShiftHullShell.OverallLength / 12.5f * densityScale);
-
-            // 판 크기는 거리 비만큼 키운다. 안 키우면 각크기가 그만큼 작아져 화면에서 사라진다.
-            const float starScale = 4.4f;
-
-            // 별 판은 배경막 앞 0.4m 에서 시작한다. 예전 구성의 상대 간격 그대로이고, 이
-            // 간격이 두 판을 같은 무한거리로 읽히게 하는 값이라 절대 z 가 아니라 배경막
-            // 기준으로 잡는다. 두께 상한은 원반 테두리 유리가 정한다 — 큰 별이 그 앞으로
-            // 나오면 창이 아니라 실내에 떠 있는 물체로 보인다.
-            const float starNearZ = backdropZ + 0.4f;
-            const float starMaxHalfSize = 0.24f * starScale * 0.5f;
-            var starDepth = Mathf.Clamp(
-                LastShiftHullFrames.WindowStarNearestZ - starMaxHalfSize - starNearZ, 0f, 2.4f);
-
-            for (var index = 0; index < starCount; index++)
-            {
-                var x = (float)(starRandom.NextDouble() * (starSpreadX * 2.0) - starSpreadX);
-                var y = (float)(starRandom.NextDouble() * 14.0 - 4.0);
-                var z = starNearZ + (float)(starRandom.NextDouble() * starDepth);
-                var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
-                CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
-            }
+            // Skybox는 환경 셰이더가 전담한다. 창 안쪽에 Plane/Box로 만든 별·은하수 메시를
+            // 놓으면 무한 거리 배경이 아니라 실내 소품처럼 보이므로 여기서는 만들지 않는다.
 
             // 벽 개구부만 있고 유리가 없던 상태는 창이 깨진 것처럼 읽혔다. 드레싱 키트의
             // 반투명 유리를 같은 개구부 정본으로 다시 세워, 벽/유리가 서로 다른 좌표를
@@ -1962,13 +1913,7 @@ namespace DoodleUp.Editor
         {
             var sky = AssetDatabase.LoadAssetAtPath<Material>(SpaceSkyMaterialPath);
             if (sky == null)
-            {
-                sky = new Material(Shader.Find(SpaceSkyShaderName)) { name = "SpaceSky_Starfield_360" };
-                sky.SetColor("_SkyTint", new Color(0.008f, 0.014f, 0.035f));
-                sky.SetColor("_GroundColor", new Color(0.001f, 0.002f, 0.005f));
-                sky.SetFloat("_AtmosphereThickness", 0f);
-                AssetDatabase.CreateAsset(sky, SpaceSkyMaterialPath);
-            }
+                throw new System.InvalidOperationException($"Space sky material missing: {SpaceSkyMaterialPath}");
             if (sky.shader == null || sky.shader.name != SpaceSkyShaderName)
                 throw new System.InvalidOperationException($"Space sky shader mismatch: expected {SpaceSkyShaderName}");
 
@@ -1977,19 +1922,6 @@ namespace DoodleUp.Editor
             RenderSettings.reflectionIntensity = 0.35f;
         }
 
-        /// <summary>은하수 대신 창 너머에만 보이는 저비용 성운 카드다.</summary>
-        public static void CreateNebulaCard()
-        {
-            var card = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            card.name = "NebulaCard";
-            card.transform.position = new Vector3(0f, 7f, 22f);
-            card.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            card.transform.localScale = new Vector3(12f, 7f, 1f);
-            Object.DestroyImmediate(card.GetComponent<Collider>());
-            var mat = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.16f, 0.05f, 0.28f, 1f) };
-            mat.name = "NebulaCard_Material";
-            card.GetComponent<Renderer>().sharedMaterial = mat;
-        }
 
         /// <summary>
         /// 경고 황색. 배에서 이 색이 붙는 자리는 셋뿐이다 — 통로 배플 모서리, 갑판 승강구,
