@@ -62,6 +62,8 @@ namespace DoodleUp.Editor
         private const float CeilingThickness = LastShiftShipDimensions.HullThickness;
 
         private const float WindowSillHeight = 0.6f;
+        internal const string CockpitGlassRootName = "CockpitWindowGlass";
+        internal const string CockpitGlassMaterialPath = "Assets/DoodleUp/Materials/Dressing/LSD_Glass.mat";
 
         /// <summary>
         /// 선체 프리팹. <b>SP01 과 SP02A 가 같은 배를 두 벌 들고 있던 것이 이 프리팹이 생긴 이유다.</b>
@@ -501,6 +503,28 @@ namespace DoodleUp.Editor
                 var size = (0.10f + (float)starRandom.NextDouble() * 0.14f) * starScale;
                 CreateDecorCube($"Star_{index}", stars.transform, new Vector3(x, y, z), Vector3.one * size, starMaterial);
             }
+
+            // 벽 개구부만 있고 유리가 없던 상태는 창이 깨진 것처럼 읽혔다. 드레싱 키트의
+            // 반투명 유리를 같은 개구부 정본으로 다시 세워, 벽/유리가 서로 다른 좌표를
+            // 믿다가 틈이 생기는 일을 막는다. 장식 메시라 콜라이더는 두지 않는다.
+            var glass = AssetDatabase.LoadAssetAtPath<Material>(CockpitGlassMaterialPath);
+            if (glass == null)
+                throw new System.InvalidOperationException($"조종석 유리 재질이 없다: {CockpitGlassMaterialPath}");
+
+            var glassRoot = new GameObject(CockpitGlassRootName);
+            glassRoot.transform.SetParent(ship, false);
+            var apertures = CockpitWindowBand();
+            var wallZ = LastShiftShipDimensions.RoomMinZ(LastShiftZone.Cockpit);
+            const float glassThickness = 0.025f;
+            for (var index = 0; index < apertures.Length; index++)
+            {
+                var aperture = apertures[index];
+                var height = aperture.TopY - aperture.BottomY;
+                CreateDecorCube($"CockpitGlass_{index:00}", glassRoot.transform,
+                    new Vector3(aperture.Center, aperture.BottomY + height * 0.5f,
+                        wallZ - glassThickness * 0.5f),
+                    new Vector3(aperture.HalfWidth * 2f, height, glassThickness), glass);
+            }
         }
 
         /// <summary>
@@ -508,8 +532,8 @@ namespace DoodleUp.Editor
         /// 남긴 벽 조각이 그대로 맡는다 — 기둥을 따로 세우던 옛 코드는 창을 통짜로 뚫어
         /// 놓고 그 위에 기둥을 얹는 구성이었고, 그러면 기둥과 문턱 판이 같은 평면에서 겹쳤다.
         ///
-        /// 유리 자체는 안 세운다. 그레이박스가 답하는 것은 "여기가 창이다" 까지이고 유리·
-        /// 프레임 메시는 아트 소관이다(§27.7-1).
+        /// 유리는 <see cref="CreateCockpitWindows"/> 가 이 배열을 그대로 사용해 세운다.
+        /// 개구부와 유리가 같은 정본을 써야 벽을 옮긴 뒤에도 깨진 듯한 틈이 생기지 않는다.
         /// </summary>
         private static WallAperture[] CockpitWindowBand()
         {

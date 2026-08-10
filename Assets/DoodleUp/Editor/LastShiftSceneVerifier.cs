@@ -31,6 +31,7 @@ namespace DoodleUp.Editor
             Require(all.Count(x => x.name == LastShiftSceneBuilder.PowerZoneName) == 1, "power zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.CoolingZoneName) == 1, "cooling zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.LifeSupportZoneName) == 1, "life support zone count must be 1");
+            VerifyCockpitGlass(all);
             Require(all.Count(x => x.name == "CanonicalMeteorStimulus") == 1, "canonical meteor count must be 1");
             var meteorVisual = all.Single(x => x.name == "CanonicalMeteorStimulus");
             var meteor = LastShiftMeteorStimulus.Canonical;
@@ -63,6 +64,20 @@ namespace DoodleUp.Editor
             var (samples, worstReadings) = VerifySimultaneousZoneReadings(roots);
             var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
             Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} plazaSamples={samples} simulZones={worstReadings} geometryClearance={clearance:F2} result=PASS");
+        }
+
+        private static void VerifyCockpitGlass(Transform[] all)
+        {
+            var glassRoot = all.SingleOrDefault(x => x.name == LastShiftSceneBuilder.CockpitGlassRootName);
+            Require(glassRoot != null, "cockpit glass root must exist exactly once");
+
+            var panes = glassRoot.GetComponentsInChildren<MeshRenderer>(true);
+            Require(panes.Length > 0, "cockpit glass must contain visible panes");
+            var glass = AssetDatabase.LoadAssetAtPath<Material>(LastShiftSceneBuilder.CockpitGlassMaterialPath);
+            Require(glass != null, "cockpit glass material must exist");
+            Require(panes.All(pane => pane.sharedMaterial == glass), "every cockpit pane must use the canonical glass material");
+            Require(glassRoot.GetComponentsInChildren<Collider>(true).Length == 0,
+                "cockpit glass is visual dressing and must not block traversal or interaction rays");
         }
 
         /// <summary>
