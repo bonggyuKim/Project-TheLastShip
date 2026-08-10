@@ -42,11 +42,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.275
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
       propertyPath: m_LocalPosition.z
@@ -87,8 +87,38 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7581174468442581446, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7957295292551121899}
   m_SourcePrefab: {fileID: 100100000, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
+--- !u!1 &1439029622407983557 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7581174468442581446, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
+  m_PrefabInstance: {fileID: 8848952946111780867}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &7957295292551121899
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1439029622407983557}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -1902800197453196445, guid: 6755061975ac2c14caa700a60660dc40, type: 3}
 --- !u!4 &9027310075737210856 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 6755061975ac2c14caa700a60660dc40, type: 3}

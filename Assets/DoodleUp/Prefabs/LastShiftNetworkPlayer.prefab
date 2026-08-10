@@ -128,6 +128,7 @@ GameObject:
   - component: {fileID: 5812883053278714139}
   - component: {fileID: 6969333402364084454}
   - component: {fileID: 7320766841054417678}
+  - component: {fileID: 961394602355912740}
   - component: {fileID: 344316672681465982}
   - component: {fileID: 6163506496450769196}
   m_Layer: 0
@@ -268,6 +269,20 @@ MonoBehaviour:
   heldItem: {fileID: 0}
   playerSlot: 0
   identityColor: {r: 0.2, g: 0.65, b: 1, a: 1}
+--- !u!114 &961394602355912740
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8281489241722501696}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8bc39a2ba8de024782fc247e8626d5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DoodleUp.Runtime::DoodleUp.Runtime.LastShiftMapSpawnPose
+  spawn: {x: -7.6, y: 0.1, z: 0}
+  lookAt: {x: 0, y: 1.65, z: 0}
 --- !u!114 &344316672681465982
 MonoBehaviour:
   m_ObjectHideFlags: 0

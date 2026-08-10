@@ -1,5 +1,7 @@
 # 게임 루프 체감 검토 v1 — "게임처럼 느껴지게"
 
+> **⚠ 부분 대체 (`2026-08-10`).** "플레이어가 현재 목표와 결과를 읽을 수 있어야 한다"는 진단은 유지한다. 그 해법으로 제안한 **도킹 게이지·도킹 진척·도킹 결과 화면은 폐기**하며 `docking-removal-persistent-ship-save-v1.md`가 대체한다. 새 정보 위계는 함선 누적 변화·장기 자원·성계 진행·저장 상태를 기준으로 다시 설계한다.
+
 > 상태: 검토안 v1 · 2026-08-08 · 카드 `93cd665f-04fe-4004-8a7f-55e52c935e3a`
 > 상위 정본: `docs/content-loop-spec-ct01.md`(루프·판정·HUD)
 > 앞 단계: `docs/content-expansion-review-v1.md`(구조) · `docs/interaction-verb-diversification-v1.md`(동사)

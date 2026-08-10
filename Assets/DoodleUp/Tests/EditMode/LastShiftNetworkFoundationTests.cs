@@ -43,12 +43,13 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void SpawnSlotsFaceTheInitialLooseCoolingCanister()
+        public void SpawnSlotsFaceTheAssemblyOrigin()
         {
-            var target = new Vector3(
-                LastShiftShipDimensions.CoolingNominal.x,
-                LastShiftSandboxController.PlayerSpawn.y,
-                LastShiftShipDimensions.CoolingNominal.z);
+            // 과녁이 냉각통에서 조립 기준 원점(중앙 광장)으로 옮겨 왔다 —
+            // LastShiftNetworkSession.RotationForSlot 이 그렇게 바뀌었고, 방이 넓어지면서
+            // 냉각통이 시선에서 더 벗어났다(내적 0.757). 첫 프레임에 레벨 안쪽이 보이는지가
+            // 재려던 것이고, 그 과녁은 방 너머 아이템이 아니라 광장이다.
+            var target = new Vector3(0f, LastShiftSandboxController.PlayerSpawn.y, 0f);
             for (var slot = 0; slot < LastShiftNetworkSession.MaxPlayers; slot++)
             {
                 var spawn = LastShiftNetworkSession.SpawnForSlot(slot);

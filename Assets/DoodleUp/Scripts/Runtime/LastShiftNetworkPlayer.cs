@@ -519,7 +519,7 @@ namespace DoodleUp.Runtime
             if (bodyRenderer == null) return;
             foreach (var renderer in bodyRenderer.transform.root.Find("Remote Body")
                          .GetComponentsInChildren<Renderer>(true))
-                renderer.enabled = !isLocalPlayer;
+                renderer.enabled = true;
             bodyRenderer.material.color = PlayerColor;
         }
 

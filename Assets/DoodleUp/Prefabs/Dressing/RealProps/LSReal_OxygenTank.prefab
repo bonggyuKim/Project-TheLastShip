@@ -42,11 +42,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.27499998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
       propertyPath: m_LocalPosition.z
@@ -87,8 +87,38 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -8147279875559093371, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1092405813957537695}
   m_SourcePrefab: {fileID: 100100000, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
+--- !u!1 &1338142282349498687 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8147279875559093371, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
+  m_PrefabInstance: {fileID: 2052802839557954234}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &1092405813957537695
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338142282349498687}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -8636896934272656958, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}
 --- !u!4 &2015286285828013393 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 61a9539f1f902dd4caa5feeff0fa0afc, type: 3}

@@ -62,6 +62,7 @@ namespace DoodleUp.Editor
                 var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
                 visual.name = "Visual";
                 visual.transform.SetParent(root.transform, false);
+                AlignVisualToBottom(visual);
                 foreach (var filter in visual.GetComponentsInChildren<MeshFilter>(true))
                 {
                     if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
@@ -75,6 +76,20 @@ namespace DoodleUp.Editor
                 result.Add(name, prefab);
             }
             return result;
+        }
+
+        private static void AlignVisualToBottom(GameObject visual)
+        {
+            var renderers = visual.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0) return;
+
+            var minY = float.PositiveInfinity;
+            foreach (var renderer in renderers)
+                minY = Mathf.Min(minY, renderer.bounds.min.y);
+            if (!float.IsFinite(minY)) return;
+
+            // The exported real props have a centre pivot; the dressing data is floor-based.
+            visual.transform.localPosition -= Vector3.up * minY;
         }
 
         private static void LinkDressing(IReadOnlyDictionary<string, GameObject> prefabs)

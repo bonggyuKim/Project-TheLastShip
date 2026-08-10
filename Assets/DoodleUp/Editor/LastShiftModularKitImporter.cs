@@ -76,12 +76,50 @@ namespace DoodleUp.Editor
             var modelInstance = (GameObject)PrefabUtility.InstantiatePrefab(model);
             modelInstance.name = "Model";
             modelInstance.transform.SetParent(visual.transform, false);
+            AddStructuralColliders(modelInstance, name);
             if (TryCreateAnimator(name, root, out var controller))
                 root.AddComponent<Animator>().runtimeAnimatorController = controller;
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{name}.prefab");
             UnityEngine.Object.DestroyImmediate(root);
             if (prefab == null) throw new InvalidOperationException($"Could not create prefab for {name}");
             return prefab;
+        }
+
+        /// <summary>
+        /// 통행을 막아야 하는 킷 조각. <b>이 목록에 없으면 통과된다</b> — 그것이 기본값이라
+        /// 문·해치·거울은 여기 없고, 벽·바닥·천장·외피만 있다.
+        ///
+        /// 이 목록이 생기기 전까지 맵으로 깔린 기하는 <b>전부 보이기만 하고 통과됐다</b>.
+        /// 충돌은 <c>CreateBypassDuct</c>/<c>CreateDiscHull</c> 이 세우는 원시 큐브가 혼자 지고
+        /// 있었고, 그래서 그 둘을 지울 수가 없었다. 지우려면 여기가 먼저 서야 한다.
+        /// </summary>
+        private static readonly HashSet<string> StructuralNames = new()
+        {
+            "LPK_Wall_Straight_2m", "LPK_Wall_Straight_4m", "LPK_Wall_Window_4m", "LPK_Wall_Curve_45",
+            "LPK_Corner_Outer_90", "LPK_Corner_Inner_90",
+            "LPK_Floor_Square_2m", "LPK_Floor_Curve_45", "LPK_Floor_Transition_2m",
+            "LPK_Ceiling_Straight_4m", "LPK_Ceiling_Curve45",
+            "LPK_Support_Pillar", "LPK_Connector_Neck_2m", "LPK_CentralLift_4m",
+            "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90",
+            "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m"
+        };
+
+        /// <summary>
+        /// 정적 레벨 기하라 <see cref="MeshCollider"/> 를 그대로 쓴다 — 볼록 근사를 하면 곡면 벽
+        /// (<c>Curve_45</c>) 안쪽이 메워져 회랑이 좁아진다.
+        ///
+        /// FBX 임포터의 <c>addCollider</c> 를 켜지 않는 이유: 그 스위치는 <b>모델 전체</b>에
+        /// 걸려서 문짝과 해치까지 막아 버린다. 어떤 조각이 막고 어떤 조각이 통하는지는 레벨
+        /// 규칙이지 임포트 설정이 아니므로, 판단을 코드 쪽에 둔다.
+        /// </summary>
+        private static void AddStructuralColliders(GameObject modelInstance, string name)
+        {
+            if (!StructuralNames.Contains(name)) return;
+            foreach (var filter in modelInstance.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
+                filter.gameObject.AddComponent<MeshCollider>().sharedMesh = filter.sharedMesh;
+            }
         }
 
         private static GameObject CreateCockpitWallMirrorPrefab()

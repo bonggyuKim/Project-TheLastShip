@@ -1,5 +1,7 @@
 # LAST SHIFT 결과 화면 — 레이아웃·타이포 (v1)
 
+> **⚠ 아카이브 (`2026-08-10`).** 도킹 판정·도킹 결과 카드는 현재 게임 구조에서 폐기됐다. 이 문서는 색·타이포 참고만 가능하며 화면 목적과 카피의 정본이 아니다. 새 결과 UI는 함선 누적 변화·손상·자원·저장 상태를 중심으로 `docking-removal-persistent-ship-save-v1.md` §6-3에서 다시 결정한다.
+
 `docs/game-feel-loop-review-v1.md` §3.1 `G-1`의 아트 몫. 기능(판정 `5`종 · 원인 줄 · 요약 `4`칸 · 다음 판 입력)은 `game-tech-director`가 구현하고, **이 문서는 그것이 화면에서 어떤 크기·색·순서로 읽히는지를 고정한다.** 톤 기준은 `docs/art/last-shift-art-style-guide-v1.md`(로우폴리 + "가볍고 유쾌한 협동").
 
 목업: `docs/art/mockups/last-shift-result-*.png` — 이 문서의 좌표표를 그대로 그린 것이고, 재생성은 `python Tools/art/render_result_screen_mockup.py`.

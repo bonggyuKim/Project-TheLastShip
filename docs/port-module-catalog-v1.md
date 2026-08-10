@@ -1,5 +1,7 @@
 # 기항 모듈 카탈로그 정본 (v1) — 정비 여력 · 목록 · 가격
 
+> **⚠ 획득 규칙 부분 무효 (`2026-08-10`).** 카탈로그 `10`종, 자유배치 비용, 여력은 배치 전용·자재는 복구/보급/거점 전용이라는 역할 분리는 유지한다. **도킹 래치 → 정비 여력 환산과 래치에서 유도한 총수입·가격 검산은 폐기**하며, 새 획득 규칙은 `docking-removal-persistent-ship-save-v1.md` §6-1에서 다시 확정한다.
+
 > 상태: `game-planning` 정본 v1 · `2026-08-09` · 카드 `42325809-1864-4f15-b306-99f1cf4ab632` (auto-queue, 사용자 직접 확인 후속)
 > 상위 정본: `voyage-run-structure-v1.md`(항해·구간·기항·여력) · `free-placement-expansion-feasibility-v1.md`(자유 배치 규칙)
 > 닫는 미결: `voyage-run-structure-v1.md` §10-7 중 **여력 사용처와 가격** · `free-placement-expansion-feasibility-v1.md` §3.5(카탈로그) · §12-6(배치 비용)

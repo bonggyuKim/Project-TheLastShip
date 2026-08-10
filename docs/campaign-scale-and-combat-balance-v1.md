@@ -1,5 +1,7 @@
 # `20`시간 스케일 재산정 + 함선 전투 밸런스 (v1)
 
+> **⚠ 부분 무효 (`2026-08-10`).** 성계 규모·비도킹 자원 수지·함선 전투의 선택 구조는 검토 자료로 남긴다. 그러나 **도킹 시간, 도킹 목표 추력초, 도킹 래치, 래치 기반 정비 여력, 견인의 도킹 성적 대가에서 유도한 수치**는 `docking-removal-persistent-ship-save-v1.md`에 따라 재산정 전까지 정본이 아니다.
+
 > 상태: `game-balance` 결정안 v1 · `2026-08-09` · 카드 `ca8162b8-4b87-46dc-bae6-dfd481d26086`
 > 닫는 미결: `campaign-structure-20h-and-save-v1.md` §9-1 전부 · §5.5.4 전투 사장 방지 유인책 · `port-module-catalog-v1.md` §9-2 재검산
 > 상위 정본: `campaign-structure-20h-and-save-v1.md`(층·자원·조우) · `port-module-catalog-v1.md`(여력·가격) · `core-four-rooms-and-hull-schematic-v1.md`(카탈로그 v2 `10`종) · `outboard-outpost-and-map-final-v1.md`(자재·거점) · `module-effect-coefficients-v1.md`(계수와 벽)

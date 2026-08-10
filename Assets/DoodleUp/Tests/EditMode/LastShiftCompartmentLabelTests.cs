@@ -179,26 +179,26 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void ALabelOnAWallWithADoorActuallyMovesAside()
         {
-            var hall = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
-            var doorCenter = hall.CenterX;
-
-            var child = new LastShiftCompartmentSpec(
-                LastShiftCompartments.NextModuleIndex,
-                // 안쪽(MinZ) 면은 이제 광장과 겹친다 — 숙소가 z 6~12 이고 광장이 -6~6 이라
-                // MinZ - 4 는 광장 안이다. 바깥(MaxZ) 면에 붙여 같은 것을 잰다.
-                hall.MinX, hall.MaxX, hall.MaxZ, hall.MaxZ + 4f,
-                LastShiftDoorPlane.AlongZ, hall.MaxZ, doorCenter,
-                hall.Index, LastShiftCompartmentAccess.Open);
-
-            Assert.That(LastShiftCompartments.TryRegister(child, out _, out var verdict), Is.True,
-                $"표본이 판정기에 물린다({verdict.Rejection}) — 라벨 규칙과 무관한 사유다.");
+            // 라벨 벽은 MinZ — 광장 쪽 면이고, 방 이름을 광장에서 읽으라는 뜻이다.
+            //
+            // <b>실제 배로는 이 규칙을 못 잰다</b>(2026-08-10). 모듈은 방 바깥으로 붙는데
+            // 숙소의 MinZ 바깥은 광장 안이라 판정기가 막고, 숙소 자기 문(x 4.8)은 라벨
+            // 중심(x 8)에서 떨어져 있어 비킬 이유가 없다. 재려는 것은 배치가 아니라
+            // "라벨 자리 한가운데에 구멍이 있으면 라벨이 비킨다" 는 계산이므로,
+            // 문이 정확히 중앙인 표본을 만들어 계산만 시킨다 — 표에 등록하지 않는다.
+            var real = LastShiftCompartments.Of(LastShiftCompartment.Quarters);
+            var hall = new LastShiftCompartmentSpec(
+                LastShiftCompartment.Quarters,
+                real.MinX, real.MaxX, real.MinZ, real.MaxZ,
+                LastShiftDoorPlane.AlongZ, real.MinZ, real.CenterX,
+                real.ParentIndex, LastShiftCompartmentAccess.Open);
+            var doorCenter = hall.DoorCenter;
 
             try
             {
                 var doorways = LastShiftCompartmentLabels.DoorwaysOnLabelWall(hall);
                 Assert.That(doorways, Is.EqualTo(new[] { doorCenter }),
-                    "붙인 모듈의 문이 에어록 홀 라벨 벽 구멍으로 안 잡힌다 — DoorwaysOnLabelWall 이 " +
-                    "모듈까지 안 보고 있다는 뜻이고, 그러면 씬에서 벽이 통짜로 서서 그 문이 막힌다.");
+                    "숙소 문이 라벨 벽 구멍으로 안 잡힌다 — 그러면 씬에서 벽이 통짜로 서서 그 문이 막힌다.");
 
                 var x = LastShiftCompartmentLabels.ResolveX(hall);
                 var half = LastShiftCompartmentLabels.HalfWidthOf(LastShiftCompartment.Quarters);

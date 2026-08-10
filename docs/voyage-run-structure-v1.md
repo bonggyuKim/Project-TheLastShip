@@ -1,5 +1,7 @@
 # P1 진행 구조 — 한 항해 단위 로그라이크 (v1)
 
+> **⚠ 추가 대체 (`2026-08-10`).** 아래 `2026-08-09` 대체 공지에서 살아남는다고 적은 도킹 래치·도킹 판정·도킹 보상도 이제 폐기됐다. 구간 사이 상태 이어받기 원칙만 참고하고, 진행·보상·결과는 `docking-removal-persistent-ship-save-v1.md`를 먼저 읽는다.
+
 > 상태: 결정안 v1 · `2026-08-08` · 카드 `b4e79715-99fc-4e11-8422-8f27b1e20744` (사용자 직접 지시)
 > 상위 정본: `concept-draft.md`(플레이 약속), `content-loop-spec-ct01.md`(루프·판정)
 > 대체 대상: `modular-docking-progression-review-v1.md` §4·§7-1 · `corridor-4p-redesign-v1.md` §11.4·§15.1·§15.2·§15.5

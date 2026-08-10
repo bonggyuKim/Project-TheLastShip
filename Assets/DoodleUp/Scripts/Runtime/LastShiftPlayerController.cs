@@ -14,6 +14,9 @@ namespace DoodleUp.Runtime
     {
         public const float MoveSpeed = 4f;
 
+        public const float ThirdPersonBackDistance = 2.5f;
+        public const float ThirdPersonHeightBoost = 0.6f;
+
         /// <summary>
         /// 부피가 큰 부품을 든 동안의 이동 속도. 전역 <see cref="MoveSpeed"/> 를 낮추지 않는
         /// 이유는 그것이 같은 빈 공간을 더 오래 걷게 만드는 일이기 때문이다
@@ -195,6 +198,7 @@ namespace DoodleUp.Runtime
             yaw = transform.eulerAngles.y;
             pitch = targetCamera != null ? -targetCamera.transform.localEulerAngles.x : 0f;
             if (pitch < -180f) pitch += 360f;
+            ApplyStance(IsCrouching);
             if (!ManagesCursor) return;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
@@ -615,7 +619,8 @@ namespace DoodleUp.Runtime
             characterController.center = new Vector3(0f, height * 0.5f, 0f);
             if (targetCamera != null)
                 targetCamera.transform.localPosition = new Vector3(0f,
-                    crouch ? LastShiftShipPhysics.CrouchEyeHeight : LastShiftShipPhysics.EyeHeight, 0f);
+                    (crouch ? LastShiftShipPhysics.CrouchEyeHeight : LastShiftShipPhysics.EyeHeight) + ThirdPersonHeightBoost,
+                    -ThirdPersonBackDistance);
         }
 
         /// <summary>

@@ -1,5 +1,7 @@
 # 모듈 도킹 확장 진행 구조 검토 (v1) — 실제 우주정거장식 구역별 도킹
 
+> **⚠ 전면 대체 (`2026-08-10`).** 실제 정거장식 구역별 도킹, `DockProgress`, 도킹 래치, 구역별 도킹 판정, 정거장 편입 진행은 모두 폐기됐다. 현재 진행 정본은 `docking-removal-persistent-ship-save-v1.md`의 **함선 누적·자유배치·세이브/이어하기**다. 이 문서는 초기 프로토타입의 도킹 검토 기록으로만 남긴다.
+
 > 상태: 검토안 v1 · `2026-08-08` · 카드 `897b9a18-bbe2-4c7a-a933-c4ddcb7d1395`
 > 상위 정본: `content-loop-spec-ct01.md`(루프·판정), `game-feel-loop-review-v1.md`(도킹 게이지), `ship-elements-and-situations-v1.md`(`RG-1`~`RG-4`)
 > 실측 기준: `LastShiftRecovery.cs` · `LastShiftSimulation.cs` · `LastShiftZonePressure.cs` · `LastShiftCompartments.cs` (전부 이번 검토에서 직접 읽은 값이다)
