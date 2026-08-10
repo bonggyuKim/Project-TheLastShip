@@ -348,9 +348,65 @@ namespace DoodleUp.Editor
             // 달라 z-fighting 도 없다. 위층 밑에 가려 평소에는 안 보인다.
             var offsetX = rule?.offset != null && rule.offset.Length > 0 ? rule.offset[0] : 0f;
             var offsetZ = rule?.offset != null && rule.offset.Length > 1 ? rule.offset[1] : 0f;
-            for (var x = space.bounds[0] + tile[0] * 0.5f + offsetX; x < space.bounds[1]; x += tile[0])
-            for (var z = space.bounds[2] + tile[1] * 0.5f + offsetZ; z < space.bounds[3]; z += tile[1])
-                Place(prefab, root, name, new Vector3(x, y, z));
+            // 밑깔개는 <b>한 칸 넓게</b> 깐다. 반 칸 어긋난 격자라 방 경계에서 한 줄이 모자라고,
+            // 경계 판은 마감을 외곽으로 돌리느라 깎인 모서리의 방향도 바뀐다 — 그 두 가지가
+            // 겹쳐 경계 줄에만 구멍이 다시 났다(실측 20 곳). 넘치는 부분은 접지면 아래라
+            // 벽·외피에 가려 안 보인다.
+            var pad = y < 0f ? 1 : 0;
+            var startX = space.bounds[0] + tile[0] * 0.5f + offsetX - pad * tile[0];
+            var startZ = space.bounds[2] + tile[1] * 0.5f + offsetZ - pad * tile[1];
+            var endX = space.bounds[1] + pad * tile[0];
+            var endZ = space.bounds[3] + pad * tile[1];
+            for (var x = startX; x < endX; x += tile[0])
+            for (var z = startZ; z < endZ; z += tile[1])
+            {
+                var facing = BoundaryFacing(space, x, z, tile);
+                var instance = Place(prefab, root, name, new Vector3(x, y, z), facing ?? 0f);
+                // 접지면 <b>아래</b>에 깔리는 층(밑깔개)에는 마감을 안 붙인다. 그 층은 반 칸
+                // 어긋나 있어 판 경계가 방 외곽과 안 맞고, 마감 띠가 위층 바닥을 뚫고 올라온다.
+                ApplyEdgeTrim(instance, facing.HasValue && y >= 0f);
+            }
+        }
+
+        /// <summary>
+        /// 이 판이 공간 <b>외곽</b>에 닿는가. 닿으면 그 방향으로 돌릴 <c>rotationY</c> 를,
+        /// 안쪽 판이면 <c>null</c> 을 준다.
+        ///
+        /// <c>_Edge</c> 마감은 판의 <b>+z 면 한 곳에만</b> 들어 있다. 그래서 "외곽에 남긴다" 를
+        /// 하려면 켜고 끄는 것만으로는 안 되고 그 면이 외곽을 보도록 돌려야 한다. 정사각형
+        /// 판이라 돌려도 발자국과 이음매는 그대로다.
+        ///
+        /// <b>모서리 판은 한 면만 마감된다.</b> 두 면이 동시에 외곽인 자리에서 한쪽을 고를
+        /// 수밖에 없다 — 두 면을 마감하려면 부재가 따로 있거나 판을 두 장 겹쳐야 하고,
+        /// 그건 아트 쪽 결정이다.
+        /// </summary>
+        private static float? BoundaryFacing(MapSpace space, float x, float z, float[] tile)
+        {
+            const float epsilon = 0.01f;
+            var halfX = tile[0] * 0.5f;
+            var halfZ = tile[1] * 0.5f;
+            if (z + halfZ >= space.bounds[3] - epsilon) return 0f;      // 로컬 +z 가 그대로 +z
+            if (z - halfZ <= space.bounds[2] + epsilon) return 180f;
+            if (x + halfX >= space.bounds[1] - epsilon) return 90f;     // +90 이 +z 를 +x 로 보낸다
+            if (x - halfX <= space.bounds[0] + epsilon) return -90f;
+            return null;
+        }
+
+        /// <summary>
+        /// 외곽이 아닌 판에서는 <c>_Edge</c> 마감을 지운다. 남겨 두면 <c>2m</c> 격자 무늬가
+        /// 바닥 전체에 깔리는데, 그건 아트가 의도한 모습이 아니다(2026-08-11 결정).
+        ///
+        /// 렌더러를 끄지 않고 <b>오브젝트를 지운다</b>. 꺼 두면 프리팹 오버라이드로 남아
+        /// 나중에 누군가 켰을 때 조용히 돌아온다.
+        /// </summary>
+        private static void ApplyEdgeTrim(GameObject instance, bool keep)
+        {
+            if (instance == null || keep) return;
+            foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.name.EndsWith("_Edge", StringComparison.Ordinal)) continue;
+                UnityEngine.Object.DestroyImmediate(renderer.gameObject);
+            }
         }
 
         private static void InteriorBoundsWithDoorGap(GameObject prefab, Transform root, MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
