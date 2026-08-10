@@ -331,10 +331,10 @@ def draw_cover(c: canvas.Canvas) -> None:
 
     c.setFont("KR-Bold", 31)
     c.setFillColor(white)
-    c.drawCentredString(W / 2, H / 2 + 18, "AI를 활용한")
+    c.drawCentredString(W / 2, H / 2 + 18, "AI 활용을 위한")
     c.setFont("KR-Bold", 29)
     c.setFillColor(LIME)
-    c.drawCentredString(W / 2, H / 2 - 24, "구조적 게임 개발")
+    c.drawCentredString(W / 2, H / 2 - 24, "게임 개발 구조화")
     c.bookmarkPage("page-1")
     c.addOutlineEntry("표지", "page-1", level=0, closed=False)
     c.showPage()
@@ -345,8 +345,8 @@ def draw_overview(c: canvas.Canvas) -> None:
         c,
         2,
         "SYSTEM OVERVIEW",
-        "AI가 게임 개발을 구조화하는 방식",
-        "Discord는 접점, AgentDesk는 Planning과 작업 흐름, AnchorMind는 공유 문맥을 담당한다.",
+        "AI 활용을 위한 게임 개발 구조화",
+        "사람의 의도는 Planning으로 분해하고, 역할·격리·검증·기억을 연결해 AI가 안정적으로 일하도록 만든다.",
     )
 
     rounded_box(c, M, 362, CW, 342, fill=white, stroke=LINE, radius=14)
@@ -355,9 +355,9 @@ def draw_overview(c: canvas.Canvas) -> None:
     c.drawString(M + 16, 678, "전체 구조")
 
     top_cards = [
-        (M + 8, 560, 112, 76, "Discord Bot", "요청 · 확인", CYAN, SOFT_CYAN),
+        (M + 8, 560, 112, 76, "Discord Bot", "의도 · 승인", CYAN, SOFT_CYAN),
         (M + 139, 560, 112, 76, "Planning Agent", "목표 · 분해", LIME, SOFT_LIME),
-        (M + 270, 560, 112, 76, "AgentDesk", "배정 · 추적", CYAN, SOFT_CYAN),
+        (M + 270, 560, 112, 76, "AgentDesk", "역할 · 격리", CYAN, SOFT_CYAN),
         (M + 401, 560, 112, 76, "Kanban", "상태 · 리뷰", VIOLET, SOFT_VIOLET),
     ]
     for x, y, width, height, title, body, accent, fill in top_cards:
@@ -416,9 +416,9 @@ def draw_overview(c: canvas.Canvas) -> None:
         draw_text(c, header, xx + 9, table_top - 12, width - 18, font="KR-Bold", size=7.2, color=white, max_lines=1)
         xx += width
     rows = [
-        ("AgentDesk", "작업 분해, 역할 배정, 칸반 상태와 리뷰 흐름 관리", "카드 · 담당자 · 상태"),
-        ("Discord Bot", "Discord에서 요청 접수, 진행 확인, 승인과 알림", "대화 · 결과 알림"),
-        ("AnchorMind", "현재 작업 문맥과 개발 지식을 저장·회상·공유", "결정 · 오류 · 절차"),
+        ("AgentDesk", "역할 배정, 격리된 작업 공간, 상태와 리뷰 흐름 관리", "담당자 · 작업 공간 · 상태"),
+        ("Discord Bot", "사람의 요청·확인·승인을 개발 흐름에 연결", "의도 · 승인 · 알림"),
+        ("AnchorMind", "결정·오류·절차를 저장·회상·공유", "기억 · 기준 · 인수인계"),
     ]
     y = table_top - 29
     for index, row in enumerate(rows):
@@ -455,18 +455,18 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
         c,
         3,
         "AGENTDESK",
-        "계획부터 리뷰까지 역할을 나눠 개발한다",
-        "Planning Agent가 작업을 구조화하고, 전문 역할이 실행한 결과를 리뷰한 뒤 완료한다.",
+        "AI가 일할 수 있도록 역할과 경계를 나눈다",
+        "Planning Agent가 작업 단위를 정하고, 각 역할은 격리된 변경과 독립된 검증 결과를 남긴다.",
     )
 
     c.setFont("KR-Bold", 9)
     c.setFillColor(INK)
     c.drawString(M, 686, "역할 분담")
     roles = [
-        ("Planning Agent", "게임의 목표를 계획과 카드로 나누고 우선순위·의존성·완료 조건을 정한다.", LIME, SOFT_LIME),
-        ("Tech Agent", "기술 판단과 구현을 맡고 변경 내용과 검증 결과를 남긴다.", CYAN, SOFT_CYAN),
-        ("Art Agent", "필요한 자산과 시각 결과를 만들고 품질 기준을 확인한다.", VIOLET, SOFT_VIOLET),
-        ("Reviewer / QA", "구현자와 분리된 관점에서 결과와 완료 조건을 검토한다.", YELLOW, SOFT_YELLOW),
+        ("Planning Agent", "사람의 목표를 실행 가능한 카드로 바꾸고 우선순위·의존성·완료 조건을 정한다.", LIME, SOFT_LIME),
+        ("Tech Agent", "격리된 작업 공간에서 구현하고 변경·검증 결과를 남긴다.", CYAN, SOFT_CYAN),
+        ("Art Agent", "필요한 자산을 만들고 적용 경로와 품질 기준을 확인한다.", VIOLET, SOFT_VIOLET),
+        ("Reviewer / QA", "구현자와 분리된 관점에서 테스트·증거·완료 조건을 검토한다.", YELLOW, SOFT_YELLOW),
     ]
     card_width = (CW - 10) / 2
     for index, (title, body, accent, fill) in enumerate(roles):
@@ -510,12 +510,12 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
     c.setFillColor(INK)
     c.drawString(M + 15, 283, "이 구조로 개발하는 순서")
     steps = [
-        ("01", "목표 접수", "요구 확인"),
-        ("02", "Planning", "계획·분해"),
-        ("03", "역할 배정", "카드 전달"),
-        ("04", "개발", "Tech·Art"),
-        ("05", "리뷰", "검토·보완"),
-        ("06", "완료", "결과·기억"),
+        ("01", "의도 정의", "사람의 목표"),
+        ("02", "Planning", "카드·조건"),
+        ("03", "역할 배정", "격리된 작업"),
+        ("04", "구현·생성", "Tech·Art"),
+        ("05", "검증", "QA·플레이"),
+        ("06", "반영·기억", "Git·기준"),
     ]
     step_gap = 8
     step_width = (CW - 30 - step_gap * 5) / 6
@@ -548,9 +548,9 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
     benefit_cards(
         c,
         [
-            ("계획이 먼저 보임", "Planning에서 범위·순서·완료 조건을 먼저 정한다.", LIME),
-            ("역할과 진행이 보임", "칸반에서 담당·작업·대기·리뷰 상태를 한눈에 본다.", CYAN),
-            ("리뷰가 흐름에 포함됨", "완료 전에 별도 역할이 결과를 확인한다.", VIOLET),
+            ("작업 단위가 명확함", "AI가 처리할 범위와 완료 조건을 먼저 고정한다.", LIME),
+            ("변경이 격리됨", "역할별 작업 공간에서 충돌과 책임을 분리한다.", CYAN),
+            ("검증이 연결됨", "코드·테스트·플레이 결과를 같은 카드에 남긴다.", VIOLET),
         ],
         y=66,
         height=79,
@@ -597,8 +597,8 @@ def draw_discord(c: canvas.Canvas) -> None:
         c,
         4,
         "DISCORD BOT",
-        "Discord에서 AI 개발 흐름을 바로 사용한다",
-        "Discord Bot으로 요청하고 Planning, 역할 배정, 리뷰와 승인을 대화에서 확인한다.",
+        "사람의 요청을 실행 가능한 AI 작업으로 바꾼다",
+        "자연어 요청은 Planning·역할 배정·리뷰·승인으로 변환되어 추적 가능한 개발 흐름이 된다.",
     )
 
     rounded_box(c, M, 188, 318, 516, fill=NAVY, stroke=None, radius=14)
@@ -628,7 +628,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         248,
         82,
         "DISCORD BOT",
-        "카드를 만들었습니다.\n담당: Planning Agent\n상태: PLANNING",
+        "목표와 완료 조건을 확인했습니다.\nPlanning 카드로 분해합니다.\n상태: PLANNING",
         fill=white,
         accent=LIME_DARK,
     )
@@ -639,7 +639,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         248,
         84,
         "DISCORD BOT",
-        "계획을 카드로 나누고 Tech·Art Agent를 배정했습니다.\n결과는 REVIEW에서 확인합니다.",
+        "Planning 결과를 Tech·Art Agent에 배정했습니다.\n각 작업은 격리된 공간에서 진행합니다.\n결과는 REVIEW에서 확인합니다.",
         fill=white,
         accent=LIME_DARK,
     )
@@ -662,7 +662,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         248,
         73,
         "DISCORD BOT",
-        "DONE 처리했습니다.\n검증된 결정과 절차는 AnchorMind에 공유됩니다.",
+        "검증을 통과했습니다.\n변경과 증거를 기록하고, 결정·절차를 AnchorMind에 공유합니다.",
         fill=SOFT_LIME,
         accent=LIME_DARK,
     )
@@ -670,11 +670,11 @@ def draw_discord(c: canvas.Canvas) -> None:
     side_x = M + 332
     side_width = CW - 332
     capabilities = [
-        ("요청", "새 작업 등록", CYAN, SOFT_CYAN),
-        ("Planning", "계획·카드 분해 확인", LIME, SOFT_LIME),
-        ("진행", "담당·상태 확인", CYAN, SOFT_CYAN),
-        ("리뷰", "승인·보완 요청", VIOLET, SOFT_VIOLET),
-        ("알림", "완료·차단 알림", YELLOW, SOFT_YELLOW),
+        ("요청", "목표·완료 조건 접수", CYAN, SOFT_CYAN),
+        ("Planning", "카드·의존성 분해", LIME, SOFT_LIME),
+        ("진행", "담당·작업 공간 확인", CYAN, SOFT_CYAN),
+        ("리뷰", "테스트·증거 검토", VIOLET, SOFT_VIOLET),
+        ("승인", "사람의 최종 승인", YELLOW, SOFT_YELLOW),
     ]
     for index, (title, body, accent, fill) in enumerate(capabilities):
         y = 602 - index * 83
@@ -683,9 +683,9 @@ def draw_discord(c: canvas.Canvas) -> None:
     benefit_cards(
         c,
         [
-            ("접근이 쉬움", "PC나 모바일의 Discord에서 바로 사용할 수 있다.", CYAN),
-            ("확인이 빠름", "상태와 결과 알림이 같은 채널에 모인다.", LIME),
-            ("승인이 간단함", "대화를 이어가며 리뷰와 보완 요청을 남긴다.", VIOLET),
+            ("자연어로 시작", "사람은 목표와 의도를 대화로 전달한다.", CYAN),
+            ("구조화되어 추적", "카드·담당·상태·증거가 한 흐름에 남는다.", LIME),
+            ("사람이 승인", "AI 결과는 리뷰와 실제 플레이 뒤 반영한다.", VIOLET),
         ],
         y=66,
         height=92,
@@ -698,8 +698,8 @@ def draw_memory(c: canvas.Canvas) -> None:
         c,
         5,
         "ANCHORMIND",
-        "게임 개발의 기억을 에이전트가 공유한다",
-        "현재 작업의 짧은 문맥과 게임 개발에 오래 남아야 할 지식을 구분해 관리한다.",
+        "AI가 같은 기준으로 이어서 일하도록 기억을 공유한다",
+        "작업 문맥과 장기 지식을 분리해 저장하고, 다음 역할이 검증된 기준을 이어받는다.",
     )
 
     memory_width = (CW - 14) / 2
@@ -722,7 +722,7 @@ def draw_memory(c: canvas.Canvas) -> None:
         559,
         memory_width,
         137,
-        "공유 기억  |  장기",
+        "개발 기억  |  장기",
         "확정된 결정, 팀 규칙, 해결한 오류, 반복해서 사용할 절차를 오래 보존한다.",
         VIOLET,
         SOFT_VIOLET,
@@ -782,10 +782,10 @@ def draw_memory(c: canvas.Canvas) -> None:
     rounded_box(c, M, 68, CW, 89, fill=SOFT_LIME, stroke=None, radius=12)
     c.setFont("KR-Bold", 8.5)
     c.setFillColor(LIME_DARK)
-    c.drawCentredString(W / 2, 133, "반복 설명은 줄이고, 결정 기준은 맞추고, 중단된 작업은 이어서 진행한다.")
+    c.drawCentredString(W / 2, 133, "AI는 같은 기준으로 일하고, 사람은 방향과 품질을 통제한다.")
     c.setFont("KR-Bold", 10)
     c.setFillColor(INK)
-    c.drawCentredString(W / 2, 101, "Discord에서 요청하고, Planning이 나누고, AgentDesk가 배정하고, AnchorMind가 기억한다.")
+    c.drawCentredString(W / 2, 101, "사람이 의도를 정하고, Planning이 쪼개고, 역할이 구현하고, 증거와 기억이 다음 작업을 잇는다.")
     c.showPage()
 
 
