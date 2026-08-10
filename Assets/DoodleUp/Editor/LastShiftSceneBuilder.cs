@@ -83,6 +83,8 @@ namespace DoodleUp.Editor
         /// 조명은 안 들어간다. 등과 <c>RenderSettings</c> 는 씬 소관으로 남긴다.
         /// </summary>
         public const string ShipPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftShipGraybox.prefab";
+        public const string SpaceSkyMaterialPath = "Assets/DoodleUp/Materials/LS_SpaceSky.mat";
+        public const string SpaceSkyShaderName = "DoodleUp/Last Shift Space Sky";
 
         /// <summary>
         /// 선체 프리팹을 다시 굽는다. <b>지우고 만들지 않는다</b> — 지우면 GUID 가 새로 찍혀
@@ -1907,6 +1909,7 @@ namespace DoodleUp.Editor
         /// </summary>
         public static void CreateLighting()
         {
+            ConfigureSpaceSky();
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             // 우주 실내라 하늘광이 없다. 형태를 잃지 않을 최소값만 남긴다.
             RenderSettings.ambientLight = new Color(0.10f, 0.11f, 0.14f);
@@ -1924,6 +1927,20 @@ namespace DoodleUp.Editor
             // (LastShiftDressingSeed.AddCeilingLamps), 밝기 실값은 프리팹에 박혀 있다
             // (art last-shift-dressing-assets-v1.md §3.3). 여기 남는 것은 형태 보조용
             // ambient/directional 뿐이다.
+        }
+
+        /// <summary>창과 선외 활동에서 보이는 우주 배경을 씬의 환경 정본으로 연결한다.</summary>
+        public static void ConfigureSpaceSky()
+        {
+            var sky = AssetDatabase.LoadAssetAtPath<Material>(SpaceSkyMaterialPath);
+            if (sky == null)
+                throw new System.InvalidOperationException($"Space sky material missing: {SpaceSkyMaterialPath}");
+            if (sky.shader == null || sky.shader.name != SpaceSkyShaderName)
+                throw new System.InvalidOperationException($"Space sky shader mismatch: expected {SpaceSkyShaderName}");
+
+            RenderSettings.skybox = sky;
+            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
+            RenderSettings.reflectionIntensity = 0.35f;
         }
 
         /// <summary>
