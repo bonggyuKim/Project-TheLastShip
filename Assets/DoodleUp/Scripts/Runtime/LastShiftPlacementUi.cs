@@ -1295,11 +1295,22 @@ namespace DoodleUp.Runtime
         /// (<see cref="ArmTutorialRotation"/>) 자유면이 잔해 한 면이라, 빨간 사유를 읽을 이유가 없는
         /// 자리에 사유를 띄우면 <b>배치 시스템이 어렵다는 인상만 남는다</b>. 잘못 지어지는 경로가
         /// 없으므로 기획 §5.1 의 "실패할 수 없다" 도 그대로다.
+        ///
+        /// <b>그 한 줄도 문안이라 여기 안 적는다</b> — 단계 문안은
+        /// <see cref="LastShiftTutorialCopy"/> 한 곳이고, 프롬프트가 있는 단계인지는 표가 답한다
+        /// (<see cref="LastShiftTutorialLine.HasPrompt"/>). 여기 문자열을 두면 띠와 이 자리가
+        /// 같은 <c>8</c>단계를 두 말로 부른다.
         /// </summary>
-        private string RejectionText =>
-            LastShiftTutorial.Step == LastShiftTutorialStep.RotateFrame
-                ? "회전 R / 휠"
-                : LastShiftPlacementCommands.Reason(outpostCursor.Rejection, outpostCursor.Faults);
+        private string RejectionText
+        {
+            get
+            {
+                var line = LastShiftTutorialCopy.Of(LastShiftTutorial.Step);
+                return LastShiftTutorial.IsRunning && line.HasPrompt
+                    ? line.Prompt
+                    : LastShiftPlacementCommands.Reason(outpostCursor.Rejection, outpostCursor.Faults);
+            }
+        }
 
         /// <summary>원반 테두리. <b>바깥은 시작 배가 안 쓰는 자리다</b>(§4.3-6) — 점선으로 두른다.</summary>
         private void DrawRim(in LastShiftHullSchematic schematic)
