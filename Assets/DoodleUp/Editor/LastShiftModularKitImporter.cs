@@ -193,6 +193,10 @@ namespace DoodleUp.Editor
                 Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
                 Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
             }
+            // Exterior panels own the footprint boundary.  This is a final
+            // manifest-derived guard for a wall segment that is emitted on an
+            // outer edge because of a non-rectangular union split.
+            RemoveInteriorWallsCoveredByShell(root);
         }
 
         private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y)
@@ -307,6 +311,42 @@ namespace DoodleUp.Editor
             foreach (var transform in ship.GetComponentsInChildren<Transform>(true))
                 if (System.Array.IndexOf(excluded, transform.name) >= 0) UnityEngine.Object.DestroyImmediate(transform.gameObject);
         }
+
+        private static void RemoveInteriorWallsCoveredByShell(Transform root)
+        {
+            var walls = new List<Transform>();
+            var shells = new List<Bounds>();
+            foreach (Transform child in root)
+            {
+                if (child.name == "walls") walls.Add(child);
+                else if (child.name == "outerShell")
+                {
+                    foreach (var renderer in child.GetComponentsInChildren<Renderer>(true)) shells.Add(renderer.bounds);
+                }
+            }
+
+            var removed = 0;
+            foreach (var wall in walls)
+            {
+                var renderers = wall.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0) continue;
+                var bounds = renderers[0].bounds;
+                foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+                if (!shells.Exists(shell => SharesBoundaryFace(bounds, shell))) continue;
+                UnityEngine.Object.DestroyImmediate(wall.gameObject);
+                removed++;
+            }
+            if (removed > 0) Debug.Log($"[LAST_SHIFT_MODULAR_MAP] boundary wall dedupe removed={removed}");
+        }
+
+        private static bool SharesBoundaryFace(Bounds wall, Bounds shell)
+        {
+            var xFace = wall.size.x < 0.75f && shell.size.x < 0.75f && Mathf.Abs(wall.center.x - shell.center.x) < 0.6f && Overlaps(wall.min.z, wall.max.z, shell.min.z, shell.max.z);
+            var zFace = wall.size.z < 0.75f && shell.size.z < 0.75f && Mathf.Abs(wall.center.z - shell.center.z) < 0.6f && Overlaps(wall.min.x, wall.max.x, shell.min.x, shell.max.x);
+            return (xFace || zFace) && Overlaps(wall.min.y, wall.max.y, shell.min.y, shell.max.y);
+        }
+
+        private static bool Overlaps(float aMin, float aMax, float bMin, float bMax) => Mathf.Min(aMax, bMax) - Mathf.Max(aMin, bMin) > 0.01f;
 
         private static Vector3 BoundsCenter(float[] bounds) => new((bounds[0] + bounds[1]) * 0.5f, 0f, (bounds[2] + bounds[3]) * 0.5f);
         private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
