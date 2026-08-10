@@ -343,10 +343,10 @@ namespace DoodleUp.Runtime
         private void DrawMenu()
         {
             GUILayout.Space(24f);
-            if (GUILayout.Button("방 만들기", primaryButtonStyle, GUILayout.Height(52f))) HostRoom();
+            if (DrawMenuButton("방 만들기", primaryButtonStyle, GUILayout.Height(52f))) HostRoom();
 
             GUILayout.Space(12f);
-            if (GUILayout.Button("코드로 참가", secondaryButtonStyle, GUILayout.Height(48f)))
+            if (DrawMenuButton("코드로 참가", secondaryButtonStyle, GUILayout.Height(48f)))
             {
                 joinExpanded = true;
                 focusRequested = true;
@@ -361,7 +361,7 @@ namespace DoodleUp.Runtime
                 GUI.SetNextControlName(CodeFieldName);
                 var typed = GUILayout.TextField(typedCode, LastShiftRoomCode.Length + 4, codeStyle, GUILayout.Height(48f));
                 if (typed != typedCode) typedCode = LastShiftRoomCode.Normalize(typed);
-                join = GUILayout.Button("입장", primaryButtonStyle, GUILayout.Width(112f), GUILayout.Height(48f));
+                join = DrawMenuButton("입장", primaryButtonStyle, GUILayout.Width(112f), GUILayout.Height(48f));
                 GUILayout.EndHorizontal();
             }
 
@@ -383,7 +383,19 @@ namespace DoodleUp.Runtime
             }
 
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("종료", exitButtonStyle, GUILayout.Height(48f))) ExitApplication();
+            if (DrawMenuButton("종료", exitButtonStyle, GUILayout.Height(48f))) ExitApplication();
+        }
+
+        private static bool DrawMenuButton(string text, GUIStyle style, params GUILayoutOption[] options)
+        {
+            var previousBackground = GUI.backgroundColor;
+            var previousColor = GUI.color;
+            GUI.backgroundColor = Color.white;
+            GUI.color = Color.white;
+            var clicked = GUILayout.Button(text, style, options);
+            GUI.backgroundColor = previousBackground;
+            GUI.color = previousColor;
+            return clicked;
         }
 
         private static void ExitApplication()
@@ -469,15 +481,16 @@ namespace DoodleUp.Runtime
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = LastShiftUiTheme.Nominal },
             };
-            primaryButtonStyle ??= CreateButtonStyle(20, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.Ivory,
-                LastShiftUiTheme.Nominal);
-            secondaryButtonStyle ??= CreateButtonStyle(17, LastShiftUiTheme.Ivory, LastShiftUiTheme.PanelNavy,
-                LastShiftUiTheme.Fault);
+            primaryButtonStyle ??= CreateButtonStyle(20, LastShiftUiTheme.Ivory, LastShiftUiTheme.PanelNavy,
+                LastShiftUiTheme.Nominal, LastShiftUiTheme.Fault, true);
+            secondaryButtonStyle ??= CreateButtonStyle(17, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.Ivory,
+                LastShiftUiTheme.Nominal, LastShiftUiTheme.Ivory, false);
             exitButtonStyle ??= CreateButtonStyle(16, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.BodyText,
-                LastShiftUiTheme.Fault);
+                LastShiftUiTheme.Fault, LastShiftUiTheme.Fault, false);
         }
 
-        private static GUIStyle CreateButtonStyle(int fontSize, Color background, Color foreground, Color hover)
+        private static GUIStyle CreateButtonStyle(
+            int fontSize, Color background, Color foreground, Color hover, Color border, bool tintHoverFill)
         {
             var style = new GUIStyle(GUI.skin.button)
             {
@@ -485,24 +498,29 @@ namespace DoodleUp.Runtime
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 padding = new RectOffset(12, 12, 8, 8),
+                border = new RectOffset(1, 1, 1, 1),
             };
             style.normal.textColor = foreground;
             style.hover.textColor = hover;
             style.active.textColor = hover;
             style.focused.textColor = hover;
-            style.normal.background = SolidTexture(background);
-            style.hover.background = SolidTexture(Color.Lerp(background, hover, 0.16f));
-            style.active.background = SolidTexture(Color.Lerp(background, hover, 0.28f));
+            style.normal.background = BorderedTexture(background, border);
+            style.hover.background = BorderedTexture(tintHoverFill ? Color.Lerp(background, hover, 0.16f) : background, hover);
+            style.active.background = BorderedTexture(tintHoverFill ? Color.Lerp(background, hover, 0.28f) : background, hover);
             return style;
         }
 
-        private static Texture2D SolidTexture(Color color)
+        private static Texture2D BorderedTexture(Color fill, Color border)
         {
-            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+            var texture = new Texture2D(3, 3, TextureFormat.RGBA32, false)
             {
                 hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
             };
-            texture.SetPixel(0, 0, color);
+            for (var y = 0; y < 3; y++)
+            for (var x = 0; x < 3; x++)
+                texture.SetPixel(x, y, x == 1 && y == 1 ? fill : border);
             texture.Apply();
             return texture;
         }
