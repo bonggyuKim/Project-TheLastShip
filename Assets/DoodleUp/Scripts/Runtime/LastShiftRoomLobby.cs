@@ -64,7 +64,6 @@ namespace DoodleUp.Runtime
         private bool joinExpanded;
 
         private GUIStyle titleStyle;
-        private GUIStyle subtitleStyle;
         private GUIStyle bodyStyle;
         private GUIStyle codeStyle;
         private GUIStyle primaryButtonStyle;
@@ -320,8 +319,7 @@ namespace DoodleUp.Runtime
             // 들어와야 하고, 그건 접속 경로 전체를 다시 검증해야 하는 별개의 일이다.
             LastShiftUiLayer.Instance?.Panel("lobby", panel, 0.96f);
             GUILayout.BeginArea(new Rect(panel.x + 32f, panel.y + 26f, panel.width - 64f, panel.height - 52f));
-            GUILayout.Label("DOODLE UP", titleStyle);
-            GUILayout.Label("LAST SHIFT", subtitleStyle);
+            GUILayout.Label("THE LAST SHIP", titleStyle);
 
             switch (phase)
             {
@@ -460,13 +458,6 @@ namespace DoodleUp.Runtime
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = LastShiftUiTheme.Ivory },
-            };
-            subtitleStyle ??= new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 15,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = LastShiftUiTheme.Fault },
             };
             bodyStyle ??= new GUIStyle(GUI.skin.label)
             {
