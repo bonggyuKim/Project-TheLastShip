@@ -149,10 +149,12 @@ namespace DoodleUp.Editor
             var doors = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftZoneDoor>(true)).ToArray();
             Require(doors.Length == LastShiftZoneAtlas.BoundaryCount, "zone door count must equal boundary count");
 
-            var walls = roots
-                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                .Where(x => x.name.StartsWith("PlazaWall_") && !x.name.Contains("_Lintel"))
-                .ToArray();
+            // 벽을 <b>이름으로 찾지 않는다</b>. 예전에는 <c>PlazaWall_*</c> 를 모아 그 판의
+            // 스케일 구간으로 덮임을 셌는데, 그 이름은 그레이박스 빌더가 붙이던 것이라
+            // 정본 지도가 벽을 맡은 뒤로는 아무것도 안 잡혔다. 이 검사가 지키려는 것은
+            // "경계 평면은 문 구멍 말고는 막혀 있다" 이지 "그 이름의 오브젝트가 있다" 가
+            // 아니므로, 누가 세웠든 <b>실제 충돌 형상</b>을 본다.
+            UnityEngine.Physics.SyncTransforms();
 
             for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
             {
@@ -175,11 +177,6 @@ namespace DoodleUp.Editor
                 //
                 // <b>같은 변에 문이 둘일 수 있다</b>(좌현: 전력실 + 에어록 홀). 그래서 이 변의
                 // 문 전부를 모아 구멍 목록을 만들고, 그 사이 구간만 덮였는지 본다.
-                var onThisSide = walls
-                    .Where(x => Mathf.Abs((plazaDoor.PlaneIsX ? x.position.x : x.position.z) - plazaDoor.Plane) < 0.0001f)
-                    .ToArray();
-                Require(onThisSide.Length > 0, $"boundary {boundary} must have a plaza wall on its plane");
-
                 var side = LastShiftPlazaLayout.Doors
                     .Where(other => other.PlaneIsX == plazaDoor.PlaneIsX &&
                                     Mathf.Abs(other.Plane - plazaDoor.Plane) < 0.0001f)
@@ -191,12 +188,45 @@ namespace DoodleUp.Editor
                 var cursor = lo;
                 foreach (var other in side)
                 {
-                    RequireCovered(onThisSide, plazaDoor.PlaneIsX, cursor, other.MinSpan,
-                        $"plaza wall must cover [{cursor:F2}, {other.MinSpan:F2}] beside a door");
+                    RequireSolidAlong(plazaDoor, cursor, other.MinSpan,
+                        $"boundary {boundary} plane must be solid over [{cursor:F2}, {other.MinSpan:F2}] beside a door");
                     cursor = other.MaxSpan;
                 }
-                RequireCovered(onThisSide, plazaDoor.PlaneIsX, cursor, hi,
-                    $"plaza wall must cover [{cursor:F2}, {hi:F2}] beside a door");
+                RequireSolidAlong(plazaDoor, cursor, hi,
+                    $"boundary {boundary} plane must be solid over [{cursor:F2}, {hi:F2}] beside a door");
+            }
+        }
+
+        /// <summary>
+        /// 경계 평면의 <c>[from, to]</c> 구간이 실제로 막혀 있는가. 문 구멍은 호출부가 이미
+        /// 빼고 넘긴다.
+        ///
+        /// <b>가슴 높이 한 줄만 본다.</b> 여기서 막고 싶은 것은 "승무원이 벽을 통과한다" 이고,
+        /// 그 판정은 사람이 지나는 높이에서 난다. 바닥 틈이나 천장 띠는 이 검사의 몫이 아니다
+        /// (그쪽은 저중력 부유물 문제라 별도 항목이다).
+        ///
+        /// 구간 양 끝은 <c>0.05m</c> 안쪽으로 물러나서 잰다. 딱 끝점을 재면 이웃한 벽 판과의
+        /// 이음매가 표본에 걸려, 실제로는 닫혀 있는데 실패로 나온다.
+        /// </summary>
+        private static void RequireSolidAlong(LastShiftPlazaDoor plane, float from, float to, string message)
+        {
+            const float step = 0.1f;
+            const float inset = 0.05f;
+            var start = from + inset;
+            var end = to - inset;
+            if (end <= start) return;
+
+            for (var at = start; at <= end; at += step)
+            {
+                var centre = plane.PlaneIsX
+                    ? new Vector3(plane.Plane, 1.0f, at)
+                    : new Vector3(at, 1.0f, plane.Plane);
+                var extents = plane.PlaneIsX
+                    ? new Vector3(0.30f, 0.20f, 0.02f)
+                    : new Vector3(0.02f, 0.20f, 0.30f);
+                Require(UnityEngine.Physics.OverlapBox(centre, extents, Quaternion.identity,
+                            ~0, QueryTriggerInteraction.Ignore).Length > 0,
+                    $"{message} — 비어 있는 지점 ({centre.x:F2}, {centre.z:F2})");
             }
         }
 
@@ -298,32 +328,6 @@ namespace DoodleUp.Editor
         private static float Clearance(Vector3 point, float minX, float maxX, float minZ, float maxZ) =>
             Mathf.Min(point.x - minX, maxX - point.x, point.z - minZ, maxZ - point.z);
 
-        /// <summary>
-        /// [min, max] 구간이 판들에 실제로 덮였는가. 판 하나가 통째로 덮거나, 여러 판이
-        /// 이어 붙어 덮는 경우를 모두 인정한다. 덮인 z 를 왼쪽부터 밀어 나가면서 빈 곳이
-        /// 나오면 실패한다 — 합 비교와 달리 위치가 틀리면 여기서 걸린다.
-        /// </summary>
-        private static void RequireCovered(Transform[] panels, bool planeIsX, float min, float max, string message)
-        {
-            if (max - min <= 0.0001f) return;
-            var reached = min;
-            // 평면 위 자유축이 문마다 다르다 — x 평면 벽은 z 로 덮고, z 평면 벽은 x 로 덮는다.
-            var spans = panels
-                .Select(panel => planeIsX
-                    ? (lo: panel.position.z - panel.localScale.z * 0.5f,
-                       hi: panel.position.z + panel.localScale.z * 0.5f)
-                    : (lo: panel.position.x - panel.localScale.x * 0.5f,
-                       hi: panel.position.x + panel.localScale.x * 0.5f))
-                .OrderBy(span => span.lo)
-                .ToArray();
-            foreach (var span in spans)
-            {
-                if (span.lo > reached + 0.0001f) break;
-                if (span.hi > reached) reached = span.hi;
-                if (reached >= max - 0.0001f) return;
-            }
-            Require(false, $"{message} (covered up to {reached:F2})");
-        }
 
         private static void Require(bool condition, string message)
         {
