@@ -457,3 +457,13 @@ DoodleUp의 차별점은 AI 캐릭터 하나나 생성 이미지 한 장이 아�
 ## 부록 B. 발표용 한 문장
 
 DoodleUp은 AI에게 게임을 맡긴 프로젝트가 아니라, 인간 디렉터의 의도를 기억하고 전문 역할로 구현하며 Unity 증거로 검증하는 AI 개발 조직을 만든 프로젝트다.
+
+## 부록 C. 해커톤 신청서용 요약 초안
+
+### 300자 안팎
+
+Project-DoodleUp은 AI로 게임 콘텐츠를 대량 생성한 사례가 아니라, 게임을 만드는 과정 자체를 AI-native workflow로 구조화한 프로젝트다. 인간 디렉터의 요청을 Planning Agent가 목표·의존성·완료 조건이 있는 카드로 나누고, AgentDesk가 Tech·Art·QA 역할에 배정해 칸반으로 추적한다. AgentDesk Bot은 Discord에서 요청·진행·승인을 연결하고, AnchorMind/Memento는 결정·실패·절차를 다음 작업에 전달한다. 결과는 Git diff, Unity build·test, raw evidence와 인간 플레이 승인으로 검증한다.
+
+### 500자 안팎
+
+Project-DoodleUp은 게임 안에 AI 기능 하나를 추가한 프로젝트가 아니라, 게임 개발 조직 전체를 AI-native system으로 설계한 사례다. 인간 디렉터가 Discord에서 목표를 요청하면 Planning Agent가 이를 작은 작업 카드로 분해하고 우선순위·의존성·완료 조건을 정한다. AgentDesk는 카드를 Tech·Art·QA 역할에 배정하고 진행·대기·리뷰·완료 상태와 변경 이력을 관리한다. AgentDesk Bot은 요청, 진행 확인, 결과 알림과 승인 흐름을 대화 안에 남긴다. AnchorMind/Memento는 확정된 결정, 해결한 오류, 재사용할 절차를 단기 작업 기억과 프로젝트 장기 기억으로 나눠 공유한다. 각 결과는 자연어 보고만으로 완료하지 않고 Git diff, Unity build, EditMode/PlayMode test, 정량 검산과 독립 QA를 거친다. 마지막으로 인간이 실제 플레이 감각과 방향을 승인한다. 핵심은 AI가 더 많은 결과물을 만드는 것이 아니라, 의도를 역할·증거·기억으로 연결해 반복 가능한 게임 개발 흐름을 만드는 데 있다.
