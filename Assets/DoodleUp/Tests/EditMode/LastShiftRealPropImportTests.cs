@@ -10,10 +10,13 @@ namespace DoodleUp.Tests.EditMode
 {
     public sealed class LastShiftRealPropImportTests
     {
+        /// <summary>
+        /// 우리가 Blender 에서 만든 프롭만 남는다. <c>LSReal_*</c> 여섯 개는 Tripo 생성물이라
+        /// 배에서 걷어냈다 — 이 배열이 다시 늘어난다면 출처를 먼저 확인해야 한다.
+        /// </summary>
         private static readonly string[] Names =
         {
-            "LSReal_ControlPanel", "LSReal_CargoCrate", "LSReal_OxygenTank",
-            "LSReal_PortableBattery", "LSReal_Toolbox", "LSReal_WorkLamp"
+            "LP_AirlockDoor", "LP_VentFan", "LP_EmergencyBeacon"
         };
 
         [Test]
@@ -29,12 +32,23 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// <b>Tripo 생성물이 배에 다시 들어오지 못하게 막는다.</b> 예전에는 반대로
+        /// "<c>LSReal_*</c> 이 13곳에 링크돼 있을 것" 을 요구했는데, 그 13곳이 곧 Tripo 가
+        /// 차지한 자리였다. 링크 수를 세는 대신 <b>출처</b>를 본다 — 자산이 바뀌면 개수는
+        /// 따라 움직이지만 "우리 Blender 것만 쓴다" 는 안 움직이기 때문이다.
+        /// </summary>
         [Test]
         public void DressingDataAndBuiltSceneUseRealProps()
         {
             var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
-            var linked = set.Props.Where(prop => prop?.prefab != null && prop.prefab.name.StartsWith("LSReal_")).ToArray();
-            Assert.That(linked.Length, Is.EqualTo(13));
+            var foreign = set.Props
+                .Where(prop => prop?.prefab != null && prop.prefab.name.StartsWith("LSReal_"))
+                .Select(prop => prop.prefab.name)
+                .Distinct()
+                .ToArray();
+            Assert.That(foreign, Is.Empty,
+                "Tripo 생성 프롭이 드레싱에 링크돼 있다: " + string.Join(", ", foreign));
 
             var scene = EditorSceneManager.OpenScene(LastShiftNetworkSceneBuilder.ScenePath);
             var shipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/DoodleUp/Prefabs/LastShiftShipGraybox.prefab");
@@ -49,7 +63,11 @@ namespace DoodleUp.Tests.EditMode
                     .GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(renderer.gameObject)
                                   ?? renderer.gameObject)
                     .Contains("/RealProps/"));
-            Assert.That(sourceRenderers, Is.GreaterThanOrEqualTo(linked.Length));
+            // 우리 프롭이 드레싱에 링크된 만큼은 배 안에 실제로 서 있어야 한다. 링크가
+            // 0 인 동안(쇼케이스 킷 슬롯 id 가 아직 드레싱 데이터에 없다)은 0 >= 0 으로
+            // 통과하고, 자리가 잡히는 순간 이 검사가 배치까지 같이 본다.
+            var linked = set.Props.Count(prop => prop?.prefab != null && Names.Contains(prop.prefab.name));
+            Assert.That(sourceRenderers, Is.GreaterThanOrEqualTo(linked));
 
             Assert.That(scene.GetRootGameObjects(), Is.Not.Empty);
             Assert.That(scene.GetRootGameObjects()

@@ -13,26 +13,22 @@ namespace DoodleUp.Editor
         private const string ModelFolder = "Assets/DoodleUp/Art/Props/LastShiftReal";
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/Dressing/RealProps";
 
+        /// <summary>
+        /// <b>우리가 Blender 에서 만든 것만 쓴다.</b> 여기 있던 <c>LSReal_*</c> 여섯 개는
+        /// Tripo 생성물이었다 — 파일 안에 <c>tripo_node_*</c>/<c>tripo_mesh_*</c> 이름이 그대로
+        /// 남아 있어 출처를 숨길 수도 없었다. 그것들이 드레싱 슬롯 13곳을 차지하는 동안
+        /// 정작 쇼케이스 킷의 <c>LP_*</c> 는 슬롯 id 가 안 맞아 <b>한 곳도 안 서 있었다</b>.
+        /// </summary>
         private static readonly string[] AssetNames =
         {
-            "LSReal_ControlPanel", "LSReal_CargoCrate", "LSReal_OxygenTank",
-            "LSReal_PortableBattery", "LSReal_Toolbox", "LSReal_WorkLamp",
             "LP_AirlockDoor", "LP_VentFan", "LP_EmergencyBeacon"
         };
 
         private static readonly Dictionary<string, string> DressingLinks = new()
         {
-            ["NavChartTable"] = "LSReal_ControlPanel",
-            ["CrateStack_Aft"] = "LSReal_CargoCrate",
-            ["CrateStack_Fore"] = "LSReal_CargoCrate",
-            ["CrateStack_Mid"] = "LSReal_CargoCrate",
-            ["O2TankBank_Fore"] = "LSReal_OxygenTank",
-            ["O2TankBank_Aft"] = "LSReal_OxygenTank",
-            ["PartsPallet"] = "LSReal_PortableBattery",
-            ["ToolBoard_Port"] = "LSReal_Toolbox"
-            ,["AirlockDoor_Main"] = "LP_AirlockDoor"
-            ,["VentFan_Service"] = "LP_VentFan"
-            ,["EmergencyBeacon_Service"] = "LP_EmergencyBeacon"
+            ["AirlockDoor_Main"] = "LP_AirlockDoor",
+            ["VentFan_Service"] = "LP_VentFan",
+            ["EmergencyBeacon_Service"] = "LP_EmergencyBeacon"
         };
 
         [MenuItem("Last Shift/SP-02A/Import Real Prop Prefabs")]
@@ -108,7 +104,13 @@ namespace DoodleUp.Editor
                 prop.FindPropertyRelative("prefab").objectReferenceValue = prefabs[assetName];
                 linked++;
             }
-            if (linked == 0) throw new InvalidOperationException("No dressing slots matched the real prop mapping.");
+            // <b>0 이어도 던지지 않는다.</b> 위 세 슬롯 id 는 드레싱 데이터에 아직 없다 —
+            // Tripo 프롭을 걷어내고 보니 쇼케이스 킷이 설 자리가 애초에 안 잡혀 있었다.
+            // 여기서 던지면 그 사실이 "임포터 고장" 으로 보이고, 자리를 잡는 것은 드레싱
+            // 데이터 쪽 일이라 이 도구가 막을 일이 아니다.
+            if (linked == 0)
+                Debug.LogWarning("[LAST_SHIFT_REAL_PROPS] 매칭된 드레싱 슬롯이 없다 — " +
+                                 string.Join(", ", DressingLinks.Keys) + " 가 드레싱 데이터에 없다.");
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(set);
         }
@@ -118,7 +120,7 @@ namespace DoodleUp.Editor
             var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
             var count = 0;
             foreach (var prop in set.Props)
-                if (prop?.prefab != null && prop.prefab.name.StartsWith("LSReal_", StringComparison.Ordinal)) count++;
+                if (prop?.prefab != null && prop.prefab.name.StartsWith("LP_", StringComparison.Ordinal)) count++;
             return count;
         }
     }
