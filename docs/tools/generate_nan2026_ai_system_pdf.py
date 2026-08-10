@@ -329,61 +329,12 @@ def draw_cover(c: canvas.Canvas) -> None:
             if (gx + gy) % 112 == 0:
                 c.circle(gx, gy, 0.65, fill=1, stroke=0)
 
-    chip(c, "NAN 2026 / GAME X AI", M, H - 72, fill=NAVY_3, color=LIME, size=8, height=22)
     c.setFont("KR-Bold", 31)
     c.setFillColor(white)
-    c.drawString(M, H - 143, "AI 기반 게임 개발")
+    c.drawCentredString(W / 2, H / 2 + 18, "AI를 활용한")
     c.setFont("KR-Bold", 29)
     c.setFillColor(LIME)
-    c.drawString(M, H - 184, "구조와 작업 흐름")
-    draw_text(
-        c,
-        "Planning, 역할 분담, 리뷰와 기억으로 게임 개발을 구조화하는 방식",
-        M,
-        H - 219,
-        CW,
-        size=11.5,
-        color=HexColor("#C4D3E1"),
-        max_lines=2,
-    )
-
-    rounded_box(c, M, 258, CW, 278, fill=NAVY_2, stroke=NAVY_3, radius=17)
-    card_gap = 12
-    card_width = (CW - card_gap * 2 - 32) / 3
-    cards = [
-        ("AgentDesk Bot", "요청 · 확인 · 승인", "Discord 접점", CYAN),
-        ("AgentDesk", "분해 · 배정 · 칸반", "작업 중심", LIME),
-        ("AnchorMind", "기억 · 회상 · 공유", "문맥 기반", VIOLET),
-    ]
-    for index, (title, body, role, accent) in enumerate(cards):
-        x = M + 16 + index * (card_width + card_gap)
-        rounded_box(c, x, 363, card_width, 132, fill=NAVY_3, stroke=None, radius=12)
-        c.setFillColor(accent)
-        c.circle(x + 17, 472, 4, fill=1, stroke=0)
-        c.setFont("KR-Bold", 10.5)
-        c.setFillColor(white)
-        c.drawString(x + 29, 467, title)
-        draw_text(c, body, x + 13, 429, card_width - 26, font="KR-Bold", size=8.2, color=white, align="center")
-        c.setFont("KR", 7)
-        c.setFillColor(HexColor("#B8CADA"))
-        c.drawCentredString(x + card_width / 2, 389, role)
-        if index < 2:
-            arrow(c, x + card_width + 2, 429, x + card_width + card_gap - 2, 429, color=accent, head=4)
-
-    rounded_box(c, M + 27, 282, CW - 54, 53, fill=HexColor("#24415F"), stroke=None, radius=10)
-    c.setFont("KR-Bold", 11)
-    c.setFillColor(LIME)
-    c.drawCentredString(W / 2, 311, "요청  ->  Planning  ->  역할 배정  ->  실행  ->  리뷰  ->  기억")
-    c.setFont("KR", 7.4)
-    c.setFillColor(HexColor("#C0D2DF"))
-    c.drawCentredString(W / 2, 292, "세 도구가 하나의 작업 흐름으로 연결된다.")
-
-    c.setFont("KR", 8)
-    c.setFillColor(HexColor("#9DB1C5"))
-    c.drawString(M, 82, "제출 검토본 v4.0  |  2026.08.10")
-    c.setFont("KR-Bold", 8)
-    c.setFillColor(LIME)
-    c.drawRightString(W - M, 82, f"01 / {PAGE_COUNT:02d}")
+    c.drawCentredString(W / 2, H / 2 - 24, "구조적 게임 개발")
     c.bookmarkPage("page-1")
     c.addOutlineEntry("표지", "page-1", level=0, closed=False)
     c.showPage()
@@ -404,9 +355,10 @@ def draw_overview(c: canvas.Canvas) -> None:
     c.drawString(M + 16, 678, "전체 구조")
 
     top_cards = [
-        (M + 18, 560, 126, 76, "AgentDesk Bot", "요청 · 승인 · 알림", CYAN, SOFT_CYAN),
-        (M + 193, 548, 126, 100, "AgentDesk", "분해 · 배정\n상태 · 리뷰", LIME, SOFT_LIME),
-        (M + 368, 560, 126, 76, "Kanban", "진행 · 대기 · 완료", VIOLET, SOFT_VIOLET),
+        (M + 8, 560, 112, 76, "Discord Bot", "요청 · 확인", CYAN, SOFT_CYAN),
+        (M + 139, 560, 112, 76, "Planning Agent", "목표 · 분해", LIME, SOFT_LIME),
+        (M + 270, 560, 112, 76, "AgentDesk", "배정 · 추적", CYAN, SOFT_CYAN),
+        (M + 401, 560, 112, 76, "Kanban", "상태 · 리뷰", VIOLET, SOFT_VIOLET),
     ]
     for x, y, width, height, title, body, accent, fill in top_cards:
         rounded_box(c, x, y, width, height, fill=fill, stroke=accent, radius=10)
@@ -414,12 +366,13 @@ def draw_overview(c: canvas.Canvas) -> None:
         c.setFillColor(INK)
         c.drawCentredString(x + width / 2, y + height - 26, title)
         draw_text(c, body, x + 10, y + height - 48, width - 20, size=6.8, color=MUTED, leading=9.5, align="center", max_lines=2)
-    arrow(c, M + 147, 598, M + 188, 598, color=CYAN)
-    arrow(c, M + 322, 598, M + 363, 598, color=LIME)
+    for left, right, color in zip(top_cards, top_cards[1:], (CYAN, LIME, CYAN)):
+        arrow(c, left[0] + left[2] + 2, 598, right[0] - 2, 598, color=color)
 
     c.setStrokeColor(LIME)
     c.setLineWidth(1.4)
-    c.line(W / 2, 548, W / 2, 524)
+    agentdesk_center = top_cards[2][0] + top_cards[2][2] / 2
+    c.line(agentdesk_center, 548, agentdesk_center, 524)
     c.line(M + 72, 524, W - M - 72, 524)
 
     roles = [
@@ -448,7 +401,7 @@ def draw_overview(c: canvas.Canvas) -> None:
     c.drawString(M + 32, 403, "AnchorMind")
     c.setFont("KR", 7.2)
     c.setFillColor(white)
-    c.drawString(M + 110, 403, "프로젝트의 단기·장기 기억을 모든 역할이 함께 사용")
+    c.drawString(M + 110, 403, "개발 흐름의 단기·장기 기억을 모든 역할이 함께 사용")
     for index in range(4):
         x = M + 18 + index * (role_width + role_gap) + role_width / 2
         arrow(c, x, 430, x, 447, color=VIOLET, head=4, dashed=True)
@@ -464,8 +417,8 @@ def draw_overview(c: canvas.Canvas) -> None:
         xx += width
     rows = [
         ("AgentDesk", "작업 분해, 역할 배정, 칸반 상태와 리뷰 흐름 관리", "카드 · 담당자 · 상태"),
-        ("AgentDesk Bot", "Discord에서 요청 접수, 진행 확인, 승인과 알림", "대화 · 결과 알림"),
-        ("AnchorMind", "현재 작업 문맥과 프로젝트 지식을 저장·회상·공유", "결정 · 오류 · 절차"),
+        ("Discord Bot", "Discord에서 요청 접수, 진행 확인, 승인과 알림", "대화 · 결과 알림"),
+        ("AnchorMind", "현재 작업 문맥과 개발 지식을 저장·회상·공유", "결정 · 오류 · 절차"),
     ]
     y = table_top - 29
     for index, row in enumerate(rows):
@@ -645,7 +598,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         4,
         "DISCORD BOT",
         "Discord에서 AI 개발 흐름을 바로 사용한다",
-        "AgentDesk Bot으로 요청하고 Planning, 역할 배정, 리뷰와 승인을 대화에서 확인한다.",
+        "Discord Bot으로 요청하고 Planning, 역할 배정, 리뷰와 승인을 대화에서 확인한다.",
     )
 
     rounded_box(c, M, 188, 318, 516, fill=NAVY, stroke=None, radius=14)
@@ -674,7 +627,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         500,
         248,
         82,
-        "AGENTDESK BOT",
+        "DISCORD BOT",
         "카드를 만들었습니다.\n담당: Planning Agent\n상태: PLANNING",
         fill=white,
         accent=LIME_DARK,
@@ -685,7 +638,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         392,
         248,
         84,
-        "AGENTDESK BOT",
+        "DISCORD BOT",
         "계획을 카드로 나누고 Tech·Art Agent를 배정했습니다.\n결과는 REVIEW에서 확인합니다.",
         fill=white,
         accent=LIME_DARK,
@@ -708,7 +661,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         220,
         248,
         73,
-        "AGENTDESK BOT",
+        "DISCORD BOT",
         "DONE 처리했습니다.\n검증된 결정과 절차는 AnchorMind에 공유됩니다.",
         fill=SOFT_LIME,
         accent=LIME_DARK,
@@ -769,7 +722,7 @@ def draw_memory(c: canvas.Canvas) -> None:
         559,
         memory_width,
         137,
-        "프로젝트 기억  |  장기",
+        "공유 기억  |  장기",
         "확정된 결정, 팀 규칙, 해결한 오류, 반복해서 사용할 절차를 오래 보존한다.",
         VIOLET,
         SOFT_VIOLET,
@@ -785,7 +738,7 @@ def draw_memory(c: canvas.Canvas) -> None:
     c.drawCentredString(W / 2, 486, "AnchorMind")
     c.setFont("KR", 7.2)
     c.setFillColor(white)
-    c.drawCentredString(W / 2, 466, "프로젝트 범위의 공용 기억 저장소")
+    c.drawCentredString(W / 2, 466, "개발 흐름의 공용 기억 저장소")
 
     c.setStrokeColor(LIME)
     c.setLineWidth(1.3)
@@ -841,9 +794,9 @@ def build_pdf() -> Path:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(OUTPUT), pagesize=A4, pageCompression=1)
     c.setTitle("AI 기반 게임 개발 작업 체계")
-    c.setAuthor("NAN 2026 참가팀")
-    c.setSubject("AgentDesk Planning, Discord Bot, AnchorMind 기반의 구조적 AI 게임 개발 흐름")
-    c.setKeywords("NAN 2026, AgentDesk, Planning Agent, Discord Bot, AnchorMind, Kanban, AI game development")
+    c.setAuthor("AI Game Development Workflow")
+    c.setSubject("Planning Agent, Discord Bot, AgentDesk, AnchorMind 기반의 구조적 AI 게임 개발 흐름")
+    c.setKeywords("Planning Agent, Discord Bot, AgentDesk, AnchorMind, Kanban, AI game development")
     c.setCreator("Reproducible ReportLab generator")
 
     draw_cover(c)
