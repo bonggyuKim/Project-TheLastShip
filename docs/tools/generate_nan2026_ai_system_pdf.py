@@ -1,18 +1,13 @@
-"""Generate the NAN 2026 DoodleUp AI development system technical brief.
-
-The PDF is intentionally evidence-led. It combines repository-backed metrics,
-tracked project images, vector diagrams, and explicit submission caveats.
-"""
+"""Generate the workflow-focused DoodleUp AI development system brief."""
 
 from __future__ import annotations
 
 from math import atan2, cos, pi, sin
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from reportlab.lib.colors import Color, HexColor, white
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -23,29 +18,10 @@ OUTPUT = ROOT / "output" / "pdf" / "doodleup-nan2026-ai-development-system.pdf"
 FONT_REGULAR = Path(r"C:\Windows\Fonts\malgun.ttf")
 FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
-LIME_NEUTRAL = (
-    ROOT
-    / "Assets"
-    / "DoodleUp"
-    / "Art"
-    / "Characters"
-    / "LastShiftLimeAlien"
-    / "LastShiftLimeAlien_Rig_NeutralPose.png"
-)
-LIME_STRESS = (
-    ROOT
-    / "Assets"
-    / "DoodleUp"
-    / "Art"
-    / "Characters"
-    / "LastShiftLimeAlien"
-    / "LastShiftLimeAlien_Rig_StressPose.png"
-)
-RESULT_NOMINAL = ROOT / "docs" / "art" / "mockups" / "last-shift-result-nominal.png"
-
 W, H = A4
 M = 42
 CW = W - 2 * M
+PAGE_COUNT = 10
 
 NAVY = HexColor("#0B1728")
 NAVY_2 = HexColor("#142A43")
@@ -76,7 +52,6 @@ def register_fonts() -> None:
 
 
 def safe_text(value: str) -> str:
-    """Use ASCII hyphens for dash-like punctuation."""
     return (
         value.replace("\u2011", "-")
         .replace("\u2012", "-")
@@ -89,47 +64,46 @@ def text_width(text: str, font: str, size: float) -> float:
     return pdfmetrics.stringWidth(safe_text(text), font, size)
 
 
-def split_long_token(token: str, max_width: float, font: str, size: float) -> list[str]:
-    parts: list[str] = []
+def split_token(token: str, max_width: float, font: str, size: float) -> list[str]:
+    chunks: list[str] = []
     current = ""
     for char in token:
         candidate = current + char
         if current and text_width(candidate, font, size) > max_width:
-            parts.append(current)
+            chunks.append(current)
             current = char
         else:
             current = candidate
     if current:
-        parts.append(current)
-    return parts
+        chunks.append(current)
+    return chunks
 
 
 def wrap_text(text: str, max_width: float, font: str, size: float) -> list[str]:
-    wrapped: list[str] = []
+    lines: list[str] = []
     for paragraph in safe_text(text).splitlines() or [""]:
         if not paragraph:
-            wrapped.append("")
+            lines.append("")
             continue
-        words = paragraph.split(" ")
-        line = ""
-        for word in words:
+        current = ""
+        for word in paragraph.split(" "):
             if text_width(word, font, size) > max_width:
-                if line:
-                    wrapped.append(line)
-                    line = ""
-                chunks = split_long_token(word, max_width, font, size)
-                wrapped.extend(chunks[:-1])
-                line = chunks[-1]
+                if current:
+                    lines.append(current)
+                    current = ""
+                parts = split_token(word, max_width, font, size)
+                lines.extend(parts[:-1])
+                current = parts[-1]
                 continue
-            candidate = word if not line else f"{line} {word}"
-            if line and text_width(candidate, font, size) > max_width:
-                wrapped.append(line)
-                line = word
+            candidate = word if not current else f"{current} {word}"
+            if current and text_width(candidate, font, size) > max_width:
+                lines.append(current)
+                current = word
             else:
-                line = candidate
-        if line:
-            wrapped.append(line)
-    return wrapped
+                current = candidate
+        if current:
+            lines.append(current)
+    return lines
 
 
 def draw_text(
@@ -182,13 +156,14 @@ def rounded_box(
 ) -> None:
     c.saveState()
     c.setFillColor(fill)
+    c.setLineWidth(line_width)
     if stroke is None:
         c.setStrokeColor(fill)
-        c.setLineWidth(0)
+        stroke_flag = 0
     else:
         c.setStrokeColor(stroke)
-        c.setLineWidth(line_width)
-    c.roundRect(x, y, w, h, radius, fill=1, stroke=0 if stroke is None else 1)
+        stroke_flag = 1
+    c.roundRect(x, y, w, h, radius, fill=1, stroke=stroke_flag)
     c.restoreState()
 
 
@@ -205,39 +180,12 @@ def chip(
     h: float = 20,
 ) -> float:
     label = safe_text(text)
-    w = text_width(label, "KR-Bold", size) + 2 * pad_x
-    rounded_box(c, x, y, w, h, fill=fill, stroke=None, radius=h / 2)
+    width = text_width(label, "KR-Bold", size) + 2 * pad_x
+    rounded_box(c, x, y, width, h, fill=fill, stroke=None, radius=h / 2)
     c.setFont("KR-Bold", size)
     c.setFillColor(color)
-    c.drawCentredString(x + w / 2, y + (h - size) / 2 + 1.5, label)
-    return w
-
-
-def circle_label(
-    c: canvas.Canvas,
-    x: float,
-    y: float,
-    r: float,
-    text: str,
-    *,
-    fill: Color,
-    text_color: Color = INK,
-    size: float = 8,
-    stroke: Color | None = None,
-) -> None:
-    c.saveState()
-    c.setFillColor(fill)
-    c.setStrokeColor(stroke or fill)
-    c.circle(x, y, r, fill=1, stroke=1 if stroke else 0)
-    lines = wrap_text(text, r * 1.55, "KR-Bold", size)
-    total = len(lines) * size * 1.25
-    yy = y + total / 2 - size
-    c.setFont("KR-Bold", size)
-    c.setFillColor(text_color)
-    for line in lines:
-        c.drawCentredString(x, yy, line)
-        yy -= size * 1.25
-    c.restoreState()
+    c.drawCentredString(x + width / 2, y + (h - size) / 2 + 1.5, label)
+    return width
 
 
 def arrow(
@@ -271,57 +219,36 @@ def arrow(
     c.restoreState()
 
 
-def image_contain(
+def circle_label(
     c: canvas.Canvas,
-    path: Path,
     x: float,
     y: float,
-    w: float,
-    h: float,
+    r: float,
+    text: str,
     *,
-    background: Color | None = None,
+    fill: Color,
+    text_color: Color = INK,
+    stroke: Color | None = None,
+    size: float = 8,
 ) -> None:
-    if not path.exists():
-        raise FileNotFoundError(path)
-    image = ImageReader(str(path))
-    iw, ih = image.getSize()
-    scale = min(w / iw, h / ih)
-    dw, dh = iw * scale, ih * scale
-    if background:
-        c.setFillColor(background)
-        c.rect(x, y, w, h, fill=1, stroke=0)
-    c.drawImage(
-        image,
-        x + (w - dw) / 2,
-        y + (h - dh) / 2,
-        width=dw,
-        height=dh,
-        preserveAspectRatio=True,
-        mask="auto",
-    )
+    c.setFillColor(fill)
+    c.setStrokeColor(stroke or fill)
+    c.setLineWidth(1.2)
+    c.circle(x, y, r, fill=1, stroke=1 if stroke else 0)
+    lines = wrap_text(text, r * 1.55, "KR-Bold", size)
+    yy = y + len(lines) * size * 0.55
+    c.setFont("KR-Bold", size)
+    c.setFillColor(text_color)
+    for line in lines:
+        c.drawCentredString(x, yy, line)
+        yy -= size * 1.25
 
 
-def image_cover(c: canvas.Canvas, path: Path, x: float, y: float, w: float, h: float) -> None:
-    if not path.exists():
-        raise FileNotFoundError(path)
-    image = ImageReader(str(path))
-    iw, ih = image.getSize()
-    scale = max(w / iw, h / ih)
-    dw, dh = iw * scale, ih * scale
-    c.saveState()
-    clip = c.beginPath()
-    clip.roundRect(x, y, w, h, 10)
-    c.clipPath(clip, stroke=0, fill=0)
-    c.drawImage(
-        image,
-        x + (w - dw) / 2,
-        y + (h - dh) / 2,
-        width=dw,
-        height=dh,
-        preserveAspectRatio=True,
-        mask="auto",
-    )
-    c.restoreState()
+def fit_single_line(text: str, font: str, preferred: float, minimum: float, width: float) -> float:
+    size = preferred
+    while size > minimum and text_width(text, font, size) > width:
+        size -= 0.5
+    return size
 
 
 def section_header(
@@ -329,77 +256,51 @@ def section_header(
     page: int,
     kicker: str,
     title: str,
-    subtitle: str | None = None,
-) -> float:
+    subtitle: str,
+) -> None:
     c.setFillColor(PAPER)
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    chip(c, kicker.upper(), M, H - 66, fill=NAVY, color=LIME, size=7.5, h=19)
+    chip(c, kicker.upper(), M, H - 66, fill=NAVY, color=LIME, size=7.4, h=19)
     title = safe_text(title)
-    title_size = 25.0
-    while title_size > 18 and text_width(title, "KR-Bold", title_size) > CW:
-        title_size -= 0.5
+    title_size = fit_single_line(title, "KR-Bold", 25, 18, CW)
     c.setFont("KR-Bold", title_size)
     c.setFillColor(INK)
     c.drawString(M, H - 110, title)
-    y = H - 132
-    if subtitle:
-        subtitle = safe_text(subtitle)
-        subtitle_size = 9.4
-        while subtitle_size > 7.4 and text_width(subtitle, "KR", subtitle_size) > CW:
-            subtitle_size -= 0.25
-        c.setFont("KR", subtitle_size)
-        c.setFillColor(MUTED)
-        c.drawString(M, H - 127, subtitle)
-        y = H - 141
-    c.setStrokeColor(LINE)
-    c.setLineWidth(0.8)
-    c.line(M, 42, W - M, 42)
-    c.setFont("KR", 7.4)
+    subtitle = safe_text(subtitle)
+    subtitle_size = fit_single_line(subtitle, "KR", 9.2, 7.3, CW)
+    c.setFont("KR", subtitle_size)
     c.setFillColor(MUTED)
-    c.drawString(M, 25, "DoodleUp AI Development System / NAN 2026 submission review")
+    c.drawString(M, H - 127, subtitle)
+    c.setStrokeColor(LINE)
+    c.line(M, 42, W - M, 42)
+    c.setFont("KR", 7.2)
+    c.setFillColor(MUTED)
+    c.drawString(M, 25, "DoodleUp AI Development System / workflow & capabilities")
     c.setFont("KR-Bold", 8)
     c.drawRightString(W - M, 25, f"{page:02d}")
     key = f"page-{page}"
     c.bookmarkPage(key)
-    c.addOutlineEntry(safe_text(title), key, level=0, closed=False)
-    return y - 4
+    c.addOutlineEntry(title, key, level=0, closed=False)
 
 
-def metric_card(
+def benefit_strip(
     c: canvas.Canvas,
-    x: float,
-    y: float,
-    w: float,
-    h: float,
-    value: str,
-    label: str,
+    items: Sequence[tuple[str, str, Color]],
     *,
-    accent: Color = LIME,
-    note: str | None = None,
+    y: float = 82,
+    h: float = 88,
 ) -> None:
-    rounded_box(c, x, y, w, h, fill=white, stroke=LINE, radius=10)
-    c.setFillColor(accent)
-    c.roundRect(x, y + h - 5, w, 5, 3, fill=1, stroke=0)
-    c.setFont("KR-Bold", 19)
-    c.setFillColor(INK)
-    c.drawString(x + 12, y + h - 32, safe_text(value))
-    draw_text(c, label, x + 12, y + h - 51, w - 24, font="KR-Bold", size=8, color=MUTED, leading=11, max_lines=2)
-    if note:
-        draw_text(c, note, x + 12, y + 14, w - 24, size=6.8, color=MUTED, leading=9, max_lines=2)
-
-
-def pass_row(c: canvas.Canvas, x: float, y: float, w: float, label: str, value: str) -> None:
-    c.setFillColor(SOFT_LIME)
-    c.circle(x + 6, y + 3, 6, fill=1, stroke=0)
-    c.setFont("KR-Bold", 7)
-    c.setFillColor(LIME_DARK)
-    c.drawCentredString(x + 6, y + 0.5, "P")
-    c.setFont("KR", 8.5)
-    c.setFillColor(INK)
-    c.drawString(x + 18, y, safe_text(label))
-    c.setFont("KR-Bold", 8.5)
-    c.setFillColor(LIME_DARK)
-    c.drawRightString(x + w, y, safe_text(value))
+    gap = 9
+    width = (CW - gap * (len(items) - 1)) / len(items)
+    for index, (title, body, accent) in enumerate(items):
+        x = M + index * (width + gap)
+        rounded_box(c, x, y, width, h, fill=white, stroke=LINE, radius=10)
+        c.setFillColor(accent)
+        c.roundRect(x, y + h - 5, width, 5, 3, fill=1, stroke=0)
+        c.setFont("KR-Bold", 9)
+        c.setFillColor(INK)
+        c.drawString(x + 11, y + h - 29, title)
+        draw_text(c, body, x + 11, y + h - 48, width - 22, size=6.9, color=MUTED, leading=9.5, max_lines=3)
 
 
 def draw_table(
@@ -411,40 +312,27 @@ def draw_table(
     rows: Sequence[Sequence[str]],
     *,
     row_heights: Sequence[float] | float,
-    font_size: float = 7.6,
+    font_size: float = 7.3,
     header_height: float = 30,
-    header_fill: Color = NAVY,
 ) -> float:
-    total_w = sum(widths)
-    c.setFillColor(header_fill)
-    c.roundRect(x, y_top - header_height, total_w, header_height, 8, fill=1, stroke=0)
+    total = sum(widths)
+    c.setFillColor(NAVY)
+    c.roundRect(x, y_top - header_height, total, header_height, 8, fill=1, stroke=0)
     xx = x
     for width, header in zip(widths, headers):
-        draw_text(
-            c,
-            header,
-            xx + 7,
-            y_top - 12,
-            width - 14,
-            font="KR-Bold",
-            size=7.5,
-            color=white,
-            leading=10,
-            max_lines=2,
-        )
+        draw_text(c, header, xx + 7, y_top - 12, width - 14, font="KR-Bold", size=7.2, color=white, leading=9, max_lines=2)
         xx += width
-    y = y_top - header_height
     heights = [row_heights] * len(rows) if isinstance(row_heights, (int, float)) else list(row_heights)
+    y = y_top - header_height
     for index, (row, rh) in enumerate(zip(rows, heights)):
-        fill = white if index % 2 == 0 else PAPER_2
-        c.setFillColor(fill)
-        c.rect(x, y - rh, total_w, rh, fill=1, stroke=0)
+        c.setFillColor(white if index % 2 == 0 else PAPER_2)
+        c.rect(x, y - rh, total, rh, fill=1, stroke=0)
         c.setStrokeColor(LINE)
         c.setLineWidth(0.45)
-        c.line(x, y - rh, x + total_w, y - rh)
+        c.line(x, y - rh, x + total, y - rh)
         xx = x
-        for col_index, (width, cell) in enumerate(zip(widths, row)):
-            if col_index:
+        for col, (width, cell) in enumerate(zip(widths, row)):
+            if col:
                 c.line(xx, y, xx, y - rh)
             draw_text(
                 c,
@@ -452,54 +340,29 @@ def draw_table(
                 xx + 7,
                 y - 14,
                 width - 14,
-                font="KR-Bold" if col_index == 0 else "KR",
+                font="KR-Bold" if col == 0 else "KR",
                 size=font_size,
-                color=INK if col_index == 0 else MUTED,
+                color=INK if col == 0 else MUTED,
                 leading=font_size * 1.42,
                 max_lines=max(2, int((rh - 10) / (font_size * 1.42))),
             )
             xx += width
         y -= rh
     c.setStrokeColor(LINE)
-    c.roundRect(x, y, total_w, y_top - y, 8, fill=0, stroke=1)
+    c.roundRect(x, y, total, y_top - y, 8, fill=0, stroke=1)
     return y
-
-
-def ratio_bar(
-    c: canvas.Canvas,
-    x: float,
-    y: float,
-    w: float,
-    label: str,
-    ratio: float,
-    value: str,
-    *,
-    color: Color = LIME,
-    label_color: Color = MUTED,
-    value_color: Color = INK,
-) -> None:
-    c.setFont("KR", 7.8)
-    c.setFillColor(label_color)
-    c.drawString(x, y + 11, safe_text(label))
-    c.setFont("KR-Bold", 7.8)
-    c.setFillColor(value_color)
-    c.drawRightString(x + w, y + 11, safe_text(value))
-    c.setFillColor(PAPER_2)
-    c.roundRect(x, y, w, 7, 3.5, fill=1, stroke=0)
-    c.setFillColor(color)
-    c.roundRect(x, y, max(7, w * max(0, min(1, ratio))), 7, 3.5, fill=1, stroke=0)
 
 
 def draw_cover(c: canvas.Canvas) -> None:
     c.setFillColor(NAVY)
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    c.setFillColor(NAVY_2)
-    for gx in range(28, int(W), 28):
-        for gy in range(26, int(H), 28):
-            if (gx + gy) % 84 == 0:
-                c.circle(gx, gy, 0.7, fill=1, stroke=0)
     c.setFillColor(LIME)
     c.rect(0, H - 9, W, 9, fill=1, stroke=0)
+    c.setFillColor(NAVY_2)
+    for gx in range(28, int(W), 28):
+        for gy in range(28, int(H), 28):
+            if (gx + gy) % 84 == 0:
+                c.circle(gx, gy, 0.7, fill=1, stroke=0)
 
     chip(c, "NAN 2026 / GAME X AI", M, H - 72, fill=NAVY_3, color=LIME, size=8, h=22)
     c.setFont("KR-Bold", 34)
@@ -510,287 +373,186 @@ def draw_cover(c: canvas.Canvas) -> None:
     c.drawString(M, H - 184, "AI 개발 시스템 기술서")
     draw_text(
         c,
-        "인간 디렉터의 의도를 기억하고, 전문 역할로 구현하며, Unity 증거로 검증하는 AI-native 게임 개발 조직",
+        "작업 흐름과 범용 기능을 중심으로 설명하는 AI-native 개발 운영 체계",
         M,
         H - 220,
-        430,
+        440,
         size=12,
-        color=HexColor("#C7D7E6"),
+        color=HexColor("#C6D5E3"),
         leading=18,
-        max_lines=3,
+        max_lines=2,
     )
 
-    rounded_box(c, M, 108, 333, 382, fill=NAVY_2, stroke=NAVY_3, radius=18)
+    rounded_box(c, M, 145, CW, 365, fill=NAVY_2, stroke=NAVY_3, radius=18)
     c.setFont("KR-Bold", 9)
     c.setFillColor(CYAN)
-    c.drawString(M + 20, 465, "THE CLOSED DEVELOPMENT LOOP")
+    c.drawString(M + 19, 482, "SYSTEM, NOT A SINGLE MODEL")
 
+    cx, cy = W / 2, 330
+    circle_label(c, cx, cy, 61, "AgentDesk\nORCHESTRATOR", fill=HexColor("#1B3A4B"), text_color=white, stroke=LIME, size=9)
     nodes = [
-        (M + 66, 391, "인간\n디렉터", LIME),
-        (M + 166, 391, "AgentDesk\n오케스트레이션", CYAN),
-        (M + 266, 391, "역할형\nAI 에이전트", VIOLET),
-        (M + 266, 265, "컴파일\n자동 테스트", YELLOW),
-        (M + 166, 265, "독립 QA\n증거 검토", RED),
-        (M + 66, 265, "플레이\n승인", LIME),
+        (cx - 170, cy + 88, "작업 흐름", CYAN),
+        (cx, cy + 126, "장기기억", LIME),
+        (cx + 170, cy + 88, "역할 협업", VIOLET),
+        (cx + 190, cy - 60, "격리·추적", YELLOW),
+        (cx + 78, cy - 95, "도구 실행", CYAN),
+        (cx - 78, cy - 95, "검증", RED),
+        (cx - 190, cy - 60, "관측·복구", VIOLET),
+        (cx - 170, cy + 10, "인간 통제", LIME),
     ]
-    for index, (x, y, label, color) in enumerate(nodes):
-        circle_label(c, x, y, 37, label, fill=Color(color.red, color.green, color.blue, alpha=0.15), text_color=white, size=7.5, stroke=color)
-        nx, ny, _, _ = nodes[(index + 1) % len(nodes)]
-        vx, vy = nx - x, ny - y
-        length = max((vx * vx + vy * vy) ** 0.5, 1)
-        arrow(
-            c,
-            x + vx / length * 41,
-            y + vy / length * 41,
-            nx - vx / length * 41,
-            ny - vy / length * 41,
-            color=color,
-            width=1.5,
-            head=6,
-        )
+    for x, y, label, accent in nodes:
+        arrow(c, cx, cy, x, y, color=Color(accent.red, accent.green, accent.blue, alpha=0.75), width=1.2, head=5)
+        circle_label(c, x, y, 33, label, fill=NAVY_3, text_color=white, stroke=accent, size=7)
 
-    rounded_box(c, M + 37, 145, 260, 55, fill=NAVY_3, stroke=None, radius=10)
+    rounded_box(c, M + 38, 151, CW - 76, 47, fill=NAVY_3, stroke=None, radius=10)
     c.setFont("KR-Bold", 10)
     c.setFillColor(LIME)
-    c.drawString(M + 52, 177, "AnchorMind / Memento")
-    c.setFont("KR", 8)
-    c.setFillColor(HexColor("#C7D7E6"))
-    c.drawString(M + 52, 159, "결정 · 오류 · 절차 · 선호 · 작업 이력을 세션 사이에 유지")
-
-    rounded_box(c, 400, 108, 153, 382, fill=HexColor("#111F31"), stroke=NAVY_3, radius=18)
-    image_contain(c, LIME_NEUTRAL, 412, 189, 129, 245, background=HexColor("#111F31"))
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(white)
-    c.drawString(416, 165, "LAST SHIFT")
+    c.drawCentredString(W / 2, 178, "의도 -> 실행 -> 증거 -> 승인 -> 학습")
     c.setFont("KR", 7.5)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawString(416, 148, "tracked rig evidence")
-    c.drawString(416, 135, "Blender -> FBX -> Unity")
+    c.setFillColor(HexColor("#BDD0DE"))
+    c.drawCentredString(W / 2, 161, "AI는 결정을 대신하지 않고, 팀이 더 일관되고 검증 가능하게 움직이도록 만든다.")
 
     c.setFont("KR", 8)
     c.setFillColor(HexColor("#9DB1C5"))
-    c.drawString(M, 73, "제출 검토본 v1.0  |  2026.08.10  |  기준 HEAD 1d9a04c")
+    c.drawString(M, 82, "제출 검토본 v2.0  |  2026.08.10")
     c.setFont("KR-Bold", 8)
     c.setFillColor(LIME)
-    c.drawRightString(W - M, 73, "01 / 13")
+    c.drawRightString(W - M, 82, f"01 / {PAGE_COUNT:02d}")
     c.bookmarkPage("page-1")
     c.addOutlineEntry("표지", "page-1", level=0, closed=False)
     c.showPage()
 
 
-def draw_executive_summary(c: canvas.Canvas) -> None:
+def draw_theme_map(c: canvas.Canvas) -> None:
     section_header(
         c,
         2,
-        "01 / EXECUTIVE SUMMARY",
-        "결과물이 아니라, AI로 운영되는 개발 시스템",
-        "NAN 2026의 사전 과제인 AI를 활용한 게임 제작에 대해 DoodleUp이 제시하는 답",
+        "00 / THEME MAP",
+        "한 테마는 하나의 질문만 책임진다",
+        "기능을 겹쳐 설명하지 않고, 시스템의 각 책임을 독립된 관점으로 나눈다.",
     )
 
-    rounded_box(c, M, 620, CW, 78, fill=NAVY, stroke=None, radius=14)
-    chip(c, "OFFICIAL EVENT FIT", M + 16, 662, fill=NAVY_3, color=LIME, size=7, h=18)
-    c.setFont("KR-Bold", 14)
-    c.setFillColor(white)
-    c.drawString(M + 16, 638, "AI의 다음 단계를 설계할 디렉터")
-    draw_text(
-        c,
-        "모집 2026.07.10-08.10 · 10팀 선발 · 2026.09.04-09.06 · NHN 사옥 48시간 오프라인",
-        M + 275,
-        663,
-        CW - 291,
-        size=7.8,
-        color=HexColor("#C7D7E6"),
-        leading=12,
-        max_lines=3,
-    )
-
-    rounded_box(c, M, 409, 304, 204, fill=white, stroke=LINE, radius=14)
+    rounded_box(c, M, 635, CW, 67, fill=NAVY, stroke=None, radius=12)
     c.setFont("KR-Bold", 11)
-    c.setFillColor(LIME_DARK)
-    c.drawString(M + 18, 584, "한 문장 요약")
-    draw_text(
-        c,
-        "인간 디렉터가 목표와 플레이 감각을 정하면 AgentDesk가 작업을 분해하고, 기획·기술·아트·QA AI가 격리된 Git 작업공간에서 구현한다. AnchorMind/Memento는 프로젝트 기억을 유지하고, Unity 컴파일·테스트·수치 검증·독립 QA가 결과를 증명한다.",
-        M + 18,
-        556,
-        268,
-        size=10.2,
-        color=INK,
-        leading=16,
-        max_lines=9,
-    )
-    draw_text(
-        c,
-        "핵심: AI가 게임을 대신 판단하지 않는다. 인간의 창작 의도를 전문 에이전트가 구현하고 자동 증거로 검증한다.",
-        M + 18,
-        452,
-        268,
-        font="KR-Bold",
-        size=8.6,
-        color=LIME_DARK,
-        leading=13,
-        max_lines=3,
-    )
-
-    rounded_box(c, 360, 409, 193, 204, fill=NAVY_2, stroke=None, radius=14)
-    image_cover(c, RESULT_NOMINAL, 371, 443, 171, 132)
-    c.setFont("KR-Bold", 8.5)
+    c.setFillColor(LIME)
+    c.drawString(M + 16, 674, "SYSTEM THESIS")
+    c.setFont("KR-Bold", 10)
     c.setFillColor(white)
-    c.drawString(373, 424, "LAST SHIFT 결과 화면 디자인 시안")
-    c.setFont("KR", 6.8)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawString(373, 411, "tracked project artifact / docs/art/mockups")
+    c.drawString(M + 16, 650, "사람이 방향을 정하고, AI 시스템이 실행의 연속성·속도·증거를 만든다.")
 
-    principles = [
-        ("01", "기억", "결정과 실패를 세션 사이에 유지", LIME, SOFT_LIME),
-        ("02", "역할", "기획·구현·QA의 판단 기준을 분리", CYAN, SOFT_CYAN),
-        ("03", "증거", "말이 아니라 build·test·raw data로 완료", VIOLET, SOFT_VIOLET),
+    themes = [
+        ("01", "오케스트레이션", "무엇이 언제 움직이는가", "카드·의존성·상태", LIME, SOFT_LIME),
+        ("02", "장기기억", "무엇이 세션 뒤에도 남는가", "결정·오류·절차", CYAN, SOFT_CYAN),
+        ("03", "역할 협업", "누가 어떤 기준으로 판단하는가", "소유권·handoff·review", VIOLET, SOFT_VIOLET),
+        ("04", "격리·추적", "어디서 안전하게 변경하는가", "worktree·diff·commit", YELLOW, SOFT_YELLOW),
+        ("05", "도구 실행", "의도가 어떻게 산출물이 되는가", "inspect·edit·execute", CYAN, SOFT_CYAN),
+        ("06", "검증", "완료를 어떻게 증명하는가", "gate·evidence·QA", RED, SOFT_RED),
+        ("07", "관측·복구", "장시간 작업을 어떻게 통제하는가", "state·log·resume·budget", VIOLET, SOFT_VIOLET),
+        ("08", "인간 통제", "최종 권한과 책임은 누구에게 있는가", "approval·safety·rights", LIME, SOFT_LIME),
     ]
-    gap = 10
-    pw = (CW - 2 * gap) / 3
-    for index, (num, title, body, accent, fill) in enumerate(principles):
-        x = M + index * (pw + gap)
-        rounded_box(c, x, 286, pw, 97, fill=fill, stroke=None, radius=12)
-        c.setFont("KR-Bold", 8)
+    card_w = (CW - 3 * 10) / 4
+    card_h = 180
+    for index, (num, title, question, scope, accent, fill) in enumerate(themes):
+        row, col = divmod(index, 4)
+        x = M + col * (card_w + 10)
+        y = 425 - row * 196
+        rounded_box(c, x, y, card_w, card_h, fill=fill, stroke=None, radius=12)
+        c.setFont("KR-Bold", 7.2)
         c.setFillColor(accent)
-        c.drawString(x + 13, 358, num)
-        c.setFont("KR-Bold", 13)
+        c.drawString(x + 11, y + card_h - 25, num)
+        c.setFont("KR-Bold", 10)
         c.setFillColor(INK)
-        c.drawString(x + 13, 334, title)
-        draw_text(c, body, x + 13, 313, pw - 26, size=7.6, color=MUTED, leading=11, max_lines=2)
+        draw_text(c, title, x + 11, y + card_h - 49, card_w - 22, font="KR-Bold", size=10, color=INK, leading=13, max_lines=2)
+        draw_text(c, question, x + 11, y + card_h - 84, card_w - 22, size=7.4, color=MUTED, leading=11, max_lines=3)
+        c.setStrokeColor(Color(accent.red, accent.green, accent.blue, alpha=0.5))
+        c.line(x + 11, y + 45, x + card_w - 11, y + 45)
+        c.setFont("KR", 6.4)
+        c.setFillColor(MUTED)
+        c.drawString(x + 11, y + 27, scope)
 
-    values = [
-        ("321", "main commits", LIME),
-        ("968", "tracked files", CYAN),
-        ("63", "docs Markdown", VIOLET),
-        ("67", "test C# sources", YELLOW),
-        ("618", "test annotations", RED),
-    ]
-    mgap = 8
-    mw = (CW - 4 * mgap) / 5
-    for index, (value, label, accent) in enumerate(values):
-        metric_card(c, M + index * (mw + mgap), 165, mw, 96, value, label, accent=accent)
-
-    rounded_box(c, M, 80, CW, 62, fill=SOFT_YELLOW, stroke=None, radius=10)
-    c.setFont("KR-Bold", 8.5)
-    c.setFillColor(HexColor("#8A6212"))
-    c.drawString(M + 14, 121, "증거 해석 원칙")
-    draw_text(
-        c,
-        "618은 현재 전체 PASS 수가 아니라 소스의 Test/UnityTest annotation 수다. 단계별 QA PASS와 저장소 규모 지표를 섞지 않는다. 시간 절감률·API 비용은 원본 기록을 확보하기 전까지 기재하지 않는다.",
-        M + 14,
-        102,
-        CW - 28,
-        size=7.5,
-        color=HexColor("#785D25"),
-        leading=11,
-        max_lines=3,
-    )
+    rounded_box(c, M, 82, CW, 55, fill=SOFT_YELLOW, stroke=None, radius=10)
+    c.setFont("KR-Bold", 8.2)
+    c.setFillColor(HexColor("#785D25"))
+    c.drawCentredString(W / 2, 105, "설명 규칙  |  각 장은 작동 방식 -> 핵심 기능 -> 고유한 장점 순서로만 구성")
     c.showPage()
 
 
-def draw_architecture(c: canvas.Canvas) -> None:
+def draw_orchestration(c: canvas.Canvas) -> None:
     section_header(
         c,
         3,
-        "02 / SYSTEM ARCHITECTURE",
-        "의도에서 플레이 승인까지 닫히는 개발 루프",
-        "AgentDesk가 작업 흐름을 조율하고, Memento가 모든 단계를 가로지르는 장기기억 계층으로 작동한다.",
+        "01 / ORCHESTRATION",
+        "무엇이 언제 움직이는가",
+        "목표를 카드로 바꾸고, 의존성과 상태를 관리하며, 적절한 역할과 실행 순서를 연결한다.",
     )
 
-    top_y = 611
-    boxes = [
-        (M, top_y, 103, 86, "1", "인간 디렉터", "목표 · 우선순위\n플레이 감각", LIME, SOFT_LIME),
-        (M + 125, top_y, 113, 86, "2", "AgentDesk", "카드 · 의존성\n역할 배정", CYAN, SOFT_CYAN),
-        (M + 260, top_y, 120, 86, "3", "전문 AI", "기획 · 기술\n아트 · QA", VIOLET, SOFT_VIOLET),
-        (M + 402, top_y, 109, 86, "4", "격리 실행", "branch · worktree\nUnity · Blender", YELLOW, SOFT_YELLOW),
+    rounded_box(c, M, 474, CW, 230, fill=white, stroke=LINE, radius=14)
+    c.setFont("KR-Bold", 9.5)
+    c.setFillColor(INK)
+    c.drawString(M + 16, 677, "END-TO-END WORKFLOW")
+    steps = [
+        ("01", "목표 접수", "의도·제약"),
+        ("02", "범위화", "완료 조건"),
+        ("03", "의존성", "선후 관계"),
+        ("04", "역할 배정", "owner·reviewer"),
+        ("05", "실행", "격리 작업"),
+        ("06", "증거 수집", "log·artifact"),
+        ("07", "검토", "gate·QA"),
+        ("08", "승인·학습", "human·reflect"),
     ]
-    for index, (x, y, w, h, num, title, body, accent, fill) in enumerate(boxes):
-        rounded_box(c, x, y, w, h, fill=fill, stroke=None, radius=12)
+    sw = (CW - 3 * 10 - 32) / 4
+    for index, (num, title, body) in enumerate(steps):
+        row, col = divmod(index, 4)
+        x = M + 16 + col * (sw + 10)
+        y = 581 - row * 88
+        accent = [LIME, CYAN, VIOLET, YELLOW, CYAN, VIOLET, RED, LIME][index]
+        rounded_box(c, x, y, sw, 68, fill=Color(accent.red, accent.green, accent.blue, alpha=0.12), stroke=accent, radius=9)
+        c.setFont("KR-Bold", 6.6)
         c.setFillColor(accent)
-        c.circle(x + 17, y + h - 18, 9, fill=1, stroke=0)
-        c.setFont("KR-Bold", 7)
-        c.setFillColor(NAVY)
-        c.drawCentredString(x + 17, y + h - 20.5, num)
-        c.setFont("KR-Bold", 10)
+        c.drawString(x + 9, y + 48, num)
+        c.setFont("KR-Bold", 8.3)
         c.setFillColor(INK)
-        c.drawString(x + 12, y + h - 41, title)
-        draw_text(c, body, x + 12, y + h - 59, w - 24, size=7.4, color=MUTED, leading=10, max_lines=2)
-        if index < len(boxes) - 1:
-            nx = boxes[index + 1][0]
-            arrow(c, x + w + 4, y + h / 2, nx - 5, y + h / 2, color=MUTED, width=1.4, head=6)
+        c.drawString(x + 9, y + 30, title)
+        c.setFont("KR", 6.4)
+        c.setFillColor(MUTED)
+        c.drawString(x + 9, y + 13, body)
+        if col < 3:
+            arrow(c, x + sw + 2, y + 34, x + sw + 8, y + 34, color=accent, head=4)
 
-    rounded_box(c, M, 413, CW, 166, fill=white, stroke=LINE, radius=14)
-    c.setFont("KR-Bold", 9)
-    c.setFillColor(INK)
-    c.drawString(M + 18, 551, "검증과 승인")
-    stages = [
-        ("컴파일", "C# error 0", CYAN),
-        ("자동 테스트", "EditMode · PlayMode", VIOLET),
-        ("정량 검증", "좌표 · 상태 · hash", YELLOW),
-        ("독립 QA", "raw 재계산", RED),
-        ("인간 승인", "Editor play · feel", LIME),
-    ]
-    sx = M + 30
-    sy = 484
-    step = 98
-    for index, (title, body, accent) in enumerate(stages):
-        circle_label(c, sx + index * step, sy, 30, title, fill=white, text_color=INK, size=7.3, stroke=accent)
-        draw_text(c, body, sx + index * step - 39, sy - 46, 78, size=6.8, color=MUTED, leading=9, max_lines=2, align="center")
-        if index < len(stages) - 1:
-            arrow(c, sx + index * step + 34, sy, sx + (index + 1) * step - 34, sy, color=accent, width=1.5, head=6)
-
-    rounded_box(c, M, 285, CW, 101, fill=NAVY, stroke=None, radius=14)
-    c.setFont("KR-Bold", 11)
+    rounded_box(c, M, 350, CW, 94, fill=NAVY, stroke=None, radius=12)
+    c.setFont("KR-Bold", 8.5)
     c.setFillColor(LIME)
-    c.drawString(M + 18, 356, "AnchorMind / Memento memory rail")
-    memory_items = ["결정", "오류", "절차", "선호", "관계", "episode"]
-    xx = M + 18
-    for index, item in enumerate(memory_items):
-        fill = NAVY_3 if index % 2 == 0 else HexColor("#1A3850")
-        width = chip(c, item, xx, 315, fill=fill, color=white, size=7.2, h=21)
-        xx += width + 8
-    draw_text(
+    c.drawString(M + 15, 418, "CARD STATE")
+    states = ["BACKLOG", "READY", "ACTIVE", "REVIEW", "BLOCKED", "DONE"]
+    xx = M + 16
+    for index, state in enumerate(states):
+        width = 68 if state != "BLOCKED" else 73
+        rounded_box(c, xx, 376, width, 27, fill=NAVY_3, stroke=None, radius=7)
+        c.setFont("KR-Bold", 6.5)
+        c.setFillColor(RED if state == "BLOCKED" else white)
+        c.drawCentredString(xx + width / 2, 385, state)
+        if index < len(states) - 1:
+            arrow(c, xx + width + 3, 389, xx + width + 12, 389, color=LIME if state != "BLOCKED" else RED, head=4)
+        xx += width + 15
+
+    rows = [
+        ("Kanban 상태", "실제 실행 상태와 보드를 맞춘다", "진행과 대기를 혼동하지 않는다"),
+        ("의존성 graph", "선행 작업이 닫힌 뒤 후속 작업을 연다", "재작업과 충돌을 줄인다"),
+        ("수용 기준", "시작 전에 완료 조건과 금지 범위를 적는다", "scope drift를 억제한다"),
+        ("자원 인식 배정", "역할뿐 아니라 shared resource 비용을 본다", "안전한 병렬성과 처리량을 얻는다"),
+    ]
+    draw_table(c, M, 320, [115, 207, 189], ["기능", "작동 방식", "고유한 장점"], rows, row_heights=36, font_size=6.7)
+
+    benefit_strip(
         c,
-        "작업 전 recall -> 현재 코드와 대조 -> 확정 사실만 remember -> 장기 작업을 reflect",
-        M + 18,
-        302,
-        CW - 36,
-        size=7.7,
-        color=HexColor("#BED0DF"),
-        leading=11,
-        max_lines=2,
+        [
+            ("예측 가능성", "다음 상태와 종료 조건이 보인다.", LIME),
+            ("조정 비용 감소", "누가 무엇을 기다리는지 자동으로 드러난다.", CYAN),
+            ("안전한 병렬화", "의존성과 자원을 함께 보고 실행한다.", VIOLET),
+        ],
+        y=58,
+        h=76,
     )
-
-    left_w = 248
-    rounded_box(c, M, 91, left_w, 164, fill=SOFT_CYAN, stroke=None, radius=12)
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(INK)
-    c.drawString(M + 14, 229, "자동화가 닫는 범위")
-    auto_items = ["컴파일·예외", "상태 전이·경계값", "좌표·충돌·network authority", "build와 회귀 로그"]
-    yy = 204
-    for item in auto_items:
-        c.setFillColor(CYAN)
-        c.circle(M + 19, yy + 3, 3, fill=1, stroke=0)
-        c.setFont("KR", 8)
-        c.setFillColor(INK)
-        c.drawString(M + 29, yy, item)
-        yy -= 25
-
-    rounded_box(c, M + left_w + 15, 91, CW - left_w - 15, 164, fill=SOFT_LIME, stroke=None, radius=12)
-    rx = M + left_w + 29
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(INK)
-    c.drawString(rx, 229, "인간이 끝까지 책임지는 범위")
-    human_items = ["조작감·가독성·재미", "animation 생동감·character성", "기능 우선순위·범위", "출시·제출·권리 판단"]
-    yy = 204
-    for item in human_items:
-        c.setFillColor(LIME)
-        c.circle(rx + 5, yy + 3, 3, fill=1, stroke=0)
-        c.setFont("KR", 8)
-        c.setFillColor(INK)
-        c.drawString(rx + 15, yy, item)
-        yy -= 25
     c.showPage()
 
 
@@ -798,758 +560,230 @@ def draw_memory(c: canvas.Canvas) -> None:
     section_header(
         c,
         4,
-        "03 / ANCHORMIND MEMORY",
-        "세션을 넘어 이어지는 프로젝트 기억",
-        "장기기억은 답을 대신하는 데이터베이스가 아니라, 현재 저장소와 대조해야 하는 탐색 가능한 프로젝트 맥락이다.",
+        "02 / LONG-TERM MEMORY",
+        "무엇이 세션 뒤에도 남는가",
+        "AnchorMind/Memento가 결정·오류·절차·선호를 검색 가능한 프로젝트 기억으로 유지한다.",
     )
 
-    rounded_box(c, M, 335, 275, 363, fill=white, stroke=LINE, radius=14)
-    c.setFont("KR-Bold", 10)
+    rounded_box(c, M, 365, 278, 339, fill=white, stroke=LINE, radius=14)
+    c.setFont("KR-Bold", 9.5)
     c.setFillColor(INK)
-    c.drawString(M + 16, 670, "기억 사용 폐쇄 루프")
-    center_x, center_y, radius = M + 138, 510, 102
-    lifecycle = [
+    c.drawString(M + 16, 678, "MEMORY LIFECYCLE")
+    cx, cy, radius = M + 139, 524, 91
+    stages = [
         ("RECALL", "관련 기억 검색", 90, LIME),
-        ("COMPARE", "현재 코드 대조", 18, CYAN),
-        ("ACT", "구현·검증", -54, VIOLET),
+        ("COMPARE", "현재 상태 대조", 18, CYAN),
+        ("APPLY", "작업에 사용", -54, VIOLET),
         ("REMEMBER", "확정 사실 저장", -126, YELLOW),
         ("REFLECT", "흐름 정리", 162, RED),
     ]
     positions: list[tuple[float, float]] = []
-    for _, _, deg, _ in lifecycle:
+    for _, _, deg, _ in stages:
         angle = deg * pi / 180
-        positions.append((center_x + radius * cos(angle), center_y + radius * sin(angle)))
-    for index, (title, body, _, accent) in enumerate(lifecycle):
+        positions.append((cx + radius * cos(angle), cy + radius * sin(angle)))
+    for index, (title, body, _, accent) in enumerate(stages):
         x, y = positions[index]
         nx, ny = positions[(index + 1) % len(positions)]
         vx, vy = nx - x, ny - y
         length = max((vx * vx + vy * vy) ** 0.5, 1)
-        arrow(c, x + vx / length * 30, y + vy / length * 30, nx - vx / length * 30, ny - vy / length * 30, color=accent, width=1.3, head=5)
-        circle_label(c, x, y, 27, title, fill=white, text_color=INK, size=6.7, stroke=accent)
-        draw_text(c, body, x - 36, y - 40, 72, size=6.2, color=MUTED, leading=8, max_lines=2, align="center")
-    circle_label(c, center_x, center_y, 36, "DoodleUp\n현재 상태", fill=NAVY, text_color=white, size=8)
+        arrow(c, x + vx / length * 29, y + vy / length * 29, nx - vx / length * 29, ny - vy / length * 29, color=accent, head=5)
+        circle_label(c, x, y, 27, title, fill=white, stroke=accent, size=6.7)
+        draw_text(c, body, x - 36, y - 39, 72, size=6.2, color=MUTED, leading=8, max_lines=2, align="center")
+    circle_label(c, cx, cy, 35, "CURRENT\nPROJECT", fill=NAVY, text_color=white, size=7.5)
 
-    rounded_box(c, 334, 335, 219, 363, fill=NAVY, stroke=None, radius=14)
-    c.setFont("KR-Bold", 10)
+    rounded_box(c, 334, 365, 219, 339, fill=NAVY, stroke=None, radius=14)
+    c.setFont("KR-Bold", 9.5)
     c.setFillColor(LIME)
-    c.drawString(350, 670, "기억 단위")
+    c.drawString(350, 678, "기억 단위")
     memory_types = [
-        ("fact", "환경·확정 사실", LIME),
+        ("fact", "확인된 사실", LIME),
         ("decision", "선택과 근거", CYAN),
         ("error", "재현·원인·해결", RED),
-        ("preference", "인간의 작업 선호", VIOLET),
+        ("preference", "사용자 선호", VIOLET),
         ("procedure", "재실행 절차", YELLOW),
-        ("relation", "기능·결정 연결", CYAN),
+        ("relation", "항목 간 연결", CYAN),
         ("episode", "목표·사건·결과", LIME),
     ]
-    yy = 630
+    yy = 642
     for label, body, accent in memory_types:
-        c.setFillColor(accent)
-        c.roundRect(350, yy - 2, 62, 19, 9, fill=1, stroke=0)
-        c.setFont("KR-Bold", 6.9)
+        rounded_box(c, 350, yy - 2, 68, 19, fill=accent, stroke=None, radius=9)
+        c.setFont("KR-Bold", 6.4)
         c.setFillColor(NAVY)
-        c.drawCentredString(381, yy + 4, label)
-        c.setFont("KR", 8)
+        c.drawCentredString(384, yy + 4, label)
+        c.setFont("KR", 7.4)
         c.setFillColor(white)
-        c.drawString(424, yy + 3, body)
+        c.drawString(430, yy + 3, body)
         yy -= 39
 
-    rounded_box(c, M, 224, CW, 105, fill=SOFT_LIME, stroke=None, radius=12)
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(LIME_DARK)
-    c.drawString(M + 15, 301, "DoodleUp에서 실제로 재사용되는 문맥")
-    examples = [
-        ("Unity 6000.4.0f1", "환경"),
-        ("owner-authoritative transform", "network 결정"),
-        ("DU-02 reset 차단 요인", "오류"),
-        ("실제 Editor play는 인간 checkpoint", "선호·절차"),
+    rows = [
+        ("프로젝트 scope", "공용 결정·절차", "팀 전체가 같은 기준을 사용"),
+        ("역할 전용 scope", "전문 role의 작업 문맥", "불필요한 기억 혼합을 줄임"),
+        ("세션 scope", "임시 가설·진행 정보", "장기기억 오염을 방지"),
     ]
-    exw = (CW - 30) / 4
-    for index, (value, label) in enumerate(examples):
-        x = M + 15 + index * exw
-        c.setFont("KR-Bold", 7.8)
-        c.setFillColor(INK)
-        draw_text(c, value, x, 274, exw - 12, font="KR-Bold", size=7.8, color=INK, leading=10, max_lines=2)
-        c.setFont("KR", 6.7)
-        c.setFillColor(MUTED)
-        c.drawString(x, 243, label)
+    draw_table(c, M, 334, [122, 188, 201], ["범위", "저장 대상", "고유한 장점"], rows, row_heights=36, font_size=6.9)
 
-    rounded_box(c, M, 83, CW, 115, fill=SOFT_RED, stroke=None, radius=12)
-    c.setFont("KR-Bold", 10)
+    rounded_box(c, M, 160, CW, 44, fill=SOFT_RED, stroke=None, radius=10)
+    c.setFont("KR-Bold", 8.3)
     c.setFillColor(HexColor("#A03937"))
-    c.drawString(M + 15, 171, "안전 가드레일")
-    guardrails = [
-        "기억은 현재 코드와 실행 상태보다 우선하지 않는다.",
-        "오래된 기억은 commit·검증 시각과 대조한다.",
-        "비밀번호·token·인증 header·개인정보는 저장하지 않는다.",
-        "추측·임시 log·쉽게 재생성되는 출력은 장기기억에서 제외한다.",
-    ]
-    yy = 145
-    for index, item in enumerate(guardrails):
-        col = index % 2
-        row = index // 2
-        x = M + 15 + col * 250
-        y = yy - row * 38
-        c.setFillColor(RED)
-        c.circle(x + 4, y + 3, 3, fill=1, stroke=0)
-        draw_text(c, item, x + 14, y + 7, 222, size=7.3, color=INK, leading=10, max_lines=2)
+    c.drawString(M + 13, 185, "가드레일")
+    draw_text(
+        c,
+        "기억은 현재 코드보다 우선하지 않는다 · 비밀값과 개인정보는 저장하지 않는다 · 추측과 임시 log는 장기기억에서 제외한다.",
+        M + 13,
+        171,
+        CW - 26,
+        size=6.5,
+        color=INK,
+        leading=8,
+        max_lines=2,
+    )
+
+    benefit_strip(
+        c,
+        [
+            ("문맥 연속성", "긴 프로젝트를 다시 설명하는 비용이 줄어든다.", LIME),
+            ("실패 재사용", "해결한 오류와 절차를 다음 작업에서 회수한다.", CYAN),
+            ("prompt 절약", "필요한 기억만 검색해 context를 작게 유지한다.", VIOLET),
+        ],
+        y=82,
+        h=76,
+    )
     c.showPage()
 
 
-def draw_roles_workflow(c: canvas.Canvas) -> None:
+def draw_roles(c: canvas.Canvas) -> None:
     section_header(
         c,
         5,
-        "04 / OPERATING MODEL",
-        "역할의 분리와 카드 기반 실행",
-        "같은 모델을 여러 번 부르는 것이 아니라, 각 역할에 다른 판단 기준과 완료 책임을 부여한다.",
+        "03 / ROLE COLLABORATION",
+        "누가 어떤 기준으로 판단하는가",
+        "역할은 model 수를 늘리는 장치가 아니라 판단 기준·소유권·review 책임을 분리하는 장치다.",
     )
 
     roles = [
-        ("PM", "project-manager", "범위 · 우선순위\n의존성 · 칸반", LIME, SOFT_LIME),
-        ("PLAN", "game-planning", "동기 · 규칙\nUX · 구현 부담", CYAN, SOFT_CYAN),
-        ("TECH", "game-tech-director", "runtime · network\n도구 · test", VIOLET, SOFT_VIOLET),
-        ("ART", "game-art", "visual · Blender\nhandoff", YELLOW, SOFT_YELLOW),
-        ("QA", "game-qa", "재현 · edge\n독립 증거", RED, SOFT_RED),
+        ("DIRECTOR", "방향·우선순위·최종 승인", LIME, SOFT_LIME),
+        ("PM", "범위·의존성·상태 정합", CYAN, SOFT_CYAN),
+        ("SPECIALIST", "전문 구현·도구 실행", VIOLET, SOFT_VIOLET),
+        ("QA", "반례·경계·증거 검토", RED, SOFT_RED),
+        ("REVIEWER", "통합 가능성·위험 판단", YELLOW, SOFT_YELLOW),
     ]
     gap = 8
     rw = (CW - 4 * gap) / 5
-    for index, (short, title, body, accent, fill) in enumerate(roles):
+    for index, (title, body, accent, fill) in enumerate(roles):
         x = M + index * (rw + gap)
-        rounded_box(c, x, 579, rw, 119, fill=fill, stroke=None, radius=12)
-        c.setFont("KR-Bold", 7.2)
+        rounded_box(c, x, 568, rw, 133, fill=fill, stroke=None, radius=12)
+        c.setFont("KR-Bold", 7.1)
         c.setFillColor(accent)
-        c.drawString(x + 10, 677, short)
-        draw_text(c, title, x + 10, 652, rw - 20, font="KR-Bold", size=7.8, color=INK, leading=10, max_lines=2)
-        draw_text(c, body, x + 10, 619, rw - 20, size=7, color=MUTED, leading=10, max_lines=3)
+        c.drawString(x + 10, 674, title)
+        draw_text(c, body, x + 10, 642, rw - 20, font="KR-Bold", size=7.5, color=INK, leading=11, max_lines=4)
 
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(INK)
-    c.drawString(M, 548, "표준 개발 흐름")
-    steps = [
-        ("01", "의도 정의", "목표와 feel"),
-        ("02", "카드 분해", "범위·수용 기준"),
-        ("03", "기억 검색", "결정·오류 recall"),
-        ("04", "격리 구현", "branch·worktree"),
-        ("05", "도구 실행", "Unity·Blender"),
-        ("06", "자동 검증", "compile·test"),
-        ("07", "독립 QA", "raw 재계산"),
-        ("08", "인간 승인", "play·수정 카드"),
-    ]
-    sw = (CW - 3 * 10) / 4
-    sh = 93
-    for index, (num, title, body) in enumerate(steps):
-        row = index // 4
-        col = index % 4
-        x = M + col * (sw + 10)
-        y = 431 - row * 115
-        accent = [LIME, CYAN, VIOLET, YELLOW, CYAN, VIOLET, RED, LIME][index]
-        rounded_box(c, x, y, sw, sh, fill=white, stroke=LINE, radius=11)
-        c.setFillColor(accent)
-        c.roundRect(x + 10, y + sh - 26, 28, 17, 8, fill=1, stroke=0)
-        c.setFont("KR-Bold", 6.7)
-        c.setFillColor(NAVY)
-        c.drawCentredString(x + 24, y + sh - 21, num)
-        c.setFont("KR-Bold", 9.4)
-        c.setFillColor(INK)
-        c.drawString(x + 10, y + 43, title)
-        draw_text(c, body, x + 10, y + 25, sw - 20, size=7, color=MUTED, leading=9, max_lines=2)
-        if col < 3:
-            arrow(c, x + sw + 2, y + sh / 2, x + sw + 8, y + sh / 2, color=accent, head=4)
-
-    rounded_box(c, M, 88, CW, 108, fill=NAVY, stroke=None, radius=13)
-    c.setFont("KR-Bold", 9.5)
+    rounded_box(c, M, 397, CW, 139, fill=NAVY, stroke=None, radius=13)
+    c.setFont("KR-Bold", 9)
     c.setFillColor(LIME)
-    c.drawString(M + 16, 171, "카드에서 commit까지 provenance")
-    provenance = ["CARD ID", "ACCEPTANCE", "WORKTREE", "DIFF", "TEST LOG", "COMMIT"]
-    px = M + 16
-    py = 125
-    item_w = 70
-    for index, item in enumerate(provenance):
-        rounded_box(c, px + index * 83, py, item_w, 27, fill=NAVY_3, stroke=None, radius=7)
-        c.setFont("KR-Bold", 6.7)
+    c.drawString(M + 15, 509, "HANDOFF CONTRACT")
+    handoffs = [
+        ("INTENT", "왜·무엇"),
+        ("SPEC", "범위·AC"),
+        ("ARTIFACT", "diff·output"),
+        ("EVIDENCE", "log·result"),
+        ("DECISION", "approve·revise"),
+    ]
+    xx = M + 18
+    for index, (title, body) in enumerate(handoffs):
+        rounded_box(c, xx + index * 100, 435, 78, 45, fill=NAVY_3, stroke=None, radius=8)
+        c.setFont("KR-Bold", 6.8)
         c.setFillColor(white)
-        c.drawCentredString(px + index * 83 + item_w / 2, py + 9, item)
-        if index < len(provenance) - 1:
-            arrow(c, px + index * 83 + item_w + 2, py + 13.5, px + (index + 1) * 83 - 3, py + 13.5, color=LIME, head=4)
-    draw_text(
+        c.drawCentredString(xx + index * 100 + 39, 461, title)
+        c.setFont("KR", 6.2)
+        c.setFillColor(HexColor("#BFD0DF"))
+        c.drawCentredString(xx + index * 100 + 39, 447, body)
+        if index < len(handoffs) - 1:
+            arrow(c, xx + index * 100 + 81, 457, xx + (index + 1) * 100 - 4, 457, color=LIME, head=4)
+    draw_text(c, "handoff에는 설명뿐 아니라 다음 역할이 판정할 수 있는 산출물과 증거가 포함된다.", M + 15, 415, CW - 30, size=6.9, color=HexColor("#BFD0DF"), leading=9, max_lines=2)
+
+    rows = [
+        ("단일 owner", "카드마다 구현 책임자를 한 명 둔다", "책임 공백과 중복 작업을 막음"),
+        ("독립 reviewer", "구현자와 다른 기준으로 결과를 본다", "확증 편향과 자기 승인 감소"),
+        ("명시적 handoff", "입력·출력·완료 조건을 함께 전달한다", "역할 사이 정보 손실 감소"),
+        ("human escalation", "범위·권리·감각 판단은 사람에게 올린다", "자동화의 권한 과잉 방지"),
+    ]
+    draw_table(c, M, 366, [120, 205, 186], ["기능", "작동 방식", "고유한 장점"], rows, row_heights=40, font_size=6.9)
+
+    benefit_strip(
         c,
-        "완료는 자연어 선언이 아니라 카드·수용 기준·변경·검증·commit이 연결됐을 때 성립한다.",
-        M + 16,
-        111,
-        CW - 32,
-        size=7.2,
-        color=HexColor("#BDD0DE"),
-        leading=10,
-        max_lines=2,
+        [
+            ("전문화", "각 역할이 자신의 판단 기준에 집중한다.", LIME),
+            ("맹점 감소", "구현과 검토를 다른 관점으로 분리한다.", CYAN),
+            ("소유권 명확화", "누가 결정하고 누가 승인하는지 남는다.", VIOLET),
+        ],
     )
     c.showPage()
 
 
-def draw_evidence(c: canvas.Canvas) -> None:
+def draw_isolation(c: canvas.Canvas) -> None:
     section_header(
         c,
         6,
-        "05 / VERIFICATION EVIDENCE",
-        "자연어 완료 선언을 기계 판정 가능한 증거로",
-        "두 개발 단계의 공식 QA 보고서 수치를 그대로 분리해 제시한다. 전체 저장소의 현재 PASS 수로 확대 해석하지 않는다.",
+        "04 / ISOLATION & PROVENANCE",
+        "어디서 안전하게 변경하는가",
+        "카드별 branch와 worktree가 변경을 격리하고, diff·test·commit이 변경의 출처를 보존한다.",
     )
 
-    panel_w = (CW - 14) / 2
-    rounded_box(c, M, 412, panel_w, 292, fill=white, stroke=LINE, radius=14)
-    chip(c, "DU-02 / FINAL QA", M + 16, 670, fill=SOFT_LIME, color=LIME_DARK, size=7, h=20)
-    c.setFont("KR-Bold", 14)
-    c.setFillColor(INK)
-    c.drawString(M + 16, 639, "리셋 가능한 솔로 코스")
-    draw_text(c, "구현 역할과 QA 역할을 분리하고 raw CSV·report·실행 파일 hash를 독립 재계산", M + 16, 618, panel_w - 32, size=7.6, color=MUTED, leading=11, max_lines=3)
-    rows = [
-        ("Compile / scene / build", "PASS"),
-        ("EditMode", "12 / 12"),
-        ("PlayMode", "2 / 2"),
-        ("Standalone sampling", "3 / 3"),
-        ("Reset paths", "6 / 6"),
-        ("Runtime task-state", "4 / 4"),
-    ]
-    yy = 548
-    for label, value in rows:
-        pass_row(c, M + 18, yy, panel_w - 36, label, value)
-        yy -= 23
-    c.setFont("KR", 5.9)
-    c.setFillColor(MUTED)
-    c.drawString(M + 18, 418, "Evidence: docs/qa/reports/2026-07-31-doodleup-du02-acceptance-review.md")
-
-    rx = M + panel_w + 14
-    rounded_box(c, rx, 412, panel_w, 292, fill=NAVY, stroke=None, radius=14)
-    chip(c, "DU-03B/C / LIVE EDITOR", rx + 16, 670, fill=NAVY_3, color=CYAN, size=7, h=20)
-    c.setFont("KR-Bold", 14)
-    c.setFillColor(white)
-    c.drawString(rx + 16, 639, "Aim · Trajectory 입력 통합")
-    draw_text(c, "같은 StrokeSession 규칙을 공유하고 입력 edge와 release frame event 순서를 자동 검증", rx + 16, 618, panel_w - 32, size=7.6, color=HexColor("#BFD0DF"), leading=11, max_lines=3)
-    ratio_bar(c, rx + 18, 548, panel_w - 36, "EditMode", 1, "41 / 41 PASS", color=LIME, label_color=HexColor("#AFC1D3"), value_color=white)
-    ratio_bar(c, rx + 18, 499, panel_w - 36, "PlayMode", 1, "9 / 9 PASS", color=CYAN, label_color=HexColor("#AFC1D3"), value_color=white)
-    ratio_bar(c, rx + 18, 450, panel_w - 36, "Mapping tolerance", 1, "<= 1e-5u", color=VIOLET, label_color=HexColor("#AFC1D3"), value_color=white)
-    c.setFont("KR", 6.7)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawString(rx + 18, 427, "Evidence: docs/qa/du-03bc-verification.md")
-
-    rounded_box(c, M, 272, CW, 111, fill=SOFT_CYAN, stroke=None, radius=13)
-    c.setFont("KR-Bold", 9.5)
-    c.setFillColor(INK)
-    c.drawString(M + 15, 354, "DU-02 evidence chain")
-    chain = [
-        ("STATE", "baseline"),
-        ("PERTURB", "before"),
-        ("RESET", "after"),
-        ("RAW", "CSV"),
-        ("HASH", "SHA256"),
-        ("QA", "recompute"),
-    ]
-    xx = M + 20
-    for index, (title, body) in enumerate(chain):
-        rounded_box(c, xx + index * 82, 299, 65, 36, fill=white, stroke=CYAN, radius=8)
-        c.setFont("KR-Bold", 6.9)
-        c.setFillColor(INK)
-        c.drawCentredString(xx + index * 82 + 32.5, 319, title)
-        c.setFont("KR", 6.3)
-        c.setFillColor(MUTED)
-        c.drawCentredString(xx + index * 82 + 32.5, 307, body)
-        if index < len(chain) - 1:
-            arrow(c, xx + index * 82 + 67, 317, xx + (index + 1) * 82 - 3, 317, color=CYAN, head=4)
-    draw_text(c, "beforeHash != baselineHash · afterHash == baselineHash · 실제 교란과 실제 복원을 동시에 증명", M + 15, 288, CW - 30, size=7, color=MUTED, leading=10, max_lines=2)
-
-    values = [
-        ("321", "commits"),
-        ("968", "tracked files"),
-        ("63", "docs"),
-        ("67", "test sources"),
-        ("618", "annotations"),
-    ]
-    mw = (CW - 32) / 5
-    for index, (value, label) in enumerate(values):
-        x = M + index * (mw + 8)
-        rounded_box(c, x, 150, mw, 84, fill=white, stroke=LINE, radius=10)
-        c.setFont("KR-Bold", 17)
-        c.setFillColor([LIME_DARK, CYAN, VIOLET, YELLOW, RED][index])
-        c.drawString(x + 10, 202, value)
-        c.setFont("KR", 7)
-        c.setFillColor(MUTED)
-        c.drawString(x + 10, 180, label)
-        c.setFont("KR", 6)
-        c.setFillColor(MUTED)
-        c.drawString(x + 10, 161, "HEAD 1d9a04c")
-
-    rounded_box(c, M, 82, CW, 43, fill=SOFT_YELLOW, stroke=None, radius=9)
-    draw_text(
-        c,
-        "검증되지 않은 지표: AI 시간 절감률 · 인간 개입 시간 · 재작업률 · API 비용. AgentDesk export와 Git 이력으로 산정한 값만 최종본에 사용한다.",
-        M + 13,
-        110,
-        CW - 26,
-        size=7.1,
-        color=HexColor("#735A24"),
-        leading=10,
-        max_lines=2,
-    )
-    c.showPage()
-
-
-def draw_cases(c: canvas.Canvas) -> None:
-    section_header(
-        c,
-        7,
-        "06 / DOODLEUP CASES",
-        "기획 · 입력 · 레벨 · 네트워크 · 캐릭터, 하나의 체계로",
-        "각 사례는 AI 기여, 재실행 가능한 증거, 인간 승인 지점을 함께 가진다.",
-    )
-
-    cards = [
-        ("DU-02", "상태 리셋과 QA", "AI: scene bootstrap · runtime probe\n증거: 12/12 + 2/2 + raw hash\n인간: 범위와 최종 수용", LIME, SOFT_LIME),
-        ("DU-03B/C", "두 입력 방식", "AI: adapter · latch · mapping\n증거: 41/41 + 9/9\n인간: mouse/keyboard feel", CYAN, SOFT_CYAN),
-        ("PLAZA", "정량 레벨 설계", "AI: 좌표·가시성 규칙화\n증거: 51,200-point scan\n인간: 동선·공간 경험", VIOLET, SOFT_VIOLET),
-        ("NETWORK", "협동과 방 코드", "AI: authority · lobby · UDP discovery\n증거: verifier · PlayMode\n인간: 접속 UX와 범위", YELLOW, SOFT_YELLOW),
-        ("LIME ALIEN", "아트에서 runtime까지", "AI: rig 반복 · import · Animator wiring\n증거: pose · weight · validator\n인간: silhouette · deformation · feel", RED, SOFT_RED),
-    ]
-    positions = [
-        (M, 523, 249, 175),
-        (M + 262, 523, 249, 175),
-        (M, 334, 249, 175),
-        (M + 262, 334, 249, 175),
-        (M, 145, 249, 175),
-    ]
-    for (code, title, body, accent, fill), (x, y, w, h) in zip(cards, positions):
-        rounded_box(c, x, y, w, h, fill=fill, stroke=None, radius=13)
-        chip(c, code, x + 14, y + h - 34, fill=white, color=accent, size=6.8, h=19)
-        c.setFont("KR-Bold", 12)
-        c.setFillColor(INK)
-        c.drawString(x + 14, y + h - 63, title)
-        draw_text(c, body, x + 14, y + h - 88, w - 28, size=7.5, color=MUTED, leading=12, max_lines=6)
-
-    rounded_box(c, M + 262, 145, 249, 175, fill=NAVY, stroke=None, radius=13)
-    image_cover(c, RESULT_NOMINAL, M + 274, 188, 225, 104)
-    c.setFont("KR-Bold", 8.4)
-    c.setFillColor(white)
-    c.drawString(M + 276, 170, "LAST SHIFT 결과 화면 디자인 시안")
-    c.setFont("KR", 6.5)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawString(M + 276, 157, "정량 결과를 플레이어가 이해할 수 있는 화면으로 번역")
-
-    rounded_box(c, M, 82, CW, 40, fill=NAVY_2, stroke=None, radius=9)
-    c.setFont("KR-Bold", 8)
-    c.setFillColor(LIME)
-    c.drawCentredString(W / 2, 98, "공통 규칙  |  목표 -> 역할형 구현 -> 자동 증거 -> 독립 QA -> 인간 플레이 승인")
-    c.showPage()
-
-
-def draw_plaza_map(c: canvas.Canvas, x: float, y: float, w: float, h: float) -> None:
-    rooms = {
-        "중앙 광장": (-6, 6, -6, 6, LIME),
-        "조종석": (-14, -6, -3, 3, CYAN),
-        "산소실": (6, 14, -3, 3, CYAN),
-        "전력실": (-3, 3, -11, -6, VIOLET),
-        "냉각실": (-3, 3, 6, 11, VIOLET),
-        "에어록": (-11, -3, -12, -6, YELLOW),
-        "숙소": (3, 9, 6, 10, YELLOW),
-    }
-    xmin, xmax, zmin, zmax = -14, 14, -12, 11
-    pad = 12
-    sx = (w - 2 * pad) / (xmax - xmin)
-    sz = (h - 2 * pad) / (zmax - zmin)
-    scale = min(sx, sz)
-    ox = x + (w - (xmax - xmin) * scale) / 2
-    oy = y + (h - (zmax - zmin) * scale) / 2
-
-    def px(v: float) -> float:
-        return ox + (v - xmin) * scale
-
-    def py(v: float) -> float:
-        return oy + (v - zmin) * scale
-
-    c.saveState()
-    c.setFillColor(HexColor("#F8FBFA"))
-    c.roundRect(x, y, w, h, 10, fill=1, stroke=0)
-    c.setStrokeColor(HexColor("#E2EAE7"))
-    c.setLineWidth(0.25)
-    for gx in range(xmin, xmax + 1, 2):
-        c.line(px(gx), py(zmin), px(gx), py(zmax))
-    for gz in range(zmin, zmax + 1, 2):
-        c.line(px(xmin), py(gz), px(xmax), py(gz))
-
-    for name, (x0, x1, z0, z1, accent) in rooms.items():
-        fill = Color(accent.red, accent.green, accent.blue, alpha=0.16)
-        c.setFillColor(fill)
-        c.setStrokeColor(accent)
-        c.setLineWidth(1.2)
-        c.rect(px(x0), py(z0), (x1 - x0) * scale, (z1 - z0) * scale, fill=1, stroke=1)
-        c.setFont("KR-Bold", 6.5 if name != "중앙 광장" else 7.5)
-        c.setFillColor(INK)
-        c.drawCentredString((px(x0) + px(x1)) / 2, (py(z0) + py(z1)) / 2 - 2, name)
-
-    c.setFillColor(NAVY)
-    c.setStrokeColor(NAVY)
-    c.rect(px(-2), py(-2), 4 * scale, 4 * scale, fill=1, stroke=0)
-    c.setFont("KR-Bold", 5.8)
-    c.setFillColor(white)
-    c.drawCentredString(px(0), py(0) - 2, "4x4 CORE")
-
-    doors = [
-        ("x", -6, 0),
-        ("x", 6, 0),
-        ("z", -6, 0),
-        ("z", 6, 0),
-        ("z", -6, -4.5),
-        ("z", 6, 4.5),
-    ]
-    c.setStrokeColor(RED)
-    c.setLineWidth(3.2)
-    for axis, plane, center in doors:
-        if axis == "x":
-            c.line(px(plane), py(center - 0.8), px(plane), py(center + 0.8))
-        else:
-            c.line(px(center - 0.8), py(plane), px(center + 0.8), py(plane))
-
-    c.setStrokeColor(CYAN)
-    c.setLineWidth(0.7)
-    c.setDash(3, 2)
-    for gx, gz in [(0, -11), (0, 11), (14, 0)]:
-        c.line(px(gx), py(gz), px(0), py(0))
-    c.restoreState()
-
-
-def draw_plaza(c: canvas.Canvas) -> None:
-    section_header(
-        c,
-        8,
-        "07 / QUANTITATIVE LEVEL DESIGN",
-        "중앙 광장: 감각적 배치를 정량 관문으로",
-        "기획 좌표를 검산 스크립트와 Unity EditMode 검사로 옮겨 가시성·겹침·이탈 시간을 반복 검증한다.",
-    )
-
-    rounded_box(c, M, 260, 356, 444, fill=white, stroke=LINE, radius=14)
-    c.setFont("KR-Bold", 9.5)
-    c.setFillColor(INK)
-    c.drawString(M + 14, 678, "LAST SHIFT central plaza / top-down schematic")
-    draw_plaza_map(c, M + 14, 292, 328, 363)
-    chip(c, "ROOM", M + 18, 273, fill=SOFT_CYAN, color=CYAN, size=6.5, h=17)
-    chip(c, "CORE", M + 86, 273, fill=NAVY, color=white, size=6.5, h=17)
-    chip(c, "DOOR", M + 152, 273, fill=SOFT_RED, color=RED, size=6.5, h=17)
-    chip(c, "VISIBILITY", M + 218, 273, fill=SOFT_CYAN, color=CYAN, size=6.5, h=17)
-
-    metrics = [
-        ("21", "room pairs", "overlap 0", LIME),
-        ("6", "doors", "boundary OK", CYAN),
-        ("51,200", "sample points", "triple visibility 0", VIOLET),
-        ("4.26s", "worst egress", "limit 10s", YELLOW),
-    ]
-    yy = 611
-    for value, label, note, accent in metrics:
-        metric_card(c, 414, yy, 139, 91, value, label, accent=accent, note=note)
-        yy -= 105
-
-    rounded_box(c, M, 108, CW, 124, fill=NAVY, stroke=None, radius=13)
+    rounded_box(c, M, 479, CW, 225, fill=NAVY, stroke=None, radius=14)
     c.setFont("KR-Bold", 9.5)
     c.setFillColor(LIME)
-    c.drawString(M + 15, 204, "재실행 가능한 설계 증거")
-    pipeline = [
-        ("기획", "좌표표"),
-        ("SCRIPT", "plaza_hub_check.py"),
-        ("UNITY", "EditMode"),
-        ("GATE", "PASS / FAIL"),
+    c.drawString(M + 16, 678, "PARALLEL WORK, SEPARATE FILESYSTEMS")
+    circle_label(c, W / 2, 617, 35, "MAIN\nBASE", fill=NAVY_3, text_color=white, stroke=LIME, size=7.5)
+    branches = [
+        (M + 93, 555, "CARD A\nWORKTREE", CYAN),
+        (W / 2, 535, "CARD B\nWORKTREE", VIOLET),
+        (W - M - 93, 555, "CARD C\nWORKTREE", YELLOW),
     ]
-    xx = M + 24
-    for index, (title, body) in enumerate(pipeline):
-        rounded_box(c, xx + index * 122, 144, 96, 40, fill=NAVY_3, stroke=None, radius=8)
-        c.setFont("KR-Bold", 7.2)
-        c.setFillColor(white)
-        c.drawCentredString(xx + index * 122 + 48, 168, title)
-        c.setFont("KR", 6.2)
-        c.setFillColor(HexColor("#BFD0DF"))
-        c.drawCentredString(xx + index * 122 + 48, 154, body)
-        if index < len(pipeline) - 1:
-            arrow(c, xx + index * 122 + 100, 164, xx + (index + 1) * 122 - 5, 164, color=LIME, head=5)
-    draw_text(
-        c,
-        "Evidence: docs/central-plaza-hub-layout-v1.md · docs/tools/plaza_hub_check.py",
-        M + 15,
-        126,
-        CW - 30,
-        size=6.8,
-        color=HexColor("#AFC1D3"),
-        leading=9,
-        max_lines=2,
-    )
-    c.showPage()
+    for x, y, label, accent in branches:
+        arrow(c, W / 2, 579, x, y + 39, color=accent, head=5)
+        circle_label(c, x, y, 38, label, fill=NAVY_3, text_color=white, stroke=accent, size=6.8)
+    c.setFont("KR", 7)
+    c.setFillColor(HexColor("#BFD0DF"))
+    c.drawCentredString(W / 2, 500, "같은 저장소를 공유하되 수정 경로와 commit history는 카드별로 분리")
 
-
-def draw_lime_alien(c: canvas.Canvas) -> None:
-    section_header(
-        c,
-        9,
-        "08 / ART TO RUNTIME",
-        "라임 외계인: Blender에서 Unity까지",
-        "사람은 silhouette·deformation·character feel을 판단하고, AI 에이전트는 반복 제작·import·controller wiring·검증을 담당한다.",
-    )
-
-    card_w = (CW - 14) / 2
-    rounded_box(c, M, 421, card_w, 284, fill=NAVY, stroke=None, radius=14)
-    image_contain(c, LIME_NEUTRAL, M + 18, 458, card_w - 36, 205, background=NAVY)
-    chip(c, "NEUTRAL", M + 16, 434, fill=NAVY_3, color=LIME, size=6.8, h=19)
-    c.setFont("KR", 6.6)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawRightString(M + card_w - 16, 440, "runtime rest pose")
-
-    rx = M + card_w + 14
-    rounded_box(c, rx, 421, card_w, 284, fill=NAVY, stroke=None, radius=14)
-    image_contain(c, LIME_STRESS, rx + 18, 458, card_w - 36, 205, background=NAVY)
-    chip(c, "STRESS", rx + 16, 434, fill=NAVY_3, color=YELLOW, size=6.8, h=19)
-    c.setFont("KR", 6.6)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawRightString(rx + card_w - 16, 440, "deformation evidence")
-
-    rounded_box(c, M, 264, CW, 130, fill=white, stroke=LINE, radius=13)
-    c.setFont("KR-Bold", 9.5)
-    c.setFillColor(INK)
-    c.drawString(M + 15, 368, "AI-assisted asset pipeline")
-    stages = [
-        ("BLENDER", "rig · weights", LIME),
-        ("FBX", "exchange", CYAN),
-        ("GENERIC", "avatar", VIOLET),
-        ("8 CLIPS", "loop metadata", YELLOW),
-        ("ANIMATOR", "base + carry", RED),
-        ("NETWORK", "state drive", LIME),
-    ]
-    xx = M + 15
-    for index, (title, body, accent) in enumerate(stages):
-        rounded_box(c, xx + index * 84, 304, 69, 43, fill=Color(accent.red, accent.green, accent.blue, alpha=0.14), stroke=accent, radius=8)
-        c.setFont("KR-Bold", 6.5)
-        c.setFillColor(INK)
-        c.drawCentredString(xx + index * 84 + 34.5, 329, title)
-        c.setFont("KR", 5.9)
-        c.setFillColor(MUTED)
-        c.drawCentredString(xx + index * 84 + 34.5, 316, body)
-        if index < len(stages) - 1:
-            arrow(c, xx + index * 84 + 72, 326, xx + (index + 1) * 84 - 4, 326, color=accent, head=4)
-    draw_text(
-        c,
-        "LimeAlienAnimatorSetup.Build: import metadata -> Generic avatar -> Base Layer -> upper-body Carry Override -> prefab -> preview -> validation",
-        M + 15,
-        286,
-        CW - 30,
-        size=6.8,
-        color=MUTED,
-        leading=9,
-        max_lines=2,
-    )
-
-    facts = [
-        ("5,772", "weighted vertices"),
-        ("<= 4", "bone influences"),
-        ("2-bone", "arm·leg IK"),
-        ("8", "FBX clips"),
-        ("2", "Animator layers"),
-    ]
-    gap = 8
-    fw = (CW - 4 * gap) / 5
-    for index, (value, label) in enumerate(facts):
-        metric_card(c, M + index * (fw + gap), 151, fw, 88, value, label, accent=[LIME, CYAN, VIOLET, YELLOW, RED][index])
-
-    rounded_box(c, M, 81, CW, 45, fill=SOFT_LIME, stroke=None, radius=9)
-    draw_text(
-        c,
-        "Evidence: docs/art/last-shift-lime-alien-rig-v1.md · Assets/DoodleUp/Editor/LimeAlienAnimatorSetup.cs · commits 10acf30, 3e2dd29",
-        M + 13,
-        109,
-        CW - 26,
-        size=6.7,
-        color=LIME_DARK,
-        leading=9,
-        max_lines=2,
-    )
-    c.showPage()
-
-
-def draw_network(c: canvas.Canvas) -> None:
-    section_header(
-        c,
-        10,
-        "09 / NETWORK CO-OP",
-        "소유자 입력, 서버 검증, 상태 복제",
-        "AI가 빠르게 골격을 만들고 권한·보간·message ordering·화면 소유권의 경계를 test와 follow-up commit으로 닫았다.",
-    )
-
-    rounded_box(c, M, 334, CW, 365, fill=NAVY, stroke=None, radius=15)
-    c.setFont("KR-Bold", 9)
-    c.setFillColor(LIME)
-    c.drawString(M + 17, 674, "AUTHORITY MAP")
-
-    circle_label(c, M + 94, 563, 48, "OWNER\nCLIENT A", fill=NAVY_3, text_color=white, size=8, stroke=LIME)
-    circle_label(c, W - M - 94, 563, 48, "REMOTE\nCLIENT B", fill=NAVY_3, text_color=white, size=8, stroke=CYAN)
-    rounded_box(c, W / 2 - 78, 503, 156, 121, fill=HexColor("#1A3A4C"), stroke=VIOLET, radius=13)
-    c.setFont("KR-Bold", 12)
-    c.setFillColor(white)
-    c.drawCentredString(W / 2, 588, "SERVER")
-    c.setFont("KR", 7.5)
-    c.setFillColor(HexColor("#C2D3E1"))
-    c.drawCentredString(W / 2, 568, "grab · drop · placement")
-    c.drawCentredString(W / 2, 552, "status validation")
-    c.drawCentredString(W / 2, 536, "NetworkVariable write")
-    arrow(c, M + 145, 568, W / 2 - 84, 568, color=LIME, width=2, head=7)
-    arrow(c, W / 2 + 84, 558, W - M - 145, 558, color=CYAN, width=2, head=7)
-    c.setFont("KR", 6.8)
-    c.setFillColor(LIME)
-    c.drawCentredString(M + 191, 583, "input / request")
-    c.setFillColor(CYAN)
-    c.drawCentredString(W - M - 191, 573, "replicated state")
-
-    rounded_box(c, M + 52, 380, CW - 104, 79, fill=NAVY_3, stroke=None, radius=11)
-    items = [
-        ("PLAYER", "owner-authoritative transform"),
-        ("ITEM", "owner-authoritative transform"),
-        ("STATE", "server-write NetworkVariable"),
-    ]
-    iw = (CW - 140) / 3
-    for index, (title, body) in enumerate(items):
-        x = M + 67 + index * (iw + 12)
-        c.setFont("KR-Bold", 7)
-        c.setFillColor([LIME, CYAN, VIOLET][index])
-        c.drawString(x, 435, title)
-        draw_text(c, body, x, 415, iw, size=7.1, color=white, leading=10, max_lines=2)
-
-    rounded_box(c, M, 195, CW, 124, fill=white, stroke=LINE, radius=13)
-    c.setFont("KR-Bold", 9.5)
-    c.setFillColor(INK)
-    c.drawString(M + 15, 292, "6자리 room code / LAN discovery")
-    discovery = [
-        ("LOBBY", "host 대기"),
-        ("CODE", "6자리 발급"),
-        ("QUERY", "client broadcast"),
-        ("REPLY", "host unicast"),
-        ("JOIN", "game port"),
-    ]
-    xx = M + 18
-    for index, (title, body) in enumerate(discovery):
-        accent = [LIME, CYAN, VIOLET, YELLOW, RED][index]
-        rounded_box(c, xx + index * 100, 231, 78, 42, fill=Color(accent.red, accent.green, accent.blue, alpha=0.14), stroke=accent, radius=8)
-        c.setFont("KR-Bold", 6.9)
-        c.setFillColor(INK)
-        c.drawCentredString(xx + index * 100 + 39, 255, title)
-        c.setFont("KR", 6.1)
-        c.setFillColor(MUTED)
-        c.drawCentredString(xx + index * 100 + 39, 242, body)
-        if index < len(discovery) - 1:
-            arrow(c, xx + index * 100 + 81, 252, xx + (index + 1) * 100 - 4, 252, color=accent, head=4)
-    draw_text(
-        c,
-        "외부 service 의존 없이 같은 LAN에서 host를 찾는다. client는 임시 port에서 질의해 한 PC host/client 개발 환경의 port 충돌을 피한다.",
-        M + 15,
-        214,
-        CW - 30,
-        size=6.8,
-        color=MUTED,
-        leading=9,
-        max_lines=2,
-    )
-
-    rounded_box(c, M, 85, CW, 83, fill=SOFT_CYAN, stroke=None, radius=11)
+    rounded_box(c, M, 353, CW, 96, fill=white, stroke=LINE, radius=12)
     c.setFont("KR-Bold", 8.5)
     c.setFillColor(INK)
-    c.drawString(M + 14, 144, "구현 근거")
-    draw_text(
-        c,
-        "LastShiftOwnerNetworkTransform · LastShiftNetworkSceneVerifier · LastShiftRoomLobbyPlayModeTests · LastShiftRoomDiscovery",
-        M + 14,
-        124,
-        CW - 28,
-        size=6.9,
-        color=MUTED,
-        leading=9,
-        max_lines=2,
-    )
-    draw_text(
-        c,
-        "commits bfa63ff · 6f64fb8 · aa4be45 · 303db5c",
-        M + 14,
-        98,
-        CW - 28,
-        font="KR-Bold",
-        size=6.9,
-        color=CYAN,
-        leading=9,
-        max_lines=1,
-    )
-    c.showPage()
-
-
-def draw_failures(c: canvas.Canvas) -> None:
-    section_header(
-        c,
-        11,
-        "10 / FAILURE-DRIVEN IMPROVEMENT",
-        "느린 game-tech 작업도 시스템 설계 데이터로",
-        "지연과 실패를 관측해 다음 scheduling과 context policy로 환류한다.",
-    )
-
-    rounded_box(c, M, 520, CW, 181, fill=NAVY, stroke=None, radius=14)
-    c.setFont("KR-Bold", 9)
-    c.setFillColor(LIME)
-    c.drawString(M + 16, 675, "RECENT LATENCY PATTERN")
-    circle_label(c, M + 86, 600, 38, "CARD A\nUnity", fill=NAVY_3, text_color=white, size=7, stroke=CYAN)
-    circle_label(c, M + 190, 600, 38, "CARD B\nUnity", fill=NAVY_3, text_color=white, size=7, stroke=VIOLET)
-    arrow(c, M + 126, 600, M + 280, 600, color=CYAN, width=2)
-    arrow(c, M + 230, 600, M + 280, 600, color=VIOLET, width=2)
-    rounded_box(c, M + 286, 558, 120, 84, fill=HexColor("#213D50"), stroke=YELLOW, radius=11)
-    c.setFont("KR-Bold", 11)
-    c.setFillColor(white)
-    c.drawCentredString(M + 346, 612, "SHARED UNITY")
-    c.setFont("KR", 7)
-    c.setFillColor(HexColor("#CAD8E4"))
-    c.drawCentredString(M + 346, 592, "fresh worktrees")
-    c.drawCentredString(M + 346, 577, "cold import · compile")
-    arrow(c, M + 410, 600, M + 455, 600, color=YELLOW, width=2)
-    circle_label(c, M + 478, 600, 34, "긴\n대기", fill=Color(RED.red, RED.green, RED.blue, alpha=0.2), text_color=white, size=8, stroke=RED)
-    draw_text(
-        c,
-        "같은 역할의 max concurrency가 2여도 Unity import·compile 같은 shared resource 비용은 두 배의 처리량이 아니라 cold-cache 경쟁이 될 수 있다.",
-        M + 16,
-        545,
-        CW - 32,
-        size=7.1,
-        color=HexColor("#BFD0DF"),
-        leading=10,
-        max_lines=2,
-    )
+    c.drawString(M + 14, 422, "PROVENANCE CHAIN")
+    chain = ["CARD", "BRANCH", "WORKTREE", "DIFF", "TEST", "COMMIT", "MERGE"]
+    xx = M + 15
+    for index, item in enumerate(chain):
+        width = 56 if item != "WORKTREE" else 68
+        rounded_box(c, xx, 381, width, 28, fill=SOFT_CYAN if index % 2 == 0 else SOFT_VIOLET, stroke=None, radius=7)
+        c.setFont("KR-Bold", 6.4)
+        c.setFillColor(INK)
+        c.drawCentredString(xx + width / 2, 390, item)
+        if index < len(chain) - 1:
+            arrow(c, xx + width + 1, 395, xx + width + 7, 395, color=CYAN, head=3.5)
+        xx += width + 11
 
     rows = [
-        ("game-tech 지연", "동일 Unity project 카드 2개 병행 · fresh worktree cold cache", "active/queue/log를 분리 확인", "project affinity scheduler"),
-        ("38 failures 묶음", "수정과 전체 회귀를 한 카드에 결합", "대상 test와 full regression 분리", "failure cluster child card"),
-        ("image context 팽창", "screenshot이 대화 문맥을 빠르게 차지", "log·file·수치 요약 우선", "artifact link와 image budget"),
-        ("stale memory", "기억이 특정 commit 시점에 머묾", "recall 뒤 현재 코드와 대조", "commit·검증 시각 metadata"),
-        ("test PASS ≠ 재미", "정량 검증이 feel을 직접 판단 못함", "Editor play human gate 유지", "정성 playtest 기록 연결"),
+        ("변경 격리", "다른 카드의 미완성 변경과 섞지 않는다", "오염 없는 review와 선택적 통합"),
+        ("원자 commit", "하나의 기능 단위와 증거를 함께 기록", "rollback과 원인 추적이 쉬움"),
+        ("명시적 staging", "변경 경로를 지정해 필요한 파일만 포함", "사용자 작업과 타 agent 변경을 보호"),
+        ("통합 gate", "diff와 검증 결과를 보고 main에 반영", "merge 자체가 승인 기록이 됨"),
     ]
-    draw_table(
-        c,
-        M,
-        487,
-        [90, 158, 132, 131],
-        ["관찰", "원인", "현재 대응", "다음 개선"],
-        rows,
-        row_heights=[61, 58, 58, 58, 58],
-        font_size=7.1,
-    )
+    rounded_box(c, M, 294, CW, 40, fill=SOFT_YELLOW, stroke=None, radius=9)
+    c.setFont("KR-Bold", 6.8)
+    c.setFillColor(HexColor("#785D25"))
+    c.drawCentredString(W / 2, 309, "주의  |  worktree는 파일을 격리하지만 CPU·memory·engine cache 같은 공유 자원까지 격리하지는 않는다.")
 
-    rounded_box(c, M, 82, CW, 54, fill=SOFT_LIME, stroke=None, radius=10)
-    c.setFont("KR-Bold", 8.3)
-    c.setFillColor(LIME_DARK)
-    c.drawString(M + 13, 116, "운영 원칙")
-    draw_text(
+    draw_table(c, M, 280, [120, 205, 186], ["기능", "작동 방식", "고유한 장점"], rows, row_heights=31, font_size=6.4)
+
+    benefit_strip(
         c,
-        "동시성 숫자보다 resource affinity를 먼저 본다. 큰 카드의 실패는 cluster별로 쪼갠다. screenshot보다 machine-readable evidence를 우선한다.",
-        M + 13,
-        98,
-        CW - 26,
-        size=7,
-        color=INK,
-        leading=10,
-        max_lines=2,
+        [
+            ("안전한 동시 작업", "서로의 미완성 변경을 직접 덮지 않는다.", LIME),
+            ("복구 가능성", "작은 commit 단위로 되돌리고 비교한다.", CYAN),
+            ("감사 가능성", "카드·변경·검증·통합이 한 이력으로 연결된다.", VIOLET),
+        ],
+        y=52,
+        h=65,
     )
     c.showPage()
 
@@ -1557,162 +791,304 @@ def draw_failures(c: canvas.Canvas) -> None:
 def draw_tools(c: canvas.Canvas) -> None:
     section_header(
         c,
-        12,
-        "11 / TOOL DISCLOSURE",
-        "AI 도구와 지원 도구를 구분해 공개",
-        "NAN 2026 약관은 출품작 개발에 사용한 주요 AI 도구의 명칭과 활용 방식 고지를 요구한다.",
+        7,
+        "05 / TOOL EXECUTION",
+        "의도가 어떻게 실제 산출물이 되는가",
+        "에이전트는 답변만 생성하지 않고, 저장소와 제작 도구를 inspect·edit·execute·capture 순서로 사용한다.",
     )
+
+    rounded_box(c, M, 521, CW, 183, fill=white, stroke=LINE, radius=14)
+    c.setFont("KR-Bold", 9.5)
+    c.setFillColor(INK)
+    c.drawString(M + 16, 678, "TOOL INVOCATION CYCLE")
+    stages = [
+        ("INSPECT", "파일·상태 확인", LIME),
+        ("EDIT", "작은 변경 적용", CYAN),
+        ("EXECUTE", "도구·명령 실행", VIOLET),
+        ("CAPTURE", "log·artifact 보존", YELLOW),
+        ("REPORT", "결과·한계 전달", RED),
+    ]
+    xx = M + 22
+    for index, (title, body, accent) in enumerate(stages):
+        rounded_box(c, xx + index * 97, 586, 76, 54, fill=Color(accent.red, accent.green, accent.blue, alpha=0.14), stroke=accent, radius=9)
+        c.setFont("KR-Bold", 6.8)
+        c.setFillColor(INK)
+        c.drawCentredString(xx + index * 97 + 38, 618, title)
+        c.setFont("KR", 6.2)
+        c.setFillColor(MUTED)
+        c.drawCentredString(xx + index * 97 + 38, 602, body)
+        if index < len(stages) - 1:
+            arrow(c, xx + index * 97 + 79, 613, xx + (index + 1) * 97 - 4, 613, color=accent, head=4)
+    draw_text(c, "도구 결과는 다음 판단의 입력이 되고, 실패하면 log를 근거로 범위를 줄여 다시 실행한다.", M + 16, 550, CW - 32, size=7.1, color=MUTED, leading=10, max_lines=2)
+
+    categories = [
+        ("REPOSITORY", "search · diff · patch · Git", LIME, SOFT_LIME),
+        ("RUNTIME", "compile · test · build · editor", CYAN, SOFT_CYAN),
+        ("CONTENT", "asset · scene · document", VIOLET, SOFT_VIOLET),
+        ("CONNECTORS", "memory · issue · communication", YELLOW, SOFT_YELLOW),
+    ]
+    gap = 10
+    cw = (CW - 3 * gap) / 4
+    for index, (title, body, accent, fill) in enumerate(categories):
+        x = M + index * (cw + gap)
+        rounded_box(c, x, 379, cw, 114, fill=fill, stroke=None, radius=11)
+        c.setFont("KR-Bold", 7)
+        c.setFillColor(accent)
+        c.drawString(x + 11, 467, title)
+        draw_text(c, body, x + 11, 435, cw - 22, size=7.2, color=INK, leading=11, max_lines=4)
 
     rows = [
-        ("AgentDesk", "칸반·역할 배정·상태 관리", "카드·세션·이력", "확인됨"),
-        ("AnchorMind / Memento", "결정·오류·절차 장기기억", "memory fragments", "확인됨"),
-        ("Claude 계열 agent", "역할별 기획·구현·검토", "code·docs·analysis", "모델명 확인"),
-        ("OpenAI Codex", "repo 분석·구현·문서·검증", "diff·tests·PDF", "확인됨"),
-        ("Unity 6", "compile·build·EditMode·PlayMode", "build·logs·results", "지원 도구"),
-        ("Blender", "model·rig·weights·animation", ".blend · .fbx", "지원 도구"),
-        ("Git worktree", "변경 격리·provenance", "branch·commit", "지원 도구"),
-        ("Tripo / SF3D", "3D 후보 산출물", "image·mesh 후보", "제출 전 확인"),
+        ("상태 기반 실행", "먼저 현재 파일·process·tool 상태를 읽는다", "추측성 수정과 잘못된 대상 작업 감소"),
+        ("작은 patch", "변경 범위를 최소화하고 diff로 확인한다", "review와 rollback 비용 감소"),
+        ("machine-readable 출력", "가능하면 JSON·XML·log·hash로 결과를 남긴다", "다른 agent와 사람이 재검증 가능"),
+        ("권한 경계", "배포·외부 전송·파괴적 변경은 승인 후 실행", "자동화가 scope 밖으로 확장되는 것을 방지"),
     ]
-    draw_table(
+    draw_table(c, M, 347, [120, 209, 182], ["기능", "작동 방식", "고유한 장점"], rows, row_heights=36, font_size=6.7)
+
+    benefit_strip(
         c,
-        M,
-        700,
-        [121, 163, 130, 97],
-        ["도구 / 계층", "활용 방식", "주요 출력", "상태"],
-        rows,
-        row_heights=[48, 52, 52, 49, 49, 49, 49, 52],
-        font_size=7.2,
+        [
+            ("답변에서 산출물로", "자연어가 실제 파일·build·report로 이어진다.", LIME),
+            ("반복 가능성", "같은 절차를 다시 실행하고 비교할 수 있다.", CYAN),
+            ("handoff 감소", "사람이 도구 사이에서 결과를 옮기는 일이 줄어든다.", VIOLET),
+        ],
+        y=82,
+        h=72,
+    )
+    c.showPage()
+
+
+def draw_verification(c: canvas.Canvas) -> None:
+    section_header(
+        c,
+        8,
+        "06 / VERIFICATION",
+        "완료를 어떻게 증명하는가",
+        "자연어 완료 선언을 여러 층의 자동 gate와 독립 review가 확인할 수 있는 evidence bundle로 바꾼다.",
     )
 
-    rounded_box(c, M, 130, CW, 112, fill=NAVY, stroke=None, radius=13)
-    c.setFont("KR-Bold", 9)
+    rounded_box(c, M, 451, 302, 253, fill=NAVY, stroke=None, radius=14)
+    c.setFont("KR-Bold", 9.5)
     c.setFillColor(LIME)
-    c.drawString(M + 15, 216, "ASSET LEDGER / 제출 전 필수")
-    ledger = [
-        ("SOURCE", "원본 입력"),
-        ("TOOL", "제품·모델"),
-        ("DATE", "생성·수정일"),
-        ("LICENSE", "상업 이용"),
-        ("HUMAN", "수정·승인"),
-        ("PATH", "project 경로"),
+    c.drawString(M + 16, 678, "LAYERED GATES")
+    layers = [
+        ("HUMAN", "감각·우선순위·출시", LIME, 232),
+        ("INDEPENDENT REVIEW", "수용 기준·반례", RED, 208),
+        ("INTEGRATION", "전체 흐름·상호작용", VIOLET, 184),
+        ("TARGETED TEST", "상태·경계값", CYAN, 160),
+        ("COMPILE / STATIC", "문법·형식·기본 무결성", YELLOW, 136),
     ]
-    xx = M + 15
-    for index, (title, body) in enumerate(ledger):
-        rounded_box(c, xx + index * 82, 158, 68, 37, fill=NAVY_3, stroke=None, radius=7)
-        c.setFont("KR-Bold", 6.3)
+    base_x = M + 35
+    yy = 623
+    for index, (title, body, accent, width) in enumerate(layers):
+        x = base_x + (232 - width) / 2
+        rounded_box(c, x, yy - index * 39, width, 30, fill=Color(accent.red, accent.green, accent.blue, alpha=0.18), stroke=accent, radius=7)
+        c.setFont("KR-Bold", 6.6)
         c.setFillColor(white)
-        c.drawCentredString(xx + index * 82 + 34, 180, title)
-        c.setFont("KR", 5.8)
-        c.setFillColor(HexColor("#BFD0DF"))
-        c.drawCentredString(xx + index * 82 + 34, 168, body)
-    draw_text(
+        c.drawString(x + 9, yy + 11 - index * 39, title)
+        c.setFont("KR", 5.9)
+        c.setFillColor(HexColor("#C5D5E2"))
+        c.drawRightString(x + width - 9, yy + 11 - index * 39, body)
+
+    rounded_box(c, 357, 451, 196, 253, fill=white, stroke=LINE, radius=14)
+    c.setFont("KR-Bold", 9.5)
+    c.setFillColor(INK)
+    c.drawString(373, 678, "EVIDENCE BUNDLE")
+    bundle = [
+        ("INPUT", "요청·수용 기준", LIME),
+        ("CHANGE", "diff·artifact", CYAN),
+        ("RUN", "command·환경", VIOLET),
+        ("RESULT", "log·raw output", YELLOW),
+        ("IDENTITY", "commit·hash", RED),
+        ("REVIEW", "판정·한계", LIME),
+    ]
+    yy = 641
+    for title, body, accent in bundle:
+        c.setFillColor(accent)
+        c.circle(379, yy + 3, 3, fill=1, stroke=0)
+        c.setFont("KR-Bold", 6.7)
+        c.setFillColor(INK)
+        c.drawString(389, yy, title)
+        c.setFont("KR", 6.8)
+        c.setFillColor(MUTED)
+        c.drawString(442, yy, body)
+        yy -= 31
+
+    rows = [
+        ("자동 gate", "compile·test·validator·build", "빠르고 반복 가능", "재미·감각은 판단 못함"),
+        ("독립 review", "수용 기준·raw evidence·edge case", "자기 승인 위험 감소", "review 품질에 의존"),
+        ("인간 승인", "감각·범위·권리·출시 판단", "목적과 책임 유지", "시간과 주의가 필요"),
+    ]
+    draw_table(c, M, 420, [105, 169, 129, 108], ["판정 주체", "담당 범위", "고유한 장점", "경계"], rows, row_heights=54, font_size=6.9)
+
+    rounded_box(c, M, 202, CW, 50, fill=SOFT_YELLOW, stroke=None, radius=9)
+    c.setFont("KR-Bold", 7.7)
+    c.setFillColor(HexColor("#785D25"))
+    c.drawCentredString(W / 2, 221, "핵심  |  test PASS는 기술적 위험을 줄였다는 뜻이지, 결과가 재미있거나 옳다는 뜻은 아니다.")
+
+    benefit_strip(
         c,
-        "도구명·모델·입력 출처·license가 확인되지 않은 생성 asset은 최종 제출물에서 제외한다.",
-        M + 15,
-        145,
-        CW - 30,
-        size=6.8,
-        color=HexColor("#BFD0DF"),
-        leading=9,
-        max_lines=2,
+        [
+            ("거짓 완료 감소", "완료 선언에 재현 가능한 증거가 필요하다.", LIME),
+            ("회귀 조기 발견", "작은 gate부터 실패 지점을 좁힌다.", CYAN),
+            ("신뢰 형성", "사람과 agent가 같은 evidence를 보고 판단한다.", VIOLET),
+        ],
+        y=82,
+        h=95,
+    )
+    c.showPage()
+
+
+def draw_observability(c: canvas.Canvas) -> None:
+    section_header(
+        c,
+        9,
+        "07 / OBSERVABILITY & RECOVERY",
+        "장시간 작업을 어떻게 통제하는가",
+        "실행 상태·queue·log·heartbeat·context budget을 분리해 running, waiting, stuck를 구별하고 재개한다.",
     )
 
-    rounded_box(c, M, 80, CW, 34, fill=SOFT_YELLOW, stroke=None, radius=8)
-    c.setFont("KR-Bold", 7.2)
-    c.setFillColor(HexColor("#785D25"))
-    c.drawCentredString(W / 2, 92, "정확한 Claude 모델명 · Tripo/SF3D 생성 경로 · 비용·사용량은 원본 실행 기록으로 최종 확정")
+    rounded_box(c, M, 487, CW, 217, fill=NAVY, stroke=None, radius=14)
+    c.setFont("KR-Bold", 9.5)
+    c.setFillColor(LIME)
+    c.drawString(M + 16, 678, "CONTROL SURFACE")
+    signals = [
+        ("STATE", "active · idle · blocked", LIME),
+        ("QUEUE", "waiting · dependency", CYAN),
+        ("PROGRESS", "tool call · artifact", VIOLET),
+        ("LOG", "stdout · error · summary", YELLOW),
+        ("HEARTBEAT", "alive · recover", RED),
+        ("BUDGET", "context · image · cost", LIME),
+    ]
+    gap = 10
+    sw = (CW - 32 - 2 * gap) / 3
+    for index, (title, body, accent) in enumerate(signals):
+        row, col = divmod(index, 3)
+        x = M + 16 + col * (sw + gap)
+        y = 592 - row * 73
+        rounded_box(c, x, y, sw, 57, fill=NAVY_3, stroke=None, radius=9)
+        c.setFont("KR-Bold", 6.8)
+        c.setFillColor(accent)
+        c.drawString(x + 10, y + 35, title)
+        c.setFont("KR", 6.8)
+        c.setFillColor(white)
+        c.drawString(x + 10, y + 17, body)
+
+    rounded_box(c, M, 334, CW, 123, fill=white, stroke=LINE, radius=12)
+    c.setFont("KR-Bold", 8.7)
+    c.setFillColor(INK)
+    c.drawString(M + 14, 431, "RESOURCE CONTENTION PATTERN")
+    circle_label(c, M + 85, 380, 29, "TASK A", fill=SOFT_CYAN, stroke=CYAN, size=7)
+    circle_label(c, M + 174, 380, 29, "TASK B", fill=SOFT_VIOLET, stroke=VIOLET, size=7)
+    arrow(c, M + 116, 380, M + 275, 380, color=CYAN, head=5)
+    arrow(c, M + 205, 380, M + 275, 380, color=VIOLET, head=5)
+    rounded_box(c, M + 282, 352, 120, 57, fill=SOFT_YELLOW, stroke=YELLOW, radius=9)
+    c.setFont("KR-Bold", 8)
+    c.setFillColor(INK)
+    c.drawCentredString(M + 342, 385, "SHARED RESOURCE")
+    c.setFont("KR", 6.2)
+    c.setFillColor(MUTED)
+    c.drawCentredString(M + 342, 368, "cache · CPU · memory")
+    arrow(c, M + 406, 380, M + 455, 380, color=YELLOW, head=5)
+    circle_label(c, M + 479, 380, 26, "SLOW", fill=SOFT_RED, stroke=RED, size=7)
+    c.setFont("KR", 6.8)
+    c.setFillColor(MUTED)
+    c.drawString(M + 14, 346, "파일 격리와 실행 자원 격리는 다르므로 concurrency보다 resource affinity를 먼저 본다.")
+
+    rows = [
+        ("진행 상태", "card와 session 상태를 별도 표시", "작업 중·대기·정지를 구별"),
+        ("log-first", "큰 출력은 파일로 남기고 요약만 context에 넣음", "문맥 팽창과 재확인 비용 감소"),
+        ("checkpoint·resume", "card·worktree·commit·memory에서 재개", "중단 뒤 처음부터 반복하지 않음"),
+        ("watchdog", "heartbeat와 실패 상태로 재시작·escalation", "장시간 무응답을 방치하지 않음"),
+        ("budget policy", "image·context·tool time에 상한과 우선순위", "비용과 latency를 예측 가능하게 함"),
+    ]
+    draw_table(c, M, 326, [113, 216, 182], ["기능", "작동 방식", "고유한 장점"], rows, row_heights=29, font_size=6.2)
+
+    benefit_strip(
+        c,
+        [
+            ("상태 가시성", "실제로 느린지, 기다리는지, 멈췄는지 안다.", LIME),
+            ("복구력", "중단된 지점의 증거와 문맥에서 이어간다.", CYAN),
+            ("자원 효율", "공유 자원과 context를 기준으로 동시성을 조절한다.", VIOLET),
+        ],
+        y=58,
+        h=72,
+    )
     c.showPage()
 
 
 def draw_governance(c: canvas.Canvas) -> None:
     section_header(
         c,
-        13,
-        "12 / GOVERNANCE & CONCLUSION",
-        "기존 DoodleUp IP와 본선 신규 결과물의 경계",
-        "도구 공개, 권리 확인, 인간 승인과 evidence provenance를 제출 품질의 일부로 다룬다.",
+        10,
+        "08 / HUMAN GOVERNANCE",
+        "최종 권한과 책임은 누구에게 있는가",
+        "AI가 실행 범위를 넓혀도 목표·우선순위·감각·외부 공개·권리 판단은 인간의 승인 아래 둔다.",
     )
 
-    rounded_box(c, M, 530, CW, 173, fill=white, stroke=LINE, radius=14)
+    rounded_box(c, M, 512, CW, 192, fill=white, stroke=LINE, radius=14)
     c.setFont("KR-Bold", 9.5)
     c.setFillColor(INK)
-    c.drawString(M + 15, 677, "SUBMISSION BOUNDARY")
-    rounded_box(c, M + 18, 563, 202, 83, fill=SOFT_CYAN, stroke=None, radius=11)
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(INK)
-    c.drawString(M + 31, 622, "PRE-EXISTING")
-    draw_text(c, "DoodleUp repository · LAST SHIFT code · 기존 art·docs·tests", M + 31, 601, 176, size=7.1, color=MUTED, leading=10, max_lines=3)
-    rounded_box(c, W - M - 220, 563, 202, 83, fill=SOFT_LIME, stroke=None, radius=11)
-    c.setFont("KR-Bold", 10)
-    c.setFillColor(INK)
-    c.drawString(W - M - 207, 622, "HACKATHON NEW")
-    draw_text(c, "본선 기간 신규 code · asset · prompt · build · 발표 자료", W - M - 207, 601, 176, size=7.1, color=MUTED, leading=10, max_lines=3)
-    arrow(c, M + 226, 604, W - M - 226, 604, color=VIOLET, width=2, head=7)
-    c.setFont("KR-Bold", 5.8)
-    c.setFillColor(VIOLET)
-    c.drawCentredString(W / 2, 626, "PROVENANCE")
-
-    rounded_box(c, M, 327, CW, 176, fill=NAVY, stroke=None, radius=14)
-    c.setFont("KR-Bold", 9.5)
-    c.setFillColor(LIME)
-    c.drawString(M + 15, 477, "NAN 2026 TERMS / 최종 제출 전 재확인")
-    terms = [
-        ("AI DISCLOSURE", "주요 AI 도구 명칭과 활용 방식 고지"),
-        ("LICENSE", "생성형 AI·open source·외부 API 조건 준수"),
-        ("IP", "출품작 저작권·지식재산권은 원칙적으로 참가자 귀속"),
-        ("WINNER USE", "수상작 홍보 이용: 접수 시작일부터 1년"),
-        ("NEGOTIATION", "수상작 사업화 우선협상권: 종료일부터 4개월"),
+    c.drawString(M + 16, 678, "AUTHORITY MAP")
+    authority = [
+        ("목표·우선순위", "HUMAN", LIME, SOFT_LIME),
+        ("작업 분해·실행", "AI SYSTEM", CYAN, SOFT_CYAN),
+        ("기계 검증", "AUTOMATION", VIOLET, SOFT_VIOLET),
+        ("감각·품질 승인", "HUMAN", YELLOW, SOFT_YELLOW),
+        ("외부 공개·배포", "HUMAN", RED, SOFT_RED),
+        ("권리·license 판단", "HUMAN", LIME, SOFT_LIME),
     ]
-    yy = 444
-    for index, (title, body) in enumerate(terms):
-        col = index % 2
-        row = index // 2
-        x = M + 16 + col * 248
-        y = yy - row * 43
-        c.setFont("KR-Bold", 6.8)
-        c.setFillColor([LIME, CYAN, VIOLET, YELLOW, RED][index])
-        c.drawString(x, y, title)
-        draw_text(c, body, x, y - 14, 226, size=6.7, color=white, leading=9, max_lines=2)
-    c.setFont("KR", 6.2)
-    c.setFillColor(HexColor("#AFC1D3"))
-    c.drawString(M + 16, 334, "Source: https://nan2026.nhn.com/terms  |  이 문서는 법률 자문을 대신하지 않는다.")
-    c.linkURL("https://nan2026.nhn.com/terms", (M + 16, 330, M + 300, 341), relative=0)
+    aw = (CW - 32 - 2 * 10) / 3
+    for index, (label, owner, accent, fill) in enumerate(authority):
+        row, col = divmod(index, 3)
+        x = M + 16 + col * (aw + 10)
+        y = 598 - row * 68
+        rounded_box(c, x, y, aw, 53, fill=fill, stroke=None, radius=9)
+        c.setFont("KR-Bold", 7.4)
+        c.setFillColor(INK)
+        c.drawString(x + 10, y + 31, label)
+        c.setFont("KR-Bold", 6.2)
+        c.setFillColor(accent)
+        c.drawString(x + 10, y + 14, owner)
 
-    rounded_box(c, M, 192, CW, 108, fill=SOFT_LIME, stroke=None, radius=13)
-    c.setFont("KR-Bold", 9.5)
+    rows = [
+        ("비밀정보", "token·password·개인정보를 memory·repo·prompt에서 제외", "노출 위험 감소"),
+        ("범위 통제", "파괴적 변경·배포·외부 전송은 명시적 승인 후 수행", "자동화의 권한 과잉 방지"),
+        ("AI 공개", "주요 AI 도구명과 활용 방식을 제출물에 고지", "투명성과 규정 준수"),
+        ("asset ledger", "원본·도구·모델·날짜·license·수정자·경로 기록", "권리 provenance 확보"),
+        ("제출 경계", "기존 IP와 행사 기간 신규 결과물을 tag·README로 구분", "권리와 성과 범위 명확화"),
+    ]
+    draw_table(c, M, 482, [112, 263, 136], ["통제 항목", "작동 방식", "고유한 장점"], rows, row_heights=38, font_size=6.7)
+
+    rounded_box(c, M, 204, CW, 59, fill=NAVY, stroke=None, radius=10)
+    c.setFont("KR-Bold", 7.5)
+    c.setFillColor(LIME)
+    c.drawString(M + 13, 240, "NAN 2026 TERMS")
+    c.setFont("KR", 6.8)
+    c.setFillColor(white)
+    c.drawString(M + 13, 222, "주요 AI 도구·활용 방식 고지 · 생성형 AI·open source·외부 API license 준수 · 제출 권리 확인")
+    c.setFont("KR", 5.9)
+    c.setFillColor(HexColor("#AFC1D3"))
+    c.drawRightString(W - M - 13, 209, "https://nan2026.nhn.com/terms")
+    c.linkURL("https://nan2026.nhn.com/terms", (W - M - 180, 205, W - M - 10, 220), relative=0)
+
+    rounded_box(c, M, 82, CW, 94, fill=SOFT_LIME, stroke=None, radius=12)
+    c.setFont("KR-Bold", 8.2)
     c.setFillColor(LIME_DARK)
-    c.drawString(M + 15, 273, "FINAL CLAIM")
+    c.drawString(M + 14, 151, "FINAL CLAIM")
     draw_text(
         c,
-        "DoodleUp은 AI에게 게임을 맡긴 프로젝트가 아니다. 인간 디렉터의 의도를 기억하고, 전문 역할로 구현하며, Unity 증거로 검증하는 AI 개발 조직을 만든 프로젝트다.",
-        M + 15,
-        247,
-        CW - 30,
+        "DoodleUp의 AI 개발 시스템은 사람을 대체하는 자동 제작기가 아니다. 작업을 구조화하고, 문맥을 보존하고, 전문 역할을 연결하고, 실행 결과를 증거로 바꾸면서도 최종 권한은 사람에게 남기는 개발 운영 체계다.",
+        M + 14,
+        128,
+        CW - 28,
         font="KR-Bold",
-        size=11.3,
+        size=9.6,
         color=INK,
-        leading=17,
+        leading=14,
         max_lines=4,
         align="center",
     )
-
-    rounded_box(c, M, 82, CW, 83, fill=white, stroke=LINE, radius=11)
-    c.setFont("KR-Bold", 8)
-    c.setFillColor(INK)
-    c.drawString(M + 13, 144, "Evidence index")
-    evidence = [
-        "E1  docs/qa/reports/2026-07-31-doodleup-du02-acceptance-review.md",
-        "E2  docs/qa/du-03bc-verification.md",
-        "E3  docs/central-plaza-hub-layout-v1.md · docs/tools/plaza_hub_check.py",
-        "E4  docs/art/last-shift-lime-alien-rig-v1.md · LimeAlienAnimatorSetup.cs",
-        "E5  LastShiftNetworkSceneVerifier.cs · LastShiftRoomDiscovery.cs",
-        "WEB https://nan2026.nhn.com/ · https://nan2026.nhn.com/terms",
-    ]
-    for index, item in enumerate(evidence):
-        col = index % 2
-        row = index // 2
-        draw_text(c, item, M + 13 + col * 252, 125 - row * 18, 238, size=5.9, color=MUTED, leading=8, max_lines=2)
-    c.linkURL("https://nan2026.nhn.com/", (M + 265, 82, M + 500, 107), relative=0)
     c.showPage()
 
 
@@ -1720,24 +1096,21 @@ def build_pdf() -> Path:
     register_fonts()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(OUTPUT), pagesize=A4, pageCompression=1)
-    c.setTitle("DoodleUp AI 개발 시스템 기술서 - NAN 2026")
+    c.setTitle("DoodleUp AI 개발 시스템 기술서 - Workflow & Capabilities")
     c.setAuthor("DoodleUp")
-    c.setSubject("NAN 2026 Game X AI Hackathon 참가신청용 AI 개발 시스템 기술서")
-    c.setKeywords("DoodleUp, NAN 2026, Game AI, AgentDesk, AnchorMind, Memento, Unity")
+    c.setSubject("NAN 2026 참가신청용 AI 개발 작업 흐름과 범용 기능 설명")
+    c.setKeywords("DoodleUp, NAN 2026, AgentDesk, AnchorMind, Memento, workflow, AI development system")
     c.setCreator("DoodleUp reproducible ReportLab generator")
 
     draw_cover(c)
-    draw_executive_summary(c)
-    draw_architecture(c)
+    draw_theme_map(c)
+    draw_orchestration(c)
     draw_memory(c)
-    draw_roles_workflow(c)
-    draw_evidence(c)
-    draw_cases(c)
-    draw_plaza(c)
-    draw_lime_alien(c)
-    draw_network(c)
-    draw_failures(c)
+    draw_roles(c)
+    draw_isolation(c)
     draw_tools(c)
+    draw_verification(c)
+    draw_observability(c)
     draw_governance(c)
 
     c.save()
