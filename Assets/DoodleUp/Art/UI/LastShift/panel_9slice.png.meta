@@ -16,7 +16,7 @@ TextureImporter:
   singleChannelComponent: 0
   spriteMode: 1
   spritePixelsToUnits: 100
-  spriteBorder: {16, 16, 16, 16}
+  spriteBorder: {x: 16, y: 16, z: 16, w: 16}
   spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   wrapU: 1
