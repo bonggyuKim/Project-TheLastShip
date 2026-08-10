@@ -94,15 +94,7 @@ namespace DoodleUp.Runtime
 
         public override void OnNetworkSpawn()
         {
-            if (playerController == null) playerController = GetComponent<LastShiftPlayerController>();
-            if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
-            if (bodyRenderer == null)
-            {
-                var body = transform.Find("Remote Body");
-                if (body != null) bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
-                    .FirstOrDefault(renderer => renderer.name.Contains("Combined"))
-                    ?? body.GetComponentInChildren<Renderer>(true);
-            }
+            ResolveLocalReferences();
             heldItemReference.OnValueChanged += OnHeldItemReferenceChanged;
             // 서버는 sandbox 가 Ensure 하지만, 클라이언트는 sandbox 가 꺼져 있어 아무도 붙이지 않는다.
             // 복제값을 받을 그릇이 먼저 있어야 하므로 여기서 직접 붙인다.
@@ -483,6 +475,37 @@ namespace DoodleUp.Runtime
                     out _))
                 return "no-target-in-range";
             return aimedItem == item ? null : "aim-target-mismatch";
+        }
+
+        /// <summary>
+        /// 직렬화가 비어 있으면 채운다. <see cref="OnNetworkSpawn"/> 과
+        /// <see cref="ApplySoloPresentation"/> 이 같은 것을 필요로 하므로 한 자리에 둔다.
+        /// </summary>
+        private void ResolveLocalReferences()
+        {
+            if (playerController == null) playerController = GetComponent<LastShiftPlayerController>();
+            if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
+            if (bodyRenderer != null) return;
+            var body = transform.Find("Remote Body");
+            if (body != null) bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
+                .FirstOrDefault(renderer => renderer.name.Contains("Combined"))
+                ?? body.GetComponentInChildren<Renderer>(true);
+        }
+
+        /// <summary>
+        /// 네트워크 없이 세운 승무원에게 1인칭 표현을 건다 —
+        /// <see cref="LastShiftSoloBootstrap"/> 이 부른다.
+        ///
+        /// <b>표현 규칙을 두 벌로 안 만든다.</b> "내 카메라에는 내 몸이 안 보인다" 는
+        /// <see cref="ApplyLocalPresentation"/> 하나가 정하고, 솔로는 그것을 소유자 자격으로
+        /// 부를 뿐이다. 여기서 렌더러를 직접 끄면 나중에 규칙이 바뀔 때 한쪽만 고쳐진다.
+        ///
+        /// <c>OnNetworkSpawn</c> 이 안 도는 경로라 참조 해석도 같이 한다.
+        /// </summary>
+        public void ApplySoloPresentation()
+        {
+            ResolveLocalReferences();
+            ApplyLocalPresentation(true);
         }
 
         private void ApplyLocalPresentation(bool isLocalPlayer)
