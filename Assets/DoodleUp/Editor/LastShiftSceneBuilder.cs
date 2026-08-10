@@ -117,6 +117,9 @@ namespace DoodleUp.Editor
         {
             Directory.CreateDirectory("Assets/DoodleUp/Prefabs");
             var ship = BuildShipGrayboxHierarchy();
+            // 상태 단서는 선체 프리팹과 함께 저장한다. 씬 재생성 없이도 네트워크 씬 인스턴스가
+            // 같은 VFX 구성을 공유하며, 실제 상태 시스템은 LastShiftHazardVfx의 Set*만 호출한다.
+            ship.AddComponent<LastShiftHazardVfx>();
             PrefabUtility.SaveAsPrefabAsset(ship, ShipPrefabPath);
             Object.DestroyImmediate(ship);
             AssetDatabase.SaveAssets();
