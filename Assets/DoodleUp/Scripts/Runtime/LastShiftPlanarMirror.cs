@@ -59,10 +59,18 @@ namespace DoodleUp.Runtime
             var reflection = CalculateReflectionMatrix(new Vector4(normal.x, normal.y, normal.z, d));
 
             reflectionCamera.CopyFrom(source);
-            reflectionCamera.cullingMask = reflectionMask;
+            // 거울 자신은 반사에서 뺀다. 안 빼면 반사 안에 자기 면이 한 겹 더 서고,
+            // 그 면은 아직 칠해지기 전이라 검게 남는다.
+            reflectionCamera.cullingMask = reflectionMask & ~(1 << gameObject.layer);
             reflectionCamera.targetTexture = reflectionTexture;
             reflectionCamera.transform.position = reflection.MultiplyPoint(source.transform.position);
-            reflectionCamera.transform.rotation = source.transform.rotation;
+            // <b>회전도 반사시킨다.</b> 위치만 거울 너머로 보내고 회전을 원본 그대로 두면
+            // 반사 카메라가 벽 안쪽을 향한 것으로 판단돼 컬링이 조종석 기하를 통째로 버린다 —
+            // worldToCameraMatrix 는 렌더 행렬만 정하고 절두체 컬링은 transform 을 본다.
+            // 그 상태가 "거울이 검다" 로 나온다.
+            reflectionCamera.transform.rotation = Quaternion.LookRotation(
+                reflection.MultiplyVector(source.transform.forward),
+                reflection.MultiplyVector(source.transform.up));
             reflectionCamera.worldToCameraMatrix = source.worldToCameraMatrix * reflection;
             var clipPlane = CameraSpacePlane(reflectionCamera, position, normal, 1f);
             reflectionCamera.projectionMatrix = source.CalculateObliqueMatrix(clipPlane);
