@@ -1998,8 +1998,9 @@ namespace DoodleUp.Runtime
         /// <b>판정 화면 갈래 밖에 그린다.</b> 기항은 구간 판정이 이미 난 뒤라
         /// <see cref="IsResolved"/> 가 참이고, 그 갈래 안에 두면 결과 화면과 같은 층에 겹친다.
         ///
-        /// <b>문안은 임시다</b> — 단계 안내 문구 전부가 <c>game-writer</c> 몫이고
-        /// (기획 §8-<c>5</c>), 여기 있는 것은 그때까지 단계가 눈에 보이게 하는 자리표다.
+        /// <b>문안은 이 파일에 없다</b> — 단계 문안은 <see cref="LastShiftTutorialCopy"/> 한 곳에
+        /// 모여 있다(기획 §8-<c>5</c>). 띠와 배치 화면이 각자 문자열을 들면 같은 단계를 두 말로
+        /// 부르게 되므로, 여기서는 머리줄과 안내줄을 <b>받아 그리기만 한다</b>.
         ///
         /// <b>호스트 화면에만 뜬다.</b> 클라이언트는 이 컴포넌트가 꺼져 있고
         /// (<c>LastShiftNetworkSandbox</c> 의 <c>sandbox.enabled = IsServer</c>), 잔해·자재 자체가
@@ -2014,39 +2015,30 @@ namespace DoodleUp.Runtime
                 fontSize = 16, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.6f, 1f, 0.7f) }
             };
 
-            var top = Screen.height - 96f;
-            GUI.Box(new Rect(16f, top, 680f, 80f), GUIContent.none);
+            // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
+            // 길어서 계기 셋과 같은 줄에 붙이면 잘린다.
+            var top = Screen.height - 120f;
+            GUI.Box(new Rect(16f, top, 680f, 104f), GUIContent.none);
             GUI.Label(new Rect(28f, top + 8f, 660f, 26f),
-                $"튜토리얼 {(int)LastShiftTutorial.Step}/{(int)LastShiftTutorialStep.HandsOff} · " +
-                $"{TutorialStepText(LastShiftTutorial.Step)}", headingStyle);
+                LastShiftTutorialCopy.Heading(LastShiftTutorial.Step), headingStyle);
 
-            GUI.Label(new Rect(28f, top + 44f, 200f, 24f),
+            // 안내는 단계에 머문 시간으로 재촉으로 갈린다(LastShiftTutorialCopy 주석) —
+            // 그 시간은 상태기가 이미 세고 있어서 여기서 따로 잴 것이 없다.
+            GUI.Label(new Rect(28f, top + 38f, 660f, 24f),
+                LastShiftTutorialCopy.Guide(LastShiftTutorial.Step, LastShiftTutorial.StepElapsedSeconds), bodyStyle);
+
+            GUI.Label(new Rect(28f, top + 68f, 200f, 24f),
                 $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}", bodyStyle);
-            GUI.Label(new Rect(232f, top + 44f, 200f, 24f),
+            GUI.Label(new Rect(232f, top + 68f, 200f, 24f),
                 $"잔해 남음 {LastShiftSalvage.Remaining}", bodyStyle);
 
             var popping = depositBadgePopSeconds > 0f;
-            GUI.Label(new Rect(436f, top + 44f, 250f, 24f),
+            GUI.Label(new Rect(436f, top + 68f, 250f, 24f),
                 popping
                     ? $"자재 {LastShiftMaterials.Balance}  ▲ +{LastShiftMaterials.LastDeposited}"
                     : $"자재 {LastShiftMaterials.Balance}",
                 popping ? depositBadgeStyle : bodyStyle);
         }
-
-        /// <summary>단계 자리표 문안. 확정 문안은 <c>game-writer</c> 몫이다(기획 §8-<c>5</c>).</summary>
-        private static string TutorialStepText(LastShiftTutorialStep step) => step switch
-        {
-            LastShiftTutorialStep.SightSalvage => "창 밖에 잔해가 있다",
-            LastShiftTutorialStep.CrossPlaza => "광장 왼쪽 앞 문이 에어록 홀이다",
-            LastShiftTutorialStep.AirlockHall => "바닥 우물을 넘으면 밖이다",
-            LastShiftTutorialStep.Harvest => "자재를 뜯는다 — 한 번에 둘이다",
-            LastShiftTutorialStep.Deposit => "홀 바닥에 서면 들어간다",
-            LastShiftTutorialStep.SecondTrip => "한 번 더 — 왕복이 루프의 단위다",
-            LastShiftTutorialStep.Schematic => "도면이 열린다 — 거점 탭에 골조가 하나 있다",
-            LastShiftTutorialStep.RotateFrame => "골조를 잔해 면에 댄다 — 안 맞으면 R 로 돌린다",
-            LastShiftTutorialStep.HullUnlocked => "선체 탭이 열렸다 — 자재가 0 이어도 여력으로 짓는다",
-            _ => "도면"
-        };
 
         /// <summary>
         /// 층1-a 목표 줄. 성공 조건 둘과 남은 시간. <b>숫자는 시간만 노출한다</b>(§5.2) —
