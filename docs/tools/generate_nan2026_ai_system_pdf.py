@@ -1,4 +1,4 @@
-"""Generate the concise DoodleUp AI collaboration system brief."""
+"""Generate the concise AI game development workflow brief."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from reportlab.pdfgen import canvas
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "output" / "pdf" / "doodleup-nan2026-ai-development-system.pdf"
+OUTPUT = ROOT / "output" / "pdf" / "nan2026-ai-game-development-workflow.pdf"
 FONT_REGULAR = Path(r"C:\Windows\Fonts\malgun.ttf")
 FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
@@ -243,7 +243,7 @@ def section_header(
     c.line(M, 42, W - M, 42)
     c.setFont("KR", 7.2)
     c.setFillColor(MUTED)
-    c.drawString(M, 25, "DoodleUp AI Collaboration System")
+    c.drawString(M, 25, "AI Game Development Workflow")
     c.setFont("KR-Bold", 8)
     c.drawRightString(W - M, 25, f"{page:02d} / {PAGE_COUNT:02d}")
     key = f"page-{page}"
@@ -330,15 +330,15 @@ def draw_cover(c: canvas.Canvas) -> None:
                 c.circle(gx, gy, 0.65, fill=1, stroke=0)
 
     chip(c, "NAN 2026 / GAME X AI", M, H - 72, fill=NAVY_3, color=LIME, size=8, height=22)
-    c.setFont("KR-Bold", 34)
+    c.setFont("KR-Bold", 31)
     c.setFillColor(white)
-    c.drawString(M, H - 143, "DoodleUp")
+    c.drawString(M, H - 143, "AI 기반 게임 개발")
     c.setFont("KR-Bold", 29)
     c.setFillColor(LIME)
-    c.drawString(M, H - 184, "AI 개발 작업 체계")
+    c.drawString(M, H - 184, "구조와 작업 흐름")
     draw_text(
         c,
-        "AgentDesk, Discord, AnchorMind로 이어지는 에이전트 협업 방식",
+        "Planning, 역할 분담, 리뷰와 기억으로 게임 개발을 구조화하는 방식",
         M,
         H - 219,
         CW,
@@ -351,7 +351,7 @@ def draw_cover(c: canvas.Canvas) -> None:
     card_gap = 12
     card_width = (CW - card_gap * 2 - 32) / 3
     cards = [
-        ("Discord Bot", "요청 · 확인 · 승인", "사용 접점", CYAN),
+        ("AgentDesk Bot", "요청 · 확인 · 승인", "Discord 접점", CYAN),
         ("AgentDesk", "분해 · 배정 · 칸반", "작업 중심", LIME),
         ("AnchorMind", "기억 · 회상 · 공유", "문맥 기반", VIOLET),
     ]
@@ -373,14 +373,14 @@ def draw_cover(c: canvas.Canvas) -> None:
     rounded_box(c, M + 27, 282, CW - 54, 53, fill=HexColor("#24415F"), stroke=None, radius=10)
     c.setFont("KR-Bold", 11)
     c.setFillColor(LIME)
-    c.drawCentredString(W / 2, 311, "요청  ->  역할 배정  ->  실행  ->  리뷰  ->  기억")
+    c.drawCentredString(W / 2, 311, "요청  ->  Planning  ->  역할 배정  ->  실행  ->  리뷰  ->  기억")
     c.setFont("KR", 7.4)
     c.setFillColor(HexColor("#C0D2DF"))
     c.drawCentredString(W / 2, 292, "세 도구가 하나의 작업 흐름으로 연결된다.")
 
     c.setFont("KR", 8)
     c.setFillColor(HexColor("#9DB1C5"))
-    c.drawString(M, 82, "제출 검토본 v3.0  |  2026.08.10")
+    c.drawString(M, 82, "제출 검토본 v4.0  |  2026.08.10")
     c.setFont("KR-Bold", 8)
     c.setFillColor(LIME)
     c.drawRightString(W - M, 82, f"01 / {PAGE_COUNT:02d}")
@@ -394,8 +394,8 @@ def draw_overview(c: canvas.Canvas) -> None:
         c,
         2,
         "SYSTEM OVERVIEW",
-        "요청이 개발 결과가 되기까지",
-        "Discord는 접점, AgentDesk는 작업 흐름, AnchorMind는 공유 문맥을 담당한다.",
+        "AI가 게임 개발을 구조화하는 방식",
+        "Discord는 접점, AgentDesk는 Planning과 작업 흐름, AnchorMind는 공유 문맥을 담당한다.",
     )
 
     rounded_box(c, M, 362, CW, 342, fill=white, stroke=LINE, radius=14)
@@ -404,7 +404,7 @@ def draw_overview(c: canvas.Canvas) -> None:
     c.drawString(M + 16, 678, "전체 구조")
 
     top_cards = [
-        (M + 18, 560, 126, 76, "Discord Bot", "요청 · 승인 · 알림", CYAN, SOFT_CYAN),
+        (M + 18, 560, 126, 76, "AgentDesk Bot", "요청 · 승인 · 알림", CYAN, SOFT_CYAN),
         (M + 193, 548, 126, 100, "AgentDesk", "분해 · 배정\n상태 · 리뷰", LIME, SOFT_LIME),
         (M + 368, 560, 126, 76, "Kanban", "진행 · 대기 · 완료", VIOLET, SOFT_VIOLET),
     ]
@@ -423,7 +423,7 @@ def draw_overview(c: canvas.Canvas) -> None:
     c.line(M + 72, 524, W - M - 72, 524)
 
     roles = [
-        ("PM", "카드·우선순위"),
+        ("Planning Agent", "계획·카드 분해"),
         ("Tech", "구현·기술 판단"),
         ("Art", "자산·시각 품질"),
         ("Review", "검토·완료 판정"),
@@ -464,7 +464,7 @@ def draw_overview(c: canvas.Canvas) -> None:
         xx += width
     rows = [
         ("AgentDesk", "작업 분해, 역할 배정, 칸반 상태와 리뷰 흐름 관리", "카드 · 담당자 · 상태"),
-        ("Discord Bot", "요청 접수, 진행 확인, 승인과 알림", "대화 · 결과 알림"),
+        ("AgentDesk Bot", "Discord에서 요청 접수, 진행 확인, 승인과 알림", "대화 · 결과 알림"),
         ("AnchorMind", "현재 작업 문맥과 프로젝트 지식을 저장·회상·공유", "결정 · 오류 · 절차"),
     ]
     y = table_top - 29
@@ -502,15 +502,15 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
         c,
         3,
         "AGENTDESK",
-        "에이전트를 나누고, 칸반으로 개발한다",
-        "각 역할이 맡은 일을 수행하고, 리뷰 단계에서 결과를 확인한 뒤 완료한다.",
+        "계획부터 리뷰까지 역할을 나눠 개발한다",
+        "Planning Agent가 작업을 구조화하고, 전문 역할이 실행한 결과를 리뷰한 뒤 완료한다.",
     )
 
     c.setFont("KR-Bold", 9)
     c.setFillColor(INK)
     c.drawString(M, 686, "역할 분담")
     roles = [
-        ("Project Manager", "요청을 카드로 나누고 우선순위·의존성·완료 조건을 정한다.", LIME, SOFT_LIME),
+        ("Planning Agent", "게임의 목표를 계획과 카드로 나누고 우선순위·의존성·완료 조건을 정한다.", LIME, SOFT_LIME),
         ("Tech Agent", "기술 판단과 구현을 맡고 변경 내용과 검증 결과를 남긴다.", CYAN, SOFT_CYAN),
         ("Art Agent", "필요한 자산과 시각 결과를 만들고 품질 기준을 확인한다.", VIOLET, SOFT_VIOLET),
         ("Reviewer / QA", "구현자와 분리된 관점에서 결과와 완료 조건을 검토한다.", YELLOW, SOFT_YELLOW),
@@ -527,15 +527,16 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
     c.setFillColor(LIME)
     c.drawString(M + 15, 435, "칸반 흐름")
     states = [
-        ("BACKLOG", "대기"),
+        ("BACKLOG", "요청 대기"),
+        ("PLANNING", "계획·분해"),
         ("READY", "조건 확인"),
         ("DOING", "작업 중"),
         ("REVIEW", "검토"),
         ("DONE", "완료"),
     ]
-    state_width = 83
-    state_gap = 17
-    start_x = M + 14
+    state_width = 72
+    state_gap = 13
+    start_x = M + 9
     for index, (title, body) in enumerate(states):
         x = start_x + index * (state_width + state_gap)
         rounded_box(c, x, 375, state_width, 43, fill=NAVY_3, stroke=None, radius=8)
@@ -545,7 +546,7 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
         c.setFont("KR", 6.2)
         c.setFillColor(HexColor("#BFD0DF"))
         c.drawCentredString(x + state_width / 2, 384, body)
-        if index < 4:
+        if index < 5:
             arrow(c, x + state_width + 2, 397, x + state_width + state_gap - 2, 397, color=LIME, head=4)
     c.setFont("KR", 6.6)
     c.setFillColor(RED)
@@ -556,12 +557,12 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
     c.setFillColor(INK)
     c.drawString(M + 15, 283, "이 구조로 개발하는 순서")
     steps = [
-        ("01", "요청", "목표 확인"),
-        ("02", "카드 분해", "조건 정의"),
-        ("03", "역할 배정", "담당 지정"),
-        ("04", "실행", "산출물 생성"),
+        ("01", "목표 접수", "요구 확인"),
+        ("02", "Planning", "계획·분해"),
+        ("03", "역할 배정", "카드 전달"),
+        ("04", "개발", "Tech·Art"),
         ("05", "리뷰", "검토·보완"),
-        ("06", "완료", "결과 기록"),
+        ("06", "완료", "결과·기억"),
     ]
     step_gap = 8
     step_width = (CW - 30 - step_gap * 5) / 6
@@ -581,7 +582,7 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
             arrow(c, x + step_width + 1, 233, x + step_width + step_gap - 1, 233, color=CYAN, head=3.5)
     draw_text(
         c,
-        "카드에는 요청, 담당 역할, 완료 조건, 현재 상태, 리뷰 결과가 함께 남는다.",
+        "Planning 결과, 담당 역할, 완료 조건, 현재 상태, 리뷰 결과가 카드에 함께 남는다.",
         M + 15,
         190,
         CW - 30,
@@ -594,8 +595,8 @@ def draw_agentdesk(c: canvas.Canvas) -> None:
     benefit_cards(
         c,
         [
-            ("역할이 분명함", "누가 구현하고 누가 검토하는지 바로 알 수 있다.", LIME),
-            ("진행이 보임", "칸반에서 작업·대기·리뷰 상태를 한눈에 본다.", CYAN),
+            ("계획이 먼저 보임", "Planning에서 범위·순서·완료 조건을 먼저 정한다.", LIME),
+            ("역할과 진행이 보임", "칸반에서 담당·작업·대기·리뷰 상태를 한눈에 본다.", CYAN),
             ("리뷰가 흐름에 포함됨", "완료 전에 별도 역할이 결과를 확인한다.", VIOLET),
         ],
         y=66,
@@ -643,8 +644,8 @@ def draw_discord(c: canvas.Canvas) -> None:
         c,
         4,
         "DISCORD BOT",
-        "익숙한 채널에서 요청하고 확인한다",
-        "AgentDesk를 Discord와 연결해 작업 요청, 상태 확인, 리뷰와 승인을 대화로 처리한다.",
+        "Discord에서 AI 개발 흐름을 바로 사용한다",
+        "AgentDesk Bot으로 요청하고 Planning, 역할 배정, 리뷰와 승인을 대화에서 확인한다.",
     )
 
     rounded_box(c, M, 188, 318, 516, fill=NAVY, stroke=None, radius=14)
@@ -653,7 +654,7 @@ def draw_discord(c: canvas.Canvas) -> None:
     c.drawString(M + 16, 677, "사용 예")
     c.setFont("KR", 6.7)
     c.setFillColor(HexColor("#BFD0DF"))
-    c.drawRightString(M + 300, 677, "#doodleup-dev")
+    c.drawRightString(M + 300, 677, "#ai-game-dev")
 
     message_bubble(
         c,
@@ -662,7 +663,7 @@ def draw_discord(c: canvas.Canvas) -> None:
         207,
         54,
         "USER",
-        "새 작업 요청: 최근 오류 원인을 확인해줘.",
+        "새 기능 개발을 시작해줘.",
         fill=SOFT_CYAN,
         accent=HexColor("#167F99"),
         align_right=True,
@@ -673,8 +674,8 @@ def draw_discord(c: canvas.Canvas) -> None:
         500,
         248,
         82,
-        "DOODLEUP BOT",
-        "카드를 만들었습니다.\n담당: Tech Agent\n상태: READY",
+        "AGENTDESK BOT",
+        "카드를 만들었습니다.\n담당: Planning Agent\n상태: PLANNING",
         fill=white,
         accent=LIME_DARK,
     )
@@ -684,8 +685,8 @@ def draw_discord(c: canvas.Canvas) -> None:
         392,
         248,
         84,
-        "DOODLEUP BOT",
-        "작업이 끝나 REVIEW로 이동했습니다.\n변경 내용과 검증 결과를 확인해주세요.",
+        "AGENTDESK BOT",
+        "계획을 카드로 나누고 Tech·Art Agent를 배정했습니다.\n결과는 REVIEW에서 확인합니다.",
         fill=white,
         accent=LIME_DARK,
     )
@@ -707,8 +708,8 @@ def draw_discord(c: canvas.Canvas) -> None:
         220,
         248,
         73,
-        "DOODLEUP BOT",
-        "DONE 처리했습니다.\n결과는 AnchorMind에 공유됩니다.",
+        "AGENTDESK BOT",
+        "DONE 처리했습니다.\n검증된 결정과 절차는 AnchorMind에 공유됩니다.",
         fill=SOFT_LIME,
         accent=LIME_DARK,
     )
@@ -716,14 +717,15 @@ def draw_discord(c: canvas.Canvas) -> None:
     side_x = M + 332
     side_width = CW - 332
     capabilities = [
-        ("요청", "대화로 새 작업을 등록", CYAN, SOFT_CYAN),
-        ("진행", "현재 카드와 담당 역할 확인", LIME, SOFT_LIME),
-        ("리뷰", "결과를 보고 승인 또는 보완 요청", VIOLET, SOFT_VIOLET),
-        ("알림", "완료·차단·검토 대기 상태 수신", YELLOW, SOFT_YELLOW),
+        ("요청", "새 작업 등록", CYAN, SOFT_CYAN),
+        ("Planning", "계획·카드 분해 확인", LIME, SOFT_LIME),
+        ("진행", "담당·상태 확인", CYAN, SOFT_CYAN),
+        ("리뷰", "승인·보완 요청", VIOLET, SOFT_VIOLET),
+        ("알림", "완료·차단 알림", YELLOW, SOFT_YELLOW),
     ]
     for index, (title, body, accent, fill) in enumerate(capabilities):
-        y = 580 - index * 105
-        accent_card(c, side_x, y, side_width, 89, title, body, accent, fill, title_size=9, body_size=7)
+        y = 602 - index * 83
+        accent_card(c, side_x, y, side_width, 70, title, body, accent, fill, title_size=8.5, body_size=6.4)
 
     benefit_cards(
         c,
@@ -743,8 +745,8 @@ def draw_memory(c: canvas.Canvas) -> None:
         c,
         5,
         "ANCHORMIND",
-        "기억을 저장하고 다른 에이전트와 공유한다",
-        "현재 작업의 짧은 문맥과 프로젝트에 오래 남아야 할 지식을 구분해 관리한다.",
+        "게임 개발의 기억을 에이전트가 공유한다",
+        "현재 작업의 짧은 문맥과 게임 개발에 오래 남아야 할 지식을 구분해 관리한다.",
     )
 
     memory_width = (CW - 14) / 2
@@ -789,7 +791,7 @@ def draw_memory(c: canvas.Canvas) -> None:
     c.setLineWidth(1.3)
     c.line(W / 2, 448, W / 2, 425)
     c.line(M + 57, 425, W - M - 57, 425)
-    agents = [("PM", 0), ("Tech", 1), ("Art", 2), ("Review", 3)]
+    agents = [("Planning Agent", 0), ("Tech", 1), ("Art", 2), ("Review", 3)]
     agent_width = 94
     agent_gap = 34
     for title, index in agents:
@@ -830,7 +832,7 @@ def draw_memory(c: canvas.Canvas) -> None:
     c.drawCentredString(W / 2, 133, "반복 설명은 줄이고, 결정 기준은 맞추고, 중단된 작업은 이어서 진행한다.")
     c.setFont("KR-Bold", 10)
     c.setFillColor(INK)
-    c.drawCentredString(W / 2, 101, "Discord에서 요청하고, AgentDesk가 나누고, AnchorMind가 기억한다.")
+    c.drawCentredString(W / 2, 101, "Discord에서 요청하고, Planning이 나누고, AgentDesk가 배정하고, AnchorMind가 기억한다.")
     c.showPage()
 
 
@@ -838,11 +840,11 @@ def build_pdf() -> Path:
     register_fonts()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(OUTPUT), pagesize=A4, pageCompression=1)
-    c.setTitle("DoodleUp AI 개발 작업 체계")
-    c.setAuthor("DoodleUp")
-    c.setSubject("NAN 2026 참가신청용 AgentDesk, Discord, AnchorMind 기반 AI 협업 개발 흐름")
-    c.setKeywords("DoodleUp, NAN 2026, AgentDesk, Discord Bot, AnchorMind, Kanban, AI collaboration")
-    c.setCreator("DoodleUp reproducible ReportLab generator")
+    c.setTitle("AI 기반 게임 개발 작업 체계")
+    c.setAuthor("NAN 2026 참가팀")
+    c.setSubject("AgentDesk Planning, Discord Bot, AnchorMind 기반의 구조적 AI 게임 개발 흐름")
+    c.setKeywords("NAN 2026, AgentDesk, Planning Agent, Discord Bot, AnchorMind, Kanban, AI game development")
+    c.setCreator("Reproducible ReportLab generator")
 
     draw_cover(c)
     draw_overview(c)
