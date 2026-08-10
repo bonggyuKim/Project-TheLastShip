@@ -86,8 +86,6 @@ namespace DoodleUp.Runtime
 
         private CharacterController characterController;
         private LastShiftNetworkPlayer networkPlayer;
-        private GUIStyle identityStyle;
-        private GUIStyle promptStyle;
         private float verticalSpeed;
         private float yaw;
         private float pitch;
@@ -204,6 +202,11 @@ namespace DoodleUp.Runtime
 
         private void OnDisable()
         {
+            // 소유권 게이트가 이 컴포넌트를 끄면 프롬프트도 같이 사라져야 한다. 임대가
+            // 아니라 자기가 만든 계층이라, 이건 스스로 치운다. 커서 해제보다 먼저 하는
+            // 이유는 아래 조기 반환이 커서 관리를 안 하는 원격 승무원에게 걸리기 때문이다.
+            if (promptView != null) promptView.gameObject.SetActive(false);
+
             if (!ManagesCursor) return;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -224,6 +227,16 @@ namespace DoodleUp.Runtime
         private void Update()
         {
             ProcessKeyboardInput(Keyboard.current, Time.deltaTime);
+        }
+
+        /// <summary>
+        /// HUD 는 이동·상호작용이 다 끝난 뒤에 그린다. <c>OnGUI</c> 시절에는 프레임마다
+        /// 레이아웃·리페인트로 <b>두 번씩</b> 돌면서 씬 조회(<see cref="BuildPrompt"/>)를
+        /// 두 번 했는데, 여기서는 한 번이다.
+        /// </summary>
+        private void LateUpdate()
+        {
+            DrawHud();
         }
 
         /// <summary>
@@ -1074,11 +1087,11 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>상시 조작 안내 줄의 높이와 화면 가장자리 여백. 프롬프트는 이 줄 위에 앉는다.</summary>
-        public const float InputBarHeight = 28f;
+        public const float InputBarHeight = 36f;
         public const float InputBarMargin = 8f;
 
         /// <summary>프롬프트 상자 높이, 화면 가장자리 여백, 그리고 앵커와 상자 사이 간격.</summary>
-        public const float PromptBoxHeight = 26f;
+        public const float PromptBoxHeight = 40f;
         public const float PromptBoxGap = 10f;
 
         /// <summary>대상 윗면과 상자 아랫변 사이의 화면 간격. 물건에 닿지 않을 만큼만 띄운다.</summary>
@@ -1164,57 +1177,76 @@ namespace DoodleUp.Runtime
         /// 조준점은 <b>상시</b>, 프롬프트는 <b>대상 위에</b> 그린다.
         ///
         /// 자리 계산은 <see cref="ResolvePromptRect"/>·<see cref="ResolveCrosshairRect"/>·
-        /// <see cref="ResolveFloatingAnchor"/> 에 있고 여기서는 그리기만 한다. <c>OnGUI</c> 는
-        /// EditMode 에서 돌릴 수 없으므로, 배치가 검증 가능한 값으로 남으려면 판단이 이 함수
-        /// 밖에 있어야 한다.
+        /// <see cref="ResolveFloatingAnchor"/> 에 있고 여기서는 배치와 값만 꽂는다. 그 셋은
+        /// 단위를 안 가리고 비율만 쓰므로, <c>OnGUI</c> 시절 화면 픽셀로 쓰던 것을 그대로
+        /// <b>캔버스 단위로</b> 태울 수 있었다 — UGUI 전환에서 손대지 않은 부분이 이것이다.
         ///
         /// 아래 입력 안내 줄은 그대로 상시다 — 화면 가장자리이고 시야를 덮지 않으며,
         /// 조작 목록은 "지금 여기" 가 아니라 배우는 정보라 조건부로 만들 대상이 아니다.
         /// </summary>
-        private void OnGUI()
+        private void DrawHud()
         {
+            var layer = LastShiftUiLayer.Instance;
+            if (layer == null) return;
+
             // 접속이 끊겨 로비로 돌아간 프레임에는 승무원이 아직 살아 있을 수 있다.
             // 그때 조준점·상호작용 프롬프트가 로비 위에 남으면 판이 도는 것으로 보인다.
+            // 임대를 안 갱신하면 다음 프레임에 저절로 꺼진다 — 지우는 코드가 따로 없다.
             if (LastShiftRoomLobby.IsBlockingGameplay) return;
 
-            identityStyle ??= new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
-            };
-            promptStyle ??= new GUIStyle(GUI.skin.label)
-            {
-                // 15 를 유지한다. 대상 위에 붙으면서 화면 어디에든 뜰 수 있게 됐고,
-                // 큰 글자는 그 자리가 어디든 물건보다 먼저 보이는 것이 된다.
-                fontSize = 15,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
-            };
-            identityStyle.normal.textColor = identityColor;
-            promptStyle.normal.textColor = Color.white;
+            // <b>자리 계산은 캔버스 단위로 한다.</b> 아트 키트가 1920×1080 을 자로 잡았고
+            // 그래야 4K 에서 프롬프트가 손톱만 해지지 않는다. 계산 함수 자체는 단위를 안
+            // 가리므로(비율만 쓴다) IMGUI 시절 그대로 태운다.
+            var screen = LastShiftUiLayer.ScreenSize;
+            var canvas = LastShiftUiTheme.CanvasSize(screen);
 
             // 조준점은 프롬프트와 무관하게 항상 그린다.
-            GUI.Label(ResolveCrosshairRect(Screen.width, Screen.height), "+", promptStyle);
+            layer.LabelCanvas("crosshair", ResolveCrosshairRect(canvas.x, canvas.y),
+                "+", CrosshairFontSize, TextAnchor.MiddleCenter, Color.white);
 
-            // 한 이벤트 안에서 한 번만 만든다. 이 함수는 씬 조회를 타므로 문장과 앵커를
-            // 각자 부르면 같은 프레임에 같은 탐색이 두 번 돈다.
+            // 한 프레임에 한 번만 만든다. 이 함수는 씬 조회를 타므로 문장과 앵커를 각자
+            // 부르면 같은 프레임에 같은 탐색이 두 번 돈다.
             var prompt = BuildPrompt();
             if (prompt.Exists && prompt.Text.Length > 0)
             {
+                var view = EnsurePromptView(layer);
+
                 // 앵커가 없거나 대상이 카메라 뒤면 조준점 아래 고정 자리로 떨어진다.
                 Vector2 anchor;
                 if (!prompt.HasAnchor || !TryProjectAnchor(prompt.Anchor, out anchor))
-                    anchor = ResolveFloatingAnchor(Screen.width, Screen.height);
+                    anchor = ResolveFloatingAnchor(canvas.x, canvas.y);
+                else
+                    anchor = LastShiftUiTheme.ScreenPointToCanvas(anchor, screen);
 
-                var textWidth = promptStyle.CalcSize(new GUIContent(prompt.Text)).x;
-                var box = ResolvePromptRect(Screen.width, Screen.height, textWidth, anchor);
-                GUI.Box(box, GUIContent.none);
-                GUI.Label(new Rect(box.x + 6f, box.y + 2f, box.width - 12f, box.height - 4f), prompt.Text, promptStyle);
+                var box = ResolvePromptRect(canvas.x, canvas.y, view.MeasureBody(prompt.Text), anchor);
+                view.gameObject.SetActive(true);
+                view.Apply(LastShiftUiTheme.FlipY(box), prompt.Text);
+            }
+            else if (promptView != null && promptView.gameObject.activeSelf)
+            {
+                promptView.gameObject.SetActive(false);
             }
 
-            GUI.Box(new Rect(InputBarMargin, Screen.height - InputBarMargin - InputBarHeight, Screen.width - InputBarMargin * 2f, InputBarHeight), GUIContent.none);
-            GUI.Label(new Rect(12f, Screen.height - 34f, Screen.width - 24f, 24f), InputLabel, identityStyle);
+            var barRect = new Rect(InputBarMargin, canvas.y - InputBarMargin - InputBarHeight,
+                canvas.x - InputBarMargin * 2f, InputBarHeight);
+            layer.PanelCanvas("inputBar", barRect, 0.72f);
+            layer.LabelCanvas("inputLabel", barRect, InputLabel,
+                InputLabelFontSize, TextAnchor.MiddleCenter, identityColor);
+        }
+
+        /// <summary>조준점 글자 크기. 십자 사각형 안에 들어가는 최대치다.</summary>
+        private const int CrosshairFontSize = 22;
+
+        /// <summary>조작 안내 줄 글자 크기.</summary>
+        private const int InputLabelFontSize = 16;
+
+        private LastShiftPromptView promptView;
+
+        private LastShiftPromptView EnsurePromptView(LastShiftUiLayer layer)
+        {
+            if (promptView == null)
+                promptView = LastShiftPromptView.Create(layer.OverlayRoot, $"Prompt:{GetInstanceID()}");
+            return promptView;
         }
     }
 }

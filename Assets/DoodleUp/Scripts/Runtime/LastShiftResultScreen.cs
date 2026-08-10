@@ -248,7 +248,15 @@ namespace DoodleUp.Runtime
             var cardY = 250f + cardRise;
             const float cardWidth = 1120f;
 
-            Fill(new Rect(cardX, cardY, cardWidth, 460f), CardColor, cardAlpha);
+            // 카드는 9-slice 패널로 바뀌었다(아트 키트 v1 §"화면별 적용"). <b>좌표는 v1 그대로다</b> —
+            // 판정→원인→4칸이라는 읽는 순서가 이 좌표에 들어 있고, 바꾼 것은 배경 한 겹뿐이다.
+            //
+            // 캔버스가 아니라 화면 픽셀로 넘기는 이유는 이 화면이 <c>GUI.matrix</c> 로 자기
+            // 배율(가로세로 중 작은 쪽 기준)을 따로 쓰기 때문이다. 캔버스의 match 0.5 와 다르므로
+            // 같은 변환을 태워야 글자와 판이 안 어긋난다.
+            LastShiftUiLayer.Instance?.Panel("resultCard",
+                new Rect(offsetX + cardX * scale, offsetY + cardY * scale, cardWidth * scale, 460f * scale),
+                cardAlpha);
             Fill(new Rect(cardX, cardY, cardWidth, 14f), verdictColor, cardAlpha);
 
             DrawChip(summary.Verdict, verdictColor, cardY, cardAlpha);

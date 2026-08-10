@@ -49,28 +49,27 @@ namespace DoodleUp.Runtime
         /// 그래서 <see cref="LastShiftNetworkPlayer"/> 가 같은 함수로 자기 막대를 그린다 —
         /// 두 경로가 다른 코드로 그리면 서버와 클라이언트의 막대가 서로 다르게 보인다.
         /// </summary>
-        public static void DrawGauge(LastShiftCrewOxygen crew, string slotLabel, int row, ref GUIStyle style)
+        public static void ApplyGauge(
+            LastShiftUiLayer layer, LastShiftCrewOxygen crew, string id, string slotLabel, int row)
         {
-            if (crew == null || !crew.ShowsSuitGauge) return;
-            var y = Screen.height - 96f - row * 34f;
-            GUI.Box(new Rect(24f, y, 320f, 28f), GUIContent.none);
-            var fill = Mathf.Clamp01(crew.SuitOxygen);
-            var color = crew.IsDead
+            if (layer == null || crew == null || !crew.ShowsSuitGauge) return;
+
+            var gauge = layer.Gauge(id, LastShiftUiIcon.Oxygen, LastShiftGaugeChannel.Oxygen,
+                LastShiftHudLayout.SuitGaugeRect(Screen.height, row));
+            gauge.SetValue(crew.SuitOxygen);
+            gauge.SetName(crew.IsDead
+                ? $"{slotLabel} 예비 고갈 — 사망"
+                : $"{slotLabel} 예비 산소" + (crew.IsDraining ? " (소모 중)" : " (소모 정지)"));
+            gauge.SetValueLabel(crew.IsDead ? "0%" : $"{crew.SuitOxygen:P0}");
+
+            // 사망은 회색이다. 위기색으로 두면 "아직 손쓸 수 있다" 로 읽히는데 이 줄은
+            // 이미 끝난 상태를 적는다. 위기 점멸은 사이렌 칸과 같은 박자를 쓴다.
+            gauge.SetTone(crew.IsDead
                 ? new Color(0.45f, 0.45f, 0.45f)
                 : crew.IsCritical
-                    ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), new Color(1f, 0.2f, 0.15f), BlinkPhase)
-                    : new Color(0.3f, 0.75f, 1f);
-            var previous = GUI.color;
-            GUI.color = color;
-            GUI.Box(new Rect(28f, y + 4f, 312f * fill, 20f), GUIContent.none);
-            GUI.color = previous;
-
-            style ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
-            style.normal.textColor = Color.white;
-            var label = crew.IsDead
-                ? $"{slotLabel} 예비 산소 고갈 — 사망"
-                : $"{slotLabel} 예비 산소 {crew.SuitOxygen:P0}" + (crew.IsDraining ? "  (소모 중)" : "  (소모 정지)");
-            GUI.Label(new Rect(34f, y + 5f, 306f, 20f), label, style);
+                    ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), LastShiftUiTheme.Crisis, BlinkPhase)
+                    : LastShiftUiTheme.Nominal);
+            gauge.SetThresholds();
         }
 
         public static LastShiftCrewOxygen Ensure(LastShiftPlayerController player)

@@ -51,7 +51,6 @@ namespace DoodleUp.Runtime
             false,
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
-        private GUIStyle suitGaugeStyle;
         private LastShiftSandboxController hudSandbox;
 
         [SerializeField] private LastShiftPlayerController playerController;
@@ -194,15 +193,18 @@ namespace DoodleUp.Runtime
         {
             if (!IsSpawned || !IsOwner || IsServer) return;
             if (LastShiftRoomLobby.IsBlockingGameplay) return;
+            var layer = LastShiftUiLayer.Instance;
             var crew = GetComponent<LastShiftCrewOxygen>();
-            LastShiftCrewOxygen.DrawGauge(crew, playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0, ref suitGaugeStyle);
+            LastShiftCrewOxygen.ApplyGauge(layer, crew, "suitClient",
+                playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0);
 
             // OnGUI 는 이벤트마다(레이아웃·리페인트) 돌므로 씬 전수 조회를 매번 하면 안 된다.
             // 한 번 찾으면 sandbox 는 씬 수명 동안 바뀌지 않는다.
             if (hudSandbox == null) hudSandbox = FindFirstObjectByType<LastShiftSandboxController>();
             var sandbox = hudSandbox;
             if (sandbox == null) return;
-            GUI.Box(new Rect(16f, 16f, LastShiftSandboxController.ZonePressureRowWidth + 24f, 62f), GUIContent.none);
+            layer?.Panel("clientZones",
+                new Rect(16f, 16f, LastShiftSandboxController.ZonePressureRowWidth + 24f, 62f), 0.92f);
             sandbox.DrawZonePressureCells(28f, 28f);
         }
 

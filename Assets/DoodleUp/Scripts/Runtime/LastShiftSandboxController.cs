@@ -28,10 +28,6 @@ namespace DoodleUp.Runtime
         private readonly LastShiftControlHold controlHold = new();
         private readonly LastShiftRepairLedger repairLedger = new();
         private LastShiftZonePressures zonePressures = LastShiftZonePressures.Uniform(1f);
-        private GUIStyle headingStyle;
-        private GUIStyle bodyStyle;
-        private GUIStyle sirenStyle;
-        private GUIStyle depositBadgeStyle;
 
         /// <summary>자재 배지가 튀어 있는 시간. 왕복 한 번이 <c>24</c>초대라 이 정도면 겹치지 않는다.</summary>
         private const float DepositBadgePopSeconds = 1.8f;
@@ -1964,22 +1960,21 @@ namespace DoodleUp.Runtime
             // 겹쳐 나온다 — 아직 아무도 스폰되지 않아 값도 전부 초기값이다.
             if (LastShiftRoomLobby.IsBlockingGameplay) return;
 
-            headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-            bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
-
             // 판정이 나면 상시 패널을 숨긴다(아트 §8). 시뮬레이션이 멎어 있어서 막대가
             // 살아 있는 값처럼 오독되고, 결과 화면과 같은 무게로 읽히면 위계가 무너진다.
             // F3 디버그 층은 QA 도구라 그대로 둔다.
             if (!IsResolved)
             {
-                GUI.Box(new Rect(16f, 16f, 680f, 290f), GUIContent.none);
-                DrawObjectiveLine();
-                DrawSystemBars();
-                DrawZonePressureCells(28f, 184f);
-                DrawDominantProblemLine();
-                DrawBatteryState();
-                DrawLocalDiagnosis();
-                DrawSuitOxygenGauges();
+                var layer = LastShiftUiLayer.Instance;
+                layer?.Panel("hud", LastShiftHudLayout.PanelRect, 0.92f);
+                DrawObjectiveLine(layer);
+                UpdateSystemGauges(layer);
+                UpdateResourceGauges(layer);
+                DrawZonePressureCells(LastShiftHudLayout.ContentX, LastShiftHudLayout.ZoneCellsTop);
+                DrawDominantProblemLine(layer);
+                DrawBatteryState(layer);
+                DrawLocalDiagnosis(layer);
+                DrawSuitOxygenGauges(layer);
             }
             else
             {
@@ -2010,43 +2005,57 @@ namespace DoodleUp.Runtime
         {
             if (!LastShiftTutorial.IsRunning) return;
 
-            depositBadgeStyle ??= new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.6f, 1f, 0.7f) }
-            };
+            var layer = LastShiftUiLayer.Instance;
+            if (layer == null) return;
 
             // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
             // 길어서 계기 셋과 같은 줄에 붙이면 잘린다.
-            var top = Screen.height - 120f;
-            GUI.Box(new Rect(16f, top, 680f, 104f), GUIContent.none);
-            GUI.Label(new Rect(28f, top + 8f, 660f, 26f),
-                LastShiftTutorialCopy.Heading(LastShiftTutorial.Step), headingStyle);
+            var banner = LastShiftHudLayout.TutorialBannerRect(LastShiftUiLayer.ScreenSize.y);
+            layer.Panel("tutorial", banner, 0.82f);
+            var top = banner.y;
+            layer.Label("tutorialHeading", new Rect(28f, top + 8f, 660f, 26f),
+                LastShiftTutorialCopy.Heading(LastShiftTutorial.Step),
+                LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
 
             // 안내는 단계에 머문 시간으로 재촉으로 갈린다(LastShiftTutorialCopy 주석) —
             // 그 시간은 상태기가 이미 세고 있어서 여기서 따로 잴 것이 없다.
-            GUI.Label(new Rect(28f, top + 38f, 660f, 24f),
-                LastShiftTutorialCopy.Guide(LastShiftTutorial.Step, LastShiftTutorial.StepElapsedSeconds), bodyStyle);
+            layer.Label("tutorialGuide", new Rect(28f, top + 38f, 660f, 24f),
+                LastShiftTutorialCopy.Guide(LastShiftTutorial.Step, LastShiftTutorial.StepElapsedSeconds),
+                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
 
-            GUI.Label(new Rect(28f, top + 68f, 200f, 24f),
-                $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}", bodyStyle);
-            GUI.Label(new Rect(232f, top + 68f, 200f, 24f),
-                $"잔해 남음 {LastShiftSalvage.Remaining}", bodyStyle);
+            layer.Label("tutorialCarried", new Rect(28f, top + 68f, 200f, 24f),
+                $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}",
+                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
+            layer.Label("tutorialRemaining", new Rect(232f, top + 68f, 200f, 24f),
+                $"잔해 남음 {LastShiftSalvage.Remaining}",
+                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
 
+            // 배지는 팝 하는 동안만 굵고 밝다. 조각을 하나로 두고 모양만 갈아 끼우는 이유는
+            // 둘로 나누면 팝이 끝나는 프레임에 두 조각이 같이 보이기 때문이다.
             var popping = depositBadgePopSeconds > 0f;
-            GUI.Label(new Rect(436f, top + 68f, 250f, 24f),
+            layer.Label("tutorialBalance", new Rect(436f, top + 68f, 250f, 24f),
                 popping
                     ? $"자재 {LastShiftMaterials.Balance}  ▲ +{LastShiftMaterials.LastDeposited}"
                     : $"자재 {LastShiftMaterials.Balance}",
-                popping ? depositBadgeStyle : bodyStyle);
+                popping ? LastShiftHudLayout.BadgeFontSize : LastShiftHudLayout.BodyFontSize,
+                popping ? DepositBadgeColor : LastShiftUiTheme.BodyText,
+                fontStyle: popping ? FontStyle.Bold : FontStyle.Normal);
         }
+
+        /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>
+        private static readonly Color DepositBadgeColor = new(0.6f, 1f, 0.7f);
 
         /// <summary>
         /// 층1-a 목표 줄. 성공 조건 둘과 남은 시간. <b>숫자는 시간만 노출한다</b>(§5.2) —
         /// 성공 조건의 임계는 아래 막대의 선으로 그려지지 텍스트로 적히지 않는다.
         /// </summary>
-        private void DrawObjectiveLine()
+        private void DrawObjectiveLine(LastShiftUiLayer layer)
         {
-            GUI.Label(new Rect(28f, 24f, 480f, 28f), "목표 — 추력과 산소를 선 위로 올려 도킹", headingStyle);
+            if (layer == null) return;
+
+            layer.Label("objective", new Rect(28f, 24f, 480f, 28f),
+                "목표 — 추력과 산소를 선 위로 올려 도킹",
+                LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
 
             // <b>운석 전에는 카운트다운을 그리지 않는다.</b> 도킹 제한시간은 사고 이후 예산이라
             // 그 전에는 흐르지 않는데(AdvanceMission 의 HasAppliedImpact 게이트), 멈춘 숫자를
@@ -2056,15 +2065,20 @@ namespace DoodleUp.Runtime
             // 근본은 CT-01 §3.2 의 T-20초 예고 + 자동 운석(백로그 R5)이 아직 없어서 이 구간이
             // 20초가 아니라 무한정이라는 것이다. R5 가 들어오면 이 분기는 예고 카운트다운으로
             // 바뀐다.
+            // 두 갈래가 같은 조각을 쓴다. 한 프레임에 하나만 그려지므로 자리가 겹치지 않고,
+            // 조각을 둘로 나누면 운석이 떨어지는 프레임에 둘이 같이 보인다.
+            var timer = new Rect(508f, 24f, 180f, 28f);
             if (!HasAppliedImpact)
             {
-                GUI.Label(new Rect(508f, 24f, 180f, 28f), "사건 대기 · M", headingStyle);
+                layer.Label("dockTimer", timer, "사건 대기 · M",
+                    LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
                 return;
             }
 
             var minutes = Mathf.FloorToInt(dockingSecondsRemaining / 60f);
             var seconds = Mathf.FloorToInt(dockingSecondsRemaining % 60f);
-            GUI.Label(new Rect(508f, 24f, 180f, 28f), $"DOCK T-{minutes}:{seconds:00}", headingStyle);
+            layer.Label("dockTimer", timer, $"DOCK T-{minutes}:{seconds:00}",
+                LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
         }
 
         /// <summary>
@@ -2074,91 +2088,119 @@ namespace DoodleUp.Runtime
         /// <b>임계를 그림으로 보여주는 것이 요점이다</b>(§5.2) — <c>thrust=0.28</c> 이라는
         /// 숫자보다 "막대가 선 아래다" 가 즉시 읽힌다.
         /// </summary>
-        private void DrawSystemBars()
+        private void UpdateSystemGauges(LastShiftUiLayer layer)
         {
-            DrawThresholdBar(28f, 62f, "추력", currentState.ThrustDemand, HigherIsBetter,
+            if (layer == null) return;
+
+            var thrust = ApplyGauge(layer, "thrust", LastShiftUiIcon.Thrust, LastShiftGaugeChannel.Docking,
+                0, "추력", currentState.ThrustDemand, HigherIsBetter,
                 LastShiftRecoveryTuning.DockingSuccessThrust);
-            DrawRequiredThrustMarker(28f, 62f);
+
+            // G-2(b) 필요 추력선. <c>(150 − DockProgress) / 남은 초</c> 를 추력 게이지 위에
+            // 얹는다. <b>고정 임계선과 다른 색·다른 굵기인 것이 요점이다</b> — 0.30 은 도킹
+            // 순간의 조건이라 안 움직이고, 이 선은 내가 추력을 어떻게 썼는지에 따라 매 초
+            // 움직인다. 운석 전에는 타이머가 안 흘러 선이 멈춰 있으므로 그리지 않는다.
+            thrust.SetMovingMarker(HasAppliedImpact && !IsResolved && RequiredThrust > 0f ? RequiredThrust : -1f);
 
             // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
             // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
-            DrawThresholdBar(28f, 90f, "전력", currentState.BusPower, HigherIsBetter,
+            ApplyGauge(layer, "power", LastShiftUiIcon.Warning, LastShiftGaugeChannel.Maintenance,
+                1, "전력", currentState.BusPower, HigherIsBetter,
                 LastShiftSituationTable.BusDetachedTrigger,
                 LastShiftSituationTable.PowerCascadeTrigger,
                 LastShiftSituationTable.PowerBlackoutTrigger);
 
             // 열만 반대다 — 올라가는 것이 나쁘다. 선 셋은 S-H1/H2/H3 등급 경계 그대로이며
             // 여기서 다시 계산하지 않는다(§5.7.2).
-            DrawThresholdBar(28f, 118f, "열", currentState.EngineHeat, HigherIsWorse,
+            ApplyGauge(layer, "heat", LastShiftUiIcon.Warning, LastShiftGaugeChannel.Materials,
+                2, "열", currentState.EngineHeat, HigherIsWorse,
                 LastShiftSituationTable.HeatCouplingTrigger,
                 LastShiftSituationTable.HeatRunawayTrigger,
                 LastShiftSituationTable.HeatLockTrigger);
 
-            // G-2(a) 넷째 막대. 승리 조건 셋 중 하나가 F3 뒤에만 있어서 아무도 못 보던 자리다.
-            // <b>숫자는 안 적는다</b> — 세 막대와 같은 문법으로 채워지는 길이만 보여준다(§3.2-a).
-            // 임계선도 없다. 목표는 막대가 가득 차는 것 자체이고, "지금 충분한가" 는 위의
+            // G-2(a) 넷째 줄. 승리 조건 셋 중 하나가 F3 뒤에만 있어서 아무도 못 보던 자리다.
+            // 임계선이 없다 — 목표는 게이지가 가득 차는 것 자체이고, "지금 충분한가" 는 위의
             // 필요 추력선이 답한다.
-            DrawThresholdBar(28f, 146f, "도킹",
-                currentState.DockProgress / LastShiftRecoveryTuning.DockTargetThrustSeconds, HigherIsBetter);
+            var docking = LastShiftResourceGauges.Docking(
+                currentState.DockProgress, LastShiftRecoveryTuning.DockTargetThrustSeconds);
+            var dockGauge = layer.Gauge("docking", LastShiftUiIcon.Docking, LastShiftGaugeChannel.Docking,
+                LastShiftHudLayout.SystemGaugeRect(3));
+            dockGauge.SetName("도킹");
+            dockGauge.SetValue(docking.Fill);
+            dockGauge.SetValueLabel(docking.ValueLabel);
+            dockGauge.SetTone(LastShiftResourceGauges.ToneOf(docking.Grade, Time.unscaledTime));
+            dockGauge.SetThresholds();
+            dockGauge.SetMovingMarker(-1f);
+        }
+
+        /// <summary>
+        /// 계통 게이지 한 줄. <b>"나쁜 쪽" 판정은 첫 임계선 하나로 한다</b> — 열은 첫 선
+        /// (S-H1)을 넘는 순간부터 나쁘고, 추력·전력은 선 아래로 내려가는 순간부터 나쁘다.
+        /// 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을 눈대중에 맡기면 임계선을 그린
+        /// 의미가 없다.
+        /// </summary>
+        private static LastShiftGaugeView ApplyGauge(
+            LastShiftUiLayer layer, string id, LastShiftUiIcon icon, LastShiftGaugeChannel channel,
+            int row, string label, float value, bool higherIsWorse, params float[] thresholds)
+        {
+            var fill = Mathf.Clamp01(float.IsNaN(value) ? 0f : value);
+            var first = thresholds.Length > 0 ? thresholds[0] : 0f;
+            var bad = higherIsWorse ? fill >= first : fill < first;
+
+            var gauge = layer.Gauge(id, icon, channel, LastShiftHudLayout.SystemGaugeRect(row));
+            gauge.SetName(label);
+            gauge.SetValue(fill);
+            gauge.SetValueLabel(string.Empty);
+            gauge.SetTone(bad ? LastShiftUiTheme.Crisis : LastShiftUiTheme.Nominal);
+            gauge.SetThresholds(thresholds);
+            return gauge;
+        }
+
+        /// <summary>
+        /// 자원 넷 — 정비여력·자재·산소·식량. 값 환산은
+        /// <see cref="LastShiftResourceGauges"/> 가 하고 여기서는 자리만 잡는다.
+        ///
+        /// <b>산소는 지금 서 있는 구역의 압력이다.</b> 배 전체 평균이 아닌 이유는 격리의
+        /// 효과가 평균에서는 안 보이기 때문이고, 그건 구역 4칸이 존재하는 이유와 같다.
+        /// 승무원이 아직 안 떴으면(에디터에서 플레이어 없이 켠 경우) 줄을 비운다.
+        /// </summary>
+        private void UpdateResourceGauges(LastShiftUiLayer layer)
+        {
+            if (layer == null) return;
+
+            ApplyResourceGauge(layer, "maintenance", LastShiftUiIcon.Maintenance,
+                LastShiftGaugeChannel.Maintenance, 0, "정비여력", LastShiftResourceGauges.Maintenance());
+            ApplyResourceGauge(layer, "materials", LastShiftUiIcon.Materials,
+                LastShiftGaugeChannel.Materials, 1, "자재", LastShiftResourceGauges.Materials());
+
+            var oxygen = TryResolveLocalZone(out var zone)
+                ? LastShiftResourceGauges.Oxygen(zonePressures[zone], ZoneOxygenGradeOf(zone))
+                : LastShiftGaugeReadout.Missing;
+            ApplyResourceGauge(layer, "oxygen", LastShiftUiIcon.Oxygen,
+                LastShiftGaugeChannel.Oxygen, 2, "산소", oxygen);
+
+            ApplyResourceGauge(layer, "food", LastShiftUiIcon.Food,
+                LastShiftGaugeChannel.Food, 3, "식량", LastShiftResourceGauges.Food());
+        }
+
+        private static void ApplyResourceGauge(
+            LastShiftUiLayer layer, string id, LastShiftUiIcon icon, LastShiftGaugeChannel channel,
+            int row, string label, in LastShiftGaugeReadout readout)
+        {
+            // 계통이 없는 축은 <b>0 으로 채워 그리지 않는다</b> — 빈 게이지는 "정보 없음" 이
+            // 아니라 "바닥났다" 로 읽힌다. 아예 안 빌리면 다음 프레임에 줄이 사라진다.
+            if (!readout.Available) return;
+
+            var gauge = layer.Gauge(id, icon, channel, LastShiftHudLayout.ResourceGaugeRect(row));
+            gauge.SetName(label);
+            gauge.SetValue(readout.Fill);
+            gauge.SetValueLabel(readout.ValueLabel);
+            gauge.SetTone(LastShiftResourceGauges.ToneOf(readout.Grade, Time.unscaledTime));
+            gauge.SetThresholds();
         }
 
         private const bool HigherIsBetter = false;
         private const bool HigherIsWorse = true;
-
-        private const float BarWidth = 520f;
-        private const float BarHeight = 18f;
-        private const float BarLabelWidth = 50f;
-
-        /// <summary>
-        /// G-2(b) 필요 추력선. <c>(150 − DockProgress) / 남은 초</c> 를 추력 막대 위에 그린다.
-        ///
-        /// <b>고정 임계선(흰색)과 다른 색인 것이 요점이다</b> — 0.30 은 도킹 순간의 조건이라
-        /// 안 움직이고, 이 선은 내가 추력을 어떻게 썼는지에 따라 매 초 움직인다. 같은 색이면
-        /// 둘이 같은 종류의 약속으로 읽힌다.
-        ///
-        /// 운석 전에는 그리지 않는다 — 그 구간에는 타이머가 흐르지 않아 선이 멈춰 있고,
-        /// 멈춘 선은 "지금 이만큼 내면 된다" 가 아니라 그냥 또 하나의 고정 임계로 읽힌다.
-        /// </summary>
-        private void DrawRequiredThrustMarker(float x, float y)
-        {
-            if (!HasAppliedImpact || IsResolved) return;
-
-            var required = RequiredThrust;
-            if (required <= 0f) return;
-
-            var barX = x + BarLabelWidth;
-            var previous = GUI.color;
-            GUI.color = new Color(0.45f, 1f, 0.75f);
-            GUI.DrawTexture(
-                new Rect(barX + BarWidth * Mathf.Clamp01(required) - 1f, y - 2f, 3f, BarHeight + 8f),
-                Texture2D.whiteTexture);
-            GUI.color = previous;
-        }
-
-        private void DrawThresholdBar(float x, float y, string label, float value, bool higherIsWorse,
-            params float[] thresholds)
-        {
-            const float barWidth = BarWidth;
-            const float barHeight = BarHeight;
-            var fill = Mathf.Clamp01(float.IsNaN(value) ? 0f : value);
-
-            // "나쁜 쪽" 판정은 첫 임계선 하나로 한다. 열은 첫 선(S-H1)을 넘는 순간부터
-            // 나쁘고, 추력·전력은 선 아래로 내려가는 순간부터 나쁘다.
-            var first = thresholds.Length > 0 ? thresholds[0] : 0f;
-            var bad = higherIsWorse ? fill >= first : fill < first;
-
-            GUI.Label(new Rect(x, y, 46f, 22f), label, bodyStyle);
-            var barX = x + BarLabelWidth;
-            GUI.DrawTexture(new Rect(barX, y + 2f, barWidth, barHeight), Texture2D.grayTexture);
-            // 길이만으로는 "모자라다" 가 안 읽히고, 그 판정을 플레이어가 눈대중으로 하게
-            // 두면 임계선을 그린 의미가 없다.
-            GUI.color = bad ? new Color(1f, 0.45f, 0.2f) : new Color(0.45f, 0.85f, 1f);
-            GUI.DrawTexture(new Rect(barX, y + 2f, barWidth * fill, barHeight), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            foreach (var threshold in thresholds)
-                GUI.DrawTexture(new Rect(barX + barWidth * Mathf.Clamp01(threshold) - 1f, y, 2f, barHeight + 4f),
-                    Texture2D.whiteTexture);
-        }
 
         /// <summary>
         /// 상시 지배 문제 1행(§5.7.3·§5.7.5). <b>운석 전에도 채워져 있다</b> — 프리셋이 t=0 에
@@ -2167,8 +2209,10 @@ namespace DoodleUp.Runtime
         ///
         /// <b>어느 계통인지까지만 말한다.</b> 원인과 인과사슬은 §3.1 이 금지한 자리다.
         /// </summary>
-        private void DrawDominantProblemLine()
+        private void DrawDominantProblemLine(LastShiftUiLayer layer)
         {
+            if (layer == null) return;
+
             var line = "계통 이상 없음";
             var color = Color.white;
 
@@ -2185,10 +2229,9 @@ namespace DoodleUp.Runtime
                 color = GradeColor(oxygenGrade);
             }
 
-            var previous = GUI.color;
-            GUI.color = color;
-            GUI.Label(new Rect(28f, 214f, 430f, 26f), line, headingStyle);
-            GUI.color = previous;
+            layer.Label("dominant",
+                new Rect(LastShiftHudLayout.ContentX, LastShiftHudLayout.DominantLineTop, 430f, 26f),
+                line, LastShiftHudLayout.HeadingFontSize, color, fontStyle: FontStyle.Bold);
         }
 
         private bool TryResolveWorstOxygenZone(out LastShiftZone zone, out LastShiftSituationGrade grade)
@@ -2212,8 +2255,10 @@ namespace DoodleUp.Runtime
         /// 그리면 없는 정보를 지어내는 것이다. 미장착이면 어느 구역에 있는지까지 말한다.
         /// 그건 원인이 아니라 위치라서 §3.1 에 걸리지 않는다.
         /// </summary>
-        private void DrawBatteryState()
+        private void DrawBatteryState(LastShiftUiLayer layer)
         {
+            if (layer == null) return;
+
             var battery = FindItem(LastShiftItemRole.Battery);
             if (battery == null) return;
 
@@ -2221,10 +2266,9 @@ namespace DoodleUp.Runtime
                 ? "배터리 장착됨"
                 : $"배터리 미장착 · {LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.Resolve(battery.transform.position))}";
 
-            var previous = GUI.color;
-            GUI.color = battery.Secured ? Color.white : new Color(1f, 0.86f, 0.35f);
-            GUI.Label(new Rect(466f, 216f, 220f, 24f), text, bodyStyle);
-            GUI.color = previous;
+            layer.Label("battery", new Rect(478f, LastShiftHudLayout.DominantLineTop + 2f, 240f, 24f),
+                text, LastShiftHudLayout.BodyFontSize,
+                battery.Secured ? Color.white : LastShiftUiTheme.Unstable);
         }
 
         /// <summary>
@@ -2234,16 +2278,19 @@ namespace DoodleUp.Runtime
         /// 아무도 없으면(에디터에서 플레이어를 안 띄운 경우) 아무것도 안 그린다 — 여기서
         /// 조종석을 기본값으로 삼으면 "구역 안" 조건이 사실상 사라진다.
         /// </summary>
-        private void DrawLocalDiagnosis()
+        private void DrawLocalDiagnosis(LastShiftUiLayer layer)
         {
+            if (layer == null) return;
             if (!TryResolveLocalZone(out var zone)) return;
 
             var situation = DominantSituationOf(zone);
             var cause = LastShiftSituationText.CauseLine(situation);
             if (string.IsNullOrEmpty(cause)) return;
 
-            GUI.Label(new Rect(28f, 246f, 650f, 24f),
-                $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}", bodyStyle);
+            layer.Label("diagnosis",
+                new Rect(LastShiftHudLayout.ContentX, LastShiftHudLayout.DiagnosisTop, 664f, 24f),
+                $"[{LastShiftZoneAtlas.ShortLabelOf(zone)}] {cause}",
+                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText, wrap: true);
         }
 
         private bool TryResolveLocalZone(out LastShiftZone zone)
@@ -2277,16 +2324,20 @@ namespace DoodleUp.Runtime
         /// </summary>
         public void DrawZonePressureCells(float originX, float originY)
         {
-            bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
-            sirenStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
-            sirenStyle.normal.textColor = sirenActive
-                ? Color.Lerp(new Color(0.88f, 0.94f, 1f), new Color(1f, 0.25f, 0.18f), BlinkPhase)
-                : new Color(0.88f, 0.94f, 1f);
+            var layer = LastShiftUiLayer.Instance;
+            if (layer == null) return;
+
+            // 사이렌 색은 프레임마다 흔들린다. IMGUI 시절에는 스타일 객체 하나의 색을 덮어
+            // 썼는데, 그러면 그 스타일을 같이 쓰는 다른 줄까지 같이 깜빡였다.
+            var sirenColor = sirenActive
+                ? Color.Lerp(LastShiftUiTheme.BodyText, new Color(1f, 0.25f, 0.18f), BlinkPhase)
+                : LastShiftUiTheme.BodyText;
 
             const float cellWidth = 132f;
             const float doorWidth = 52f;
             var x = originX;
-            GUI.Label(new Rect(x, originY, 34f, 24f), "구역", sirenStyle);
+            layer.Label("zoneHeader", new Rect(x, originY, 34f, 24f), "구역",
+                LastShiftHudLayout.BodyFontSize, sirenColor, fontStyle: FontStyle.Bold);
             x += 34f;
 
             for (var index = 0; index < LastShiftZoneAtlas.ZoneCount; index++)
@@ -2299,7 +2350,8 @@ namespace DoodleUp.Runtime
                     // 안 읽히고, 개구부2(전력실↔냉각실)는 거리 판독 대신 이 문이 차단을
                     // 전담한다(CT-01 §5.6.4).
                     var open = doorState[index - 1];
-                    GUI.Label(new Rect(x, originY, doorWidth, 24f), open ? "─┤├─" : "─┫┣─", bodyStyle);
+                    layer.Label($"zoneDoor{index}", new Rect(x, originY, doorWidth, 24f),
+                        open ? "─┤├─" : "─┫┣─", LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
                     x += doorWidth;
                 }
 
@@ -2307,33 +2359,33 @@ namespace DoodleUp.Runtime
                 // 셋째 층을 상시로 새어 보내던 자리다. 수치는 개구부 앞에서만 읽힌다(§5.3).
                 // 그리고 <b>산소만 본다</b> — 계통값을 방 칸에 겹치지 않는 이유는 §5.7.3 이다.
                 var grade = ZoneOxygenGradeOf(zone);
-                var style = grade == LastShiftSituationGrade.Crisis ? sirenStyle : bodyStyle;
-                var previous = GUI.color;
-                GUI.color = GradeColor(grade);
-                GUI.Label(new Rect(x, originY, cellWidth, 24f),
-                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {LastShiftSituationText.GradeLabel(grade)}", style);
-                GUI.color = previous;
+                layer.Label($"zoneCell{index}", new Rect(x, originY, cellWidth, 24f),
+                    $"{LastShiftZoneAtlas.ShortLabelOf(zone)} {LastShiftSituationText.GradeLabel(grade)}",
+                    LastShiftHudLayout.BodyFontSize, GradeColor(grade),
+                    fontStyle: grade == LastShiftSituationGrade.Crisis ? FontStyle.Bold : FontStyle.Normal);
                 x += cellWidth;
             }
 
             if (sirenActive)
-                GUI.Label(new Rect(originX, originY + 22f, ZonePressureRowWidth, 20f), "⚠ 전선 경보: 산소 위험 (전 구역)", sirenStyle);
+                layer.Label("zoneSiren", new Rect(originX, originY + 22f, ZonePressureRowWidth, 20f),
+                    "⚠ 전선 경보: 산소 위험 (전 구역)",
+                    LastShiftHudLayout.BodyFontSize, sirenColor, fontStyle: FontStyle.Bold);
         }
 
         /// <summary>
         /// N8 조건부 개인 예비 산소 막대. 소모가 시작된 승무원에게만 나타난다. 사이렌 시점에
         /// 이 막대를 띄우지 않는 것이 의도다 — 겹치면 사이렌이 곧 사망 예고가 된다.
         /// </summary>
-        private void DrawSuitOxygenGauges()
+        private void DrawSuitOxygenGauges(LastShiftUiLayer layer)
         {
-            if (players == null) return;
+            if (players == null || layer == null) return;
             var row = 0;
             foreach (var targetPlayer in players)
             {
                 if (targetPlayer == null) continue;
                 var crew = targetPlayer.GetComponent<LastShiftCrewOxygen>();
                 if (crew == null || !crew.ShowsSuitGauge) continue;
-                LastShiftCrewOxygen.DrawGauge(crew, targetPlayer.PlayerSlot.ToString(), row, ref sirenStyle);
+                LastShiftCrewOxygen.ApplyGauge(layer, crew, $"suit{row}", targetPlayer.PlayerSlot.ToString(), row);
                 row++;
             }
         }
@@ -2357,9 +2409,14 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void DrawDebugHud()
         {
-            GUI.Box(new Rect(16f, 268f, 680f, 208f), GUIContent.none);
-            GUI.Label(new Rect(28f, 274f, 650f, 24f), "[DEBUG F3]", headingStyle);
-            GUI.Label(new Rect(28f, 302f, 650f, 170f),
+            var layer = LastShiftUiLayer.Instance;
+            if (layer == null) return;
+
+            var debugPanel = LastShiftHudLayout.DebugPanelRect;
+            layer.Panel("debug", debugPanel, 0.92f);
+            layer.Label("debugHeading", new Rect(debugPanel.x + 12f, debugPanel.y + 6f, 650f, 24f),
+                "[DEBUG F3]", LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
+            layer.Label("debugBody", new Rect(debugPanel.x + 12f, debugPanel.y + 34f, 690f, 170f),
                 $"preset={currentPreset}  reset_gen={ResetGeneration}  impact_count={ImpactApplicationCount}  " +
                 $"phase={(HasAppliedImpact ? "POST-IMPACT" : "PRE-IMPACT")}\n" +
                 $"state: thrust={currentState.ThrustDemand:F2} bus={currentState.BusPower:F2} " +
@@ -2377,7 +2434,7 @@ namespace DoodleUp.Runtime
                 $"cause_chain: {(HasAppliedImpact ? LastResult.CauseChain : "-")}\n" +
                 "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M 운석 | 화살표 조종(8초) | " +
                 "판정 후 Space 다음 판 | F3 디버그",
-                bodyStyle);
+                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText, wrap: true);
         }
 
         private string ZonePressureDebugLine()

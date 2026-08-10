@@ -1,7 +1,7 @@
 {
   "name": "DoodleUp.Tests.EditMode",
   "rootNamespace": "DoodleUp.Tests.EditMode",
-  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Physics", "DoodleUp.Runtime", "DoodleUp.Editor", "Unity.InputSystem", "Unity.Netcode.Runtime", "Unity.Networking.Transport"],
+  "references": ["DoodleUp.Core", "DoodleUp.Input", "DoodleUp.Stroke", "DoodleUp.Physics", "DoodleUp.Runtime", "DoodleUp.Editor", "UnityEngine.UI", "Unity.InputSystem", "Unity.Netcode.Runtime", "Unity.Networking.Transport"],
   "optionalUnityReferences": ["TestAssemblies"],
   "includePlatforms": ["Editor"],
   "autoReferenced": false

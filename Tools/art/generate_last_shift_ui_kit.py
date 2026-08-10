@@ -91,9 +91,27 @@ def generate_chrome():
 
 
 def write_meta(path: Path):
-    guid=hashlib.md5(("last-shift-ui:"+path.name).encode()).hexdigest()
-    border="16, 16, 16, 16" if path.name=="panel_9slice.png" else "0, 0, 0, 0"
-    path.with_suffix(path.suffix+".meta").write_text(f'''fileFormatVersion: 2\nguid: {guid}\nTextureImporter:\n  internalIDToNameTable: []\n  externalObjects: {{}}\n  serializedVersion: 13\n  mipmaps:\n    mipMapMode: 0\n    enableMipMap: 0\n  isReadable: 0\n  streamingMipmaps: 0\n  sRGBTexture: 1\n  alphaIsTransparency: 1\n  textureType: 8\n  textureShape: 1\n  singleChannelComponent: 0\n  spriteMode: 1\n  spritePixelsToUnits: 100\n  spriteBorder: {{{border}}}\n  spriteGenerateFallbackPhysicsShape: 0\n  alphaUsage: 1\n  wrapU: 1\n  wrapV: 1\n  wrapW: 1\n  filterMode: 1\n  aniso: 1\n  textureCompression: 0\n  maxTextureSize: 2048\n  platformSettings: []\n  spriteSheet:\n    serializedVersion: 2\n    sprites: []\n    outline: []\n    physicsShape: []\n    bones: []\n    spriteID: 5e97eb03825dee720800000000000000\n    internalID: 0\n    vertices: []\n    indices:\n    edges: []\n    weights: []\n  userData:\n  assetBundleName:\n  assetBundleVariant:\n''',encoding="utf-8")
+    """guid 만 든 최소 .meta 를 쓴다. 이미 있으면 손대지 않는다.
+
+    v1 은 임포터 설정까지 전부 손으로 적었는데 그 YAML 을 유니티가 못 읽어
+    ("could not be parsed") 그림 17장이 통째로 AssetDatabase 에서 무시됐다.
+    스프라이트 여부·9-slice 경계·메시 종류는 이제 유니티 쪽 빌더가 정한다
+    (Assets/DoodleUp/Editor/LastShiftUiKitBuilder.cs). 여기서 하는 일은 그림을
+    다시 구워도 guid 가 안 바뀌게 고정해 두는 것뿐이다.
+    """
+    meta = path.with_suffix(path.suffix + ".meta")
+    if meta.exists():
+        return
+    guid = hashlib.md5(("last-shift-ui:" + path.name).encode()).hexdigest()
+    meta.write_text(
+        "fileFormatVersion: 2\n"
+        f"guid: {guid}\n"
+        "TextureImporter:\n"
+        "  externalObjects: {}\n"
+        "  userData:\n"
+        "  assetBundleName:\n"
+        "  assetBundleVariant:\n",
+        encoding="utf-8")
 
 
 def contact_sheet():

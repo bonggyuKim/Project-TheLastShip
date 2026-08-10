@@ -761,7 +761,6 @@ namespace DoodleUp.Runtime
 
         // ── 화면 ────────────────────────────────────────────────────────────
 
-        private static readonly Color PanelColor = new(0.05f, 0.07f, 0.1f, 0.94f);
         private static readonly Color GridColor = new(0.22f, 0.28f, 0.36f, 1f);
         private static readonly Color HullColor = new(0.14f, 0.18f, 0.24f, 1f);
         private static readonly Color FixedColor = new(0.30f, 0.36f, 0.44f, 1f);
@@ -801,8 +800,11 @@ namespace DoodleUp.Runtime
 
             if (!open)
             {
-                GUI.Label(new Rect(16f, Screen.height - 28f, 420f, 22f),
-                    $"선체 도면 — {toggleKey}", bodyStyle);
+                // 도면이 닫혀 있는 동안은 이 한 줄이 화면의 전부다. UGUI 로 두면 도면을
+                // 안 여는 대부분의 시간 동안 IMGUI 가 아예 안 돈다.
+                LastShiftUiLayer.Instance?.Label("placementHint",
+                    new Rect(16f, LastShiftUiLayer.ScreenSize.y - 28f, 420f, 22f),
+                    $"선체 도면 — {toggleKey}", 14, LastShiftUiTheme.BodyText);
                 return;
             }
 
@@ -814,7 +816,11 @@ namespace DoodleUp.Runtime
             var readout = new Rect(body.xMax - 260f, body.y, 260f, body.height);
             var chart = new Rect(catalog.xMax + 6f, body.y, readout.x - catalog.xMax - 12f, body.height);
 
-            Fill(panel, PanelColor);
+            // 도면 배경만 9-slice 패널로 바뀌었다(아트 키트 v1 §"화면별 적용"). 도면 자체는
+            // 선과 면을 좌표로 그리는 그림이라 UGUI 이미지로 옮길 대상이 아니다 — 사각형
+            // 수백 개를 <see cref="UnityEngine.UI.Image"/> 로 만들면 드로콜만 늘고 읽히는
+            // 것은 하나도 안 달라진다.
+            LastShiftUiLayer.Instance?.Panel("placement", panel, 0.94f);
 
             DrawHeader(header);
             DrawTabs(tabs);

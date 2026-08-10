@@ -309,7 +309,10 @@ namespace DoodleUp.Runtime
                 (Screen.height - PanelHeight) * 0.5f,
                 PanelWidth,
                 PanelHeight);
-            GUI.Box(panel, GUIContent.none);
+            // 로비 배경만 9-slice 패널로 바뀌었다(아트 키트 v1 §"화면별 적용"). 방 코드
+            // 입력칸과 버튼은 IMGUI 로 남는다 — UGUI 로 옮기려면 EventSystem 과 InputField 가
+            // 들어와야 하고, 그건 접속 경로 전체를 다시 검증해야 하는 별개의 일이다.
+            LastShiftUiLayer.Instance?.Panel("lobby", panel, 0.96f);
             GUILayout.BeginArea(new Rect(panel.x + 24f, panel.y + 20f, panel.width - 48f, panel.height - 40f));
             GUILayout.Label("LAST SHIFT", titleStyle);
 
@@ -391,11 +394,20 @@ namespace DoodleUp.Runtime
             var width = string.IsNullOrEmpty(status) ? 240f : 420f;
             var height = string.IsNullOrEmpty(status) ? 74f : 116f;
             var strip = new Rect(Screen.width - width - 16f, 16f, width, height);
-            GUI.Box(strip, GUIContent.none);
-            GUI.Label(new Rect(strip.x + 16f, strip.y + 10f, strip.width - 32f, 22f), "방 코드", bodyStyle);
-            GUI.Label(new Rect(strip.x + 16f, strip.y + 32f, strip.width - 32f, 34f), session.RoomCode, codeStyle);
+            var layer = LastShiftUiLayer.Instance;
+            if (layer == null) return;
+
+            layer.Panel("lobbyCode", strip, 0.94f);
+            layer.Label("lobbyCodeCaption", new Rect(strip.x + 16f, strip.y + 10f, strip.width - 32f, 22f),
+                "방 코드", 14, LastShiftUiTheme.BodyText);
+
+            // 코드는 입력칸이 아니라 읽는 값이라, IMGUI 시절 <c>textField</c> 스타일이 주던
+            // 상자는 뒤 9-slice 판이 이미 대신한다. 상자를 두 겹 그리면 판이 두 장으로 보인다.
+            layer.Label("lobbyCodeValue", new Rect(strip.x + 16f, strip.y + 32f, strip.width - 32f, 34f),
+                session.RoomCode, 26, Color.white, fontStyle: FontStyle.Bold);
             if (!string.IsNullOrEmpty(status))
-                GUI.Label(new Rect(strip.x + 16f, strip.y + 70f, strip.width - 32f, 40f), status, bodyStyle);
+                layer.Label("lobbyCodeStatus", new Rect(strip.x + 16f, strip.y + 70f, strip.width - 32f, 40f),
+                    status, 14, LastShiftUiTheme.BodyText, wrap: true);
         }
 
         private void EnsureStyles()
