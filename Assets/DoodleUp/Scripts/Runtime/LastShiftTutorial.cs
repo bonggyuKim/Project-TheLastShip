@@ -89,10 +89,11 @@ namespace DoodleUp.Runtime
     /// <c>docs/tutorial-o3-free-placement-farming-deposit-v1.md</c> 이고, 기획 §5 가 "진짜 새
     /// 코드는 상태기 하나다" 로 지목한 그 자리다.
     ///
-    /// <b>이 카드가 세우는 것은 <c>1</c>~<c>6</c>단계(파밍·적재)다.</b> <c>7</c>~<c>10</c>은
-    /// 도면·거점 쪽이라 <see cref="LastShiftTutorialStep.Schematic"/> 진입까지만 여기서 내고,
-    /// 그 뒤 전이는 후속 카드가 <see cref="AdvanceTo"/> 로 붙인다 — 단계 값을 미리 다 세워 두는
-    /// 이유는 조항 <c>T-9</c> 의 로그 번호와 §6 판정 구간이 열 단계를 전제하기 때문이다.
+    /// <b>전이가 나는 자리가 둘이다.</b> <c>1</c>~<c>6</c>단계(파밍·적재)는 관측 한 벌로 여기서
+    /// 나고(<see cref="Observe"/>), <c>7</c>~<c>10</c>단계는 도면 화면에서만 볼 수 있는 신호라
+    /// <c>LastShiftPlacementUi</c> 가 <see cref="AdvanceTo"/>·<see cref="HandOff"/> 로 민다.
+    /// 그 신호를 여기로 끌어오려면 상태기가 배치 화면·커서·카탈로그를 알아야 하고, 그러면
+    /// 아래 "아무것도 강제하지 않는다" 가 그 자리에서 깨진다.
     ///
     /// <b>상태기가 아무것도 강제하지 않는다.</b> 잠금(조항 <c>T-4</c>)도 도면 자동 개방도
     /// 여기서 하지 않고, 각 자리가 <see cref="Step"/> 을 읽어 스스로 판단한다 — 상태기가 UI 를
@@ -144,6 +145,23 @@ namespace DoodleUp.Runtime
 
         /// <summary>지금 단계 전이를 내고 있는가.</summary>
         public static bool IsRunning => IsTutorialPort;
+
+        /// <summary>
+        /// 선체 탭이 잠겨 있는가 — 조항 <c>T-4</c>. <c>9</c>단계
+        /// (<see cref="LastShiftTutorialStep.HullUnlocked"/>)가 여는 것이 정확히 이것 하나다.
+        ///
+        /// <b>잠그는 것이 아니라 잠겼는지를 답한다.</b> 상태기가 화면을 부르기 시작하면 튜토리얼을
+        /// 끄는 것이 "상태기를 안 돌린다" 가 아니라 "부르는 곳마다 분기" 가 된다(클래스 주석) —
+        /// 그래서 조문 <c>T-4</c> 는 여기 한 줄로 서고, 화면은 이 값을 읽기만 한다.
+        /// </summary>
+        public static bool HullTabLocked => IsRunning && Step < LastShiftTutorialStep.HullUnlocked;
+
+        /// <summary>
+        /// 되돌리기가 잠겨 있는가 — 조항 <c>T-4</c>. <b>탭 잠금과 달리 <c>9</c>단계에서도 안 풀린다</b>:
+        /// 골조는 거점의 뿌리이자 <c>8</c>단계가 산 유일한 것이라, 그것을 지우면 자재가
+        /// <c>0</c> 인 채로 다시 살 수 없어 판이 막힌다. 손을 떼는 <c>10</c>단계에서 함께 풀린다.
+        /// </summary>
+        public static bool UndoLocked => IsRunning;
 
         // ── 바깥에서 들어오는 사실 ──────────────────────────────────────────
 
@@ -250,8 +268,10 @@ namespace DoodleUp.Runtime
         };
 
         /// <summary>
-        /// 단계를 밖에서 밀어 올린다 — <c>7</c>~<c>10</c> 은 도면·거점 쪽 신호라 그 카드가
-        /// 자기 자리에서 부른다. <b>뒤로는 안 간다.</b>
+        /// 단계를 밖에서 밀어 올린다 — <c>8</c>·<c>9</c> 는 도면 화면에서만 보이는 신호(커서를
+        /// 처음 잡는 것 · 골조 확정)라 그 자리가 부른다. <b>뒤로는 안 간다.</b>
+        ///
+        /// <c>10</c>단계는 이 문으로 안 들어온다 — 진입이 곧 완료라 <see cref="HandOff"/> 다.
         /// </summary>
         public static void AdvanceTo(LastShiftTutorialStep step)
         {
@@ -260,9 +280,30 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 손을 뗀다 — <c>10</c>단계. <b>진입과 완료가 한 동작인 것이 이 단계의 정의다</b>:
+        /// §2 표의 <c>10</c>단계는 개산이 <c>—</c> 이고 배우는 것이 "규칙" 이다. 튜토리얼이 더
+        /// 할 일이 없다는 뜻이라, 여기서 잠금(조항 <c>T-4</c>)도 안내 띠도 <c>T-5</c>·<c>T-8</c>
+        /// 예외도 한꺼번에 끝난다.
+        ///
+        /// <b><c>9</c>단계에서만 받는다.</b> 조항 <c>T-6</c> 의 플래그는 도면 구간을 실제로 지난
+        /// 판만 받아야 하고, 중간에서 부를 수 있으면 화면 어딘가의 실수 하나가 튜토리얼을 통째로
+        /// 건너뛴 세이브를 만든다.
+        ///
+        /// 로그는 두 줄이다 — <c>step=10 ENTER</c> 가 §6 판정 <c>3</c>(자율 배치 <c>60</c>초)의
+        /// 시작선이고, 뒤따르는 <c>COMPLETE</c> 가 그 판이 플래그를 받았다는 증거다.
+        /// </summary>
+        public static void HandOff()
+        {
+            if (!IsRunning || Step != LastShiftTutorialStep.HullUnlocked) return;
+
+            Enter(LastShiftTutorialStep.HandsOff);
+            MarkCompleted();
+        }
+
+        /// <summary>
         /// 튜토리얼이 끝났다 — 조항 <c>T-6</c> 의 플래그가 여기서 선다. <c>10</c>단계에 도달한
-        /// 판만 부른다. 이후 <see cref="IsTutorialPort"/> 가 거짓이 되어 <c>T-5</c>·<c>T-8</c>
-        /// 예외도 같이 끝난다.
+        /// 판만 부른다(<see cref="HandOff"/>). 이후 <see cref="IsTutorialPort"/> 가 거짓이 되어
+        /// <c>T-5</c>·<c>T-8</c> 예외도 같이 끝난다.
         /// </summary>
         public static void MarkCompleted()
         {

@@ -101,6 +101,14 @@ namespace DoodleUp.Runtime
         /// </summary>
         private bool armed;
 
+        /// <summary>
+        /// 튜토리얼 <c>7</c>단계에서 이 화면을 이미 한 번 열었는가. <b>래치인 것이 의도다</b> —
+        /// 매 프레임 여는 조건으로 두면 <c>Esc</c> 로 닫는 순간 다음 프레임에 다시 떠서 화면이
+        /// 깜빡이고, 그건 잠금이 아니라 고장으로 읽힌다. 튜토리얼이 여는 것은 한 번이고, 그 뒤로는
+        /// 평시와 같이 <see cref="toggleKey"/> 로 연다.
+        /// </summary>
+        private bool tutorialSchematicOpened;
+
         private GameObject preview;
         private Material previewMaterial;
         private string lastResult = string.Empty;
@@ -160,6 +168,10 @@ namespace DoodleUp.Runtime
         public void SelectTab(LastShiftPlacementTab next)
         {
             if (tab == next) return;
+
+            // 조항 T-4 — 튜토리얼 7·8단계에서 선체 탭은 없는 것이다. 여기서 막지 않고 그리는
+            // 쪽에서만 숨기면 T 키와 예전 클릭 하나가 그대로 잠금을 통과한다.
+            if (next == LastShiftPlacementTab.Hull && LastShiftTutorial.HullTabLocked) return;
 
             tab = next;
             armed = false;
@@ -289,6 +301,79 @@ namespace DoodleUp.Runtime
             lastResult = "배치 권한을 잃었다";
         }
 
+        // ── 튜토리얼 7~10단계 ───────────────────────────────────────────────
+
+        /// <summary>
+        /// 튜토리얼 <c>7</c>단계 — <b>"필드가 비면 도면이 자동으로 열린다"</b>
+        /// (<c>docs/tutorial-o3-free-placement-farming-deposit-v1.md</c> §2).
+        ///
+        /// <b>상태기가 이 화면을 안 부르고 이 화면이 단계를 읽는다.</b> 반대로 두면 튜토리얼을
+        /// 끄는 것이 "상태기를 안 돌린다" 가 아니라 "부르는 곳마다 분기" 가 된다
+        /// (<see cref="LastShiftTutorial"/> 클래스 주석).
+        ///
+        /// 여는 것은 <b>한 번뿐이다</b>(<see cref="tutorialSchematicOpened"/>). 커서를 못 잡아
+        /// 못 열었으면 래치도 안 걸리므로 다음 프레임에 다시 시도한다 — <c>4</c>인에서 커서가
+        /// 호스트에 있는 동안 다른 화면이 열려 있는 경우가 그 자리다(기획 §4).
+        /// </summary>
+        private void OpenForTutorialSchematic()
+        {
+            if (LastShiftTutorial.Step != LastShiftTutorialStep.Schematic)
+            {
+                tutorialSchematicOpened = false;
+                return;
+            }
+
+            if (tutorialSchematicOpened || open || awaitingCursor) return;
+
+            SelectTab(LastShiftPlacementTab.Outpost);
+            ArmTutorialRotation();
+
+            if (!Open()) return;
+            tutorialSchematicOpened = true;
+        }
+
+        /// <summary>
+        /// 골조를 <b>안 맞는 자세로 세워 둔다</b> — 조항 <c>T-3</c>. <c>8</c>단계는 "처음엔 발자국이
+        /// 안 맞아 확정이 안 먹고, 돌리면 초록" 으로 회전을 가르치는데, 그 첫 자세를 만들 자리가
+        /// 여기다(<see cref="LastShiftOutpostCursor"/> 생성자 주석이 "잠금 훅과 같은 카드" 로
+        /// 미뤄 둔 그것).
+        ///
+        /// <b>커서 기본값을 안 건드리는 이유</b>: 시스템 기본 자세가 첫 프레임부터 빨간 것은
+        /// 튜토리얼 밖에서는 그냥 고장으로 읽힌다. 어긋난 자세는 튜토리얼이 <b>한 판에 한 번</b>
+        /// 만드는 것이지 커서의 성질이 아니다.
+        ///
+        /// <b><c>-1</c>단인 것이 요건이다</b> — <c>R</c> 한 번(<c>+1</c>)이면 기준 자세로 돌아온다.
+        /// §7 수용 문장의 "골조를 <b>한 번 돌려</b> 세우고" 가 그 한 번이다.
+        /// </summary>
+        private void ArmTutorialRotation()
+        {
+            if (!outpostCursor.CanCommit) return;
+            outpostCursor.Rotate(-1);
+        }
+
+        /// <summary>
+        /// 플레이어가 커서를 잡았다. <b>도면 구간의 두 전이가 전부 이 한 신호다</b>:
+        /// <c>7 → 8</c>(화면을 읽다가 골조를 대기 시작한다)과 <c>9 → 10</c>(넓어진 판에서 손을
+        /// 뗀다)이고, 사이의 <c>8 → 9</c> 만 확정이 낸다(<see cref="ConfirmOutpost"/>).
+        ///
+        /// <b><c>7</c>단계를 열자마자 안 넘기는 이유</b>: §2 표가 <c>7</c>단계에 <c>3</c>초를
+        /// 주고 배우는 것을 "화면 읽는 법" 으로 적는다. 여는 순간 넘기면 그 구간이 <c>0</c>초가
+        /// 되고, §6 판정 <c>2</c>(도면 구간 <c>20</c>초)가 읽기 시간을 뺀 값을 재게 된다.
+        /// </summary>
+        private static void NotifyCursorTouched()
+        {
+            switch (LastShiftTutorial.Step)
+            {
+                case LastShiftTutorialStep.Schematic:
+                    LastShiftTutorial.AdvanceTo(LastShiftTutorialStep.RotateFrame);
+                    break;
+
+                case LastShiftTutorialStep.HullUnlocked:
+                    LastShiftTutorial.HandOff();
+                    break;
+            }
+        }
+
         /// <summary>
         /// 항해 루프가 없는 씬(배치만 세운 검증 씬)에서 화면이 처음 열릴 때 원장을 첫 기항으로
         /// 밀어 준다. <b>임시 다리이고 그렇게 적어 두는 것이 요지다</b> —
@@ -361,10 +446,6 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 마지막에 놓은 모듈을 뺀다. <b>잎부터 빼는 것은 표가 강제한다</b> —
-        /// 자식이 달린 칸은 <see cref="LastShiftCompartments.TryRemove"/> 가 거부한다.
-        /// </summary>
-        /// <summary>
         /// 거점 확정. <b>서버 갈래가 없다</b> — 자재 원장에 복제 경로가 아직 없으므로
         /// (<see cref="LastShiftOutpostCommands"/> 주석) 여기서 세션을 물으면 "값은 각자 내고
         /// 골조는 공유하는" 반쪽 경로가 생긴다. 선외 파밍이 서버 권위로 옮겨오는 카드가
@@ -384,9 +465,31 @@ namespace DoodleUp.Runtime
             }
 
             var built = LastShiftOutpostAssembler.Rebuild(palette);
+
+            UnlockHullTabAfterTutorialFrame();
+
             lastResult = $"거점 확정 #{outcome.Index} · 자재 -{outcome.Cost} → 잔액 {LastShiftMaterials.Balance} · " +
                          $"사슬 깊이 {outpostCursor.ChainDepth} · 세운 것 {built}";
             return true;
+        }
+
+        /// <summary>
+        /// 튜토리얼 <c>9</c>단계 — 골조가 섰으니 선체 탭이 열린다(조항 <c>T-4</c>).
+        ///
+        /// <b>탭을 자동으로 넘기는 것이 이 단계의 요점이다.</b> §2 표가 <c>9</c>단계에 "여력 잔액이
+        /// <b>처음</b> 뜬다" 를 적었는데 머리줄은 지금 탭이 쓰는 잔액만 띄우므로
+        /// (<see cref="DrawHeader"/>), 선체 탭으로 넘어가는 것이 곧 그 장면이다. 자재가
+        /// <c>4 → 0</c> 이 된 바로 다음 화면에서 여력 잔액 하나만 떠 있는 것 — 두 잔액이 나란히
+        /// 뜨는 장면 없이 조항 <c>O-2</c> 를 가르치는 §2-1 의 순서가 이것이다.
+        /// </summary>
+        private void UnlockHullTabAfterTutorialFrame()
+        {
+            if (LastShiftTutorial.Step != LastShiftTutorialStep.Schematic &&
+                LastShiftTutorial.Step != LastShiftTutorialStep.RotateFrame) return;
+
+            // 잠금이 단계를 보므로 순서가 뒤집히면 안 된다 — 먼저 9단계로 올려야 탭이 열린다.
+            LastShiftTutorial.AdvanceTo(LastShiftTutorialStep.HullUnlocked);
+            SelectTab(LastShiftPlacementTab.Hull);
         }
 
         private bool UndoLastOutpost()
@@ -407,8 +510,14 @@ namespace DoodleUp.Runtime
             return true;
         }
 
+        /// <summary>
+        /// 마지막에 놓은 것을 뺀다. <b>튜토리얼이 도는 동안은 통째로 없는 동사다</b>
+        /// (조항 <c>T-4</c>) — 문구도 안 남긴다. "왜 안 되지" 를 만들지 않으려고 화면에서
+        /// 지운 것인데 여기서 사유를 적으면 그 자리가 다시 생긴다.
+        /// </summary>
         public bool UndoLast()
         {
+            if (LastShiftTutorial.UndoLocked) return false;
             if (tab == LastShiftPlacementTab.Outpost) return UndoLastOutpost();
 
             var network = Network;
@@ -495,6 +604,7 @@ namespace DoodleUp.Runtime
         {
             OpenWhenCursorGranted();
             CloseWhenCursorRevoked();
+            OpenForTutorialSchematic();
 
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
@@ -530,6 +640,7 @@ namespace DoodleUp.Runtime
                 if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Nudge(stepX, stepZ);
                 else cursor.Nudge(stepX, stepZ);
                 armed = false;
+                NotifyCursorTouched();
             }
 
             if (keyboard[Key.Enter].wasPressedThisFrame) Confirm();
@@ -560,6 +671,7 @@ namespace DoodleUp.Runtime
             if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Select(index);
             else cursor.Select(index);
             armed = false;
+            NotifyCursorTouched();
         }
 
         private void Rotate(int steps)
@@ -567,6 +679,7 @@ namespace DoodleUp.Runtime
             if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Rotate(steps);
             else cursor.Rotate(steps);
             armed = false;
+            NotifyCursorTouched();
         }
 
         // ── 미리보기 ────────────────────────────────────────────────────────
@@ -833,6 +946,8 @@ namespace DoodleUp.Runtime
 
             var after = tab == LastShiftPlacementTab.Outpost ? outpostCursor.Anchor : cursor.Anchor;
 
+            NotifyCursorTouched();
+
             if (!click) { armed = false; return; }
 
             var moved = !Mathf.Approximately(before.x, after.x) ||
@@ -906,19 +1021,26 @@ namespace DoodleUp.Runtime
         /// 탭 둘. <b>거점이 카탈로그 항목이 아니라 탭인 것이 §4.4 의 결론이다</b> — 목록에
         /// 섞으면 통화가 둘인 목록이 생기고, 조항 <c>O-2</c> 는 화면에서 먼저 깨진다.
         ///
-        /// <b>튜토리얼 잠금은 여기 없다.</b> 조항 <c>T-4</c>("튜토리얼 중 선체 탭은 비활성이고
-        /// 화면에 안 뜬다")는 튜토리얼 상태기가 이 화면에 거는 훅이고, 그 상태기가 아직 없다 —
-        /// 없는 상태기를 흉내 내는 분기를 지금 넣으면 그 카드가 그것부터 걷어내야 한다.
+        /// <b>튜토리얼 <c>7</c>·<c>8</c>단계에서는 선체 탭을 아예 안 그린다</b> — 조항 <c>T-4</c> 가
+        /// "회색으로 두면 '왜 안 눌리지' 가 생긴다. 없는 것이 낫다" 로 적은 그것이다. 잠금 자체는
+        /// <see cref="LastShiftTutorial.HullTabLocked"/> 가 답하고 <see cref="SelectTab"/> 이 막는다 —
+        /// 여기서는 <b>보이는 것만</b> 줄인다.
         /// </summary>
         private void DrawTabs(Rect strip)
         {
             const float width = 120f;
 
+            var locked = LastShiftTutorial.HullTabLocked;
+            var slot = 0;
+
             for (var index = 0; index < 2; index++)
             {
                 var value = (LastShiftPlacementTab)index;
-                var rect = new Rect(strip.x + index * (width + 4f), strip.y, width, strip.height);
+                if (locked && value == LastShiftPlacementTab.Hull) continue;
+
+                var rect = new Rect(strip.x + slot * (width + 4f), strip.y, width, strip.height);
                 var chosen = tab == value;
+                slot++;
 
                 Fill(rect, chosen
                     ? new Color(0.20f, 0.34f, 0.44f, 1f)
@@ -930,7 +1052,9 @@ namespace DoodleUp.Runtime
                 if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) SelectTab(value);
             }
 
-            GUI.Label(new Rect(strip.x + 2f * (width + 4f) + 8f, strip.y, strip.width, strip.height),
+            if (locked) return;
+
+            GUI.Label(new Rect(strip.x + slot * (width + 4f) + 8f, strip.y, strip.width, strip.height),
                 $"{tabKey} 로 전환", smallStyle);
         }
 
@@ -1027,9 +1151,16 @@ namespace DoodleUp.Runtime
             GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 200f, 16f), "선수 ←", smallStyle);
             GUI.Label(new Rect(chart.xMax - 60f, chart.y + 4f, 60f, 16f), "→ 선미", smallStyle);
             GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
-                "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소 · Del 마지막 해제",
-                smallStyle);
+                ChartHintText, smallStyle);
         }
+
+        /// <summary>
+        /// 도면 아래 조작 한 줄. <b>튜토리얼이 도는 동안 <c>Del</c> 이 빠진다</b> — 조항 <c>T-4</c>.
+        /// 동사를 막아 놓고 안내에만 남기면 그 줄이 곧 "왜 안 되지" 를 만든다.
+        /// </summary>
+        private static string ChartHintText =>
+            "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소" +
+            (LastShiftTutorial.UndoLocked ? string.Empty : " · Del 마지막 해제");
 
         /// <summary>
         /// 거점 도면. <b>구역 띠도 원반 테두리도 안 그린다</b> — 거점에는 압력 구역이 없고
@@ -1061,8 +1192,7 @@ namespace DoodleUp.Runtime
 
             GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 260f, 16f), "선수 ←  ·  원반 바깥 좌현", smallStyle);
             GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
-                "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소 · Del 마지막 해제",
-                smallStyle);
+                ChartHintText, smallStyle);
         }
 
         /// <summary>후보 골조와 계류면. 붙는 면이 흰 선이다 — 선체 탭의 문 표시와 같은 자리다.</summary>
@@ -1128,15 +1258,19 @@ namespace DoodleUp.Runtime
             Row(ok
                 ? armed ? "한 번 더 클릭 = 확정" : "계류 가능 — 클릭 또는 Enter"
                 : affordable
-                    ? LastShiftPlacementCommands.Reason(outpostCursor.Rejection, outpostCursor.Faults)
+                    ? RejectionText
                     : "자재가 모자란다");
             GUI.color = previous;
 
             line += 6f;
             Row($"자유면 {outpostFreeFaces.Count}구간 · 세운 골조 {LastShiftOutpost.PieceCount}");
-            Row(LastShiftOutpost.PieceCount > 0
-                ? $"Del 환수 {LastShiftOutpost.PaidFor(LastShiftOutpost.Count - 1)}"
-                : "뜯을 골조 없음", smallStyle);
+
+            // 조항 T-4 — 튜토리얼이 도는 동안 환수 줄은 없다. UndoLast 가 이미 막고 있으므로
+            // 여기 남겨 두면 값만 적어 놓고 안 되는 줄이 된다.
+            if (!LastShiftTutorial.UndoLocked)
+                Row(LastShiftOutpost.PieceCount > 0
+                    ? $"Del 환수 {LastShiftOutpost.PaidFor(LastShiftOutpost.Count - 1)}"
+                    : "뜯을 골조 없음", smallStyle);
 
             if (hoveredIndex >= 0 && hoveredIndex < LastShiftOutpost.Count)
                 Row($"짚은 것 — {LastShiftOutpost.NameOf(hoveredIndex)} #{hoveredIndex}", smallStyle);
@@ -1144,6 +1278,20 @@ namespace DoodleUp.Runtime
             if (lastResult.Length > 0)
                 GUI.Label(new Rect(column.x + 4f, column.yMax - 60f, column.width - 8f, 56f), lastResult, bodyStyle);
         }
+
+        /// <summary>
+        /// 왜 확정이 안 먹는가. <b>튜토리얼 <c>8</c>단계에서만 사유 대신 조작이 뜬다</b> —
+        /// 조항 <c>T-3</c>: "실패 사유가 아니라 조작 프롬프트로 가르친다".
+        ///
+        /// 그 단계의 실패는 <b>회전 하나뿐이다</b>. 화면이 열릴 때 골조를 어긋난 자세로 세워 두고
+        /// (<see cref="ArmTutorialRotation"/>) 자유면이 잔해 한 면이라, 빨간 사유를 읽을 이유가 없는
+        /// 자리에 사유를 띄우면 <b>배치 시스템이 어렵다는 인상만 남는다</b>. 잘못 지어지는 경로가
+        /// 없으므로 기획 §5.1 의 "실패할 수 없다" 도 그대로다.
+        /// </summary>
+        private string RejectionText =>
+            LastShiftTutorial.Step == LastShiftTutorialStep.RotateFrame
+                ? "회전 R / 휠"
+                : LastShiftPlacementCommands.Reason(outpostCursor.Rejection, outpostCursor.Faults);
 
         /// <summary>원반 테두리. <b>바깥은 시작 배가 안 쓰는 자리다</b>(§4.3-6) — 점선으로 두른다.</summary>
         private void DrawRim(in LastShiftHullSchematic schematic)

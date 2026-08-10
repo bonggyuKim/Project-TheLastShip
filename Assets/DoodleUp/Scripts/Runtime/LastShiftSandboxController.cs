@@ -2037,7 +2037,9 @@ namespace DoodleUp.Runtime
             LastShiftTutorialStep.Harvest => "자재를 뜯는다 — 한 번에 둘이다",
             LastShiftTutorialStep.Deposit => "홀 바닥에 서면 들어간다",
             LastShiftTutorialStep.SecondTrip => "한 번 더 — 왕복이 루프의 단위다",
-            LastShiftTutorialStep.Schematic => "도면이 열린다",
+            LastShiftTutorialStep.Schematic => "도면이 열린다 — 거점 탭에 골조가 하나 있다",
+            LastShiftTutorialStep.RotateFrame => "골조를 잔해 면에 댄다 — 안 맞으면 R 로 돌린다",
+            LastShiftTutorialStep.HullUnlocked => "선체 탭이 열렸다 — 자재가 0 이어도 여력으로 짓는다",
             _ => "도면"
         };
 
