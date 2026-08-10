@@ -3,14 +3,14 @@
   "coordinateSystem": "Unity x,y,z; metres; y-up; asset pivot=bottom-center",
   "sourceOfTruth": "DoodleUp.Runtime.LastShiftPlazaLayout",
   "cockpitCamera": { "spawn": [-7.6, 0.1, 0], "lookAt": [0, 1.65, 0] },
-  "plaza": { "bounds": [-6, 6, -6, 6], "ceiling": 3.2, "core": [-2, 2, -2, 2] },
+  "plaza": { "bounds": [-7, 7, -7, 7], "ceiling": 3.2, "core": [-2, 2, -2, 2] },
   "spaces": [
-    { "id": "cockpit", "bounds": [-14, -6, -3, 3], "ceiling": 3.2, "door": { "position": [-6, 0, 0], "rotationY": 90, "kind": "opening" }, "feature": "LPK_Cockpit_ControlConsole" },
-    { "id": "lifeSupport", "bounds": [6, 14, -3, 3], "ceiling": 3.2, "door": { "position": [6, 0, 0], "rotationY": -90, "kind": "pressure" }, "feature": "LPK_LifeSupport_Scrubber" },
-    { "id": "power", "bounds": [-3, 3, -11, -6], "ceiling": 3.2, "door": { "position": [0, 0, -6], "rotationY": 0, "kind": "pressure" }, "feature": "LPK_Power_Switchgear" },
-    { "id": "cooling", "bounds": [-3, 3, 6, 11], "ceiling": 3.2, "door": { "position": [0, 0, 6], "rotationY": 180, "kind": "pressure" }, "feature": "LPK_Cooling_Exchanger" },
-    { "id": "airlockHall", "bounds": [-11, -3, -12, -6], "ceiling": 3.0, "door": { "position": [-4.5, 0, -6], "rotationY": 0, "kind": "plain" }, "feature": "LPK_Airlock_Exterior_4m" },
-    { "id": "quarters", "bounds": [3, 9, 6, 10], "ceiling": 3.0, "door": { "position": [4.5, 0, 6], "rotationY": 180, "kind": "plain" }, "feature": "LPK_Quarters_Bunk" }
+    { "id": "cockpit", "bounds": [-16, -6, -4, 4], "ceiling": 3.2, "door": { "position": [-6, 0, 0], "rotationY": 90, "kind": "opening" }, "feature": "LPK_Cockpit_ControlConsole" },
+    { "id": "lifeSupport", "bounds": [6, 16, -4, 4], "ceiling": 3.2, "door": { "position": [6, 0, 0], "rotationY": -90, "kind": "pressure" }, "feature": "LPK_LifeSupport_Scrubber" },
+    { "id": "power", "bounds": [-4, 4, -14, -6], "ceiling": 3.2, "door": { "position": [0, 0, -6], "rotationY": 0, "kind": "pressure" }, "feature": "LPK_Power_Switchgear" },
+    { "id": "cooling", "bounds": [-4, 4, 6, 14], "ceiling": 3.2, "door": { "position": [0, 0, 6], "rotationY": 180, "kind": "pressure" }, "feature": "LPK_Cooling_Exchanger" },
+    { "id": "airlockHall", "bounds": [-12, -4, -12, -6], "ceiling": 3.0, "door": { "position": [-4.5, 0, -6], "rotationY": 0, "kind": "plain" }, "feature": "LPK_Airlock_Exterior_4m" },
+    { "id": "quarters", "bounds": [4, 12, 6, 12], "ceiling": 3.0, "door": { "position": [4.5, 0, 6], "rotationY": 180, "kind": "plain" }, "feature": "LPK_Quarters_Bunk" }
   ],
   "placementRules": [
     { "id": "floor", "assetId": "LPK_Floor_Square_2m", "target": ["plaza", "cockpit", "lifeSupport", "power", "cooling", "airlockHall", "quarters"], "operation": "tileBounds", "tile": [2, 2], "positionY": 0 },

@@ -149,9 +149,8 @@ namespace DoodleUp.Editor
 
         private static void AppendAssembly(GameObject ship, IReadOnlyDictionary<string, GameObject> p)
         {
-            // 물리 경계와 네트워크 오브젝트는 남기고, 기존 graybox의 시각 렌더러만 끈다.
-            // 새 키트 루트는 그 뒤에 세워지므로 이 필터가 새 프리팹을 건드리지 않는다.
-            foreach (var renderer in ship.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
+            // Legacy hierarchy is retained until its runtime door references are
+            // replaced.  Do not use Renderer.enabled as a visual cleanup path.
             var old = ship.transform.Find("ModularKitAssembly");
             if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
             var map = LoadMap(p);
