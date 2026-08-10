@@ -2,6 +2,7 @@
   "schema": "lastshift-modular-map/v1",
   "coordinateSystem": "Unity x,y,z; metres; y-up; asset pivot=bottom-center",
   "sourceOfTruth": "DoodleUp.Runtime.LastShiftPlazaLayout",
+  "cockpitCamera": { "spawn": [-7.6, 0.1, 0], "lookAt": [0, 1.65, 0] },
   "plaza": { "bounds": [-6, 6, -6, 6], "ceiling": 3.2, "core": [-2, 2, -2, 2] },
   "spaces": [
     { "id": "cockpit", "bounds": [-14, -6, -3, 3], "ceiling": 3.2, "door": { "position": [-6, 0, 0], "rotationY": 90, "kind": "opening" }, "feature": "LPK_Cockpit_ControlConsole" },
@@ -19,8 +20,8 @@
     { "id": "plazaLift", "assetId": "LPK_CentralLift_4m", "position": [0, 0, 0], "rotationY": 0 },
     { "id": "cockpitWindow", "assetId": "LPK_Cockpit_ViewWindow_4m", "position": [-14, 0, 0], "rotationY": 90 },
     { "id": "lifeWindow", "assetId": "LPK_Hull_WindowBay_4m", "position": [14, 0, 0], "rotationY": -90 },
-    { "id": "outerShell", "assetId": "LPK_Hull_Exterior_Curve45", "operation": "hullRing", "radius": 17.2, "count": 8, "rotationStep": 45 },
-    { "id": "outerShellQuarter", "assetId": "LPK_Hull_Exterior_Curve90", "operation": "hullRing", "radius": 17.2, "count": 4, "rotationStep": 90 },
+    { "id": "outerShell", "assetId": "LPK_Hull_Exterior_Curve45", "operation": "footprintShell", "shellClearance": 0.2 },
+    { "id": "outerShellQuarter", "assetId": "LPK_Hull_Exterior_Curve90", "operation": "footprintShellCorners", "shellClearance": 0.2 },
     { "id": "airlockHatch", "assetId": "LPK_DeckHatch_2m", "position": [-7, 0, -12], "rotationY": 0 },
     { "id": "salvage", "assetId": "LPK_SalvagePad_4m", "position": [-7, 0, -10], "rotationY": 0 },
     { "id": "tether", "assetId": "LPK_TetherRack_2m", "position": [-6.6, 0, -1.3], "rotationY": 90 },

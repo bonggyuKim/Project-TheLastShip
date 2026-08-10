@@ -320,8 +320,9 @@ namespace DoodleUp.Runtime
         {
             if (player == null || !slotAllocator.TryGet(player.OwnerClientId, out var slot)) return;
             var controller = player.GetComponent<LastShiftPlayerController>();
-            var position = SpawnForSlot(slot);
-            var rotation = RotationForSlot(slot);
+            var pose = player.GetComponent<LastShiftMapSpawnPose>();
+            var position = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+            var rotation = pose != null ? pose.RotationFor(position) : RotationForSlot(slot);
             // <b>CharacterController 를 켠 채 transform 만 옮기지 않는다.</b> PhysX 컨트롤러는
             // 옮기기 전 자세를 자기 안에 들고 있어서, 물리 동기화 전에 그 프레임의 첫 Move 가
             // 돌면 승무원이 프리팹 원점 기준으로 쓸린다. 그러면 스폰 좌표는 갑판 위인데 실제
@@ -394,8 +395,9 @@ namespace DoodleUp.Runtime
                 var player = client.Value.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
                 if (player == null) continue;
 
-                var position = SpawnForSlot(slot);
-                var rotation = RotationForSlot(slot);
+                var pose = player.GetComponent<LastShiftMapSpawnPose>();
+                var position = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+                var rotation = pose != null ? pose.RotationFor(position) : RotationForSlot(slot);
                 player.ResetServerAimCache(position, rotation);
                 player.ResetToSlotRpc(position, rotation);
                 // 경고로 남긴다. 정상 플레이에서는 한 번도 안 나와야 하는 줄이고, 나온다면
@@ -424,8 +426,9 @@ namespace DoodleUp.Runtime
                 if (client.Value.PlayerObject == null || !slotAllocator.TryGet(client.Key, out var slot)) continue;
                 var player = client.Value.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
                 if (player == null) continue;
-                var slotPosition = SpawnForSlot(slot);
-                var slotRotation = RotationForSlot(slot);
+                var pose = player.GetComponent<LastShiftMapSpawnPose>();
+                var slotPosition = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+                var slotRotation = pose != null ? pose.RotationFor(slotPosition) : RotationForSlot(slot);
                 // 실제 이동은 소유 클라이언트가 수행한다. 서버는 조준 캐시만 리셋 자세로 맞춰
                 // owner 보고가 도착하기 전 stale 조준으로 grab 이 판정되는 것을 막는다.
                 player.ResetServerAimCache(slotPosition, slotRotation);

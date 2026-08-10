@@ -135,6 +135,18 @@ namespace DoodleUp.Editor
             AppendAssembly(ship, prefabs);
         }
 
+        internal static bool TryGetCockpitCameraPose(out Vector3 spawn, out Vector3 lookAt)
+        {
+            spawn = Vector3.zero;
+            lookAt = Vector3.forward;
+            if (!File.Exists(MapPath)) return false;
+            var map = JsonUtility.FromJson<ModularMap>(File.ReadAllText(MapPath));
+            if (map?.cockpitCamera?.spawn == null || map.cockpitCamera.lookAt == null) return false;
+            spawn = Vector(map.cockpitCamera.spawn);
+            lookAt = Vector(map.cockpitCamera.lookAt);
+            return true;
+        }
+
         private static void AppendAssembly(GameObject ship, IReadOnlyDictionary<string, GameObject> p)
         {
             // 물리 경계와 네트워크 오브젝트는 남기고, 기존 graybox의 시각 렌더러만 끈다.
@@ -174,6 +186,8 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
                 else if (rule.operation == "hullRing") HullRing(p[rule.assetId], root, rule);
+                else if (rule.operation == "footprintShell") FootprintShell(p[rule.assetId], root, rule, map.spaces, false);
+                else if (rule.operation == "footprintShellCorners") FootprintShell(p[rule.assetId], root, rule, map.spaces, true);
                 else Place(p[rule.assetId], root, rule.id, Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
             }
             foreach (var space in map.spaces)
@@ -231,6 +245,51 @@ namespace DoodleUp.Editor
             }
         }
 
+        private static void FootprintShell(GameObject prefab, Transform root, MapRule rule, MapSpace[] spaces, bool corners)
+        {
+            var hull = ConvexHull(spaces, rule.shellClearance);
+            for (var i = 0; i < hull.Count; i++)
+            {
+                var a = hull[i]; var b = hull[(i + 1) % hull.Count];
+                var edge = b - a;
+                var angle = Mathf.Atan2(edge.y, edge.x) * Mathf.Rad2Deg;
+                if (corners)
+                    Place(prefab, root, rule.id, new Vector3(a.x, 0f, a.y), angle - 45f);
+                else
+                    Place(prefab, root, rule.id, new Vector3((a.x + b.x) * 0.5f, 0f, (a.y + b.y) * 0.5f), angle,
+                        new Vector3(edge.magnitude / 4f, 1f, 1f));
+            }
+        }
+
+        private static List<Vector2> ConvexHull(MapSpace[] spaces, float clearance)
+        {
+            var points = new List<Vector2>();
+            foreach (var s in spaces)
+            {
+                var b = s.bounds;
+                points.Add(new Vector2(b[0] - clearance, b[2] - clearance)); points.Add(new Vector2(b[0] - clearance, b[3] + clearance));
+                points.Add(new Vector2(b[1] + clearance, b[2] - clearance)); points.Add(new Vector2(b[1] + clearance, b[3] + clearance));
+            }
+            points.Sort((a, b) => a.x == b.x ? a.y.CompareTo(b.y) : a.x.CompareTo(b.x));
+            var hull = new List<Vector2>();
+            foreach (var point in points)
+            {
+                while (hull.Count >= 2 && Cross(hull[hull.Count - 1] - hull[hull.Count - 2], point - hull[hull.Count - 1]) <= 0f) hull.RemoveAt(hull.Count - 1);
+                hull.Add(point);
+            }
+            var lowerCount = hull.Count;
+            for (var i = points.Count - 2; i >= 0; i--)
+            {
+                var point = points[i];
+                while (hull.Count > lowerCount && Cross(hull[hull.Count - 1] - hull[hull.Count - 2], point - hull[hull.Count - 1]) <= 0f) hull.RemoveAt(hull.Count - 1);
+                hull.Add(point);
+            }
+            hull.RemoveAt(hull.Count - 1);
+            return hull;
+        }
+
+        private static float Cross(Vector2 a, Vector2 b) => a.x * b.y - a.y * b.x;
+
         private static void RemoveExcludedObjects(GameObject ship, string[] excluded)
         {
             if (excluded == null) return;
@@ -251,10 +310,11 @@ namespace DoodleUp.Editor
             instance.transform.localScale = scale ?? Vector3.one;
         }
 
-        [Serializable] private sealed class ModularMap { public string schema; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public string[] excluded; }
+        [Serializable] private sealed class ModularMap { public string schema; public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public string[] excluded; }
+        [Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
         [Serializable] private sealed class MapPlaza { public float[] bounds; public float ceiling; }
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; }
-        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; }
+        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; }
     }
 }

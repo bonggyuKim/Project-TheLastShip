@@ -181,6 +181,9 @@ namespace DoodleUp.Editor
 
             var controller = player.AddComponent<LastShiftPlayerController>();
             controller.Configure(camera, socket);
+            if (!LastShiftModularKitImporter.TryGetCockpitCameraPose(out var mapSpawn, out var mapLookAt))
+                throw new System.InvalidOperationException("Canonical map cockpitCamera.spawn/lookAt missing.");
+            player.AddComponent<LastShiftMapSpawnPose>().Configure(mapSpawn, mapLookAt);
             var networkPlayer = player.AddComponent<LastShiftNetworkPlayer>();
             networkPlayer.Configure(controller, camera, bodyRenderer);
             var animatorBridge = player.AddComponent<LastShiftPlayerAnimator>();
