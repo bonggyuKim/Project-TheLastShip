@@ -193,6 +193,7 @@ namespace DoodleUp.Runtime
         private void OnGUI()
         {
             if (!IsSpawned || !IsOwner || IsServer) return;
+            if (LastShiftRoomLobby.IsBlockingGameplay) return;
             var crew = GetComponent<LastShiftCrewOxygen>();
             LastShiftCrewOxygen.DrawGauge(crew, playerController != null ? playerController.PlayerSlot.ToString() : "CREW", 0, ref suitGaugeStyle);
 

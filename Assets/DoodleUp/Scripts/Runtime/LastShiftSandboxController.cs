@@ -1959,6 +1959,11 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void OnGUI()
         {
+            // 방 코드 로비가 떠 있는 동안은 한 줄도 그리지 않는다. 이 컴포넌트는 씬에 있어
+            // 세션이 서기 전부터 돌기 때문에, 막지 않으면 로비 위로 목표 줄·계기 막대가
+            // 겹쳐 나온다 — 아직 아무도 스폰되지 않아 값도 전부 초기값이다.
+            if (LastShiftRoomLobby.IsBlockingGameplay) return;
+
             headingStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             bodyStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
 

@@ -1173,6 +1173,10 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void OnGUI()
         {
+            // 접속이 끊겨 로비로 돌아간 프레임에는 승무원이 아직 살아 있을 수 있다.
+            // 그때 조준점·상호작용 프롬프트가 로비 위에 남으면 판이 도는 것으로 보인다.
+            if (LastShiftRoomLobby.IsBlockingGameplay) return;
+
             identityStyle ??= new GUIStyle(GUI.skin.label)
             {
                 fontSize = 16,

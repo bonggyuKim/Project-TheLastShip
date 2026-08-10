@@ -602,6 +602,10 @@ namespace DoodleUp.Runtime
 
         private void Update()
         {
+            // 로비에서 친 키가 도면을 열어 두면, 방에 들어간 첫 프레임이 도면 화면이 된다.
+            // 커서도 로비가 풀어 둔 상태라 자동 개방 경로까지 그대로 탄다.
+            if (LastShiftRoomLobby.IsBlockingGameplay) return;
+
             OpenWhenCursorGranted();
             CloseWhenCursorRevoked();
             OpenForTutorialSchematic();
@@ -789,6 +793,10 @@ namespace DoodleUp.Runtime
 
         private void OnGUI()
         {
+            // 로비 단계에는 도면도 그 안내 줄도 화면에 없다. 배가 아직 남의 것일 수도 있는
+            // 시점이라 여기서 그리면 "이미 판에 들어와 있다" 로 읽힌다.
+            if (LastShiftRoomLobby.IsBlockingGameplay) return;
+
             EnsureStyles();
 
             if (!open)

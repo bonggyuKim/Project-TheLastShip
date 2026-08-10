@@ -36,8 +36,26 @@ namespace DoodleUp.Runtime
         private const float PanelHeight = 250f;
         private const string CodeFieldName = "LastShiftRoomCodeField";
 
+        /// <summary>로비 뒤에 깔리는 색. 판 화면이 아니라 메뉴 화면임이 첫 프레임에 읽혀야 한다.</summary>
+        private static readonly Color BackdropColor = new(0.04f, 0.05f, 0.07f);
+
+        /// <summary>
+        /// 지금 화면을 잡고 있는 로비. 게임 HUD 는 이것 하나만 보고 스스로 물러난다.
+        ///
+        /// 정적으로 둔 이유는 HUD 를 그리는 컴포넌트가 씬 곳곳(<c>LAST_SHIFT_RUNTIME</c> 의
+        /// 샌드박스·도면, 그리고 스폰된 승무원)에 흩어져 있어 로비 참조를 각자 물리면
+        /// 씬을 다시 구울 때마다 그 배선이 하나씩 빠지기 때문이다. 파괴된 로비는 유니티
+        /// 널 규칙에 따라 스스로 <c>null</c> 이 되므로 정적 값이 늙어 붙지 않는다.
+        /// </summary>
+        private static LastShiftRoomLobby screenOwner;
+
+        /// <summary>로비가 화면을 잡고 있는지. 참이면 게임 HUD 는 한 줄도 그리지 않는다.</summary>
+        public static bool IsBlockingGameplay => screenOwner != null;
+
         private LastShiftNetworkSession session;
         private Phase phase = Phase.Hidden;
+        private Camera backdrop;
+        private bool backdropRetiring;
         private string typedCode = string.Empty;
         private string status = string.Empty;
         private LastShiftRoomLookup lookup;
@@ -58,7 +76,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         public void Open()
         {
-            phase = Phase.Menu;
+            SetPhase(Phase.Menu);
             status = string.Empty;
             focusRequested = true;
             ReleaseCursor();
@@ -67,10 +85,38 @@ namespace DoodleUp.Runtime
         private void OnDestroy()
         {
             UnsubscribeFromClientEvents();
+            if (screenOwner == this) screenOwner = null;
+            DestroyBackdrop();
+        }
+
+        /// <summary>
+        /// 단계 전환은 전부 여기를 지난다. 화면 주인과 배경 카메라가 단계와 어긋나지 않게
+        /// 한 곳에서 같이 움직인다 — 필드에 직접 대입하면 로비는 사라졌는데 HUD 가 계속
+        /// 숨어 있거나, 로비는 떠 있는데 카메라가 없는 상태가 경로마다 따로 생긴다.
+        /// </summary>
+        private void SetPhase(Phase next)
+        {
+            phase = next;
+
+            // Hosting 은 판이 이미 도는 중이다 — 우상단 코드 띠만 남고 게임 화면이 정본이다.
+            var blocking = next != Phase.Hidden && next != Phase.Hosting;
+            if (blocking)
+            {
+                screenOwner = this;
+                EnsureBackdrop();
+                return;
+            }
+
+            if (screenOwner == this) screenOwner = null;
+            // 여기서 바로 지우면 승무원 카메라가 아직 안 붙은 프레임에 "렌더링할 카메라가
+            // 없다" 가 다시 뜬다. 판 카메라가 실제로 생긴 것을 보고 물러난다.
+            backdropRetiring = backdrop != null;
         }
 
         private void Update()
         {
+            if (backdropRetiring) RetireBackdropWhenGameCameraExists();
+
             switch (phase)
             {
                 case Phase.Searching:
@@ -82,9 +128,58 @@ namespace DoodleUp.Runtime
                 case Phase.Menu:
                     // 테스트나 자동화가 로비를 거치지 않고 직접 host 를 띄우는 경로가 있다.
                     // 그때 로비가 화면에 남아 있으면 조작을 가로채므로 스스로 물러난다.
-                    if (session.NetworkManager != null && session.NetworkManager.IsListening) phase = Phase.Hidden;
+                    if (session.NetworkManager != null && session.NetworkManager.IsListening) SetPhase(Phase.Hidden);
                     break;
             }
+        }
+
+        /// <summary>
+        /// 로비 배경 카메라. 카메라는 승무원 프리팹에만 있어서, 아직 아무도 스폰되지 않은
+        /// 로비 단계에는 씬에 카메라가 하나도 없다 — 그래서 "No cameras rendering" 경고가
+        /// 떴다. 판을 비추라는 것이 아니라 <b>메뉴 뒤를 덮으라는</b> 카메라이므로
+        /// <c>cullingMask</c> 를 0 으로 두고 단색만 칠한다. 3D 화면은 방에 들어간 뒤에 나온다.
+        /// </summary>
+        private void EnsureBackdrop()
+        {
+            backdropRetiring = false;
+            if (backdrop != null) return;
+
+            // hideFlags 는 건드리지 않는다. DontSave 를 걸면 씬을 갈아 끼울 때 이 오브젝트만
+            // 살아남아, 다음 씬에 검은 카메라가 하나 얹힌 채로 시작한다.
+            var host = new GameObject("LAST_SHIFT_LOBBY_BACKDROP");
+            backdrop = host.AddComponent<Camera>();
+            backdrop.clearFlags = CameraClearFlags.SolidColor;
+            backdrop.backgroundColor = BackdropColor;
+            backdrop.cullingMask = 0;
+            backdrop.depth = -100f;
+            backdrop.useOcclusionCulling = false;
+            backdrop.allowHDR = false;
+            backdrop.allowMSAA = false;
+        }
+
+        private void RetireBackdropWhenGameCameraExists()
+        {
+            if (backdrop == null)
+            {
+                backdropRetiring = false;
+                return;
+            }
+
+            var cameras = Camera.allCameras;
+            for (var index = 0; index < cameras.Length; index++)
+            {
+                if (cameras[index] == backdrop) continue;
+                DestroyBackdrop();
+                return;
+            }
+        }
+
+        private void DestroyBackdrop()
+        {
+            backdropRetiring = false;
+            if (backdrop == null) return;
+            Destroy(backdrop.gameObject);
+            backdrop = null;
         }
 
         private void HostRoom()
@@ -92,12 +187,12 @@ namespace DoodleUp.Runtime
             var code = LastShiftRoomCode.Generate();
             if (!session.OpenRoom(code))
             {
-                phase = Phase.Failed;
+                SetPhase(Phase.Failed);
                 status = $"방을 열지 못했습니다. 포트 {session.Port} 를 이미 쓰고 있는지 확인하세요.";
                 return;
             }
 
-            phase = Phase.Hosting;
+            SetPhase(Phase.Hosting);
             status = session.RoomDiscoverable
                 ? string.Empty
                 : "이 PC 에서 이미 다른 방이 열려 있어 코드 검색이 꺼졌습니다. IP 로는 들어올 수 있습니다.";
@@ -114,7 +209,7 @@ namespace DoodleUp.Runtime
 
             typedCode = code;
             lookup = new LastShiftRoomLookup(code, LookupTimeoutMilliseconds);
-            phase = Phase.Searching;
+            SetPhase(Phase.Searching);
             status = $"{code} 방을 찾는 중…";
         }
 
@@ -125,20 +220,20 @@ namespace DoodleUp.Runtime
 
             if (string.IsNullOrEmpty(address))
             {
-                phase = Phase.Failed;
+                SetPhase(Phase.Failed);
                 status = $"코드 {typedCode} 인 방을 찾지 못했습니다. 호스트가 방을 열었는지, 같은 네트워크인지 확인하세요.";
                 return;
             }
 
             if (!session.JoinRoom(address, port))
             {
-                phase = Phase.Failed;
+                SetPhase(Phase.Failed);
                 status = $"{address}:{port} 접속을 시작하지 못했습니다.";
                 return;
             }
 
             SubscribeToClientEvents();
-            phase = Phase.Connecting;
+            SetPhase(Phase.Connecting);
             connectDeadline = Time.realtimeSinceStartup + ConnectTimeoutSeconds;
             status = $"{address}:{port} 에 접속 중…";
         }
@@ -148,7 +243,7 @@ namespace DoodleUp.Runtime
             if (Time.realtimeSinceStartup < connectDeadline) return;
             UnsubscribeFromClientEvents();
             session.StopSession();
-            phase = Phase.Failed;
+            SetPhase(Phase.Failed);
             status = "접속이 응답하지 않았습니다. 호스트 쪽 방화벽이 UDP 를 막고 있는지 확인하세요.";
         }
 
@@ -175,7 +270,7 @@ namespace DoodleUp.Runtime
             var manager = session.NetworkManager;
             if (manager == null || clientId != manager.LocalClientId) return;
             UnsubscribeFromClientEvents();
-            phase = Phase.Hidden;
+            SetPhase(Phase.Hidden);
             status = string.Empty;
         }
 
@@ -187,7 +282,7 @@ namespace DoodleUp.Runtime
             UnsubscribeFromClientEvents();
             // 승인 거절(정원 초과)은 여기로 온다. 서버가 남긴 사유가 있으면 그것이 가장 정확하다.
             var reason = manager.DisconnectReason;
-            phase = Phase.Failed;
+            SetPhase(Phase.Failed);
             status = string.IsNullOrEmpty(reason) ? "호스트가 접속을 거절했습니다." : reason;
             ReleaseCursor();
         }
