@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using System.Linq;
 
 namespace DoodleUp.Runtime
 {
@@ -99,7 +100,9 @@ namespace DoodleUp.Runtime
             if (bodyRenderer == null)
             {
                 var body = transform.Find("Remote Body");
-                if (body != null) bodyRenderer = body.GetComponent<Renderer>();
+                if (body != null) bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
+                    .FirstOrDefault(renderer => renderer.name.Contains("Combined"))
+                    ?? body.GetComponentInChildren<Renderer>(true);
             }
             heldItemReference.OnValueChanged += OnHeldItemReferenceChanged;
             // 서버는 sandbox 가 Ensure 하지만, 클라이언트는 sandbox 가 꺼져 있어 아무도 붙이지 않는다.
@@ -488,7 +491,9 @@ namespace DoodleUp.Runtime
             // 남의 자리 기준으로 계산되는데 경고 한 줄 말고는 표가 안 난다.
             LastShiftZoneAudio.EnsureListener(playerCamera, isLocalPlayer);
             if (bodyRenderer == null) return;
-            bodyRenderer.enabled = !isLocalPlayer;
+            foreach (var renderer in bodyRenderer.transform.root.Find("Remote Body")
+                         .GetComponentsInChildren<Renderer>(true))
+                renderer.enabled = !isLocalPlayer;
             bodyRenderer.material.color = PlayerColor;
         }
 

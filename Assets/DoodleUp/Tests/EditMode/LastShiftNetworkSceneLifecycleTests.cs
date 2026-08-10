@@ -78,7 +78,10 @@ namespace DoodleUp.Tests.EditMode
             var scene = EditorSceneManager.OpenScene(LastShiftNetworkSceneBuilder.ScenePath, OpenSceneMode.Single);
             var manager = Array.Find(scene.GetRootGameObjects(), root => root.GetComponent<Unity.Netcode.NetworkManager>() != null)
                 .GetComponent<Unity.Netcode.NetworkManager>();
-            var bodyRenderer = manager.NetworkConfig.PlayerPrefab.transform.Find("Remote Body").GetComponent<MeshRenderer>();
+            var bodyRenderer = Array.Find(
+                manager.NetworkConfig.PlayerPrefab.transform.Find("Remote Body")
+                    .GetComponentsInChildren<Renderer>(true),
+                renderer => renderer.name.Contains("Combined"));
             bodyRenderer.enabled = false;
             try
             {
