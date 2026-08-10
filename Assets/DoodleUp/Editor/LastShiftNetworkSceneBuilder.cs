@@ -99,6 +99,7 @@ namespace DoodleUp.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             scene.name = "LAST_SHIFT_SP02A_NETWORK";
             LastShiftSceneBuilder.CreateLighting();
+            LastShiftSceneBuilder.CreateNebulaCard();
             var ship = (GameObject)PrefabUtility.InstantiatePrefab(LastShiftSceneBuilder.RebuildShipPrefab());
             LastShiftSceneBuilder.RebuildItemPrefabs();
             var items = LastShiftSceneBuilder.CreateItems();

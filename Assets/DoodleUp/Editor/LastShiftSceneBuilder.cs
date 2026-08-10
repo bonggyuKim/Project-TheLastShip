@@ -85,8 +85,8 @@ namespace DoodleUp.Editor
         /// 조명은 안 들어간다. 등과 <c>RenderSettings</c> 는 씬 소관으로 남긴다.
         /// </summary>
         public const string ShipPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftShipGraybox.prefab";
-        public const string SpaceSkyMaterialPath = "Assets/DoodleUp/Materials/LS_SpaceSky.mat";
-        public const string SpaceSkyShaderName = "DoodleUp/Last Shift Space Sky";
+        public const string SpaceSkyMaterialPath = "Assets/DoodleUp/Materials/SpaceSky_Starfield_360.mat";
+        public const string SpaceSkyShaderName = "Skybox/Procedural";
 
         /// <summary>
         /// 선체 프리팹을 다시 굽는다. <b>지우고 만들지 않는다</b> — 지우면 GUID 가 새로 찍혀
@@ -1962,13 +1962,33 @@ namespace DoodleUp.Editor
         {
             var sky = AssetDatabase.LoadAssetAtPath<Material>(SpaceSkyMaterialPath);
             if (sky == null)
-                throw new System.InvalidOperationException($"Space sky material missing: {SpaceSkyMaterialPath}");
+            {
+                sky = new Material(Shader.Find(SpaceSkyShaderName)) { name = "SpaceSky_Starfield_360" };
+                sky.SetColor("_SkyTint", new Color(0.008f, 0.014f, 0.035f));
+                sky.SetColor("_GroundColor", new Color(0.001f, 0.002f, 0.005f));
+                sky.SetFloat("_AtmosphereThickness", 0f);
+                AssetDatabase.CreateAsset(sky, SpaceSkyMaterialPath);
+            }
             if (sky.shader == null || sky.shader.name != SpaceSkyShaderName)
                 throw new System.InvalidOperationException($"Space sky shader mismatch: expected {SpaceSkyShaderName}");
 
             RenderSettings.skybox = sky;
             RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
             RenderSettings.reflectionIntensity = 0.35f;
+        }
+
+        /// <summary>은하수 대신 창 너머에만 보이는 저비용 성운 카드다.</summary>
+        public static void CreateNebulaCard()
+        {
+            var card = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            card.name = "NebulaCard";
+            card.transform.position = new Vector3(0f, 7f, 22f);
+            card.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            card.transform.localScale = new Vector3(12f, 7f, 1f);
+            Object.DestroyImmediate(card.GetComponent<Collider>());
+            var mat = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.16f, 0.05f, 0.28f, 1f) };
+            mat.name = "NebulaCard_Material";
+            card.GetComponent<Renderer>().sharedMaterial = mat;
         }
 
         /// <summary>
