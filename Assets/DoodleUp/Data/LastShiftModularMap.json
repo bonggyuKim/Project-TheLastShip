@@ -18,8 +18,6 @@
     { "id": "ceilings", "assetId": "LPK_Ceiling_Straight_4m", "target": ["plaza", "cockpit", "lifeSupport", "power", "cooling"], "operation": "spanBounds", "positionY": 3.04 },
     { "id": "annexCeilings", "assetId": "LPK_Ceiling_Curve45", "target": ["airlockHall", "quarters"], "operation": "spanBounds", "positionY": 2.84 },
     { "id": "plazaLift", "assetId": "LPK_CentralLift_4m", "position": [0, 0, 0], "rotationY": 0 },
-    { "id": "cockpitWindow", "assetId": "LPK_Cockpit_ViewWindow_4m", "position": [-14, 0, 0], "rotationY": 90 },
-    { "id": "lifeWindow", "assetId": "LPK_Hull_WindowBay_4m", "position": [14, 0, 0], "rotationY": -90 },
     { "id": "outerShell", "assetId": "LPK_Hull_Exterior_Panel_4m", "target": ["plaza", "cockpit", "lifeSupport", "power", "cooling", "airlockHall", "quarters"], "operation": "exteriorBoundsWithDoorGap", "shellClearance": 0.2, "gapWidth": 2, "rotationPolicy": "edgeTangent" },
     { "id": "airlockHatch", "assetId": "LPK_DeckHatch_2m", "position": [-7, 0, -12], "rotationY": 0 },
     { "id": "salvage", "assetId": "LPK_SalvagePad_4m", "position": [-7, 0, -10], "rotationY": 0 },

@@ -182,7 +182,7 @@ namespace DoodleUp.Editor
                 if (rule.operation == "tileBounds")
                     foreach (var target in rule.target) TileBounds(p[rule.assetId], root, rule.id, spaces[target], rule.tile, rule.positionY);
                 else if (rule.operation == "wallBoundsWithDoorGap")
-                    foreach (var target in rule.target) WallBounds(p[rule.assetId], root, rule.id, spaces[target], rule.gapWidth);
+                    InteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
@@ -202,29 +202,26 @@ namespace DoodleUp.Editor
                 Place(prefab, root, name, new Vector3(x, y, z));
         }
 
-        private static void WallBounds(GameObject prefab, Transform root, string name, MapSpace space, float gapWidth)
+        private static void InteriorBoundsWithDoorGap(GameObject prefab, Transform root, MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
         {
-            var b = space.bounds;
-            PlaceWallSpan(prefab, root, name, b[0], b[1], b[2], 0f, space.door, gapWidth, true);
-            PlaceWallSpan(prefab, root, name, b[0], b[1], b[3], 0f, space.door, gapWidth, true);
-            PlaceWallSpan(prefab, root, name, b[2], b[3], b[0], 90f, space.door, gapWidth, false);
-            PlaceWallSpan(prefab, root, name, b[2], b[3], b[1], 90f, space.door, gapWidth, false);
-        }
-
-        private static void PlaceWallSpan(GameObject prefab, Transform root, string name, float min, float max, float fixedAxis, float rotationY, MapDoor door, float gapWidth, bool alongX)
-        {
-            var doorOnThisEdge = door != null && (alongX ? Mathf.Abs(door.position[2] - fixedAxis) : Mathf.Abs(door.position[0] - fixedAxis)) < 0.01f;
-            var gapCenter = doorOnThisEdge ? (alongX ? door.position[0] : door.position[2]) : 0f;
-            PlaceWallSegment(prefab, root, name, min, doorOnThisEdge ? gapCenter - gapWidth * 0.5f : max, fixedAxis, rotationY, alongX);
-            if (doorOnThisEdge) PlaceWallSegment(prefab, root, name, gapCenter + gapWidth * 0.5f, max, fixedAxis, rotationY, alongX);
-        }
-
-        private static void PlaceWallSegment(GameObject prefab, Transform root, string name, float min, float max, float fixedAxis, float rotationY, bool alongX)
-        {
-            var length = max - min;
-            if (length < 0.01f) return;
-            var position = alongX ? new Vector3((min + max) * 0.5f, 0f, fixedAxis) : new Vector3(fixedAxis, 0f, (min + max) * 0.5f);
-            Place(prefab, root, name, position, rotationY, new Vector3(length / 4f, 1f, 1f));
+            var targets = new List<MapSpace>(); foreach (var id in rule.target) targets.Add(spaces[id]);
+            var xs = new List<float>(); var zs = new List<float>();
+            foreach (var space in targets) { xs.Add(space.bounds[0]); xs.Add(space.bounds[1]); zs.Add(space.bounds[2]); zs.Add(space.bounds[3]); }
+            xs = UniqueSorted(xs); zs = UniqueSorted(zs);
+            for (var zi = 0; zi < zs.Count; zi++)
+            for (var xi = 0; xi < xs.Count - 1; xi++)
+            {
+                var min = xs[xi]; var max = xs[xi + 1]; if (max - min < 0.01f) continue;
+                if (Contains(targets, (min + max) * 0.5f, zs[zi] - 0.01f) && Contains(targets, (min + max) * 0.5f, zs[zi] + 0.01f))
+                    PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, zs[zi], 0f, true);
+            }
+            for (var xi = 0; xi < xs.Count; xi++)
+            for (var zi = 0; zi < zs.Count - 1; zi++)
+            {
+                var min = zs[zi]; var max = zs[zi + 1]; if (max - min < 0.01f) continue;
+                if (Contains(targets, xs[xi] - 0.01f, (min + max) * 0.5f) && Contains(targets, xs[xi] + 0.01f, (min + max) * 0.5f))
+                    PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, xs[xi], 90f, false);
+            }
         }
 
         private static void SpanBounds(GameObject prefab, Transform root, string name, MapSpace space, float y)
@@ -243,7 +240,7 @@ namespace DoodleUp.Editor
             {
                 xs.Add(space.bounds[0]); xs.Add(space.bounds[1]); zs.Add(space.bounds[2]); zs.Add(space.bounds[3]);
             }
-            xs.Sort(); zs.Sort();
+            xs = UniqueSorted(xs); zs = UniqueSorted(zs);
             for (var zi = 0; zi < zs.Count; zi++)
             for (var xi = 0; xi < xs.Count - 1; xi++)
             {
@@ -271,6 +268,15 @@ namespace DoodleUp.Editor
             foreach (var space in spaces)
                 if (x > space.bounds[0] && x < space.bounds[1] && z > space.bounds[2] && z < space.bounds[3]) return true;
             return false;
+        }
+
+        private static List<float> UniqueSorted(List<float> values)
+        {
+            values.Sort();
+            var unique = new List<float>();
+            foreach (var value in values)
+                if (unique.Count == 0 || Mathf.Abs(unique[unique.Count - 1] - value) > 0.001f) unique.Add(value);
+            return unique;
         }
 
         private static void PlaceExteriorSegment(GameObject prefab, Transform root, MapRule rule, MapSpace[] spaces, float min, float max, float fixedAxis, float rotationY, bool alongX)
