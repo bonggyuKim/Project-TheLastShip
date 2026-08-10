@@ -1838,16 +1838,6 @@ namespace DoodleUp.Editor
             return item;
         }
 
-        public static void CreateMeteorStimulus()
-        {
-            var meteor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            meteor.name = "CanonicalMeteorStimulus";
-            meteor.transform.position = LastShiftMeteorStimulus.Canonical.ImpactPoint - LastShiftMeteorStimulus.Canonical.ImpactVector * 2f;
-            meteor.transform.localScale = Vector3.one * 0.65f;
-            meteor.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("LS_Meteor", new Color(0.82f, 0.22f, 0.08f));
-            Object.DestroyImmediate(meteor.GetComponent<Collider>());
-        }
-
         private static GameObject CreateCube(string name, Transform parent, Vector3 localPosition, Vector3 scale, Material material)
         {
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);

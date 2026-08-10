@@ -102,7 +102,6 @@ namespace DoodleUp.Editor
             var ship = (GameObject)PrefabUtility.InstantiatePrefab(LastShiftSceneBuilder.RebuildShipPrefab());
             LastShiftSceneBuilder.RebuildItemPrefabs();
             var items = LastShiftSceneBuilder.CreateItems();
-            LastShiftSceneBuilder.CreateMeteorStimulus();
 
             var runtime = new GameObject("LAST_SHIFT_RUNTIME");
             runtime.AddComponent<LastShiftImpactFeedback>();

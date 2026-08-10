@@ -32,10 +32,6 @@ namespace DoodleUp.Editor
             Require(all.Count(x => x.name == LastShiftSceneBuilder.CoolingZoneName) == 1, "cooling zone count must be 1");
             Require(all.Count(x => x.name == LastShiftSceneBuilder.LifeSupportZoneName) == 1, "life support zone count must be 1");
             VerifyCockpitGlass(all);
-            Require(all.Count(x => x.name == "CanonicalMeteorStimulus") == 1, "canonical meteor count must be 1");
-            var meteorVisual = all.Single(x => x.name == "CanonicalMeteorStimulus");
-            var meteor = LastShiftMeteorStimulus.Canonical;
-            Require(Vector3.Distance(meteorVisual.position, meteor.ImpactPoint - meteor.ImpactVector * 2f) < 0.0001f, "canonical meteor visual origin mismatch");
 
             var sandboxes = roots.SelectMany(root => root.GetComponentsInChildren<LastShiftSandboxController>(true)).ToArray();
             Require(sandboxes.Length == 1, "sandbox controller count must be 1");
