@@ -88,13 +88,23 @@ namespace DoodleUp.Editor
         {
             var path = $"{PrefabFolder}/LPK_Cockpit_WallMirror_1m.prefab";
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                var contents = PrefabUtility.LoadPrefabContents(path);
+                var surfaceTransform = Find(contents.transform, "ReflectiveSurface");
+                if (surfaceTransform != null && surfaceTransform.GetComponent<LastShiftPlanarMirror>() == null)
+                    surfaceTransform.gameObject.AddComponent<LastShiftPlanarMirror>();
+                PrefabUtility.SaveAsPrefabAsset(contents, path);
+                PrefabUtility.UnloadPrefabContents(contents);
+                return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            }
 
             Directory.CreateDirectory(MaterialFolder);
             var surface = GetOrCreateMaterial("LastShiftMirrorSurface", new Color(0.10f, 0.16f, 0.23f), 0.68f, 0.72f);
             var frame = GetOrCreateMaterial("LastShiftMirrorFrame", LastShiftUiTheme.Ivory, 0.1f, 0.28f);
             var root = new GameObject("LPK_Cockpit_WallMirror_1m");
-            CreateMirrorPart(root.transform, "ReflectiveSurface", new Vector3(0f, 0.55f, 0f), new Vector3(0.66f, 0.96f, 0.04f), surface);
+            var reflectiveSurface = CreateMirrorPart(root.transform, "ReflectiveSurface", new Vector3(0f, 0.55f, 0f), new Vector3(0.66f, 0.96f, 0.04f), surface);
+            reflectiveSurface.AddComponent<LastShiftPlanarMirror>();
             CreateMirrorPart(root.transform, "FrameTop", new Vector3(0f, 1.065f, 0f), new Vector3(0.80f, 0.07f, 0.07f), frame);
             CreateMirrorPart(root.transform, "FrameBottom", new Vector3(0f, 0.035f, 0f), new Vector3(0.80f, 0.07f, 0.07f), frame);
             CreateMirrorPart(root.transform, "FrameLeft", new Vector3(-0.365f, 0.55f, 0f), new Vector3(0.07f, 1.10f, 0.07f), frame);
@@ -104,7 +114,7 @@ namespace DoodleUp.Editor
             return prefab;
         }
 
-        private static void CreateMirrorPart(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
+        private static GameObject CreateMirrorPart(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
         {
             var part = GameObject.CreatePrimitive(PrimitiveType.Cube);
             part.name = name;
@@ -113,6 +123,7 @@ namespace DoodleUp.Editor
             part.transform.localPosition = position;
             part.transform.localScale = scale;
             part.GetComponent<MeshRenderer>().sharedMaterial = material;
+            return part;
         }
 
         private static Material GetOrCreateMaterial(string name, Color color, float metallic, float smoothness)

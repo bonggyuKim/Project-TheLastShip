@@ -1,0 +1,106 @@
+using UnityEngine;
+
+namespace DoodleUp.Runtime
+{
+    /// <summary>작은 실내 거울용 planar reflection. 물리·상호작용 없이 카메라 한 대만 빌린다.</summary>
+    [RequireComponent(typeof(Renderer))]
+    public sealed class LastShiftPlanarMirror : MonoBehaviour
+    {
+        [SerializeField, Range(128, 1024)] private int resolution = 512;
+        [SerializeField] private LayerMask reflectionMask = ~0;
+        [SerializeField] private float clipPlaneOffset = 0.03f;
+
+        private Camera reflectionCamera;
+        private RenderTexture reflectionTexture;
+        private Material mirrorMaterial;
+        private Renderer mirrorRenderer;
+        private bool isRendering;
+
+        private void Awake()
+        {
+            mirrorRenderer = GetComponent<Renderer>();
+            mirrorMaterial = mirrorRenderer.material;
+        }
+
+        private void OnWillRenderObject()
+        {
+            var source = Camera.current;
+            if (source == null || source == reflectionCamera || isRendering || !enabled) return;
+            EnsureResources();
+            isRendering = true;
+            try { RenderReflection(source); }
+            finally { isRendering = false; }
+        }
+
+        private void EnsureResources()
+        {
+            if (reflectionTexture == null)
+            {
+                reflectionTexture = new RenderTexture(resolution, resolution, 16, RenderTextureFormat.ARGB32)
+                {
+                    name = "LastShiftCockpitMirrorRT",
+                    hideFlags = HideFlags.HideAndDontSave,
+                    useMipMap = false,
+                };
+                reflectionTexture.Create();
+            }
+
+            if (reflectionCamera != null) return;
+            var cameraObject = new GameObject("CockpitMirrorReflectionCamera") { hideFlags = HideFlags.HideAndDontSave };
+            reflectionCamera = cameraObject.AddComponent<Camera>();
+            reflectionCamera.enabled = false;
+        }
+
+        private void RenderReflection(Camera source)
+        {
+            var normal = transform.forward;
+            var position = transform.position;
+            var d = -Vector3.Dot(normal, position) - clipPlaneOffset;
+            var reflection = CalculateReflectionMatrix(new Vector4(normal.x, normal.y, normal.z, d));
+
+            reflectionCamera.CopyFrom(source);
+            reflectionCamera.cullingMask = reflectionMask;
+            reflectionCamera.targetTexture = reflectionTexture;
+            reflectionCamera.transform.position = reflection.MultiplyPoint(source.transform.position);
+            reflectionCamera.transform.rotation = source.transform.rotation;
+            reflectionCamera.worldToCameraMatrix = source.worldToCameraMatrix * reflection;
+            var clipPlane = CameraSpacePlane(reflectionCamera, position, normal, 1f);
+            reflectionCamera.projectionMatrix = source.CalculateObliqueMatrix(clipPlane);
+
+            var previous = GL.invertCulling;
+            GL.invertCulling = true;
+            reflectionCamera.Render();
+            GL.invertCulling = previous;
+
+            if (mirrorMaterial.HasProperty("_BaseMap")) mirrorMaterial.SetTexture("_BaseMap", reflectionTexture);
+            if (mirrorMaterial.HasProperty("_MainTex")) mirrorMaterial.SetTexture("_MainTex", reflectionTexture);
+        }
+
+        private Vector4 CameraSpacePlane(Camera camera, Vector3 position, Vector3 normal, float sideSign)
+        {
+            var offsetPosition = position + normal * clipPlaneOffset;
+            var matrix = camera.worldToCameraMatrix;
+            var cameraPosition = matrix.MultiplyPoint(offsetPosition);
+            var cameraNormal = matrix.MultiplyVector(normal).normalized * sideSign;
+            return new Vector4(cameraNormal.x, cameraNormal.y, cameraNormal.z, -Vector3.Dot(cameraPosition, cameraNormal));
+        }
+
+        private static Matrix4x4 CalculateReflectionMatrix(Vector4 plane)
+        {
+            var matrix = Matrix4x4.identity;
+            matrix.m00 = 1f - 2f * plane[0] * plane[0]; matrix.m01 = -2f * plane[0] * plane[1]; matrix.m02 = -2f * plane[0] * plane[2]; matrix.m03 = -2f * plane[3] * plane[0];
+            matrix.m10 = -2f * plane[1] * plane[0]; matrix.m11 = 1f - 2f * plane[1] * plane[1]; matrix.m12 = -2f * plane[1] * plane[2]; matrix.m13 = -2f * plane[3] * plane[1];
+            matrix.m20 = -2f * plane[2] * plane[0]; matrix.m21 = -2f * plane[2] * plane[1]; matrix.m22 = 1f - 2f * plane[2] * plane[2]; matrix.m23 = -2f * plane[3] * plane[2];
+            return matrix;
+        }
+
+        private void OnDisable() => ReleaseResources();
+        private void OnDestroy() => ReleaseResources();
+
+        private void ReleaseResources()
+        {
+            if (reflectionTexture != null) { reflectionTexture.Release(); Destroy(reflectionTexture); reflectionTexture = null; }
+            if (reflectionCamera != null) { Destroy(reflectionCamera.gameObject); reflectionCamera = null; }
+        }
+    }
+}
