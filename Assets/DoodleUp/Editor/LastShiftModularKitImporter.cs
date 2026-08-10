@@ -20,7 +20,7 @@ namespace DoodleUp.Editor
             "LPK_Wall_Straight_2m", "LPK_Wall_Straight_4m", "LPK_Wall_Window_4m", "LPK_Wall_Curve_45", "LPK_Corner_Outer_90", "LPK_Corner_Inner_90",
             "LPK_Floor_Square_2m", "LPK_Floor_Curve_45", "LPK_Ceiling_Straight_4m", "LPK_Support_Pillar", "LPK_Door_Airlock_2m", "LPK_Connector_Neck_2m",
             "LPK_CentralLift_4m", "LPK_Cockpit_ControlConsole", "LPK_LifeSupport_Scrubber", "LPK_Power_Switchgear", "LPK_Cooling_Exchanger", "LPK_Quarters_Bunk"
-            ,"LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90", "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m", "LPK_Ceiling_Curve45", "LPK_Floor_Transition_2m", "LPK_Airlock_Exterior_4m", "LPK_DeckHatch_2m", "LPK_OxygenLeakPipe_2m", "LPK_RepairConsole_1m", "LPK_DamagedPipe_2m", "LPK_SalvagePad_4m", "LPK_TetherRack_2m"
+            ,"LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90", "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m", "LPK_Ceiling_Curve45", "LPK_Floor_Transition_2m", "LPK_Airlock_Exterior_4m", "LPK_DeckHatch_2m", "LPK_OxygenLeakPipe_2m", "LPK_RepairConsole_1m", "LPK_DamagedPipe_2m", "LPK_SalvagePad_4m", "LPK_TetherRack_2m"
         };
 
         [MenuItem("Last Shift/SP-02A/Import Modular Kit and Assemble")]
@@ -185,9 +185,7 @@ namespace DoodleUp.Editor
                     foreach (var target in rule.target) WallBounds(p[rule.assetId], root, rule.id, spaces[target], rule.gapWidth);
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
-                else if (rule.operation == "hullRing") HullRing(p[rule.assetId], root, rule);
-                else if (rule.operation == "footprintShell") FootprintShell(p[rule.assetId], root, rule, map.spaces, false);
-                else if (rule.operation == "footprintShellCorners") FootprintShell(p[rule.assetId], root, rule, map.spaces, true);
+                else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else Place(p[rule.assetId], root, rule.id, Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
             }
             foreach (var space in map.spaces)
@@ -236,59 +234,66 @@ namespace DoodleUp.Editor
                 new Vector3((b[1] - b[0]) / 4f, 1f, (b[3] - b[2]) / 4f));
         }
 
-        private static void HullRing(GameObject prefab, Transform root, MapRule rule)
+        private static void ExteriorBoundsWithDoorGap(GameObject prefab, Transform root, MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
         {
-            for (var i = 0; i < rule.count; i++)
+            var targets = new List<MapSpace>();
+            foreach (var id in rule.target) targets.Add(spaces[id]);
+            var xs = new List<float>(); var zs = new List<float>();
+            foreach (var space in targets)
             {
-                var angle = i * (360f / rule.count) * Mathf.Deg2Rad;
-                Place(prefab, root, rule.id, new Vector3(Mathf.Cos(angle) * rule.radius, 0f, Mathf.Sin(angle) * rule.radius), -i * rule.rotationStep);
+                xs.Add(space.bounds[0]); xs.Add(space.bounds[1]); zs.Add(space.bounds[2]); zs.Add(space.bounds[3]);
+            }
+            xs.Sort(); zs.Sort();
+            for (var zi = 0; zi < zs.Count; zi++)
+            for (var xi = 0; xi < xs.Count - 1; xi++)
+            {
+                var min = xs[xi]; var max = xs[xi + 1]; if (max - min < 0.01f) continue;
+                var insideBelow = Contains(targets, (min + max) * 0.5f, zs[zi] - 0.01f);
+                var insideAbove = Contains(targets, (min + max) * 0.5f, zs[zi] + 0.01f);
+                if (insideBelow == insideAbove) continue;
+                var z = zs[zi] + (insideAbove ? -rule.shellClearance : rule.shellClearance);
+                PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, z, 0f, true);
+            }
+            for (var xi = 0; xi < xs.Count; xi++)
+            for (var zi = 0; zi < zs.Count - 1; zi++)
+            {
+                var min = zs[zi]; var max = zs[zi + 1]; if (max - min < 0.01f) continue;
+                var insideLeft = Contains(targets, xs[xi] - 0.01f, (min + max) * 0.5f);
+                var insideRight = Contains(targets, xs[xi] + 0.01f, (min + max) * 0.5f);
+                if (insideLeft == insideRight) continue;
+                var x = xs[xi] + (insideRight ? -rule.shellClearance : rule.shellClearance);
+                PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, x, 90f, false);
             }
         }
 
-        private static void FootprintShell(GameObject prefab, Transform root, MapRule rule, MapSpace[] spaces, bool corners)
+        private static bool Contains(List<MapSpace> spaces, float x, float z)
         {
-            var hull = ConvexHull(spaces, rule.shellClearance);
-            for (var i = 0; i < hull.Count; i++)
-            {
-                var a = hull[i]; var b = hull[(i + 1) % hull.Count];
-                var edge = b - a;
-                var angle = Mathf.Atan2(edge.y, edge.x) * Mathf.Rad2Deg;
-                if (corners)
-                    Place(prefab, root, rule.id, new Vector3(a.x, 0f, a.y), angle - 45f);
-                else
-                    Place(prefab, root, rule.id, new Vector3((a.x + b.x) * 0.5f, 0f, (a.y + b.y) * 0.5f), angle,
-                        new Vector3(edge.magnitude / 4f, 1f, 1f));
-            }
+            foreach (var space in spaces)
+                if (x > space.bounds[0] && x < space.bounds[1] && z > space.bounds[2] && z < space.bounds[3]) return true;
+            return false;
         }
 
-        private static List<Vector2> ConvexHull(MapSpace[] spaces, float clearance)
+        private static void PlaceExteriorSegment(GameObject prefab, Transform root, MapRule rule, MapSpace[] spaces, float min, float max, float fixedAxis, float rotationY, bool alongX)
         {
-            var points = new List<Vector2>();
-            foreach (var s in spaces)
+            MapDoor door = null;
+            foreach (var space in spaces)
             {
-                var b = s.bounds;
-                points.Add(new Vector2(b[0] - clearance, b[2] - clearance)); points.Add(new Vector2(b[0] - clearance, b[3] + clearance));
-                points.Add(new Vector2(b[1] + clearance, b[2] - clearance)); points.Add(new Vector2(b[1] + clearance, b[3] + clearance));
+                if (space.door == null) continue;
+                var onEdge = alongX ? Mathf.Abs(space.door.position[2] - fixedAxis) <= rule.shellClearance + 0.01f : Mathf.Abs(space.door.position[0] - fixedAxis) <= rule.shellClearance + 0.01f;
+                var value = alongX ? space.door.position[0] : space.door.position[2];
+                if (onEdge && value > min && value < max) { door = space.door; break; }
             }
-            points.Sort((a, b) => a.x == b.x ? a.y.CompareTo(b.y) : a.x.CompareTo(b.x));
-            var hull = new List<Vector2>();
-            foreach (var point in points)
-            {
-                while (hull.Count >= 2 && Cross(hull[hull.Count - 1] - hull[hull.Count - 2], point - hull[hull.Count - 1]) <= 0f) hull.RemoveAt(hull.Count - 1);
-                hull.Add(point);
-            }
-            var lowerCount = hull.Count;
-            for (var i = points.Count - 2; i >= 0; i--)
-            {
-                var point = points[i];
-                while (hull.Count > lowerCount && Cross(hull[hull.Count - 1] - hull[hull.Count - 2], point - hull[hull.Count - 1]) <= 0f) hull.RemoveAt(hull.Count - 1);
-                hull.Add(point);
-            }
-            hull.RemoveAt(hull.Count - 1);
-            return hull;
+            var gapCenter = door == null ? 0f : (alongX ? door.position[0] : door.position[2]);
+            PlaceExteriorPiece(prefab, root, rule.id, min, door == null ? max : gapCenter - rule.gapWidth * 0.5f, fixedAxis, rotationY, alongX);
+            if (door != null) PlaceExteriorPiece(prefab, root, rule.id, gapCenter + rule.gapWidth * 0.5f, max, fixedAxis, rotationY, alongX);
         }
 
-        private static float Cross(Vector2 a, Vector2 b) => a.x * b.y - a.y * b.x;
+        private static void PlaceExteriorPiece(GameObject prefab, Transform root, string name, float min, float max, float fixedAxis, float rotationY, bool alongX)
+        {
+            if (max - min < 0.01f) return;
+            var position = alongX ? new Vector3((min + max) * 0.5f, 0f, fixedAxis) : new Vector3(fixedAxis, 0f, (min + max) * 0.5f);
+            Place(prefab, root, name, position, rotationY, new Vector3((max - min) / 4f, 1f, 1f));
+        }
 
         private static void RemoveExcludedObjects(GameObject ship, string[] excluded)
         {
