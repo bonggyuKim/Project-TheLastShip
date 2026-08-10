@@ -42,7 +42,7 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(transition, Is.EqualTo(LastShiftSegmentTransition.ToPort));
             Assert.That(LastShiftMaintenance.PortIndex, Is.EqualTo(1));
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(4), "래치 3 + 최소 보장 1");
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(3), "래치 3 = 여력 3 (조항 B-1 개정)");
             Assert.That(LastShiftMaintenance.IsAtPort, Is.True, "기항이 아니면 아무것도 못 산다");
         }
 
@@ -57,7 +57,9 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessCompromised, 1),
                 Is.EqualTo(LastShiftSegmentTransition.ToPort));
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(2));
+            // 래치 1 은 조항 B-1 개정에서 래치 0 과 같은 1 이다 — 최소 보장이 하한이지
+            // 덧셈이 아니기 때문이다.
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(1));
         }
 
         /// <summary>
@@ -146,7 +148,7 @@ namespace DoodleUp.Tests.EditMode
             LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
 
             Assert.That(LastShiftMaintenance.PortIndex, Is.EqualTo(1));
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(3));
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(2));
         }
 
         /// <summary>디버그로 구간을 다시 밟아 판정해도 마찬가지다(§8-2 단일 구간 진입).</summary>
@@ -184,7 +186,8 @@ namespace DoodleUp.Tests.EditMode
         public void SpendingEverythingLeavesTheTowedPortEmpty()
         {
             LastShiftVoyage.BeginVoyage();
-            LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 1);
+            // 래치 2 — 조항 B-1 개정에서 개방(2)을 한 기항에 무는 최소 성적이다.
+            LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
             Assert.That(LastShiftMaintenance.TrySpend(LastShiftMaintenanceItem.CompartmentUnlock), Is.True);
             Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(0));
 
@@ -204,8 +207,8 @@ namespace DoodleUp.Tests.EditMode
             LastShiftVoyage.Advance();
             LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
 
-            Assert.That(LastShiftMaintenance.LastCarriedOver, Is.EqualTo(3));
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(6));
+            Assert.That(LastShiftMaintenance.LastCarriedOver, Is.EqualTo(2));
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(4));
         }
 
         /// <summary>

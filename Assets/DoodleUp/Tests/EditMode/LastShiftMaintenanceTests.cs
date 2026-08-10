@@ -43,22 +43,32 @@ namespace DoodleUp.Tests.EditMode
         // ── 획득 (§4.1) ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// 환산은 <c>1:1</c> 이다 — 래치 하나가 여력 하나, 더하기 최소 보장 하나. <b>결과 화면의
-        /// 래치와 기항 화면의 여력 사이에 환산표가 없어야 한다</b>는 것이 이 값을 고른 이유다.
+        /// 조항 <c>B-1</c>(개정) — 환산이 <b>정확히</b> <c>1:1</c> 이다. 래치 하나가 여력 하나이고,
+        /// 최소 보장은 그 위에 얹는 상수가 아니라 <b>래치 <c>0</c> 에만 걸리는 하한</b>이다.
+        /// <b>결과 화면의 래치와 기항 화면의 여력이 같은 수여야 한다</b>는 것이 이 개정의
+        /// 판독성 쪽 근거다(<c>campaign-scale-and-combat-balance-v1.md</c> §2.3).
+        ///
+        /// 개정 전 표(<c>1/2/3/4/5</c>)를 그대로 두면 <c>70</c>기항 총 수입이 <c>245</c> 라
+        /// 지출처 <c>137</c> 의 <c>1.79</c>배가 되고, 후반 여력이 남아 기항의 선택이 사라진다.
         /// </summary>
         [Test]
-        public void EachLatchIsOneBudgetPlusTheGuaranteedOne()
+        public void EachLatchIsOneBudgetAndTheGuaranteedOneOnlyCatchesZero()
         {
+            var expected = new[] { 1, 1, 2, 3, 4 };
+
             for (var latches = 0; latches <= LastShiftMaintenance.MaxLatches; latches++)
-                Assert.That(LastShiftMaintenance.IncomeFor(latches), Is.EqualTo(latches + 1),
-                    $"래치 {latches} 의 환산이 1:1 이 아니다");
+                Assert.That(LastShiftMaintenance.IncomeFor(latches), Is.EqualTo(expected[latches]),
+                    $"래치 {latches} 의 수입이 조항 B-1 개정표와 다르다");
 
             Assert.That(LastShiftMaintenance.IncomeFor(0), Is.EqualTo(1), "§4.1-(나) — 여력 0 인 기항이 생겼다");
+            Assert.That(LastShiftMaintenance.IncomeFor(1), Is.EqualTo(LastShiftMaintenance.IncomeFor(0)),
+                "래치 1 이 래치 0 보다 이득이면 최소 보장이 조건부가 아니다");
             Assert.That(LastShiftMaintenance.IncomeFor(LastShiftMaintenance.MaxLatches),
-                Is.EqualTo(LastShiftMaintenance.MaxPortIncome));
+                Is.EqualTo(LastShiftMaintenance.MaxPortIncome).And.EqualTo(4),
+                "한 기항 최대 수입이 4 가 아니다 — 격납고 단독 구매가 다시 열린다");
         }
 
-        /// <summary>래치 수가 범위를 벗어나도 수입은 <c>1~5</c> 밖으로 안 나간다.</summary>
+        /// <summary>래치 수가 범위를 벗어나도 수입은 <c>1~4</c> 밖으로 안 나간다.</summary>
         [Test]
         public void OutOfRangeLatchCountsAreClampedNotTrusted()
         {
@@ -75,12 +85,12 @@ namespace DoodleUp.Tests.EditMode
         public void BeingTowedZeroesTheIncomeButNeverTheSavings()
         {
             LastShiftMaintenance.ArriveAtPort(3);
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(4));
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(3));
 
             var income = LastShiftMaintenance.ArriveAtPort(0, towed: true);
 
             Assert.That(income, Is.Zero, "견인의 대가 첫째 — 그 기항 수입은 0");
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(4), "모아 둔 것이 견인에 날아갔다");
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(3), "모아 둔 것이 견인에 날아갔다");
             Assert.That(LastShiftMaintenance.CanAfford(LastShiftMaintenance.PriceOf(LastShiftMaintenanceItem.TowSealRelease)),
                 Is.True, "견인 봉인을 풀 길이 없으면 RG-3 의 항해판 위반이다");
         }
@@ -88,28 +98,137 @@ namespace DoodleUp.Tests.EditMode
         // ── 이월 (§4.2) ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// 조항 M-1 — 안 쓴 것이 다음 기항에 얹힌다. <b>정본 §7-B 사례를 그대로 잰다</b>:
-        /// 기항 <c>1</c> 에서 예비 전력실만 사고 <c>2</c> 를 남기면, 기항 <c>2</c> 의 수입
-        /// <c>4</c> 와 합쳐 <c>6</c> 이 되어 <b>혼자서는 못 사는 격납고(<c>5</c>)가 열린다.</b>
+        /// 조항 M-1 — 안 쓴 것이 다음 기항에 얹힌다. <b>정본 §7-B 사례를 조항 <c>B-1</c> 개정
+        /// 수입으로 다시 잰다</b>: 기항 <c>1</c>(래치 <c>3</c>)에서 예비 전력실(<c>2</c>)만 사고
+        /// <c>1</c> 을 남기면, 기항 <c>2</c> 의 수입 <c>4</c> 와 합쳐 <c>5</c> 가 되어
+        /// <b>한 기항 수입만으로는 영영 못 사는 격납고(<c>5</c>)가 열린다.</b>
+        ///
+        /// <b>개정판에서 이 사례가 더 강해졌다.</b> 개정 전에는 래치 <c>4/4</c> 한 번이면
+        /// 격납고를 단독으로 살 수 있어 이월이 <b>빠른 길</b>일 뿐이었는데, 지금은 최대 수입이
+        /// <c>4</c> 라 이월이 <b>유일한 길</b>이다(§2.5).
         /// </summary>
         [Test]
         public void UnspentBudgetCarriesIntoTheNextPort()
         {
             LastShiftMaintenance.ArriveAtPort(3);
             Assert.That(LastShiftMaintenance.TrySpend(2), Is.True);
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(2));
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(1));
 
-            LastShiftMaintenance.ArriveAtPort(3);
+            LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
 
-            Assert.That(LastShiftMaintenance.LastCarriedOver, Is.EqualTo(2));
+            Assert.That(LastShiftMaintenance.LastCarriedOver, Is.EqualTo(1));
             Assert.That(LastShiftMaintenance.LastPortIncome, Is.EqualTo(4));
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(6));
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(5));
 
             var frame = LastShiftModuleCatalog.At(LastShiftModuleCatalog.Count - 1);
             Assert.That(frame.MaintenanceCost, Is.EqualTo(5));
             Assert.That(LastShiftMaintenance.TrySpend(frame.MaintenanceCost), Is.True,
                 "이월이 없으면 §0-1 의 '모아서 짓는다' 가 일어날 자리가 없다");
-            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(1), "남은 1 로 연료를 채운다(§7-B)");
+            Assert.That(LastShiftMaintenance.Balance, Is.Zero);
+        }
+
+        // ── 잔액 상한 (조항 B-2 · B-13) ─────────────────────────────────────
+
+        /// <summary>
+        /// 조항 <c>B-2</c> — <b>잔액은 <c>12</c> 를 안 넘고 초과분은 버린다.</b> 상한이 없으면
+        /// 잔액이 <c>50</c> 을 넘는 순간 "모아서 짓는다"가 "이미 다 모여 있다"가 되고 그 뒤
+        /// 기항의 선택이 사라진다(<c>campaign-scale-and-combat-balance-v1.md</c> §2.3).
+        ///
+        /// <b>버린 몫이 화면에 적을 수 있는 값으로 남는다</b>(§8-4) — 초과분이 소리 없이 사라지면
+        /// 플레이어는 상한이 있다는 것을 영영 못 배운다.
+        /// </summary>
+        [Test]
+        public void TheBalanceStopsAtTwelveAndTheOverflowIsDiscarded()
+        {
+            for (var port = 0; port < 3; port++) LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance),
+                "기항 셋 × 최대 수입 4 = 12 — 상한에 정확히 앉는다");
+            Assert.That(LastShiftMaintenance.LastPortForfeited, Is.Zero, "상한에 닿기만 한 기항이 버렸다");
+
+            LastShiftMaintenance.ArriveAtPort(3);
+
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance),
+                "상한을 넘겼다 — 조항 B-2 위반");
+            Assert.That(LastShiftMaintenance.LastPortIncome, Is.EqualTo(3), "수입 자체는 성적 그대로여야 한다");
+            Assert.That(LastShiftMaintenance.LastPortForfeited, Is.EqualTo(3), "버린 몫이 화면에 안 남는다");
+        }
+
+        /// <summary>
+        /// 상한은 <b>환수에도</b> 걸린다. 환수는 잔액이 느는 유일한 다른 경로라, 여기만 빼 두면
+        /// 잔액이 <c>12</c> 를 넘은 상태가 만들어지고 그 뒤 조항 <c>B-13</c> 의 조건("상한에
+        /// 있으면")이 무엇을 보는지가 갈린다.
+        /// </summary>
+        [Test]
+        public void RefundsCannotPushTheBalanceOverTheCap()
+        {
+            LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+            const int storage = LastShiftModuleCatalog.CargoBay;
+            Assert.That(LastShiftMaintenance.TryChargeModule(0, storage), Is.True);
+
+            for (var port = 0; port < 4; port++) LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance));
+
+            Assert.That(LastShiftMaintenance.TryRefundModule(0, out var refunded), Is.True);
+            Assert.That(refunded, Is.EqualTo(1), "출항한 뒤라 절반 내림이다(조항 M-4)");
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance),
+                "환수가 상한을 넘겼다");
+        }
+
+        /// <summary>
+        /// 조항 <c>B-13</c> — <b>상한에 앉은 잔액에서는 "그 기항 수입 <c>0</c>" 이 아무것도 안
+        /// 뺏는다.</b> 그 자리에서만 직전 구간 래치 수를 잔액에서 뺀다(§6.5.1-(마)).
+        ///
+        /// 이걸 안 막으면 숙련 후반의 전투 패배가 <c>-13</c> 이 아니라 복구뿐인 <c>-6</c> 이 되고
+        /// 전투 기대값이 <c>+5.2</c> 로 튄다 — 조항 <c>B-9</c> 가 이미 만든 후반 전투 우위 위에
+        /// 감가까지 겹치는 이중 가속이라 §7 의 전투 선택률 상한 <c>70%</c> 를 넘긴다.
+        /// </summary>
+        [Test]
+        public void BeingTowedAtTheCapCostsTheLatchesThatWereEarned()
+        {
+            for (var port = 0; port < 3; port++) LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance));
+
+            var income = LastShiftMaintenance.ArriveAtPort(3, towed: true);
+
+            Assert.That(income, Is.Zero, "견인 수입은 여전히 0 이다");
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance - 3),
+                "상한에 앉은 채 견인됐는데 잃은 것이 없다 — 조항 B-13 이 안 걸렸다");
+            Assert.That(LastShiftMaintenance.LastPortForfeited, Is.EqualTo(3),
+                "'래치 3 개를 걸었는데 견인돼서 3 을 잃었다' 를 화면이 못 적는다");
+        }
+
+        /// <summary>
+        /// 조항 <c>B-13</c> 은 <b>상한 접점에서만</b> 산다. 잔액이 상한 아래면 견인은 조항
+        /// <c>M-3</c> 그대로 수입만 <c>0</c> 이고, 모아 둔 것은 한 푼도 안 뺏긴다 — 이월이
+        /// 함정이 되는 자리가 정확히 여기라서 초·중반 체감이 <c>0</c> 이어야 한다(§2.3).
+        /// </summary>
+        [Test]
+        public void BeingTowedBelowTheCapStillNeverTouchesTheSavings()
+        {
+            LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+            LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(8));
+
+            LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches, towed: true);
+
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(8), "상한 아래인데 견인이 잔액을 깎았다");
+            Assert.That(LastShiftMaintenance.LastPortForfeited, Is.Zero);
+        }
+
+        /// <summary>
+        /// 상한 접점 보정도 <b>래치 수만큼</b>이라 성적을 안 낸 견인은 아무것도 더 안 잃는다.
+        /// 별도 상수를 안 만든 것이 조항 <c>B-13</c> 이 고른 형태다(§6.5.1-(마)).
+        /// </summary>
+        [Test]
+        public void TowingWithoutLatchesTakesNothingEvenAtTheCap()
+        {
+            for (var port = 0; port < 3; port++) LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
+
+            LastShiftMaintenance.ArriveAtPort(0, towed: true);
+
+            Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxBalance));
+            Assert.That(LastShiftMaintenance.LastPortForfeited, Is.Zero);
         }
 
         /// <summary>조항 M-2 — 항해가 끝나면 잔액도 기록도 <c>0</c> 이다. 세이브가 없다.</summary>
@@ -173,7 +292,7 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(LastShiftMaintenance.MaxPortIncome - 2 * unlock));
 
-            LastShiftMaintenance.ArriveAtPort(0);
+            LastShiftMaintenance.ArriveAtPort(2);
             Assert.That(LastShiftMaintenance.TrySpend(LastShiftMaintenanceItem.CompartmentUnlock), Is.True,
                 "셋째는 두 기항에 걸쳐 열린다");
         }
@@ -195,17 +314,24 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 카탈로그 최고가와 한 기항 최대 수입이 <b>정확히 같다</b>(§4.3 검산). 최고가가 더 싸면
-        /// 모을 이유가 없고, 더 비싸면 한 기항 수입만으로는 절대 못 사는 칸이 된다.
+        /// 개정 검산(§2.3) — <b>카탈로그 최고가가 한 기항 최대 수입보다 비싸다.</b> 래치
+        /// <c>4/4</c> 로도 격납고를 한 기항에 못 사므로 <b>저축이 조건이 아니라 규칙</b>이 된다.
+        /// 최고가가 최대 수입 이하로 내려오면 그 순간 "모아서 짓는다"(§0-1)가 선택 사항이 된다.
+        ///
+        /// <b>두 기항이면 반드시 닿는다</b>는 것을 같이 건다 — 최고가가 <c>2</c>기항 최대 수입
+        /// 위로 올라가면 이번에는 저축 기간이 길어져 기항 하나가 통째로 아무 선택도 아닌 칸이 된다.
         /// </summary>
         [Test]
-        public void TheDearestModuleCostsExactlyOnePortsBestIncome()
+        public void TheDearestModuleAlwaysNeedsTwoPortsWorthOfIncome()
         {
             var dearest = 0;
             for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
                 dearest = Mathf.Max(dearest, LastShiftModuleCatalog.At(index).MaintenanceCost);
 
-            Assert.That(dearest, Is.EqualTo(LastShiftMaintenance.MaxPortIncome));
+            Assert.That(dearest, Is.GreaterThan(LastShiftMaintenance.MaxPortIncome),
+                "최고가를 한 기항 수입으로 산다 — 조항 B-1 개정이 세운 §4.3 검산 위반");
+            Assert.That(dearest, Is.LessThanOrEqualTo(2 * LastShiftMaintenance.MaxPortIncome),
+                "최고가가 두 기항으로도 안 닿는다 — 저축 구간이 설계보다 길다");
         }
 
         // ── 철거 환수 (§4.4) ────────────────────────────────────────────────
@@ -242,6 +368,9 @@ namespace DoodleUp.Tests.EditMode
             foreach (var (cost, refund) in expected)
             {
                 LastShiftMaintenance.Clear();
+                // 최고가 5 는 한 기항 수입 4 로 못 문다(조항 B-1 개정) — 이 표를 다 돌리려면
+                // 기항 둘이 필요하고, 그게 곧 §2.5 가 말한 "격납고는 단독 구매 불가" 다.
+                LastShiftMaintenance.ArriveAtPort(4);
                 LastShiftMaintenance.ArriveAtPort(4);
                 Assert.That(LastShiftMaintenance.TryChargeModule(0, 0, cost), Is.True);
 
@@ -262,6 +391,9 @@ namespace DoodleUp.Tests.EditMode
             for (var index = 0; index < LastShiftModuleCatalog.Count; index++)
             {
                 LastShiftMaintenance.Clear();
+                // 기항 둘 — 최고가(격납고 5)가 한 기항 수입 4 를 넘으므로(조항 B-1 개정)
+                // 목록 전체를 도는 데 한 기항으로는 모자란다.
+                LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
                 LastShiftMaintenance.ArriveAtPort(LastShiftMaintenance.MaxLatches);
                 var opening = LastShiftMaintenance.Balance;
 
@@ -296,11 +428,12 @@ namespace DoodleUp.Tests.EditMode
             var price = LastShiftModuleCatalog.At(storage).MaintenanceCost;
             Assert.That(price, Is.EqualTo(3));
 
-            LastShiftMaintenance.ArriveAtPort(2);
+            // 래치 3 — 조항 B-1 개정에서 화물칸(3)을 한 기항 수입으로 무는 최소 성적이다.
+            LastShiftMaintenance.ArriveAtPort(3);
             Assert.That(LastShiftMaintenance.TryChargeModule(0, storage), Is.True);
             Assert.That(LastShiftMaintenance.Balance, Is.Zero);
 
-            LastShiftMaintenance.ArriveAtPort(2);
+            LastShiftMaintenance.ArriveAtPort(3);
             Assert.That(LastShiftMaintenance.TryRefundModule(0, out var refunded), Is.True);
             Assert.That(refunded, Is.EqualTo(1));
             Assert.That(LastShiftMaintenance.Balance, Is.EqualTo(4));

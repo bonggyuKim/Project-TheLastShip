@@ -482,24 +482,26 @@ namespace DoodleUp.Tests.EditMode
         // ── 가격 재검산 (§9-2) ───────────────────────────────────────────────
 
         /// <summary>
-        /// <b>격납고 <c>5</c>.</b> 한 기항 최대 수입과 같아야 "모아서 큰 것을 짓는다"(카탈로그
-        /// §0-1)가 성립한다. <c>4</c> 로 내리면 래치 <c>3/4</c> 로도 한 기항에 살 수 있어
-        /// <b>모을 이유가 같이 사라진다</b> — 래치 결과가 균등하다고 보면 단독 구매 가능성이
-        /// <c>20%</c> 에서 <c>40%</c> 로 뛴다.
+        /// <b>격납고 <c>5</c> — 유지.</b> 조항 <c>B-1</c> 개정으로 한 기항 최대 수입이
+        /// <c>5 → 4</c> 가 되면서 <b>단독 구매가 아예 불가능해졌다</b>
+        /// (<c>campaign-scale-and-combat-balance-v1.md</c> §2.5). 이 문서가 <c>4</c> 로 내리는
+        /// 안을 기각한 근거("단독 구매 확률 <c>20% → 40%</c>")가 개정판에서는 확률 <c>0%</c> 로
+        /// 더 강해진다 — 그래서 가격이 아니라 수입을 조였다.
         /// </summary>
         [Test]
         public void HangarPriceStillRequiresSavingUp()
         {
             var frame = LastShiftModuleCatalog.At(LastShiftModuleCatalog.Hangar);
 
-            Assert.That(frame.MaintenanceCost, Is.EqualTo(LastShiftMaintenance.MaxPortIncome),
-                "격납고 가격이 한 기항 최대 수입과 갈렸다 — 카탈로그 §4.3 검산의 전제다.");
+            Assert.That(frame.MaintenanceCost, Is.GreaterThan(LastShiftMaintenance.MaxPortIncome),
+                "격납고를 한 기항 수입으로 산다 — 조항 B-1 개정의 §2.5 판정이 깨졌다.");
 
-            // 래치가 최고(4/4)여야 한 기항 수입으로 닿는다. 하나만 놓쳐도 두 기항이다.
+            // 최고 성적(4/4)으로도 못 닿는다. 어떤 성적이든 두 기항이다.
             Assert.That(LastShiftMaintenance.IncomeFor(LastShiftMaintenance.MaxLatches),
-                Is.EqualTo(frame.MaintenanceCost));
-            Assert.That(LastShiftMaintenance.IncomeFor(LastShiftMaintenance.MaxLatches - 1),
                 Is.LessThan(frame.MaintenanceCost));
+            Assert.That(frame.MaintenanceCost,
+                Is.LessThanOrEqualTo(LastShiftMaintenance.MaxPortIncome + LastShiftMaintenance.IncomeFor(0)),
+                "최악 성적 둘로도 못 닿으면 저축 구간이 설계보다 길다.");
         }
 
         /// <summary>

@@ -668,9 +668,16 @@ namespace DoodleUp.Runtime
                 ? "커서 없음"
                 : holder == ClientId ? "커서 나" : $"커서 승무원 {holder}";
 
+            // 버림은 <b>0 이 아닐 때만</b> 적는다 — 상한(조항 B-2)에 닿는 것은 후반뿐이라
+            // 평시에 "버림 0" 이 늘 떠 있으면 머리줄만 길어지고 아무것도 안 알린다.
+            var forfeited = LastShiftMaintenance.LastPortForfeited > 0
+                ? $" · 버림 {LastShiftMaintenance.LastPortForfeited}"
+                : string.Empty;
+
             GUI.Label(new Rect(header.x + 8f, header.y + 4f, header.width - 140f, 26f),
                 $"선체 도면 — 기항 {LastShiftMaintenance.PortIndex} · 정비 여력 {LastShiftMaintenance.Balance} " +
-                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver}) · {holderText}",
+                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver}" +
+                $"{forfeited}) · {holderText}",
                 headingStyle);
 
             if (GUI.Button(new Rect(header.xMax - 96f, header.y + 3f, 88f, 26f), "닫기  Esc")) Close();

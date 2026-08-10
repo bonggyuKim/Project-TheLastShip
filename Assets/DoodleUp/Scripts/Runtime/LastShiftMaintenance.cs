@@ -75,22 +75,41 @@ namespace DoodleUp.Runtime
         public const int MaxLatches = 4;
 
         /// <summary>
-        /// 래치가 하나도 안 걸려도 주는 몫(§4.1). <b>이게 없으면 구간 <c>1</c> 을 망친 항해가
-        /// 회복 경로 없이 굳고</b>, 그건 <c>RG-3</c>(영구 잠금 금지)의 항해판 위반이다
-        /// (<c>voyage-run-structure-v1.md</c> §4.1-(나)).
+        /// <b>래치가 <c>0</c> 일 때만</b> 주는 몫 — 조항 <c>B-1</c>(개정,
+        /// <c>campaign-scale-and-combat-balance-v1.md</c> §2.3). <b>이게 없으면 구간 <c>1</c> 을
+        /// 망친 항해가 회복 경로 없이 굳고</b>, 그건 <c>RG-3</c>(영구 잠금 금지)의 항해판
+        /// 위반이다(<c>voyage-run-structure-v1.md</c> §4.1-(나)).
+        ///
+        /// <b>더하기가 아니라 하한이다.</b> 개정 전에는 래치 수에 언제나 <c>1</c> 을 얹어서
+        /// 결과 화면의 래치 <c>3/4</c> 와 기항 화면의 여력 <c>4</c> 가 어긋나 있었다 — 개정판은
+        /// 래치 <c>3</c> 이 곧 여력 <c>3</c> 이라 §4.1 이 <c>1:1</c> 을 고른 이유가 여기서
+        /// 완성된다.
         /// </summary>
         public const int MinimumIncome = 1;
 
         /// <summary>
-        /// 한 기항 최대 수입. <c>래치 4 + 최소 보장 1 = 5</c> 다. 카탈로그 최고가(격납고)가
-        /// 정확히 이 값이라 <b>최고 성적으로 한 번에 사거나 두 기항에 걸쳐 모으거나 둘 중 하나가
-        /// 된다</b>(§4.3 검산).
+        /// 한 기항 최대 수입. 조항 <c>B-1</c> 개정으로 <c>5 → 4</c> 다(래치 넷이 그대로 수입 넷).
+        /// <b>카탈로그 최고가(격납고 <c>5</c>)가 이 값보다 커서 단독 구매가 아예 불가능해졌다</b> —
+        /// 저축이 조건이 아니라 규칙이 된다(같은 문서 §2.3·§2.5).
         /// </summary>
-        public const int MaxPortIncome = MaxLatches + MinimumIncome;
+        public const int MaxPortIncome = MaxLatches;
+
+        /// <summary>
+        /// 조항 <c>B-2</c>(신설) — <b>여력 잔액 상한. 초과분은 버린다.</b>
+        /// <c>port-module-catalog-v1.md</c> 조항 <c>M-1</c>("상한 없음")을 개정한다.
+        ///
+        /// 상한이 없으면 잔액이 <c>50</c> 을 넘는 순간 "모아서 짓는다"가 "이미 다 모여 있다"가
+        /// 되고 그 뒤 기항의 선택이 사라진다. <c>12</c> 는 격납고(<c>5</c>)의 <c>2.4</c>배 —
+        /// <b>가장 비싼 것을 사고도 다음 것을 향해 모으는 여지가 남는 최소값</b>이다.
+        /// </summary>
+        public const int MaxBalance = 12;
 
         private static readonly List<LastShiftMaintenancePurchase> purchases = new();
 
-        /// <summary>지금 쓸 수 있는 여력. <b>기항을 건너 남는다</b>(조항 M-1). 상한은 없다.</summary>
+        /// <summary>
+        /// 지금 쓸 수 있는 여력. <b>기항을 건너 남지만</b>(조항 M-1) <see cref="MaxBalance"/> 를
+        /// 넘지 않는다(조항 B-2).
+        /// </summary>
         public static int Balance { get; private set; }
 
         /// <summary>
@@ -105,6 +124,17 @@ namespace DoodleUp.Runtime
         /// <summary>직전 기항 시작 시점의 잔액 — 즉 이월된 몫. 화면이 "이월 N" 을 적는 자리다.</summary>
         public static int LastCarriedOver { get; private set; }
 
+        /// <summary>
+        /// 가장 최근 기항 정산에서 <b>사라진</b> 여력 — 상한 초과분(조항 B-2)과 상한 접점 견인
+        /// 보정(조항 B-13)의 합이다. 화면이 "버림 N" 을 적는 자리이고(§8-4, <c>game-art</c>),
+        /// <b>둘을 한 값으로 두는 것은 정산 지점이 하나이기 때문</b>이다 — 견인이면 수입이
+        /// <c>0</c> 이라 초과분이 날 수 없으므로 두 사유가 같은 기항에 섞이지 않는다.
+        ///
+        /// <b>파생값이 아니라 저장값이다.</b> <c>이월 + 수입 - 잔액</c> 으로 계산하면 그 기항에서
+        /// 뭘 사는 순간 값이 같이 틀어진다.
+        /// </summary>
+        public static int LastPortForfeited { get; private set; }
+
         /// <summary>기항에 들어와 있는가. 아니면 살 수 없다.</summary>
         public static bool IsAtPort => PortIndex > 0;
 
@@ -114,22 +144,30 @@ namespace DoodleUp.Runtime
         // ── 획득 ────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 래치 수 → 그 기항의 수입. <b>환산은 <c>1:1</c> 이다</b>(§4.1) — 결과 화면의 래치
-        /// <c>3/4</c> 와 기항 화면의 여력 <c>4</c> 사이에 환산표를 안 읽게 하려고 고른 값이지
-        /// 산수로 고른 값이 아니다.
+        /// 래치 수 → 그 기항의 수입. <b>환산은 정확히 <c>1:1</c> 이다</b>(조항 B-1 개정) —
+        /// 결과 화면의 래치 <c>3/4</c> 와 기항 화면의 여력 <c>3</c> 이 <b>같은 수</b>여야
+        /// 환산표를 안 읽는다. 최소 보장은 그 위에 얹는 상수가 아니라 <b>래치 <c>0</c> 에만
+        /// 걸리는 하한</b>이다.
         ///
         /// <paramref name="towed"/> 면 <c>0</c> 이다 — 견인의 대가 셋 중 첫째
         /// (<c>voyage-run-structure-v1.md</c> §5). <b>수입만 <c>0</c> 이고 잔액은 안 건드린다</b>
         /// (조항 M-3): 모아 둔 것까지 날리면 아끼는 선택이 언제나 손해가 되고, 그러면 아무도
-        /// 두 번은 안 아낀다.
+        /// 두 번은 안 아낀다. <b>단 하나의 예외가 조항 B-13</b> 이고, 그건 수입식이 아니라
+        /// <see cref="ArriveAtPort"/> 의 정산에 붙는다 — 상한에 앉은 잔액에서는 "수입 0" 이
+        /// 아무것도 안 뺏기 때문이다.
         /// </summary>
         public static int IncomeFor(int latches, bool towed = false) =>
-            towed ? 0 : Mathf.Clamp(latches, 0, MaxLatches) + MinimumIncome;
+            towed ? 0 : Mathf.Max(Mathf.Clamp(latches, 0, MaxLatches), MinimumIncome);
 
         /// <summary>
         /// 기항에 들어온다. 회차를 하나 올리고 수입을 <b>남은 잔액 위에 얹는다</b> — 이 한 줄이
         /// 조항 M-1(이월) 이고, 이월이 없으면 매 기항 다 쓰는 것이 언제나 최적이라 모을 이유가
         /// 없다(§0-1).
+        ///
+        /// <b>정산 지점이 여기 하나다.</b> 조항 B-2(상한 <c>12</c>)와 조항 B-13(상한 접점 견인
+        /// 보정)이 같은 자리에 붙는 것은 <c>campaign-scale-and-combat-balance-v1.md</c> §8-13 이
+        /// 지정한 것이고, 실제로 <b>둘을 떼어 놓으면 잔액이 상한을 넘은 중간 상태가 생겨</b>
+        /// B-13 의 조건("상한에 있으면")이 무엇을 보는지가 애매해진다.
         /// </summary>
         /// <returns>이번 기항에 들어온 수입.</returns>
         public static int ArriveAtPort(int latches, bool towed = false)
@@ -138,7 +176,18 @@ namespace DoodleUp.Runtime
             LastPortIncome = IncomeFor(latches, towed);
 
             PortIndex++;
-            Balance += LastPortIncome;
+            var settled = Balance + LastPortIncome;
+
+            // 조항 B-13 — 잔액이 상한에 앉아 있으면 견인의 "그 기항 수입 0" 이 아무것도 안
+            // 뺏는다. 방치하면 숙련 후반의 전투 패배가 -13 이 아니라 복구뿐인 -6 이 되어 전투
+            // 기대값이 +5.2 로 튀고, 그건 §7 이 그은 전투 선택률 상한 70% 를 넘긴다.
+            // 빼는 값이 래치 수인 이유는 그 수가 이미 결과 화면에 있기 때문이다 — 새 상수를
+            // 안 만든다("래치 3 개를 걸었는데 견인돼서 3 을 잃었다").
+            if (towed && settled >= MaxBalance) settled -= Mathf.Clamp(latches, 0, MaxLatches);
+
+            // 조항 B-2 — 상한 12. 초과분은 버린다.
+            Balance = Mathf.Clamp(settled, 0, MaxBalance);
+            LastPortForfeited = LastCarriedOver + LastPortIncome - Balance;
             return LastPortIncome;
         }
 
@@ -226,7 +275,10 @@ namespace DoodleUp.Runtime
 
             refunded = RefundFor(purchases[moduleSlot]);
             purchases.RemoveAt(moduleSlot);
-            Balance += refunded;
+            // 상한(조항 B-2)은 여기에도 걸린다. 환수는 잔액이 느는 유일한 다른 경로이고,
+            // 여기만 빼 두면 잔액이 12 를 넘은 상태가 만들어져 다음 기항의 B-13 조건이
+            // 무엇을 보는지가 갈린다.
+            Balance = Mathf.Min(Balance + refunded, MaxBalance);
             return true;
         }
 
@@ -250,12 +302,14 @@ namespace DoodleUp.Runtime
         /// 않는다</b> — 수입식(<see cref="IncomeFor"/>)을 클라이언트에서 다시 돌리면 래치 수가
         /// 한 tick 어긋난 순간 두 화면의 잔액이 갈리고, 그 차이는 배치를 눌러 봐야 드러난다.
         /// </summary>
-        public static void ApplyNetworkLedger(int balance, int portIndex, int lastIncome, int lastCarried)
+        public static void ApplyNetworkLedger(
+            int balance, int portIndex, int lastIncome, int lastCarried, int lastForfeited = 0)
         {
             Balance = balance;
             PortIndex = portIndex;
             LastPortIncome = lastIncome;
             LastCarriedOver = lastCarried;
+            LastPortForfeited = lastForfeited;
         }
 
         /// <summary>
@@ -283,6 +337,7 @@ namespace DoodleUp.Runtime
             PortIndex = 0;
             LastPortIncome = 0;
             LastCarriedOver = 0;
+            LastPortForfeited = 0;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

@@ -97,6 +97,9 @@ namespace DoodleUp.Runtime
         public int LastPortIncome;
         public int LastCarriedOver;
 
+        /// <summary>상한·견인 보정으로 사라진 몫(<see cref="LastShiftMaintenance.LastPortForfeited"/>).</summary>
+        public int LastPortForfeited;
+
         public int SegmentIndex;
 
         /// <summary><see cref="LastShiftSegmentTransition"/> 를 바이트로 싣는다.</summary>
@@ -117,6 +120,7 @@ namespace DoodleUp.Runtime
             serializer.SerializeValue(ref PortIndex);
             serializer.SerializeValue(ref LastPortIncome);
             serializer.SerializeValue(ref LastCarriedOver);
+            serializer.SerializeValue(ref LastPortForfeited);
             serializer.SerializeValue(ref SegmentIndex);
             serializer.SerializeValue(ref Transition);
             serializer.SerializeValue(ref LatchCount);
@@ -129,6 +133,7 @@ namespace DoodleUp.Runtime
             PortIndex == other.PortIndex &&
             LastPortIncome == other.LastPortIncome &&
             LastCarriedOver == other.LastCarriedOver &&
+            LastPortForfeited == other.LastPortForfeited &&
             SegmentIndex == other.SegmentIndex &&
             Transition == other.Transition &&
             LatchCount == other.LatchCount &&
@@ -248,6 +253,7 @@ namespace DoodleUp.Runtime
             PortIndex = LastShiftMaintenance.PortIndex,
             LastPortIncome = LastShiftMaintenance.LastPortIncome,
             LastCarriedOver = LastShiftMaintenance.LastCarriedOver,
+            LastPortForfeited = LastShiftMaintenance.LastPortForfeited,
             SegmentIndex = LastShiftVoyage.SegmentIndex,
             Transition = (byte)LastShiftVoyage.LastTransition,
             LatchCount = LastShiftVoyage.LastLatchCount,
@@ -262,7 +268,8 @@ namespace DoodleUp.Runtime
         public static void ApplyLedger(in LastShiftPlacementLedger ledger)
         {
             LastShiftMaintenance.ApplyNetworkLedger(
-                ledger.Balance, ledger.PortIndex, ledger.LastPortIncome, ledger.LastCarriedOver);
+                ledger.Balance, ledger.PortIndex, ledger.LastPortIncome, ledger.LastCarriedOver,
+                ledger.LastPortForfeited);
             LastShiftVoyage.ApplyNetworkState(
                 ledger.SegmentIndex, (LastShiftSegmentTransition)ledger.Transition,
                 ledger.LatchCount, ledger.VoyageRunning);
