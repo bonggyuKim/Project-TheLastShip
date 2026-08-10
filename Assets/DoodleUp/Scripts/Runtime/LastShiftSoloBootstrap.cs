@@ -45,8 +45,23 @@ namespace DoodleUp.Runtime
         private void Awake()
         {
             // 씬이 열리자마자 host 가 뜨는 것을 막는다. Start 에서 끄면 이미 늦다.
+            restoreAutoStartHost = LastShiftNetworkSession.AutoStartHost;
             LastShiftNetworkSession.AutoStartHost = false;
         }
+
+        /// <summary>
+        /// <b>끈 것을 되돌린다.</b> <see cref="LastShiftNetworkSession.AutoStartHost"/> 는 정적이라
+        /// 안 되돌리면 같은 에디터 세션의 <b>다음 씬까지</b> 꺼진 채로 남는다 — 솔로 씬을 한 번
+        /// 돌린 뒤 네트워크 씬을 열면 host 가 안 뜨고, 승무원이 없으니 플레이어 카메라도 없고,
+        /// 로비 배경 카메라(<c>cullingMask 0</c>)만 남아 화면이 통째로 검게 나온다.
+        /// 원인이 화면에 안 드러나는 형태라 실제로 그렇게 한 번 났다.
+        /// </summary>
+        private void OnDestroy()
+        {
+            LastShiftNetworkSession.AutoStartHost = restoreAutoStartHost;
+        }
+
+        private bool restoreAutoStartHost = true;
 
         private void Start()
         {
