@@ -14,6 +14,7 @@ namespace DoodleUp.Editor
         private const string ModelFolder = "Assets/Art/LastShift/ModularKit";
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/LastShiftModularKit";
         private const string ControllerFolder = PrefabFolder + "/Animators";
+        private const string MapPath = "Assets/DoodleUp/Data/LastShiftModularMap.json";
         private static readonly string[] Names =
         {
             "LPK_Wall_Straight_2m", "LPK_Wall_Straight_4m", "LPK_Wall_Window_4m", "LPK_Wall_Curve_45", "LPK_Corner_Outer_90", "LPK_Corner_Inner_90",
@@ -141,64 +142,119 @@ namespace DoodleUp.Editor
             foreach (var renderer in ship.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
             var old = ship.transform.Find("ModularKitAssembly");
             if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
+            var map = LoadMap(p);
+            RemoveExcludedObjects(ship, map.excluded);
             var root = new GameObject("ModularKitAssembly").transform; root.SetParent(ship.transform, false);
-            // 중앙광장: 2m 바닥 3x3, 중앙 리프트, 4개 접속 목.
-            for (var x = -2; x <= 2; x += 2)
-            for (var z = -2; z <= 2; z += 2) Place(p["LPK_Floor_Square_2m"], root, "PlazaFloor", new Vector3(x, 0.01f, z));
-            Place(p["LPK_CentralLift_4m"], root, "CentralLift", Vector3.zero);
-            Place(p["LPK_Support_Pillar"], root, "PlazaPillar", new Vector3(-2f, 0f, -2f));
-            Place(p["LPK_Support_Pillar"], root, "PlazaPillar", new Vector3(2f, 0f, -2f));
-            Place(p["LPK_Support_Pillar"], root, "PlazaPillar", new Vector3(-2f, 0f, 2f));
-            Place(p["LPK_Support_Pillar"], root, "PlazaPillar", new Vector3(2f, 0f, 2f));
-            AddRoom(p, root, LastShiftZone.Cockpit, "Cockpit", "LPK_Cockpit_ControlConsole", 0f);
-            AddRoom(p, root, LastShiftZone.Power, "Power", "LPK_Power_Switchgear", 180f);
-            AddRoom(p, root, LastShiftZone.Cooling, "Cooling", "LPK_Cooling_Exchanger", 0f);
-            AddRoom(p, root, LastShiftZone.LifeSupport, "LifeSupport", "LPK_LifeSupport_Scrubber", 180f);
-            AddExterior(p, root);
-            Place(p["LPK_OxygenLeakPipe_2m"], root, "OxygenLeakPipe", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.LifeSupport) - 1.4f, 0f, 1.9f), 180f);
-            Place(p["LPK_RepairConsole_1m"], root, "RepairConsole", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.Power) + 1.4f, 0f, -1.6f));
-            Place(p["LPK_DamagedPipe_2m"], root, "DamagedPipe", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.Power) - 1.1f, 0f, -2.0f));
-            Place(p["LPK_TetherRack_2m"], root, "TetherRackKit", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cockpit) - 1.6f, 0f, 1.6f));
-            Place(p["LPK_SalvagePad_4m"], root, "SalvagePadKit", new Vector3(-12f, 0f, 0f), 90f);
-            Place(p["LPK_Airlock_Exterior_4m"], root, "ExteriorAirlockKit", new Vector3(-10f, 0f, 0f), 90f);
-            Place(p["LPK_DeckHatch_2m"], root, "DeckHatchKit", new Vector3(0f, 0.01f, -6f));
+            BuildFromMap(map, p, root);
+            Debug.Log($"[LAST_SHIFT_MODULAR_MAP] schema={map.schema} spaces={map.spaces.Length} rules={map.placementRules.Length} result=PASS");
         }
 
-        private static void AddRoom(IReadOnlyDictionary<string, GameObject> p, Transform root, LastShiftZone zone, string label, string feature, float rotationY)
+        private static ModularMap LoadMap(IReadOnlyDictionary<string, GameObject> prefabs)
         {
-            var center = new Vector3(LastShiftShipDimensions.RoomCenterX(zone), 0f, LastShiftShipDimensions.RoomCenterZ(zone));
-            for (var x = -2; x <= 2; x += 2)
-            for (var z = -2; z <= 2; z += 2)
-                Place(p["LPK_Floor_Square_2m"], root, label + "Floor", center + new Vector3(x, 0.01f, z), rotationY);
-            Place(p["LPK_Connector_Neck_2m"], root, label + "Connector", center + new Vector3(0f, 0f, rotationY == 0f ? -2.8f : 2.8f), rotationY);
-            Place(p["LPK_Door_Airlock_2m"], root, label + "Door", center + new Vector3(0f, 0f, rotationY == 0f ? -1.9f : 1.9f), rotationY);
-            Place(p[feature], root, label + "Feature", center + new Vector3(0f, 0f, rotationY == 0f ? 1.55f : -1.55f), rotationY);
-            Place(p["LPK_Wall_Straight_4m"], root, label + "BackWall", center + new Vector3(0f, 0f, rotationY == 0f ? 2.35f : -2.35f), rotationY);
-            Place(p["LPK_Ceiling_Straight_4m"], root, label + "Ceiling", center + Vector3.up * 2.45f, rotationY);
+            if (!File.Exists(MapPath)) throw new FileNotFoundException("Canonical modular map missing", MapPath);
+            var map = JsonUtility.FromJson<ModularMap>(File.ReadAllText(MapPath));
+            if (map == null || map.schema != "lastshift-modular-map/v1" || map.plaza == null || map.spaces == null || map.placementRules == null)
+                throw new InvalidOperationException($"Invalid canonical modular map: {MapPath}");
+            foreach (var rule in map.placementRules)
+                if (string.IsNullOrEmpty(rule.assetId) || !prefabs.ContainsKey(rule.assetId))
+                    throw new InvalidOperationException($"Map rule {rule.id} references missing prefab {rule.assetId}");
+            return map;
         }
 
-        private static void AddExterior(IReadOnlyDictionary<string, GameObject> p, Transform root)
+        private static void BuildFromMap(ModularMap map, IReadOnlyDictionary<string, GameObject> p, Transform root)
         {
-            // 원반 선체를 45° 외피 조각으로 두르고, 대각 전환에는 90° 조각을 사용한다.
-            for (var i = 0; i < 8; i++)
+            var spaces = new Dictionary<string, MapSpace> { ["plaza"] = new MapSpace { id = "plaza", bounds = map.plaza.bounds, ceiling = map.plaza.ceiling } };
+            foreach (var space in map.spaces) spaces.Add(space.id, space);
+            foreach (var rule in map.placementRules)
             {
-                var angle = i * 45f * Mathf.Deg2Rad;
-                var pos = new Vector3(Mathf.Cos(angle) * 13.5f, 0f, Mathf.Sin(angle) * 13.5f);
-                Place(p["LPK_Hull_Exterior_Curve45"], root, "HullExterior45", pos, -i * 45f);
+                if (rule.operation == "tileBounds")
+                    foreach (var target in rule.target) TileBounds(p[rule.assetId], root, rule.id, spaces[target], rule.tile, rule.positionY);
+                else if (rule.operation == "wallBoundsWithDoorGap")
+                    foreach (var target in rule.target) WallBounds(p[rule.assetId], root, rule.id, spaces[target], rule.gapWidth);
+                else if (rule.operation == "spanBounds")
+                    foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
+                else if (rule.operation == "hullRing") HullRing(p[rule.assetId], root, rule);
+                else Place(p[rule.assetId], root, rule.id, Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
             }
-            for (var i = 0; i < 4; i++)
-                Place(p["LPK_Hull_Exterior_Curve90"], root, "HullExterior90", new Vector3((i < 2 ? -1f : 1f) * 15f, 0f, (i % 2 == 0 ? -1f : 1f) * 15f), i * 90f);
-            for (var x = -4; x <= 4; x += 4)
-                Place(p["LPK_Hull_WindowBay_4m"], root, "CockpitWindowBay", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cockpit) + x, 0f, -4.3f));
-            Place(p["LPK_Cockpit_ViewWindow_4m"], root, "CockpitViewWindow", new Vector3(LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cockpit), 0f, -4.35f));
+            foreach (var space in map.spaces)
+            {
+                Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
+                Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
+            }
         }
 
-        private static void Place(GameObject prefab, Transform parent, string name, Vector3 position, float rotationY = 0f)
+        private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y)
+        {
+            for (var x = space.bounds[0] + tile[0] * 0.5f; x < space.bounds[1]; x += tile[0])
+            for (var z = space.bounds[2] + tile[1] * 0.5f; z < space.bounds[3]; z += tile[1])
+                Place(prefab, root, name, new Vector3(x, y, z));
+        }
+
+        private static void WallBounds(GameObject prefab, Transform root, string name, MapSpace space, float gapWidth)
+        {
+            var b = space.bounds;
+            PlaceWallSpan(prefab, root, name, b[0], b[1], b[2], 0f, space.door, gapWidth, true);
+            PlaceWallSpan(prefab, root, name, b[0], b[1], b[3], 0f, space.door, gapWidth, true);
+            PlaceWallSpan(prefab, root, name, b[2], b[3], b[0], 90f, space.door, gapWidth, false);
+            PlaceWallSpan(prefab, root, name, b[2], b[3], b[1], 90f, space.door, gapWidth, false);
+        }
+
+        private static void PlaceWallSpan(GameObject prefab, Transform root, string name, float min, float max, float fixedAxis, float rotationY, MapDoor door, float gapWidth, bool alongX)
+        {
+            var doorOnThisEdge = door != null && (alongX ? Mathf.Abs(door.position[2] - fixedAxis) : Mathf.Abs(door.position[0] - fixedAxis)) < 0.01f;
+            var gapCenter = doorOnThisEdge ? (alongX ? door.position[0] : door.position[2]) : 0f;
+            PlaceWallSegment(prefab, root, name, min, doorOnThisEdge ? gapCenter - gapWidth * 0.5f : max, fixedAxis, rotationY, alongX);
+            if (doorOnThisEdge) PlaceWallSegment(prefab, root, name, gapCenter + gapWidth * 0.5f, max, fixedAxis, rotationY, alongX);
+        }
+
+        private static void PlaceWallSegment(GameObject prefab, Transform root, string name, float min, float max, float fixedAxis, float rotationY, bool alongX)
+        {
+            var length = max - min;
+            if (length < 0.01f) return;
+            var position = alongX ? new Vector3((min + max) * 0.5f, 0f, fixedAxis) : new Vector3(fixedAxis, 0f, (min + max) * 0.5f);
+            Place(prefab, root, name, position, rotationY, new Vector3(length / 4f, 1f, 1f));
+        }
+
+        private static void SpanBounds(GameObject prefab, Transform root, string name, MapSpace space, float y)
+        {
+            var b = space.bounds;
+            Place(prefab, root, name, new Vector3((b[0] + b[1]) * 0.5f, y, (b[2] + b[3]) * 0.5f), 0f,
+                new Vector3((b[1] - b[0]) / 4f, 1f, (b[3] - b[2]) / 4f));
+        }
+
+        private static void HullRing(GameObject prefab, Transform root, MapRule rule)
+        {
+            for (var i = 0; i < rule.count; i++)
+            {
+                var angle = i * (360f / rule.count) * Mathf.Deg2Rad;
+                Place(prefab, root, rule.id, new Vector3(Mathf.Cos(angle) * rule.radius, 0f, Mathf.Sin(angle) * rule.radius), -i * rule.rotationStep);
+            }
+        }
+
+        private static void RemoveExcludedObjects(GameObject ship, string[] excluded)
+        {
+            if (excluded == null) return;
+            foreach (var transform in ship.GetComponentsInChildren<Transform>(true))
+                if (System.Array.IndexOf(excluded, transform.name) >= 0) UnityEngine.Object.DestroyImmediate(transform.gameObject);
+        }
+
+        private static Vector3 BoundsCenter(float[] bounds) => new((bounds[0] + bounds[1]) * 0.5f, 0f, (bounds[2] + bounds[3]) * 0.5f);
+        private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
+        private static Vector3 VectorOrOne(float[] values) => values == null || values.Length == 0 ? Vector3.one : Vector(values);
+
+        private static void Place(GameObject prefab, Transform parent, string name, Vector3 position, float rotationY = 0f, Vector3? scale = null)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
             instance.name = name;
             instance.transform.localPosition = position;
             instance.transform.localRotation = Quaternion.Euler(0f, rotationY, 0f);
+            instance.transform.localScale = scale ?? Vector3.one;
         }
+
+        [Serializable] private sealed class ModularMap { public string schema; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public string[] excluded; }
+        [Serializable] private sealed class MapPlaza { public float[] bounds; public float ceiling; }
+        [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
+        [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; }
+        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; }
     }
 }
