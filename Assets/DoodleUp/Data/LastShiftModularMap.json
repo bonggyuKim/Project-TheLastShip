@@ -9,7 +9,7 @@
     { "id": "lifeSupport", "bounds": [6, 16, -4, 4], "ceiling": 3.2, "door": { "position": [6, 0, 0], "rotationY": -90, "kind": "pressure" }, "feature": "LPK_LifeSupport_Scrubber" },
     { "id": "power", "bounds": [-4, 4, -14, -6], "ceiling": 3.2, "door": { "position": [0, 0, -6], "rotationY": 0, "kind": "pressure" }, "feature": "LPK_Power_Switchgear" },
     { "id": "cooling", "bounds": [-4, 4, 6, 14], "ceiling": 3.2, "door": { "position": [0, 0, 6], "rotationY": 180, "kind": "pressure" }, "feature": "LPK_Cooling_Exchanger" },
-    { "id": "quarters", "bounds": [4, 12, 6, 12], "ceiling": 3.0, "door": { "position": [4.5, 0, 6], "rotationY": 180, "kind": "plain" }, "feature": "LPK_Quarters_Bunk" }
+    { "id": "quarters", "bounds": [4, 12, 6, 12], "ceiling": 3.0, "door": { "position": [4.8, 0, 6], "rotationY": 180, "kind": "plain" }, "feature": "LPK_Quarters_Bunk" }
   ],
   "placementRules": [
     { "id": "floor", "assetId": "LPK_Floor_Square_2m", "target": ["plaza", "cockpit", "lifeSupport", "power", "cooling", "quarters"], "operation": "tileBounds", "tile": [2, 2], "positionY": 0 },
