@@ -54,8 +54,8 @@ namespace DoodleUp.Runtime
         {
             if (layer == null || crew == null || !crew.ShowsSuitGauge) return;
 
-            var gauge = layer.Gauge(id, LastShiftUiIcon.Oxygen, LastShiftGaugeChannel.Oxygen,
-                LastShiftHudLayout.SuitGaugeRect(Screen.height, row));
+            var gauge = layer.Gauge(id, LastShiftUiIcon.Oxygen,
+                LastShiftHudLayout.SuitGaugeRect(LastShiftUiLayer.ScreenSize.y, row));
             gauge.SetValue(crew.SuitOxygen);
             gauge.SetName(crew.IsDead
                 ? $"{slotLabel} 예비 고갈 — 사망"

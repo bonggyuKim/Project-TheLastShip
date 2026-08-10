@@ -2092,7 +2092,7 @@ namespace DoodleUp.Runtime
         {
             if (layer == null) return;
 
-            var thrust = ApplyGauge(layer, "thrust", LastShiftUiIcon.Thrust, LastShiftGaugeChannel.Docking,
+            var thrust = ApplyGauge(layer, "thrust", LastShiftUiIcon.Thrust,
                 0, "추력", currentState.ThrustDemand, HigherIsBetter,
                 LastShiftRecoveryTuning.DockingSuccessThrust);
 
@@ -2104,7 +2104,7 @@ namespace DoodleUp.Runtime
 
             // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
             // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
-            ApplyGauge(layer, "power", LastShiftUiIcon.Warning, LastShiftGaugeChannel.Maintenance,
+            ApplyGauge(layer, "power", LastShiftUiIcon.Warning,
                 1, "전력", currentState.BusPower, HigherIsBetter,
                 LastShiftSituationTable.BusDetachedTrigger,
                 LastShiftSituationTable.PowerCascadeTrigger,
@@ -2112,7 +2112,7 @@ namespace DoodleUp.Runtime
 
             // 열만 반대다 — 올라가는 것이 나쁘다. 선 셋은 S-H1/H2/H3 등급 경계 그대로이며
             // 여기서 다시 계산하지 않는다(§5.7.2).
-            ApplyGauge(layer, "heat", LastShiftUiIcon.Warning, LastShiftGaugeChannel.Materials,
+            ApplyGauge(layer, "heat", LastShiftUiIcon.Warning,
                 2, "열", currentState.EngineHeat, HigherIsWorse,
                 LastShiftSituationTable.HeatCouplingTrigger,
                 LastShiftSituationTable.HeatRunawayTrigger,
@@ -2123,8 +2123,7 @@ namespace DoodleUp.Runtime
             // 필요 추력선이 답한다.
             var docking = LastShiftResourceGauges.Docking(
                 currentState.DockProgress, LastShiftRecoveryTuning.DockTargetThrustSeconds);
-            var dockGauge = layer.Gauge("docking", LastShiftUiIcon.Docking, LastShiftGaugeChannel.Docking,
-                LastShiftHudLayout.SystemGaugeRect(3));
+            var dockGauge = layer.Gauge("docking", LastShiftUiIcon.Docking, LastShiftHudLayout.SystemGaugeRect(3));
             dockGauge.SetName("도킹");
             dockGauge.SetValue(docking.Fill);
             dockGauge.SetValueLabel(docking.ValueLabel);
@@ -2140,14 +2139,14 @@ namespace DoodleUp.Runtime
         /// 의미가 없다.
         /// </summary>
         private static LastShiftGaugeView ApplyGauge(
-            LastShiftUiLayer layer, string id, LastShiftUiIcon icon, LastShiftGaugeChannel channel,
+            LastShiftUiLayer layer, string id, LastShiftUiIcon icon,
             int row, string label, float value, bool higherIsWorse, params float[] thresholds)
         {
             var fill = Mathf.Clamp01(float.IsNaN(value) ? 0f : value);
             var first = thresholds.Length > 0 ? thresholds[0] : 0f;
             var bad = higherIsWorse ? fill >= first : fill < first;
 
-            var gauge = layer.Gauge(id, icon, channel, LastShiftHudLayout.SystemGaugeRect(row));
+            var gauge = layer.Gauge(id, icon, LastShiftHudLayout.SystemGaugeRect(row));
             gauge.SetName(label);
             gauge.SetValue(fill);
             gauge.SetValueLabel(string.Empty);
@@ -2168,30 +2167,26 @@ namespace DoodleUp.Runtime
         {
             if (layer == null) return;
 
-            ApplyResourceGauge(layer, "maintenance", LastShiftUiIcon.Maintenance,
-                LastShiftGaugeChannel.Maintenance, 0, "정비여력", LastShiftResourceGauges.Maintenance());
-            ApplyResourceGauge(layer, "materials", LastShiftUiIcon.Materials,
-                LastShiftGaugeChannel.Materials, 1, "자재", LastShiftResourceGauges.Materials());
+            ApplyResourceGauge(layer, "maintenance", LastShiftUiIcon.Maintenance, 0, "정비여력", LastShiftResourceGauges.Maintenance());
+            ApplyResourceGauge(layer, "materials", LastShiftUiIcon.Materials, 1, "자재", LastShiftResourceGauges.Materials());
 
             var oxygen = TryResolveLocalZone(out var zone)
                 ? LastShiftResourceGauges.Oxygen(zonePressures[zone], ZoneOxygenGradeOf(zone))
                 : LastShiftGaugeReadout.Missing;
-            ApplyResourceGauge(layer, "oxygen", LastShiftUiIcon.Oxygen,
-                LastShiftGaugeChannel.Oxygen, 2, "산소", oxygen);
+            ApplyResourceGauge(layer, "oxygen", LastShiftUiIcon.Oxygen, 2, "산소", oxygen);
 
-            ApplyResourceGauge(layer, "food", LastShiftUiIcon.Food,
-                LastShiftGaugeChannel.Food, 3, "식량", LastShiftResourceGauges.Food());
+            ApplyResourceGauge(layer, "food", LastShiftUiIcon.Food, 3, "식량", LastShiftResourceGauges.Food());
         }
 
         private static void ApplyResourceGauge(
-            LastShiftUiLayer layer, string id, LastShiftUiIcon icon, LastShiftGaugeChannel channel,
+            LastShiftUiLayer layer, string id, LastShiftUiIcon icon,
             int row, string label, in LastShiftGaugeReadout readout)
         {
             // 계통이 없는 축은 <b>0 으로 채워 그리지 않는다</b> — 빈 게이지는 "정보 없음" 이
             // 아니라 "바닥났다" 로 읽힌다. 아예 안 빌리면 다음 프레임에 줄이 사라진다.
             if (!readout.Available) return;
 
-            var gauge = layer.Gauge(id, icon, channel, LastShiftHudLayout.ResourceGaugeRect(row));
+            var gauge = layer.Gauge(id, icon, LastShiftHudLayout.ResourceGaugeRect(row));
             gauge.SetName(label);
             gauge.SetValue(readout.Fill);
             gauge.SetValueLabel(readout.ValueLabel);

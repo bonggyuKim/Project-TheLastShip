@@ -22,23 +22,6 @@ namespace DoodleUp.Runtime
     }
 
     /// <summary>
-    /// 게이지 <b>채움</b> 갈래. 아이콘(<see cref="LastShiftUiIcon"/>)과 <b>따로 세는 이유</b>는
-    /// 채움 그림이 아이콘보다 적기 때문이다 — 키트에는 채움이 다섯 장뿐이고(정비여력·자재·
-    /// 산소·식량·도킹), 추력·상호작용·경고는 자기 채움 없이 남의 채움을 빌려 쓴다.
-    ///
-    /// 둘을 한 열거형으로 합치면 채움이 없는 값이 <c>FillOf</c> 에서 조용히 도킹으로 떨어져,
-    /// 화면에는 뜨는데 색이 틀린 상태가 된다. 갈래를 갈라 두면 빌려 쓰는 것이 호출부에 보인다.
-    /// </summary>
-    public enum LastShiftGaugeChannel
-    {
-        Maintenance,
-        Materials,
-        Oxygen,
-        Food,
-        Docking
-    }
-
-    /// <summary>
     /// UI 아트 키트 v1 의 스프라이트 묶음.
     ///
     /// <b>왜 <see cref="ScriptableObject"/> 인가.</b> 그림은 <c>Assets/DoodleUp/Art/UI/LastShift/</c>
@@ -67,12 +50,15 @@ namespace DoodleUp.Runtime
         [SerializeField] private Sprite iconInteract;
         [SerializeField] private Sprite iconWarning;
 
-        [Header("게이지 채움 128×128 — 위 아이콘과 같은 좌표에 겹친다")]
+        [Header("게이지 채움 128×128 — 같은 축의 아이콘과 짝이고 같은 좌표에 겹친다")]
         [SerializeField] private Sprite fillMaintenance;
         [SerializeField] private Sprite fillMaterials;
         [SerializeField] private Sprite fillOxygen;
         [SerializeField] private Sprite fillFood;
         [SerializeField] private Sprite fillDocking;
+        [SerializeField] private Sprite fillThrust;
+        [SerializeField] private Sprite fillInteract;
+        [SerializeField] private Sprite fillWarning;
 
         [Header("패널·프롬프트")]
         [SerializeField] private Sprite panel9Slice;
@@ -138,13 +124,21 @@ namespace DoodleUp.Runtime
             _ => iconWarning
         };
 
-        public Sprite FillOf(LastShiftGaugeChannel channel) => channel switch
+        /// <summary>
+        /// 채움은 <b>아이콘과 같은 축</b>에서만 온다. 아이콘 자체가 게이지라 채움이 곧
+        /// 실루엣이고, 축이 어긋나면 추력 외곽선 안에서 도킹 모양이 차오른다 — 바 시절에는
+        /// 채움이 무늬라 안 보이던 어긋남이 여기서는 그대로 드러난다.
+        /// </summary>
+        public Sprite FillOf(LastShiftUiIcon icon) => icon switch
         {
-            LastShiftGaugeChannel.Maintenance => fillMaintenance,
-            LastShiftGaugeChannel.Materials => fillMaterials,
-            LastShiftGaugeChannel.Oxygen => fillOxygen,
-            LastShiftGaugeChannel.Food => fillFood,
-            _ => fillDocking
+            LastShiftUiIcon.Maintenance => fillMaintenance,
+            LastShiftUiIcon.Materials => fillMaterials,
+            LastShiftUiIcon.Oxygen => fillOxygen,
+            LastShiftUiIcon.Food => fillFood,
+            LastShiftUiIcon.Docking => fillDocking,
+            LastShiftUiIcon.Thrust => fillThrust,
+            LastShiftUiIcon.Interact => fillInteract,
+            _ => fillWarning
         };
 
         /// <summary>
@@ -168,6 +162,9 @@ namespace DoodleUp.Runtime
                 case nameof(fillOxygen): fillOxygen = sprite; break;
                 case nameof(fillFood): fillFood = sprite; break;
                 case nameof(fillDocking): fillDocking = sprite; break;
+                case nameof(fillThrust): fillThrust = sprite; break;
+                case nameof(fillInteract): fillInteract = sprite; break;
+                case nameof(fillWarning): fillWarning = sprite; break;
                 case nameof(panel9Slice): panel9Slice = sprite; break;
                 case nameof(promptPlate): promptPlate = sprite; break;
                 case nameof(keycap): keycap = sprite; break;
@@ -197,6 +194,9 @@ namespace DoodleUp.Runtime
             (nameof(fillOxygen), "icon_gauge_oxygen_fill"),
             (nameof(fillFood), "icon_gauge_food_fill"),
             (nameof(fillDocking), "icon_gauge_docking_fill"),
+            (nameof(fillThrust), "icon_gauge_thrust_fill"),
+            (nameof(fillInteract), "icon_gauge_interact_fill"),
+            (nameof(fillWarning), "icon_gauge_warning_fill"),
             (nameof(panel9Slice), "panel_9slice"),
             (nameof(promptPlate), "prompt_plate"),
             (nameof(keycap), "keycap")
@@ -232,6 +232,9 @@ namespace DoodleUp.Runtime
             nameof(fillOxygen) => fillOxygen,
             nameof(fillFood) => fillFood,
             nameof(fillDocking) => fillDocking,
+            nameof(fillThrust) => fillThrust,
+            nameof(fillInteract) => fillInteract,
+            nameof(fillWarning) => fillWarning,
             nameof(panel9Slice) => panel9Slice,
             nameof(promptPlate) => promptPlate,
             nameof(keycap) => keycap,

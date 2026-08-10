@@ -51,7 +51,7 @@ namespace DoodleUp.Tests.PlayMode
         {
             var layer = LastShiftUiLayer.Instance;
 
-            var gauge = layer.Gauge("play", LastShiftUiIcon.Oxygen, LastShiftGaugeChannel.Oxygen,
+            var gauge = layer.Gauge("play", LastShiftUiIcon.Oxygen,
                 new Rect(28f, 56f, 680f, 32f));
             gauge.SetValue(0.6f);
             var panel = layer.Panel("playPanel", new Rect(16f, 16f, 680f, 290f));

@@ -187,11 +187,16 @@ namespace DoodleUp.Runtime
             label.horizontalOverflow = wrap ? HorizontalWrapMode.Wrap : HorizontalWrapMode.Overflow;
         }
 
-        /// <summary>게이지 한 줄을 빌린다. 아이콘·채움은 처음 빌릴 때 정해지고 그대로 남는다.</summary>
-        public LastShiftGaugeView Gauge(string id, LastShiftUiIcon icon, LastShiftGaugeChannel channel, Rect screenRect)
+        /// <summary>
+        /// 게이지 한 줄을 빌린다. 축은 처음 빌릴 때 정해지고 그대로 남는다.
+        ///
+        /// <b>축 인자가 하나다.</b> 아이콘 자체가 게이지라 외곽선과 채움이 같은 그림의 짝이고,
+        /// 둘을 따로 받으면 어긋난 조합을 부를 수 있다.
+        /// </summary>
+        public LastShiftGaugeView Gauge(string id, LastShiftUiIcon icon, Rect screenRect)
         {
             var view = Borrow(gauges, id, () =>
-                LastShiftGaugeView.Create(gaugeRoot, $"Gauge:{id}", icon, channel));
+                LastShiftGaugeView.Create(gaugeRoot, $"Gauge:{id}", icon));
             view.SetLayout(LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
             return view;
         }

@@ -84,8 +84,31 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(kit.SlicedPromptPlate.border.x, Is.GreaterThan(0f),
                 "프롬프트판은 문장 길이만큼 늘어난다 — 경계가 0 이면 왼쪽 삼각 표식이 같이 눌린다.");
             Assert.That(kit.IconOf(LastShiftUiIcon.Oxygen).rect.size,
-                Is.EqualTo(kit.FillOf(LastShiftGaugeChannel.Oxygen).rect.size),
+                Is.EqualTo(kit.FillOf(LastShiftUiIcon.Oxygen).rect.size),
                 "외곽선과 채움은 같은 좌표에 겹친다 — 크기가 다르면 채움이 실루엣 밖으로 샌다.");
+        }
+
+        /// <summary>
+        /// 축 <b>여덟 개가 각자 자기 채움</b>을 갖는다. 아이콘 자체가 게이지라 채움이 곧
+        /// 실루엣이고, 한 축이 남의 채움을 빌리면 추력 외곽선 안에서 도킹 모양이 차오른다.
+        /// </summary>
+        [Test]
+        public void EveryIconHasItsOwnFillOfTheSameAxis()
+        {
+            var kit = Resources.Load<LastShiftUiKit>(LastShiftUiKit.ResourcePath);
+            Assert.That(kit, Is.Not.Null);
+
+            var seen = new System.Collections.Generic.Dictionary<Sprite, LastShiftUiIcon>();
+            foreach (LastShiftUiIcon icon in System.Enum.GetValues(typeof(LastShiftUiIcon)))
+            {
+                var fill = kit.FillOf(icon);
+                Assert.That(fill, Is.Not.Null, $"{icon} 축에 채움이 없다.");
+                Assert.That(fill, Is.Not.SameAs(kit.IconOf(icon)),
+                    $"{icon} 의 외곽선과 채움이 같은 장이면 값이 0 일 때도 꽉 차 보인다.");
+                Assert.That(seen.ContainsKey(fill), Is.False,
+                    $"{icon} 가 {(seen.TryGetValue(fill, out var other) ? other.ToString() : "?")} 의 채움을 빌려 쓴다.");
+                seen[fill] = icon;
+            }
         }
 
         /// <summary>
@@ -96,7 +119,7 @@ namespace DoodleUp.Tests.EditMode
         public void GaugeFillTracksValueThroughFillAmount()
         {
             var layer = LastShiftUiLayer.EnsureInstance();
-            var gauge = layer.Gauge("probe", LastShiftUiIcon.Oxygen, LastShiftGaugeChannel.Oxygen,
+            var gauge = layer.Gauge("probe", LastShiftUiIcon.Oxygen,
                 new Rect(28f, 56f, 680f, 32f));
 
             var widthAtZero = ((RectTransform)gauge.Fill.transform).sizeDelta.x;
@@ -122,7 +145,7 @@ namespace DoodleUp.Tests.EditMode
         public void GaugeFillSharesTheIconRect()
         {
             var layer = LastShiftUiLayer.EnsureInstance();
-            var gauge = layer.Gauge("inset", LastShiftUiIcon.Materials, LastShiftGaugeChannel.Materials,
+            var gauge = layer.Gauge("inset", LastShiftUiIcon.Materials,
                 new Rect(28f, 56f, 680f, 32f));
 
             var icon = (RectTransform)gauge.Icon.transform;

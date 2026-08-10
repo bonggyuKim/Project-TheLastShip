@@ -25,6 +25,9 @@ MonoBehaviour:
   fillOxygen: {fileID: 21300000, guid: f8abbafe844bbb7a2b8635a47510e40d, type: 3}
   fillFood: {fileID: 21300000, guid: 557b845d68e9d61a5b839b71e9f29a3b, type: 3}
   fillDocking: {fileID: 21300000, guid: fe1e3f284a7e0d23f80be62034be8167, type: 3}
+  fillThrust: {fileID: 21300000, guid: a3b9aa6d4bbb0db647c3e5111104573f, type: 3}
+  fillInteract: {fileID: 21300000, guid: 3886dd58176b457e6c01e6c3155bcff5, type: 3}
+  fillWarning: {fileID: 21300000, guid: ce375803255b8b01b9aa009c816ad9fa, type: 3}
   panel9Slice: {fileID: 21300000, guid: 89eb738cf0930c2d232dfd539b806869, type: 3}
   promptPlate: {fileID: 21300000, guid: a8a22d2813573fdf5f63f01449fbb37d, type: 3}
   keycap: {fileID: 21300000, guid: 04d03fa7f0b14c8e12e33cb88a7d2a0d, type: 3}

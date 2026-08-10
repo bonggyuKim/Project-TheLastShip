@@ -59,16 +59,15 @@ namespace DoodleUp.Runtime
         /// 한 줄을 짓는다. 자리는 <see cref="SetLayout"/> 가 따로 잡는다 — HUD 가 줄 수를
         /// 상황에 따라 바꾸므로 만드는 시점에 자리를 못 정한다.
         /// </summary>
-        public static LastShiftGaugeView Create(
-            Transform parent, string name, LastShiftUiIcon icon, LastShiftGaugeChannel channel)
+        public static LastShiftGaugeView Create(Transform parent, string name, LastShiftUiIcon icon)
         {
             var rect = LastShiftUiFactory.CreateRect(parent, name);
             var view = rect.gameObject.AddComponent<LastShiftGaugeView>();
-            view.Build(icon, channel);
+            view.Build(icon);
             return view;
         }
 
-        private void Build(LastShiftUiIcon icon, LastShiftGaugeChannel channel)
+        private void Build(LastShiftUiIcon icon)
         {
             var kit = LastShiftUiKit.Instance;
             root = (RectTransform)transform;
@@ -78,7 +77,7 @@ namespace DoodleUp.Runtime
 
             // 채움은 외곽선의 자식이 아니라 형제다. 자식으로 두면 부모가 먼저 그려지는 순서라
             // 외곽선이 채움을 덮고, 낮은 값에서 채움이 통째로 안 보인다.
-            fillImage = LastShiftUiFactory.CreateImage(root, "IconFill", kit != null ? kit.FillOf(channel) : null);
+            fillImage = LastShiftUiFactory.CreateImage(root, "IconFill", kit != null ? kit.FillOf(icon) : null);
             fillImage.type = Image.Type.Filled;
             fillImage.fillMethod = Image.FillMethod.Vertical;
             fillImage.fillOrigin = (int)Image.OriginVertical.Bottom;
