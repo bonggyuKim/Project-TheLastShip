@@ -2104,7 +2104,7 @@ namespace DoodleUp.Runtime
 
             // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
             // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
-            ApplyGauge(layer, "power", LastShiftUiIcon.Warning,
+            ApplyGauge(layer, "power", LastShiftUiIcon.Power,
                 1, "전력", currentState.BusPower, HigherIsBetter,
                 LastShiftSituationTable.BusDetachedTrigger,
                 LastShiftSituationTable.PowerCascadeTrigger,
@@ -2112,7 +2112,7 @@ namespace DoodleUp.Runtime
 
             // 열만 반대다 — 올라가는 것이 나쁘다. 선 셋은 S-H1/H2/H3 등급 경계 그대로이며
             // 여기서 다시 계산하지 않는다(§5.7.2).
-            ApplyGauge(layer, "heat", LastShiftUiIcon.Warning,
+            ApplyGauge(layer, "heat", LastShiftUiIcon.Heat,
                 2, "열", currentState.EngineHeat, HigherIsWorse,
                 LastShiftSituationTable.HeatCouplingTrigger,
                 LastShiftSituationTable.HeatRunawayTrigger,

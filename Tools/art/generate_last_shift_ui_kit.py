@@ -80,7 +80,17 @@ def generate_icons():
         d.polygon([(49*S,77*S),(31*S,65*S),(27*S,76*S),(54*S,101*S)],fill=rgba(a))
     def warning(d, a, filled):
         d.polygon([(64*S,24*S),(105*S,99*S),(23*S,99*S)],fill=rgba(a) if filled else None,outline=rgba(a)); d.rectangle((59*S,49*S,69*S,76*S),fill=rgba(C["ink"] if filled else a)); d.ellipse((59*S,82*S,69*S,92*S),fill=rgba(C["ink"] if filled else a))
-    specs = [("maintenance",C["orange"],wrench),("materials",C["yellow"],crate),("oxygen",C["cyan"],oxygen),("food",C["lime"],food),("docking",C["cyan"],dock),("thrust",C["orange"],thrust),("interact",C["lime"],interact),("warning",C["red"],warning)]
+    def power(d, a, filled):
+        d.rounded_rectangle((39*S,31*S,89*S,99*S), 8*S, fill=rgba(a) if filled else None, outline=rgba(a), width=8*S)
+        d.rectangle((54*S,23*S,74*S,32*S), fill=rgba(a))
+        d.polygon([(68*S,39*S),(51*S,67*S),(64*S,67*S),(57*S,91*S),(81*S,59*S),(68*S,59*S)], fill=rgba(C["ink"] if filled else a))
+    def heat(d, a, filled):
+        d.rounded_rectangle((49*S,27*S,79*S,88*S), 14*S, fill=rgba(a) if filled else None, outline=rgba(a), width=8*S)
+        d.ellipse((48*S,78*S,80*S,110*S), fill=rgba(a) if filled else None, outline=rgba(a), width=8*S)
+        d.line((89*S,35*S,101*S,35*S), fill=rgba(a), width=7*S)
+        d.line((89*S,58*S,101*S,58*S), fill=rgba(a), width=7*S)
+        d.line((89*S,81*S,101*S,81*S), fill=rgba(a), width=7*S)
+    specs = [("maintenance",C["orange"],wrench),("materials",C["yellow"],crate),("oxygen",C["cyan"],oxygen),("food",C["lime"],food),("docking",C["cyan"],dock),("thrust",C["orange"],thrust),("interact",C["lime"],interact),("power",C["orange"],power),("heat",C["red"],heat),("warning",C["red"],warning)]
     for spec in specs: icon_pair(*spec)
 
 
