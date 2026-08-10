@@ -115,9 +115,30 @@ namespace DoodleUp.Editor
         private static void AddStructuralColliders(GameObject modelInstance, string name)
         {
             if (!StructuralNames.Contains(name)) return;
+            var filters = new List<MeshFilter>();
             foreach (var filter in modelInstance.GetComponentsInChildren<MeshFilter>(true))
+                if (filter.sharedMesh != null && filter.GetComponent<Collider>() == null) filters.Add(filter);
+            if (filters.Count == 0) return;
+
+            // <b>장식 메시에는 안 붙인다.</b> 조각마다 구조 메시 하나와 장식 몇 개가 같이 들어
+            // 있다 — 바닥의 <c>_Edge</c>, 벽의 <c>_InnerTrim</c>, 천장의 <c>_Light</c>,
+            // 외피의 <c>ExteriorRib</c>/<c>Stripe</c> 같은 것들이다. 전부에 붙였더니 바닥 2m
+            // 격자마다 <c>8cm</c> 턱이 생겼다. 걷는 데는 <c>stepOffset 0.3</c> 이 넘겨 주지만,
+            // 이 게임은 저중력에서 물건이 뜨는 게 본체라 그 턱 격자가 뜬 물건을 잡아 둔다.
+            //
+            // 이름 규칙 대신 <b>부피</b>로 고른다. 아트가 파츠 이름을 바꿔도 따라오고,
+            // 코너처럼 구조 메시가 둘인 조각도 같이 살아남는다.
+            var largest = 0f;
+            foreach (var filter in filters)
             {
-                if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
+                var size = filter.sharedMesh.bounds.size;
+                largest = Mathf.Max(largest, size.x * size.y * size.z);
+            }
+
+            foreach (var filter in filters)
+            {
+                var size = filter.sharedMesh.bounds.size;
+                if (size.x * size.y * size.z < largest * 0.25f) continue;
                 filter.gameObject.AddComponent<MeshCollider>().sharedMesh = filter.sharedMesh;
             }
         }
@@ -328,16 +349,39 @@ namespace DoodleUp.Editor
             for (var xi = 0; xi < xs.Count - 1; xi++)
             {
                 var min = xs[xi]; var max = xs[xi + 1]; if (max - min < 0.01f) continue;
-                if (Contains(targets, (min + max) * 0.5f, zs[zi] - 0.01f) && Contains(targets, (min + max) * 0.5f, zs[zi] + 0.01f))
+                if (Divides(targets, (min + max) * 0.5f, zs[zi] - 0.01f, (min + max) * 0.5f, zs[zi] + 0.01f))
                     PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, zs[zi], 0f, true);
             }
             for (var xi = 0; xi < xs.Count; xi++)
             for (var zi = 0; zi < zs.Count - 1; zi++)
             {
                 var min = zs[zi]; var max = zs[zi + 1]; if (max - min < 0.01f) continue;
-                if (Contains(targets, xs[xi] - 0.01f, (min + max) * 0.5f) && Contains(targets, xs[xi] + 0.01f, (min + max) * 0.5f))
+                if (Divides(targets, xs[xi] - 0.01f, (min + max) * 0.5f, xs[xi] + 0.01f, (min + max) * 0.5f))
                     PlaceExteriorSegment(prefab, root, rule, map.spaces, min, max, xs[xi], 90f, false);
             }
+        }
+
+        /// <summary>
+        /// 이 격자선이 <b>서로 다른 두 공간을 가르는가</b>.
+        ///
+        /// 예전에는 "양쪽이 다 어떤 공간 안" 이면 벽을 세웠다. 그러면 <b>한 공간 내부를 지나는
+        /// 격자선</b>도 조건이 선다 — 다른 방의 발자국 모서리가 격자에 좌표를 하나 보태기만
+        /// 하면, 그 좌표에서 광장이 통째로 잘렸다. 실제로 광장 <c>x=±4, z=±4</c> 에 벽이 서서
+        /// 한가운데가 <c>8x8</c> 상자로 갇혔다. 판이 통과 가능한 장식이던 동안에는 안 드러났고,
+        /// 킷에 콜라이더가 붙는 순간 진짜 벽이 됐다.
+        /// </summary>
+        private static bool Divides(List<MapSpace> spaces, float ax, float az, float bx, float bz)
+        {
+            var a = SpaceAt(spaces, ax, az);
+            var b = SpaceAt(spaces, bx, bz);
+            return a != null && b != null && !ReferenceEquals(a, b);
+        }
+
+        private static MapSpace SpaceAt(List<MapSpace> spaces, float x, float z)
+        {
+            foreach (var space in spaces)
+                if (x > space.bounds[0] && x < space.bounds[1] && z > space.bounds[2] && z < space.bounds[3]) return space;
+            return null;
         }
 
         private static void SpanBounds(GameObject prefab, Transform root, string name, MapSpace space, float y)
@@ -463,14 +507,30 @@ namespace DoodleUp.Editor
             if (removed > 0) Debug.Log($"[LAST_SHIFT_MODULAR_MAP] boundary wall dedupe removed={removed}");
         }
 
+        /// <summary>
+        /// 이 안쪽 벽을 외피가 <b>이미 덮고 있는가</b>.
+        ///
+        /// <b>닿는 것과 덮는 것은 다르다.</b> 예전에는 겹침이 <c>0.01m</c> 만 넘어도 지웠는데,
+        /// 광장 경계처럼 외피와 안쪽 벽이 <b>같은 평면 위에서 이어 달리는</b> 자리에서는 두
+        /// 판이 끝점에서 맞닿기만 해도 조건이 섰다. 그래서 압력 경계 벽이 통째로 지워졌고,
+        /// 광장과 방 다섯이 형상으로는 열린 채 남았다 — 문은 서 있는데 옆이 뚫려 있었다.
+        /// 그레이박스 벽이 같은 자리를 메우고 있어서 플레이로는 안 드러났다.
+        ///
+        /// 그래서 <see cref="Covers"/> 로 바꾼다. 외피가 그 벽의 구간을 <b>거의 전부</b> 덮을
+        /// 때만 중복이다.
+        /// </summary>
         private static bool SharesBoundaryFace(Bounds wall, Bounds shell)
         {
-            var xFace = wall.size.x < 0.75f && shell.size.x < 0.75f && Mathf.Abs(wall.center.x - shell.center.x) < 0.6f && Overlaps(wall.min.z, wall.max.z, shell.min.z, shell.max.z);
-            var zFace = wall.size.z < 0.75f && shell.size.z < 0.75f && Mathf.Abs(wall.center.z - shell.center.z) < 0.6f && Overlaps(wall.min.x, wall.max.x, shell.min.x, shell.max.x);
+            var xFace = wall.size.x < 0.75f && shell.size.x < 0.75f && Mathf.Abs(wall.center.x - shell.center.x) < 0.6f && Covers(wall.min.z, wall.max.z, shell.min.z, shell.max.z);
+            var zFace = wall.size.z < 0.75f && shell.size.z < 0.75f && Mathf.Abs(wall.center.z - shell.center.z) < 0.6f && Covers(wall.min.x, wall.max.x, shell.min.x, shell.max.x);
             return (xFace || zFace) && Overlaps(wall.min.y, wall.max.y, shell.min.y, shell.max.y);
         }
 
         private static bool Overlaps(float aMin, float aMax, float bMin, float bMax) => Mathf.Min(aMax, bMax) - Mathf.Max(aMin, bMin) > 0.01f;
+
+        /// <summary><c>b</c> 가 <c>a</c> 구간을 거의 전부(<c>0.05m</c> 여유) 덮는가.</summary>
+        private static bool Covers(float aMin, float aMax, float bMin, float bMax) =>
+            Mathf.Min(aMax, bMax) - Mathf.Max(aMin, bMin) >= (aMax - aMin) - 0.05f;
 
         private static Vector3 BoundsCenter(float[] bounds) => new((bounds[0] + bounds[1]) * 0.5f, 0f, (bounds[2] + bounds[3]) * 0.5f);
         private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
