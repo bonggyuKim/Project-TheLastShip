@@ -26,9 +26,22 @@ namespace DoodleUp.Runtime
         [SerializeField] private string address = "127.0.0.1";
         [SerializeField] private ushort port = DefaultPort;
 
+        /// <summary>스폰 좌표에서 갑판을 찾을 때 위로 띄우는 높이.</summary>
+        private const float DeckProbeRise = 0.5f;
+
+        /// <summary>그 높이에서 아래로 훑는 거리. 갑판이 스폰 y 바로 밑에 있으므로 짧게 둔다.</summary>
+        private const float DeckProbeDrop = 2f;
+
+        /// <summary>선외 보행면 밑으로 이만큼 더 내려가야 "떨어졌다" 로 본다.</summary>
+        private const float CrewFallMargin = 2.5f;
+
+        /// <summary>낙하 점검 주기. 물건 회수(0.25초)와 같은 대역이면 충분하다.</summary>
+        private const float CrewFallCheckSeconds = 0.25f;
+
         private readonly LastShiftNetworkSlotAllocator slotAllocator = new();
         private LastShiftRoomBeacon beacon;
         private bool connectionOverridden;
+        private float nextCrewFallCheckTime;
 
         public NetworkManager NetworkManager => networkManager;
         public LastShiftSandboxController Sandbox => sandbox;
@@ -306,16 +319,101 @@ namespace DoodleUp.Runtime
         public void PlaceAndRegisterPlayer(LastShiftNetworkPlayer player)
         {
             if (player == null || !slotAllocator.TryGet(player.OwnerClientId, out var slot)) return;
-            player.transform.SetPositionAndRotation(SpawnForSlot(slot), RotationForSlot(slot));
-            sandbox?.RegisterPlayer(player.GetComponent<LastShiftPlayerController>());
+            var controller = player.GetComponent<LastShiftPlayerController>();
+            var position = SpawnForSlot(slot);
+            var rotation = RotationForSlot(slot);
+            // <b>CharacterController 를 켠 채 transform 만 옮기지 않는다.</b> PhysX 컨트롤러는
+            // 옮기기 전 자세를 자기 안에 들고 있어서, 물리 동기화 전에 그 프레임의 첫 Move 가
+            // 돌면 승무원이 프리팹 원점 기준으로 쓸린다. 그러면 스폰 좌표는 갑판 위인데 실제
+            // 캡슐은 다른 자리에서 시작하고, 그 아래가 비어 있으면 그대로 떨어진다.
+            // ResetPlayer 가 이미 끄고-옮기고-켜는 순서를 지키므로 스폰도 같은 문으로 들어간다.
+            if (controller != null) controller.ResetPlayer(position, rotation);
+            else player.transform.SetPositionAndRotation(position, rotation);
+            UnityEngine.Physics.SyncTransforms();
+            WarnWhenSpawnHasNoDeck(slot, position);
+            sandbox?.RegisterPlayer(controller);
             if (HasArgument("-lastShiftLifecycleProbe"))
                 Debug.Log($"[LAST_SHIFT_SLOT] client={player.OwnerClientId} slot={slot} phase=assigned active={slotAllocator.Count}");
+        }
+
+        /// <summary>
+        /// 스폰 자리 밑에 실제로 밟을 것이 있는지 본다. 좌표는 <see cref="LastShiftShipDimensions.SpawnPoint"/>
+        /// 하나에서 나오지만 그 좌표를 덮는 갑판은 씬(배 프리팹) 몫이라, 배가 다시 구워지면서
+        /// 조종석 방 갑판이 갈리면 좌표만 맞고 밑은 비어 있는 상태가 조용히 성립한다.
+        /// 그때 화면에 보이는 것은 "방을 열자마자 승무원이 떨어진다" 뿐이라 원인을 못 가린다.
+        /// </summary>
+        private static void WarnWhenSpawnHasNoDeck(int slot, Vector3 position)
+        {
+            var origin = position + Vector3.up * DeckProbeRise;
+            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, DeckProbeRise + DeckProbeDrop))
+            {
+                if (HasArgument("-lastShiftLifecycleProbe"))
+                    Debug.Log($"[LAST_SHIFT_SPAWN_DECK] slot={slot} deck={hit.collider.name} y={hit.point.y:F2} result=OK");
+                return;
+            }
+
+            Debug.LogError(
+                $"[LAST_SHIFT_SPAWN_DECK] slot={slot} spawn={position} result=NO_DECK " +
+                $"detail=스폰 좌표 아래 {DeckProbeRise + DeckProbeDrop:F1}m 안에 콜라이더가 없다");
         }
 
         public void UnregisterPlayer(LastShiftNetworkPlayer player)
         {
             if (player == null) return;
             sandbox?.UnregisterPlayer(player.GetComponent<LastShiftPlayerController>());
+        }
+
+        /// <summary>
+        /// 배 밖으로 떨어진 승무원을 자기 슬롯으로 되돌린다 — 물건 쪽의
+        /// <see cref="LastShiftNetworkSandbox.RecoverItemsOutsideSafetyBounds"/> 와 같은 자리의
+        /// 승무원 판이다. <b>낙하는 스스로 끝나지 않는다</b>: 저중력이라 천천히 떨어질 뿐
+        /// 바닥이 없으면 영원히 내려가고, 그 사이 조작·산소·판정이 전부 무의미해진다.
+        ///
+        /// 기준면은 <b>선외 보행면</b>(<see cref="LastShiftAirlock.OutsideWalkY"/>)이다. 배 안의
+        /// 가장 깊은 자리(덕트·에어록 바닥)도 그 위이므로, 이 밑으로 <see cref="CrewFallMargin"/>
+        /// 이상 내려간 좌표는 밟을 것이 있는 자리가 아니다. 여유를 두는 것은 EVA 중 발판
+        /// 모서리에서 한 뼘 미끄러지는 정상 궤적을 회수로 읽지 않기 위해서다.
+        /// </summary>
+        public static float CrewFallFloorY => LastShiftAirlock.OutsideWalkY - CrewFallMargin;
+
+        /// <summary>
+        /// 떨어진 승무원을 슬롯 자리로 되돌린다. 서버에서만 돈다.
+        /// </summary>
+        /// <returns>되돌린 승무원 수.</returns>
+        public int RecoverCrewBelowWorld()
+        {
+            if (networkManager == null || !networkManager.IsServer) return 0;
+            var floor = CrewFallFloorY;
+            var recovered = 0;
+            foreach (var client in networkManager.ConnectedClients)
+            {
+                if (client.Value.PlayerObject == null) continue;
+                var fell = client.Value.PlayerObject.transform.position;
+                if (fell.y >= floor) continue;
+                if (!slotAllocator.TryGet(client.Key, out var slot)) continue;
+                var player = client.Value.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
+                if (player == null) continue;
+
+                var position = SpawnForSlot(slot);
+                var rotation = RotationForSlot(slot);
+                player.ResetServerAimCache(position, rotation);
+                player.ResetToSlotRpc(position, rotation);
+                // 경고로 남긴다. 정상 플레이에서는 한 번도 안 나와야 하는 줄이고, 나온다면
+                // 어디서 떨어졌는지가 다음 재현의 유일한 단서다.
+                Debug.LogWarning(
+                    $"[LAST_SHIFT_CREW_RECOVER] client={client.Key} slot={slot} " +
+                    $"fell=({fell.x:F2},{fell.y:F2},{fell.z:F2}) floor={floor:F2} action=return-to-slot");
+                recovered++;
+            }
+            return recovered;
+        }
+
+        private void Update()
+        {
+            if (networkManager == null || !networkManager.IsServer) return;
+            if (Time.unscaledTime < nextCrewFallCheckTime) return;
+            nextCrewFallCheckTime = Time.unscaledTime + CrewFallCheckSeconds;
+            RecoverCrewBelowWorld();
         }
 
         public void ResetRegisteredPlayerPositions()
