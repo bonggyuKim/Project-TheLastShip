@@ -98,6 +98,24 @@ namespace DoodleUp.Runtime
             return true;
         }
 
+        /// <summary>
+        /// 쓴 것을 되돌린다 — 거점 해제가 부르는 문이다
+        /// (<see cref="LastShiftOutpostCommands.TryRemoveLast"/>).
+        ///
+        /// <b><see cref="Deposit"/> 과 갈라 두는 것이 요지다.</b> 저쪽은 <b>밖에서 들여온</b>
+        /// 몫이라 <see cref="LifetimeSalvaged"/> 와 <see cref="LastPortSalvaged"/> 를 같이 올린다.
+        /// 환수를 그 문으로 넣으면 골조를 세웠다 뜯기만 반복해도 "얼마나 밖에 나갔는가" 가
+        /// 올라가고, 결과 화면과 거점 확장 효과 검증이 둘 다 그 수를 읽는다.
+        /// </summary>
+        /// <returns>실제로 되돌아온 몫. 음수 입력은 <c>0</c> 이다.</returns>
+        public static int Refund(int amount)
+        {
+            if (amount <= 0) return 0;
+
+            Balance += amount;
+            return amount;
+        }
+
         // ── 네트워크 복원 ───────────────────────────────────────────────────
 
         /// <summary>

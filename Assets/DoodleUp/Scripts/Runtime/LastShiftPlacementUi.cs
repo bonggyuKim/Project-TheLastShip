@@ -5,6 +5,21 @@ using UnityEngine.InputSystem;
 namespace DoodleUp.Runtime
 {
     /// <summary>
+    /// 도면 화면의 탭. <b>배치 대상이 둘이라는 사실 자체다</b> —
+    /// <c>docs/outboard-outpost-and-map-final-v1.md</c> §4.4 가 거점을 "카탈로그의 일부가 아니라
+    /// 배치 시스템의 두 번째 대상" 으로 정한 결론이 이 enum 이다. 거점을 선체 카탈로그에 항목
+    /// 하나로 넣었으면 통화가 둘인 목록이 생기고, 조항 <c>O-2</c> 는 그 목록에서 먼저 깨진다.
+    /// </summary>
+    public enum LastShiftPlacementTab
+    {
+        /// <summary>선체 — 정비 여력으로 배에 방을 붙인다.</summary>
+        Hull = 0,
+
+        /// <summary>거점 — 자재로 선외 골조를 세운다.</summary>
+        Outpost = 1
+    }
+
+    /// <summary>
     /// 기항 <b>선체 도면</b> 화면. 배 전체를 위에서 내려다보며 배치한다 —
     /// <c>docs/core-four-rooms-and-hull-schematic-v1.md</c> §4 가 정본이다.
     ///
@@ -49,12 +64,29 @@ namespace DoodleUp.Runtime
         [Range(0, LastShiftMaintenance.MaxLatches)]
         [SerializeField] private int sandboxLatches = LastShiftMaintenance.MaxLatches;
 
+        [Tooltip("선체 탭과 거점 탭을 오가는 키.")]
+        [SerializeField] private Key tabKey = Key.T;
+
         private readonly LastShiftPlacementCursor cursor = new();
+
+        /// <summary>
+        /// 거점 커서. <b>탭마다 커서를 따로 드는 것이 의도다</b> — 하나로 쓰면 탭을 옮길 때마다
+        /// 고른 것과 자리와 회전이 통째로 날아가고, "두 자리를 나란히 대 본다"(§4.1-1)가
+        /// 탭 경계에서 끊긴다. 화면이 닫혀도 살아 있으므로 다시 열면 대 보던 자리가 그대로다.
+        /// </summary>
+        private readonly LastShiftOutpostCursor outpostCursor = new();
 
         /// <summary>지금 표에서 잰 자유면. 표 개정 번호가 안 바뀌면 다시 안 잰다.</summary>
         private readonly List<LastShiftFreeFace> freeFaces = new();
 
         private int freeFacesRevision = -1;
+
+        /// <summary>거점 표의 자유면. 선체와 같은 계산이고 표만 다르다.</summary>
+        private readonly List<LastShiftFreeFace> outpostFreeFaces = new();
+
+        private int outpostFreeFacesRevision = -1;
+
+        private LastShiftPlacementTab tab = LastShiftPlacementTab.Hull;
 
         private bool open;
 
@@ -114,6 +146,26 @@ namespace DoodleUp.Runtime
 
         /// <summary>화면이 들고 있는 커서. 테스트와 기항 화면이 같은 물건을 봐야 한다.</summary>
         public LastShiftPlacementCursor Cursor => cursor;
+
+        /// <summary>거점 탭이 들고 있는 커서.</summary>
+        public LastShiftOutpostCursor OutpostCursor => outpostCursor;
+
+        /// <summary>지금 어느 탭인가.</summary>
+        public LastShiftPlacementTab Tab => tab;
+
+        /// <summary>
+        /// 탭을 고른다. <b>후보 확정 대기(<see cref="armed"/>)를 푸는 것이 요지다</b> — 안 풀면
+        /// 선체에서 한 번 누른 상태로 거점에 건너가서 첫 클릭이 곧 지출이 된다.
+        /// </summary>
+        public void SelectTab(LastShiftPlacementTab next)
+        {
+            if (tab == next) return;
+
+            tab = next;
+            armed = false;
+            lastResult = string.Empty;
+            DestroyPreview();
+        }
 
         /// <summary>씬 빌더와 테스트가 쓴다.</summary>
         public void Configure(Transform root, LastShiftModulePalette modulePalette)
@@ -285,6 +337,7 @@ namespace DoodleUp.Runtime
         public bool Confirm()
         {
             armed = false;
+            if (tab == LastShiftPlacementTab.Outpost) return ConfirmOutpost();
 
             var network = Network;
             if (network == null)
@@ -311,8 +364,53 @@ namespace DoodleUp.Runtime
         /// 마지막에 놓은 모듈을 뺀다. <b>잎부터 빼는 것은 표가 강제한다</b> —
         /// 자식이 달린 칸은 <see cref="LastShiftCompartments.TryRemove"/> 가 거부한다.
         /// </summary>
+        /// <summary>
+        /// 거점 확정. <b>서버 갈래가 없다</b> — 자재 원장에 복제 경로가 아직 없으므로
+        /// (<see cref="LastShiftOutpostCommands"/> 주석) 여기서 세션을 물으면 "값은 각자 내고
+        /// 골조는 공유하는" 반쪽 경로가 생긴다. 선외 파밍이 서버 권위로 옮겨오는 카드가
+        /// 그 갈래를 함께 연다.
+        /// </summary>
+        private bool ConfirmOutpost()
+        {
+            LastShiftOutpostCommands.TryPlace(outpostCursor, out var outcome);
+
+            if (!outcome.Accepted)
+            {
+                lastResult = outcome.Result == LastShiftPlacementCommandResult.Unaffordable
+                    ? $"자재가 모자란다 — {outpostCursor.Kind.Name} {outpostCursor.Kind.MaterialCost} · " +
+                      $"잔액 {LastShiftMaterials.Balance}"
+                    : outcome.Message;
+                return false;
+            }
+
+            var built = LastShiftOutpostAssembler.Rebuild(palette);
+            lastResult = $"거점 확정 #{outcome.Index} · 자재 -{outcome.Cost} → 잔액 {LastShiftMaterials.Balance} · " +
+                         $"사슬 깊이 {outpostCursor.ChainDepth} · 세운 것 {built}";
+            return true;
+        }
+
+        private bool UndoLastOutpost()
+        {
+            LastShiftOutpostCommands.TryRemoveLast(out var outcome);
+
+            if (!outcome.Accepted)
+            {
+                lastResult = outcome.Result == LastShiftPlacementCommandResult.NothingToRemove
+                    ? "뜯을 골조 없음"
+                    : outcome.Message;
+                return false;
+            }
+
+            var built = LastShiftOutpostAssembler.Rebuild(palette);
+            lastResult = $"골조 해제 · 자재 +{outcome.Refunded} → 잔액 {LastShiftMaterials.Balance} · " +
+                         $"남은 {built}";
+            return true;
+        }
+
         public bool UndoLast()
         {
+            if (tab == LastShiftPlacementTab.Outpost) return UndoLastOutpost();
+
             var network = Network;
             if (network == null)
             {
@@ -409,9 +507,15 @@ namespace DoodleUp.Runtime
 
             if (!open) return;
 
+            if (keyboard[tabKey].wasPressedThisFrame)
+                SelectTab(tab == LastShiftPlacementTab.Hull
+                    ? LastShiftPlacementTab.Outpost
+                    : LastShiftPlacementTab.Hull);
+
             // §4.4 — Tab/Shift+Tab 또는 1~0 으로 고른다. 카탈로그가 10종이라 숫자 한 줄이 곧 목록이다.
-            if (keyboard[Key.Tab].wasPressedThisFrame) SelectCatalog(cursor.CatalogIndex + (keyboard[Key.LeftShift].isPressed ? -1 : 1));
-            for (var slot = 0; slot < LastShiftModuleCatalog.Count && slot < 10; slot++)
+            var count = CatalogCount;
+            if (keyboard[Key.Tab].wasPressedThisFrame) SelectCatalog(CatalogIndex + (keyboard[Key.LeftShift].isPressed ? -1 : 1));
+            for (var slot = 0; slot < count && slot < 10; slot++)
                 if (keyboard[DigitKeyFor(slot)].wasPressedThisFrame)
                     SelectCatalog(slot);
 
@@ -423,7 +527,8 @@ namespace DoodleUp.Runtime
                         (keyboard[Key.DownArrow].wasPressedThisFrame ? 1 : 0);
             if (stepX != 0 || stepZ != 0)
             {
-                cursor.Nudge(stepX, stepZ);
+                if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Nudge(stepX, stepZ);
+                else cursor.Nudge(stepX, stepZ);
                 armed = false;
             }
 
@@ -440,15 +545,27 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static Key DigitKeyFor(int slot) => slot == 9 ? Key.Digit0 : Key.Digit1 + slot;
 
+        /// <summary>지금 탭의 목록 길이. 숫자 키 대응과 카탈로그 칸 높이가 이 값을 본다.</summary>
+        private int CatalogCount => tab == LastShiftPlacementTab.Outpost
+            ? LastShiftOutpostCatalog.Count
+            : LastShiftModuleCatalog.Count;
+
+        /// <summary>지금 탭에서 고른 항목.</summary>
+        private int CatalogIndex => tab == LastShiftPlacementTab.Outpost
+            ? outpostCursor.CatalogIndex
+            : cursor.CatalogIndex;
+
         private void SelectCatalog(int index)
         {
-            cursor.Select(index);
+            if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Select(index);
+            else cursor.Select(index);
             armed = false;
         }
 
         private void Rotate(int steps)
         {
-            cursor.Rotate(steps);
+            if (tab == LastShiftPlacementTab.Outpost) outpostCursor.Rotate(steps);
+            else cursor.Rotate(steps);
             armed = false;
         }
 
@@ -482,7 +599,28 @@ namespace DoodleUp.Runtime
                     : renderer.sharedMaterial;
                 previewMaterial = new Material(source) { name = "LS_PlacementPreview" };
                 renderer.sharedMaterial = previewMaterial;
-                if (shipRoot != null) preview.transform.SetParent(shipRoot, false);
+
+                // <b>거점 상자는 배에 안 매단다</b>(조항 O-5). 배가 움직이면 따라가고, 그 상자가
+                // 가리키는 자리는 그 순간부터 표와 다른 곳이다.
+                var host = tab == LastShiftPlacementTab.Outpost ? null : shipRoot;
+                if (host != null) preview.transform.SetParent(host, false);
+                else preview.transform.SetParent(null);
+            }
+
+            if (tab == LastShiftPlacementTab.Outpost)
+            {
+                var outpost = outpostCursor.Candidate;
+                preview.transform.position = new Vector3(
+                    outpost.CenterX,
+                    LastShiftOutpost.DeckY + LastShiftOutpost.FrameHeight * 0.5f,
+                    outpost.CenterZ);
+                preview.transform.localScale = new Vector3(
+                    outpost.LengthX, LastShiftOutpost.FrameHeight, outpost.WidthZ);
+
+                LastShiftGhostVisuals.Apply(
+                    previewMaterial, true,
+                    outpostCursor.CanCommit ? new Color(0.45f, 1f, 0.6f) : new Color(1f, 0.4f, 0.3f));
+                return;
             }
 
             var candidate = cursor.Candidate;
@@ -517,6 +655,16 @@ namespace DoodleUp.Runtime
         private static readonly Color OkColor = new(0.45f, 1f, 0.75f, 1f);
         private static readonly Color BadColor = new(1f, 0.45f, 0.35f, 1f);
 
+        /// <summary>거점 도면의 잔해 뿌리. 지은 것이 아니라는 것이 색으로 먼저 읽혀야 한다.</summary>
+        private static readonly Color SalvageColor = new(0.44f, 0.38f, 0.28f, 1f);
+
+        /// <summary>
+        /// 거점 도면이 덮는 월드 반경. 잔해 뿌리를 가운데 두고 사슬 상한
+        /// (<see cref="LastShiftOutpost.MaxChainDepth"/>)까지 이어 붙인 거점이 화면 안에 들어와야
+        /// 한다 — 넘치면 사람이 자기가 뭘 지었는지 보려고 탭을 껐다 켜게 된다.
+        /// </summary>
+        private const float OutpostViewHalfSpanMeters = 16f;
+
         /// <summary>압력 구역 넷의 옅은 색. 모듈이 어느 구역에 편입되는지가 곧 진공 조건이다(조항 F-1).</summary>
         private static readonly Color[] ZoneColors =
         {
@@ -539,21 +687,51 @@ namespace DoodleUp.Runtime
 
             var panel = new Rect(16f, 16f, Screen.width - 32f, Screen.height - 32f);
             var header = new Rect(panel.x, panel.y, panel.width, 34f);
-            var body = new Rect(panel.x, header.yMax + 4f, panel.width, panel.height - header.height - 4f);
+            var tabs = new Rect(panel.x, header.yMax + 2f, panel.width, 24f);
+            var body = new Rect(panel.x, tabs.yMax + 4f, panel.width, panel.height - header.height - tabs.height - 6f);
             var catalog = new Rect(body.x, body.y, 200f, body.height);
             var readout = new Rect(body.xMax - 260f, body.y, 260f, body.height);
             var chart = new Rect(catalog.xMax + 6f, body.y, readout.x - catalog.xMax - 12f, body.height);
 
             Fill(panel, PanelColor);
+
+            DrawHeader(header);
+            DrawTabs(tabs);
+
+            if (tab == LastShiftPlacementTab.Outpost)
+            {
+                RefreshOutpostFreeFaces();
+
+                var outpostChart = OutpostSchematicFor(chart);
+                HandleChartInput(chart, outpostChart);
+
+                DrawOutpostCatalog(catalog);
+                DrawOutpostChart(chart, outpostChart);
+                DrawOutpostReadout(readout);
+                return;
+            }
+
             RefreshFreeFaces();
 
             var schematic = new LastShiftHullSchematic(chart);
             HandleChartInput(chart, schematic);
 
-            DrawHeader(header);
             DrawCatalog(catalog);
             DrawChart(chart, schematic);
             DrawReadout(readout);
+        }
+
+        /// <summary>
+        /// 거점 도면의 투영. <b>배율은 선체와 같은 자다</b> — 다른 자로 그리면 탭을 옮길 때
+        /// 골조 크기가 바뀌고, "같은 손동작"(§5.1)이 눈에서 먼저 깨진다. 다른 것은 화면
+        /// 가운데에 오는 좌표뿐이다.
+        /// </summary>
+        private static LastShiftHullSchematic OutpostSchematicFor(Rect chart)
+        {
+            var anchor = LastShiftOutpost.Anchor;
+            return new LastShiftHullSchematic(
+                chart, OutpostViewHalfSpanMeters, OutpostViewHalfSpanMeters,
+                new Vector2(anchor.CenterX, anchor.CenterZ));
         }
 
         private void EnsureStyles()
@@ -586,6 +764,20 @@ namespace DoodleUp.Runtime
             freeFacesRevision = LastShiftCompartments.Revision;
         }
 
+        /// <summary>
+        /// 거점 자유면. <b>같은 계산에 <c>includeHull: false</c> 하나만 다르다</b> — 켜 두면
+        /// 원반 바깥 진공에서 광장 벽이 굵은 선으로 나온다.
+        /// </summary>
+        private void RefreshOutpostFreeFaces()
+        {
+            if (outpostFreeFacesRevision == LastShiftOutpost.Revision) return;
+
+            LastShiftFreeFaces.Collect(
+                LastShiftOutpost.Specs, outpostFreeFaces,
+                LastShiftFreeFaces.ClearanceMeters, LastShiftFreeFaces.MinimumRunMeters, false);
+            outpostFreeFacesRevision = LastShiftOutpost.Revision;
+        }
+
         // ── 도면 조작 ───────────────────────────────────────────────────────
 
         /// <summary>
@@ -598,7 +790,9 @@ namespace DoodleUp.Runtime
             if (current == null) return;
 
             hoveredIndex = chart.Contains(current.mousePosition)
-                ? ModuleAt(schematic.ToWorld(current.mousePosition))
+                ? tab == LastShiftPlacementTab.Outpost
+                    ? OutpostPieceAt(schematic.ToWorld(current.mousePosition))
+                    : ModuleAt(schematic.ToWorld(current.mousePosition))
                 : -1;
 
             if (!chart.Contains(current.mousePosition)) return;
@@ -632,17 +826,35 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void MoveCandidateTo(Vector3 world, bool click)
         {
-            var before = cursor.Anchor;
-            cursor.MoveTo(world);
+            var before = tab == LastShiftPlacementTab.Outpost ? outpostCursor.Anchor : cursor.Anchor;
+
+            if (tab == LastShiftPlacementTab.Outpost) outpostCursor.MoveTo(world);
+            else cursor.MoveTo(world);
+
+            var after = tab == LastShiftPlacementTab.Outpost ? outpostCursor.Anchor : cursor.Anchor;
 
             if (!click) { armed = false; return; }
 
-            var moved = !Mathf.Approximately(before.x, cursor.Anchor.x) ||
-                        !Mathf.Approximately(before.z, cursor.Anchor.z);
+            var moved = !Mathf.Approximately(before.x, after.x) ||
+                        !Mathf.Approximately(before.z, after.z);
             if (moved) { armed = true; return; }
 
             if (armed) Confirm();
             else armed = true;
+        }
+
+        /// <summary>도면 위 한 점이 어느 <b>세운 골조</b> 안인가. 잔해 뿌리는 안 센다 — 못 뜯는다.</summary>
+        private static int OutpostPieceAt(Vector3 world)
+        {
+            var table = LastShiftOutpost.Specs;
+            for (var index = table.Length - 1; index >= LastShiftOutpost.FixedCount; index--)
+            {
+                var spec = table[index];
+                if (world.x >= spec.MinX && world.x <= spec.MaxX &&
+                    world.z >= spec.MinZ && world.z <= spec.MaxZ) return index;
+            }
+
+            return -1;
         }
 
         /// <summary>도면 위 한 점이 어느 <b>지은 모듈</b> 안인가. 고정 구획은 안 센다 — 못 뜯는다.</summary>
@@ -668,19 +880,58 @@ namespace DoodleUp.Runtime
                 ? "커서 없음"
                 : holder == ClientId ? "커서 나" : $"커서 승무원 {holder}";
 
-            // 버림은 <b>0 이 아닐 때만</b> 적는다 — 상한(조항 B-2)에 닿는 것은 후반뿐이라
-            // 평시에 "버림 0" 이 늘 떠 있으면 머리줄만 길어지고 아무것도 안 알린다.
-            var forfeited = LastShiftMaintenance.LastPortForfeited > 0
-                ? $" · 버림 {LastShiftMaintenance.LastPortForfeited}"
-                : string.Empty;
+            // <b>지금 탭이 쓰는 잔액만 적는다</b>(조항 O-2 · 튜토리얼 §2-1). 둘을 나란히 띄우면
+            // "어느 게 뭘 사는 건지" 를 화면이 다시 설명해야 하고, 튜토리얼이 그 장면을 끝까지
+            // 안 만들려고 순서를 짜 둔 것이 그대로 무너진다.
+            var money = tab == LastShiftPlacementTab.Outpost
+                ? $"자재 {LastShiftMaterials.Balance} (이번 기항 반입 {LastShiftMaterials.LastPortSalvaged})"
+                : $"정비 여력 {LastShiftMaintenance.Balance} " +
+                  $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver}" +
+                  // 버림은 <b>0 이 아닐 때만</b> 적는다 — 상한(조항 B-2)에 닿는 것은 후반뿐이라
+                  // 평시에 "버림 0" 이 늘 떠 있으면 머리줄만 길어지고 아무것도 안 알린다.
+                  (LastShiftMaintenance.LastPortForfeited > 0
+                      ? $" · 버림 {LastShiftMaintenance.LastPortForfeited}"
+                      : string.Empty) + ")";
+
+            var title = tab == LastShiftPlacementTab.Outpost ? "선외 거점" : "선체 도면";
 
             GUI.Label(new Rect(header.x + 8f, header.y + 4f, header.width - 140f, 26f),
-                $"선체 도면 — 기항 {LastShiftMaintenance.PortIndex} · 정비 여력 {LastShiftMaintenance.Balance} " +
-                $"(수입 {LastShiftMaintenance.LastPortIncome} + 이월 {LastShiftMaintenance.LastCarriedOver}" +
-                $"{forfeited}) · {holderText}",
+                $"{title} — 기항 {LastShiftMaintenance.PortIndex} · {money} · {holderText}",
                 headingStyle);
 
             if (GUI.Button(new Rect(header.xMax - 96f, header.y + 3f, 88f, 26f), "닫기  Esc")) Close();
+        }
+
+        /// <summary>
+        /// 탭 둘. <b>거점이 카탈로그 항목이 아니라 탭인 것이 §4.4 의 결론이다</b> — 목록에
+        /// 섞으면 통화가 둘인 목록이 생기고, 조항 <c>O-2</c> 는 화면에서 먼저 깨진다.
+        ///
+        /// <b>튜토리얼 잠금은 여기 없다.</b> 조항 <c>T-4</c>("튜토리얼 중 선체 탭은 비활성이고
+        /// 화면에 안 뜬다")는 튜토리얼 상태기가 이 화면에 거는 훅이고, 그 상태기가 아직 없다 —
+        /// 없는 상태기를 흉내 내는 분기를 지금 넣으면 그 카드가 그것부터 걷어내야 한다.
+        /// </summary>
+        private void DrawTabs(Rect strip)
+        {
+            const float width = 120f;
+
+            for (var index = 0; index < 2; index++)
+            {
+                var value = (LastShiftPlacementTab)index;
+                var rect = new Rect(strip.x + index * (width + 4f), strip.y, width, strip.height);
+                var chosen = tab == value;
+
+                Fill(rect, chosen
+                    ? new Color(0.20f, 0.34f, 0.44f, 1f)
+                    : new Color(0.11f, 0.14f, 0.19f, 1f));
+                GUI.Label(rect,
+                    value == LastShiftPlacementTab.Outpost ? "거점" : "선체",
+                    centeredStyle);
+
+                if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) SelectTab(value);
+            }
+
+            GUI.Label(new Rect(strip.x + 2f * (width + 4f) + 8f, strip.y, strip.width, strip.height),
+                $"{tabKey} 로 전환", smallStyle);
         }
 
         // ── 카탈로그 ────────────────────────────────────────────────────────
@@ -720,6 +971,43 @@ namespace DoodleUp.Runtime
 
         private static string DigitLabel(int index) => index == 9 ? "0" : (index + 1).ToString();
 
+        /// <summary>
+        /// 거점 카탈로그. 선체 쪽과 <b>칸 모양이 같고 값의 이름만 다르다</b> — 같은 손으로 읽는
+        /// 목록이어야 §5.1 의 순서(거점에서 조작을 배우고 선체에서 규칙을 배운다)가 성립한다.
+        /// </summary>
+        private void DrawOutpostCatalog(Rect column)
+        {
+            GUI.Label(new Rect(column.x + 4f, column.y, column.width, 18f), "카탈로그 (자재)", bodyStyle);
+
+            var top = column.y + 20f;
+            var rowHeight = Mathf.Min(34f, (column.height - 44f) / Mathf.Max(LastShiftOutpostCatalog.Count, 1));
+
+            for (var index = 0; index < LastShiftOutpostCatalog.Count; index++)
+            {
+                var kind = LastShiftOutpostCatalog.At(index);
+                var row = new Rect(column.x, top + index * (rowHeight + 2f), column.width, rowHeight);
+                var chosen = index == outpostCursor.CatalogIndex;
+                var affordable = LastShiftMaterials.CanAfford(kind.MaterialCost);
+
+                Fill(row, chosen
+                    ? new Color(0.20f, 0.34f, 0.44f, 1f)
+                    : new Color(0.11f, 0.14f, 0.19f, 1f));
+
+                var previous = GUI.color;
+                GUI.color = affordable ? Color.white : new Color(1f, 0.6f, 0.5f, 1f);
+                GUI.Label(new Rect(row.x + 6f, row.y + 2f, row.width - 12f, 16f),
+                    $"{DigitLabel(index)}  {kind.Name}", smallStyle);
+                GUI.Label(new Rect(row.x + 6f, row.y + 16f, row.width - 12f, 16f),
+                    $"{kind.LengthX:0.#}×{kind.WidthZ:0.#}m · 자재 {kind.MaterialCost}", smallStyle);
+                GUI.color = previous;
+
+                if (GUI.Button(row, GUIContent.none, GUIStyle.none)) SelectCatalog(index);
+            }
+
+            GUI.Label(new Rect(column.x + 4f, column.yMax - 20f, column.width, 18f),
+                $"잔여 자재 {LastShiftMaterials.Balance}", bodyStyle);
+        }
+
         // ── 도면 ────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -741,6 +1029,120 @@ namespace DoodleUp.Runtime
             GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
                 "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소 · Del 마지막 해제",
                 smallStyle);
+        }
+
+        /// <summary>
+        /// 거점 도면. <b>구역 띠도 원반 테두리도 안 그린다</b> — 거점에는 압력 구역이 없고
+        /// (§4.4 의 "<c>RG-1</c> 없음"), 원반은 여기서 <b>화면 밖</b>이다. 남는 것은 잔해 뿌리 ·
+        /// 세운 골조 · 자유면 · 후보 넷이고, 그게 이 탭이 그릴 것의 전부다.
+        /// </summary>
+        private void DrawOutpostChart(Rect chart, in LastShiftHullSchematic schematic)
+        {
+            Fill(chart, new Color(0.05f, 0.06f, 0.09f, 1f));
+
+            var table = LastShiftOutpost.Specs;
+            for (var index = 0; index < table.Length; index++)
+            {
+                var spec = table[index];
+                var rect = schematic.ToScreenRect(spec);
+                var isAnchor = index == LastShiftOutpost.AnchorIndex;
+
+                Fill(rect, index == hoveredIndex ? HoverColor : isAnchor ? SalvageColor : ModuleColor);
+                Outline(rect, HullColor, 1f);
+
+                if (rect.height < 12f || rect.width < 24f) continue;
+                GUI.Label(rect, LastShiftOutpost.NameOf(index), centeredStyle);
+            }
+
+            for (var index = 0; index < outpostFreeFaces.Count; index++)
+                Fill(schematic.ToScreenBand(outpostFreeFaces[index], 3f), FreeFaceColor);
+
+            DrawOutpostCandidate(schematic);
+
+            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 260f, 16f), "선수 ←  ·  원반 바깥 좌현", smallStyle);
+            GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
+                "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소 · Del 마지막 해제",
+                smallStyle);
+        }
+
+        /// <summary>후보 골조와 계류면. 붙는 면이 흰 선이다 — 선체 탭의 문 표시와 같은 자리다.</summary>
+        private void DrawOutpostCandidate(in LastShiftHullSchematic schematic)
+        {
+            var candidate = outpostCursor.Candidate;
+            var rect = schematic.ToScreenRect(candidate);
+            var ok = outpostCursor.CanCommit &&
+                     LastShiftMaterials.CanAfford(outpostCursor.Kind.MaterialCost);
+            var tint = ok ? OkColor : BadColor;
+
+            Fill(rect, new Color(tint.r, tint.g, tint.b, 0.35f));
+            Outline(rect, tint, armed ? 3f : 1f);
+
+            var half = LastShiftZoneDoor.OpeningWidth * 0.5f;
+            var mooring = candidate.DoorPlane == LastShiftDoorPlane.AlongX
+                ? schematic.ToScreenRect(
+                    candidate.DoorPlaneCoordinate, candidate.DoorPlaneCoordinate,
+                    candidate.DoorCenter - half, candidate.DoorCenter + half)
+                : schematic.ToScreenRect(
+                    candidate.DoorCenter - half, candidate.DoorCenter + half,
+                    candidate.DoorPlaneCoordinate, candidate.DoorPlaneCoordinate);
+
+            Fill(new Rect(mooring.x - 1.5f, mooring.y - 1.5f,
+                    Mathf.Max(mooring.width, 3f), Mathf.Max(mooring.height, 3f)),
+                Color.white);
+        }
+
+        /// <summary>
+        /// 거점 미리보기 숫자. <b>선체보다 줄이 적다</b> — 구역·이탈·최장 동선이 없다(§4.4).
+        /// 없는 값을 <c>0</c> 으로 띄우면 거점에도 그 판정이 있는 것으로 읽힌다.
+        /// </summary>
+        private void DrawOutpostReadout(Rect column)
+        {
+            var candidate = outpostCursor.Candidate;
+            var kind = outpostCursor.Kind;
+            var parent = candidate.ParentIndex < 0 ? "없음" : LastShiftOutpost.NameOf(candidate.ParentIndex);
+
+            var line = column.y;
+            void Row(string text, GUIStyle style = null)
+            {
+                GUI.Label(new Rect(column.x + 4f, line, column.width - 8f, 20f), text, style ?? bodyStyle);
+                line += 20f;
+            }
+
+            Row("미리보기", headingStyle);
+            line += 4f;
+            Row($"{kind.Name} {kind.LengthX:0.#}×{kind.WidthZ:0.#}m");
+            Row($"자재 {kind.MaterialCost} · 회전 {outpostCursor.QuarterTurns * 90}°");
+            Row($"x {candidate.MinX:0.#}~{candidate.MaxX:0.#}");
+            Row($"z {candidate.MinZ:0.#}~{candidate.MaxZ:0.#}");
+            Row($"계류 상대 {parent}");
+            line += 6f;
+
+            Row($"사슬 깊이 {outpostCursor.ChainDepth}/{LastShiftOutpost.MaxChainDepth}");
+            Row($"자재 {LastShiftMaterials.Balance} → {LastShiftMaterials.Balance - kind.MaterialCost}");
+            line += 6f;
+
+            var affordable = LastShiftMaterials.CanAfford(kind.MaterialCost);
+            var ok = outpostCursor.CanCommit && affordable;
+            var previous = GUI.color;
+            GUI.color = ok ? OkColor : BadColor;
+            Row(ok
+                ? armed ? "한 번 더 클릭 = 확정" : "계류 가능 — 클릭 또는 Enter"
+                : affordable
+                    ? LastShiftPlacementCommands.Reason(outpostCursor.Rejection, outpostCursor.Faults)
+                    : "자재가 모자란다");
+            GUI.color = previous;
+
+            line += 6f;
+            Row($"자유면 {outpostFreeFaces.Count}구간 · 세운 골조 {LastShiftOutpost.PieceCount}");
+            Row(LastShiftOutpost.PieceCount > 0
+                ? $"Del 환수 {LastShiftOutpost.PaidFor(LastShiftOutpost.Count - 1)}"
+                : "뜯을 골조 없음", smallStyle);
+
+            if (hoveredIndex >= 0 && hoveredIndex < LastShiftOutpost.Count)
+                Row($"짚은 것 — {LastShiftOutpost.NameOf(hoveredIndex)} #{hoveredIndex}", smallStyle);
+
+            if (lastResult.Length > 0)
+                GUI.Label(new Rect(column.x + 4f, column.yMax - 60f, column.width - 8f, 56f), lastResult, bodyStyle);
         }
 
         /// <summary>원반 테두리. <b>바깥은 시작 배가 안 쓰는 자리다</b>(§4.3-6) — 점선으로 두른다.</summary>
@@ -882,7 +1284,9 @@ namespace DoodleUp.Runtime
             Row($"자유면 {freeFaces.Count}구간 · 놓인 모듈 {LastShiftCompartments.ModuleCount}");
             Row(RefundHint(), smallStyle);
 
-            if (hoveredIndex >= 0)
+            // 표 길이를 같이 본다 — 탭을 옮기면 짚은 번호가 <b>다른 표의 인덱스</b>로 남고,
+            // 거점 표가 더 짧으면 그 번호가 선체 표 밖을 가리킨다.
+            if (hoveredIndex >= 0 && hoveredIndex < LastShiftCompartments.Count)
             {
                 var hovered = LastShiftCompartments.At(hoveredIndex);
                 Row($"짚은 것 — {ShortName(hovered)} #{hoveredIndex}", smallStyle);

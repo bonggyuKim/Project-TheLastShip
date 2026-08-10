@@ -117,6 +117,10 @@ namespace DoodleUp.Runtime
             // 이유는 둘이 서로 환산되지 않아도 <b>리셋 시점은 하나</b>여야 하기 때문이다 —
             // 갈라 두면 새 항해의 첫 기항에 지난 항해 자재가 남는다.
             LastShiftMaterials.BeginVoyage();
+            // 거점도 항해 단위다(조항 O-6 — 계류 골조는 항해 시작 시 기본 지급). 자재와 같은
+            // 줄에 두는 이유도 같다: 자재만 비우고 거점을 남기면 새 항해가 <b>공짜 골조</b>로
+            // 시작하고, 첫 기항 튜토리얼이 살 것을 잃는다.
+            LastShiftOutpost.BeginVoyage();
             LastLatchCount = 0;
             EnterSegment(FirstSegment);
         }
@@ -217,6 +221,7 @@ namespace DoodleUp.Runtime
         {
             LastShiftMaintenance.Clear();
             LastShiftMaterials.Clear();
+            LastShiftOutpost.ClearPieces();
             LastShiftSalvage.Clear();
             LastShiftAirlock.Clear();
             SegmentIndex = FirstSegment;

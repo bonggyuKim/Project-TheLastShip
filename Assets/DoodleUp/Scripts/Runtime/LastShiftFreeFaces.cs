@@ -129,9 +129,16 @@ namespace DoodleUp.Runtime
         /// <param name="into">결과를 담을 리스트. 비우고 채운다.</param>
         /// <param name="clearance">면 바깥으로 비어 있어야 하는 깊이.</param>
         /// <param name="minimumRun">이보다 짧은 구간은 버린다.</param>
+        /// <param name="includeHull">
+        /// 배의 고정 발자국(<see cref="LastShiftPlazaLayout.Footprints"/>)을 면의 주인으로도
+        /// 막는 것으로도 세는가. <b>선외 거점은 끈다</b>(<see cref="LastShiftOutpost"/>) —
+        /// 거점 표는 배와 <b>다른 좌표계의 다른 구조물</b>이고, 켜 두면 원반 바깥 진공에서
+        /// 광장 벽이 자유면으로 나온다.
+        /// </param>
         public static void Collect(
             IReadOnlyList<LastShiftCompartmentSpec> table, List<LastShiftFreeFace> into,
-            float clearance = ClearanceMeters, float minimumRun = MinimumRunMeters)
+            float clearance = ClearanceMeters, float minimumRun = MinimumRunMeters,
+            bool includeHull = true)
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (into == null) throw new ArgumentNullException(nameof(into));
@@ -141,9 +148,9 @@ namespace DoodleUp.Runtime
             // 선체(<see cref="HullOwner"/>)는 사각형 하나가 아니라 고정 공간 일곱이다. 그래서
             // 그 자리만 발자국표를 훑고, 나머지는 표 인덱스를 그대로 쓴다 — 자유면의 주인을
             // 여전히 <c>-1</c> 하나로 두는 것은 도면에서 "선체에 직결" 이 한 종류이기 때문이다.
-            var hullFaces = LastShiftPlazaLayout.Footprints.Length;
+            var hullFaces = includeHull ? LastShiftPlazaLayout.Footprints.Length : 0;
 
-            for (var owner = HullOwner; owner < table.Count; owner++)
+            for (var owner = includeHull ? HullOwner : 0; owner < table.Count; owner++)
             for (var part = 0; part < (owner == HullOwner ? hullFaces : 1); part++)
             {
                 float minX, maxX, minZ, maxZ;
@@ -178,7 +185,7 @@ namespace DoodleUp.Runtime
                     var spanMax = onXFace ? maxZ : maxX;
 
                     CollectBlocked(table, owner, owner == HullOwner ? part : -1,
-                        onXFace, plane, outward, spanMin, spanMax, clearance);
+                        onXFace, plane, outward, spanMin, spanMax, clearance, includeHull);
                     EmitRuns(into, owner, kind, plane, spanMin, spanMax, minimumRun);
                 }
             }
@@ -193,7 +200,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static void CollectBlocked(
             IReadOnlyList<LastShiftCompartmentSpec> table, int owner, int hullPart,
-            bool onXFace, float plane, float outward, float spanMin, float spanMax, float clearance)
+            bool onXFace, float plane, float outward, float spanMin, float spanMax, float clearance,
+            bool includeHull)
         {
             Blocked.Clear();
 
@@ -227,7 +235,7 @@ namespace DoodleUp.Runtime
             // (<see cref="LastShiftCompartments.FixedSpecs"/>) 안에 있어 위 루프가 센다.
             // 자기 자신(<paramref name="hullPart"/>)도 뺀다: 안 빼면 면을 내놓는 발자국이
             // 자기 면을 자기가 막는다.
-            for (var part = 0; part < LastShiftPlazaLayout.Footprints.Length; part++)
+            for (var part = 0; includeHull && part < LastShiftPlazaLayout.Footprints.Length; part++)
             {
                 if (part == hullPart) continue;
                 var footprint = LastShiftPlazaLayout.Footprints[part];

@@ -100,6 +100,61 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// <b>선체 갈래가 없는</b> 같은 검사 — 부모가 반드시 표 안에 있어야 한다.
+        /// 선외 거점(<see cref="LastShiftOutpost"/>)이 쓰는 문이다: 거점에는 "선체 직결" 이라는
+        /// 것이 없고, <c>-1</c> 을 허용하면 <see cref="FitsHull"/> 이 <b>배의 고정 발자국</b>을
+        /// 재기 시작한다 — 원반 바깥 진공에 뜬 골조가 광장 벽에 붙은 것으로 통과한다.
+        /// </summary>
+        public static LastShiftPlacementFault CheckWithin(
+            in LastShiftCompartmentSpec candidate, IReadOnlyList<LastShiftCompartmentSpec> table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+
+            var fault = LastShiftPlacementFault.None;
+            if (!LastShiftCompartments.DoorSitsOnOwnBoundary(candidate))
+                fault |= LastShiftPlacementFault.DoorOffOwnFace;
+
+            var parent = candidate.ParentIndex;
+            if (parent < 0 || parent >= table.Count)
+                return fault | LastShiftPlacementFault.ParentMissing;
+
+            var alongX = candidate.DoorPlane == LastShiftDoorPlane.AlongX;
+            var owner = table[parent];
+            var faceNear = alongX ? owner.MinX : owner.MinZ;
+            var faceFar = alongX ? owner.MaxX : owner.MaxZ;
+            var spanMin = alongX ? owner.MinZ : owner.MinX;
+            var spanMax = alongX ? owner.MaxZ : owner.MaxX;
+
+            if (!OnFace(candidate.DoorPlaneCoordinate, faceNear, faceFar))
+                fault |= LastShiftPlacementFault.DoorOffParentFace;
+
+            if (!WithinSpan(candidate.DoorCenter, spanMin, spanMax))
+                fault |= LastShiftPlacementFault.DoorOutsideParentSpan;
+
+            return fault;
+        }
+
+        /// <summary>
+        /// <b>선체 갈래가 없는</b> 부모 찾기. <see cref="CheckWithin"/> 과 같은 이유로 거점이 쓴다 —
+        /// 못 찾으면 <paramref name="parent"/> 가 <c>-1</c> 이고, 그 값은 거점 판정에서
+        /// <see cref="LastShiftPlacementRejection.ChainBroken"/> 이 된다.
+        /// </summary>
+        public static bool TryResolveParentWithin(
+            in LastShiftCompartmentSpec candidate, IReadOnlyList<LastShiftCompartmentSpec> table, out int parent)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+
+            for (var index = table.Count - 1; index >= 0; index--)
+            {
+                if (index == candidate.Index) continue;
+                if (Fits(candidate, table[index])) { parent = index; return true; }
+            }
+
+            parent = -1;
+            return false;
+        }
+
+        /// <summary>
         /// 후보의 문이 지금 <b>누구의</b> 벽에 얹혀 있는지 찾는다. 커서가 매 이동마다 불러서
         /// 부모를 자동으로 정하는 자리다 — 부모를 사람이 목록에서 고르게 하면 벽에 붙여 놓고
         /// 엉뚱한 부모를 고른 배치가 판정을 통과한다(사슬은 좌표를 안 본다).

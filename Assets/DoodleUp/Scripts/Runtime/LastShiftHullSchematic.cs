@@ -40,10 +40,24 @@ namespace DoodleUp.Runtime
         /// 얹는다. 배율은 둘 중 <b>작은 쪽</b>이라 도면이 화면 밖으로 안 나간다.
         /// </summary>
         public LastShiftHullSchematic(Rect screen, float halfLengthX, float halfWidthZ)
+            : this(screen, halfLengthX, halfWidthZ, Vector2.zero)
+        {
+        }
+
+        /// <summary>
+        /// 화면 가운데에 오는 월드 좌표를 정해서 얹는다.
+        ///
+        /// <b>선외 거점 탭이 이 생성자를 쓴다</b>(<see cref="LastShiftOutpost"/>). 거점은 원반
+        /// 바깥 선수 좌현에 있어서 원점을 가운데 두면 화면의 한 귀퉁이에 몰리고, 그러면 배치
+        /// 대상이 몇 픽셀짜리 점이 된다. <b>배율은 안 건드린다</b> — 두 탭이 같은 자로 그려야
+        /// 골조 크기가 탭을 옮길 때 안 바뀐다.
+        /// </summary>
+        public LastShiftHullSchematic(Rect screen, float halfLengthX, float halfWidthZ, Vector2 worldCenter)
         {
             Screen = screen;
             HalfLengthX = Mathf.Max(halfLengthX, 0.001f);
             HalfWidthZ = Mathf.Max(halfWidthZ, 0.001f);
+            WorldCenter = worldCenter;
             PixelsPerMeter = Mathf.Min(screen.width / (HalfLengthX * 2f), screen.height / (HalfWidthZ * 2f));
         }
 
@@ -53,6 +67,9 @@ namespace DoodleUp.Runtime
 
         public float HalfWidthZ { get; }
 
+        /// <summary>화면 한가운데에 오는 월드 <c>(x, z)</c>. 기본값은 원점이다.</summary>
+        public Vector2 WorldCenter { get; }
+
         /// <summary>미터당 화면 픽셀. 배율이 하나라 <c>x</c>·<c>z</c> 가 같이 늘고 준다.</summary>
         public float PixelsPerMeter { get; }
 
@@ -61,16 +78,16 @@ namespace DoodleUp.Runtime
 
         /// <summary>월드 평면 좌표 → 화면. GUI 좌표는 <c>y</c> 가 아래로 자라므로 <c>z</c> 를 뒤집는다.</summary>
         public Vector2 ToScreen(float worldX, float worldZ) => new(
-            Screen.center.x + worldX * PixelsPerMeter,
-            Screen.center.y - worldZ * PixelsPerMeter);
+            Screen.center.x + (worldX - WorldCenter.x) * PixelsPerMeter,
+            Screen.center.y - (worldZ - WorldCenter.y) * PixelsPerMeter);
 
         public Vector2 ToScreen(Vector3 world) => ToScreen(world.x, world.z);
 
         /// <summary>화면 → 월드 평면 좌표. <c>y</c> 는 갑판(<c>0</c>)이다.</summary>
         public Vector3 ToWorld(Vector2 screenPoint) => new(
-            (screenPoint.x - Screen.center.x) / PixelsPerMeter,
+            WorldCenter.x + (screenPoint.x - Screen.center.x) / PixelsPerMeter,
             0f,
-            (Screen.center.y - screenPoint.y) / PixelsPerMeter);
+            WorldCenter.y + (Screen.center.y - screenPoint.y) / PixelsPerMeter);
 
         /// <summary>월드 <c>AABB</c> → 화면 사각형. 구획 하나가 도면에서 차지하는 자리다.</summary>
         public Rect ToScreenRect(float minX, float maxX, float minZ, float maxZ)
