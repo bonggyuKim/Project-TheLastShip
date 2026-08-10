@@ -27,11 +27,19 @@ namespace DoodleUp.Runtime
         [SerializeField] private ushort port = DefaultPort;
 
         private readonly LastShiftNetworkSlotAllocator slotAllocator = new();
+        private LastShiftRoomBeacon beacon;
+        private bool connectionOverridden;
 
         public NetworkManager NetworkManager => networkManager;
         public LastShiftSandboxController Sandbox => sandbox;
         public string Address => address;
         public ushort Port => port;
+
+        /// <summary>호스트로 방을 연 뒤 발급된 코드. 방을 열지 않았으면 빈 문자열.</summary>
+        public string RoomCode { get; private set; } = string.Empty;
+
+        /// <summary>코드로 방을 찾을 수 있는 상태인지. 디스커버리 포트를 못 잡으면 false 다.</summary>
+        public bool RoomDiscoverable => beacon != null;
 
         public void Configure(
             NetworkManager manager,
@@ -74,6 +82,12 @@ namespace DoodleUp.Runtime
                 networkManager.OnClientDisconnectCallback += OnClientDisconnected;
                 if (Application.isPlaying) RestrictSceneSynchronizationToNetworkScene();
             }
+
+            // 로비는 씬 빌더가 붙이지만, 이미 저장된 씬에는 아직 없다. 씬을 다시 굽는 것은
+            // 배 프리팹과 NetworkObject 해시까지 새로 찍는 큰 작업이라 그 하나 때문에 돌리지
+            // 않는다. 런타임에 없으면 여기서 채워, 어느 쪽 씬이든 같은 화면으로 시작한다.
+            if (Application.isPlaying && GetComponent<LastShiftRoomLobby>() == null)
+                gameObject.AddComponent<LastShiftRoomLobby>();
         }
 
         /// <summary>
@@ -159,6 +173,11 @@ namespace DoodleUp.Runtime
         /// 빌드는 host 가 뜨지 않아 player 가 spawn 되지 않았고, 카메라는 player 프리팹에만 있으므로
         /// <b>화면에 HUD 만 남고 3D 가 통째로 안 보였다.</b> 에디터에서는 재현되지 않는 종류의 실패라
         /// 가드를 걷어내고 에디터와 빌드가 같은 경로를 타게 한다.
+        ///
+        /// 이름은 그대로지만 켜졌을 때의 뜻이 하나 바뀌었다. 방 코드 로비가 생긴 뒤로 인자 없는
+        /// 경로는 <b>바로 host 를 띄우는 대신 로비를 연다</b> — 사람이 "방 열기"와 "코드로 입장"을
+        /// 고르는 화면이다. 로비가 없는 씬(로비 컴포넌트를 못 붙인 경우)에서만 예전처럼 자동으로
+        /// host 가 뜬다. 끄면(false) 로비도 자동 host 도 없다 — 테스트가 쓰는 그 의미 그대로다.
         /// </summary>
         public static bool AutoStartHost = true;
 
@@ -177,13 +196,61 @@ namespace DoodleUp.Runtime
             }
             else if (AutoStartHost)
             {
-                // 인자가 없는 경로. host 가 켜지지 않으면 player 가 spawn 되지 않아 카메라도 없고
+                var lobby = GetComponent<LastShiftRoomLobby>();
+                if (lobby != null)
+                {
+                    lobby.Open();
+                    return;
+                }
+
+                // 로비가 없는 경로. host 가 켜지지 않으면 player 가 spawn 되지 않아 카메라도 없고
                 // preset 도 적용되지 않아, 잡을 물건 하나 없는 검은 화면으로 보인다.
                 if (StartHost())
                     Debug.Log($"[LAST_SHIFT_NETWORK_READY] mode=host-auto address={address} port={port} localClient={networkManager.LocalClientId}");
                 else
                     Debug.LogError($"[LAST_SHIFT_NETWORK_FAILED] mode=host-auto address={address} port={port}");
             }
+        }
+
+        /// <summary>
+        /// 방을 연다. host 를 띄우고 그 코드를 묻는 LAN 질의에 답할 비컨을 함께 세운다.
+        ///
+        /// 비컨을 못 세워도 방 자체는 성공으로 본다. 코드 검색이 막히는 것은 같은 PC 에 이미
+        /// 다른 방이 열려 디스커버리 포트가 잡혀 있을 때가 대부분인데, 그 경우에도 IP 를 아는
+        /// 상대는 여전히 들어올 수 있다. 대신 <see cref="RoomDiscoverable"/> 로 그 사실을 알린다.
+        /// </summary>
+        public bool OpenRoom(string roomCode)
+        {
+            if (!StartHost()) return false;
+            RoomCode = LastShiftRoomCode.Normalize(roomCode);
+            CloseBeacon();
+            try
+            {
+                beacon = new LastShiftRoomBeacon(RoomCode, port);
+                Debug.Log($"[LAST_SHIFT_ROOM] phase=opened code={RoomCode} port={port} discovery={LastShiftRoomProtocol.DiscoveryPort}");
+            }
+            catch (Exception error)
+            {
+                Debug.LogWarning($"[LAST_SHIFT_ROOM] phase=opened code={RoomCode} discovery=unavailable detail={error.Message}");
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 찾아낸 호스트로 붙는다. 주소를 여기서 못 박으므로 커맨드라인 인자가 이것을 덮지 않는다
+        /// — 로비로 들어간 방이 낡은 <c>-lastShiftAddress</c> 때문에 엉뚱한 곳으로 가면 안 된다.
+        /// </summary>
+        public bool JoinRoom(string hostAddress, ushort hostPort)
+        {
+            SetConnection(hostAddress, hostPort);
+            return StartClient();
+        }
+
+        public void SetConnection(string hostAddress, ushort hostPort)
+        {
+            if (!string.IsNullOrWhiteSpace(hostAddress)) address = hostAddress;
+            if (hostPort != 0) port = hostPort;
+            connectionOverridden = true;
         }
 
         /// <summary>
@@ -217,6 +284,23 @@ namespace DoodleUp.Runtime
         {
             if (networkManager != null && networkManager.IsListening) networkManager.Shutdown();
             slotAllocator.Clear();
+            CloseBeacon();
+            RoomCode = string.Empty;
+        }
+
+        /// <summary>
+        /// 비컨은 UDP 포트를 잡은 배경 스레드다. Play 를 멈추거나 씬을 갈아 끼울 때 여기서
+        /// 걷어내지 않으면 포트가 물린 채 남아 다음 방이 코드 검색 없이 뜬다.
+        /// </summary>
+        private void OnDestroy()
+        {
+            CloseBeacon();
+        }
+
+        private void CloseBeacon()
+        {
+            beacon?.Dispose();
+            beacon = null;
         }
 
         public void PlaceAndRegisterPlayer(LastShiftNetworkPlayer player)
@@ -275,6 +359,11 @@ namespace DoodleUp.Runtime
         private void ConfigureTransport()
         {
             if (transport == null) return;
+            if (connectionOverridden)
+            {
+                transport.SetConnectionData(address, port, "0.0.0.0");
+                return;
+            }
             var commandLineAddress = ReadArgument("-lastShiftAddress");
             if (!string.IsNullOrWhiteSpace(commandLineAddress)) address = commandLineAddress;
             var commandLinePort = ReadArgument("-lastShiftPort");

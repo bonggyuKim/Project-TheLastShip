@@ -68,6 +68,9 @@ namespace DoodleUp.Editor
             var manager = sessionObject.AddComponent<NetworkManager>();
             var transport = sessionObject.AddComponent<UnityTransport>();
             var session = sessionObject.AddComponent<LastShiftNetworkSession>();
+            // 인자 없이 켰을 때 처음 만나는 화면. 세션도 런타임에 없으면 스스로 붙이지만,
+            // 씬을 다시 구울 때마다 사라졌다 붙는 것보다 씬에 있는 편이 읽기 쉽다.
+            sessionObject.AddComponent<LastShiftRoomLobby>();
             sessionObject.AddComponent<LastShiftNetworkLifecycleProbe>();
             session.Configure(manager, transport, playerPrefab, sandbox);
             manager.NetworkConfig.ConnectionApproval = true;
