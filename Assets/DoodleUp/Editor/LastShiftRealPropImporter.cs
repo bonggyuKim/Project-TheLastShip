@@ -16,7 +16,8 @@ namespace DoodleUp.Editor
         private static readonly string[] AssetNames =
         {
             "LSReal_ControlPanel", "LSReal_CargoCrate", "LSReal_OxygenTank",
-            "LSReal_PortableBattery", "LSReal_Toolbox", "LSReal_WorkLamp"
+            "LSReal_PortableBattery", "LSReal_Toolbox", "LSReal_WorkLamp",
+            "LP_AirlockDoor", "LP_VentFan", "LP_EmergencyBeacon"
         };
 
         private static readonly Dictionary<string, string> DressingLinks = new()
@@ -29,6 +30,9 @@ namespace DoodleUp.Editor
             ["O2TankBank_Aft"] = "LSReal_OxygenTank",
             ["PartsPallet"] = "LSReal_PortableBattery",
             ["ToolBoard_Port"] = "LSReal_Toolbox"
+            ,["AirlockDoor_Main"] = "LP_AirlockDoor"
+            ,["VentFan_Service"] = "LP_VentFan"
+            ,["EmergencyBeacon_Service"] = "LP_EmergencyBeacon"
         };
 
         [MenuItem("Last Shift/SP-02A/Import Real Prop Prefabs")]
@@ -58,6 +62,12 @@ namespace DoodleUp.Editor
                 var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
                 visual.name = "Visual";
                 visual.transform.SetParent(root.transform, false);
+                foreach (var filter in visual.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
+                    var collider = filter.gameObject.AddComponent<MeshCollider>();
+                    collider.sharedMesh = filter.sharedMesh;
+                }
                 var prefabPath = $"{PrefabFolder}/{name}.prefab";
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                 UnityEngine.Object.DestroyImmediate(root);
