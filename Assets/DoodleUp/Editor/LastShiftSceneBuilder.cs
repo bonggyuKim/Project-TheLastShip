@@ -42,7 +42,6 @@ namespace DoodleUp.Editor
         private static Material starMaterial;
         private static Material voidMaterial;
         private static Material compartmentMaterial;
-        private static Material discHullMaterial;
 
         // ── 드레싱 재질 ─────────────────────────────────────────────────────────
         // 색 정본은 Runtime 의 LastShiftDressing 이고 여기서는 캐시만 든다.
@@ -171,7 +170,6 @@ namespace DoodleUp.Editor
             CreateDucts(ship.transform);
             CreateCompartments(ship.transform);
             CreateBypassDuct(ship.transform);
-            CreateDiscHull(ship.transform);
             CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, RoomBackWallZ(LastShiftZone.Power) + 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, RoomBackWallZ(LastShiftZone.LifeSupport) - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
@@ -732,176 +730,6 @@ namespace DoodleUp.Editor
                 CreateCompartment(root.transform, spec);
         }
 
-        /// <summary>
-        /// 원반 외피 테두리(§26, §27.2). <see cref="LastShiftHullShell"/> 이 정본이고 여기서는
-        /// 타원을 직선 판 <see cref="LastShiftHullShell.SegmentCount"/> 장으로 두른다.
-        ///
-        /// <b>곡면 메시를 만들지 않는다.</b> §27.7-1 이 메시·자투리 공간 구조체를 <c>art</c>
-        /// 로 남겼다 — 여기서 프로시저럴 메시를 구우면 아트가 그걸 정본으로 오인하고, 그
-        /// 순간 "좌표는 코드, 형상은 아트" 라는 이 프로젝트의 경계가 한 군데서만 깨진다.
-        /// 그레이박스가 답해야 하는 것은 <b>평면 실루엣</b>뿐이고, 세로 프로파일(렌즈 단면)은
-        /// 여기 없다.
-        ///
-        /// 판이 안쪽으로 들어오는 내접 근사라 구획·회랑이 그 다각형 안에 들어가는지는
-        /// 이상적인 타원이 아니라 <see cref="LastShiftHullShell.InscribedContains"/> 로
-        /// 검사해야 한다 — EditMode 검사가 그 자리를 잡는다.
-        ///
-        /// <b>판은 전부 선다.</b> 예전에는 좌현 창 구간 <c>10</c>장을 통째로 건너뛰었는데,
-        /// 그 근거(배경막이 원반 안에 있어 판을 세우면 창에 회색 판만 보인다)는 §28.6-4 가
-        /// 배경막을 <c>z=-22</c> 로 밀면서 사라졌다. 지금은 그 구간에 art 가 만든 개구부
-        /// 프리팹이 서고(§29.4-(1)), 실루엣이 닫힌 채로 창 너머가 별이다.
-        /// </summary>
-        private static void CreateDiscHull(Transform ship)
-        {
-            discHullMaterial ??= CreateMaterial("LS_DiscHull", new Color(0.22f, 0.24f, 0.27f));
-
-            var root = new GameObject("DiscHull");
-            root.transform.SetParent(ship, false);
-
-            var windowBay = LoadHullPrefab("LSHull_WindowBay");
-            if (windowBay == null)
-                Debug.LogWarning("[LastShift] LSHull_WindowBay 프리팹이 없다 — 좌현 창 구간을 예전처럼 비운다.");
-
-            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
-            {
-                var start = LastShiftHullShell.SegmentStart(segment);
-                var end = LastShiftHullShell.SegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
-                var chord = end - start;
-                var middle = (start + end) * 0.5f;
-
-                // 로컬 +x 를 현 방향에 맞춘다. y 축 회전은 +x 를 (cos, 0, -sin) 으로 보내므로
-                // 부호가 뒤집힌 atan2 다 — 그냥 Atan2(dz, dx) 를 쓰면 판이 거울처럼 반대로 눕는다.
-                var yaw = -Mathf.Atan2(chord.y, chord.x) * Mathf.Rad2Deg;
-
-                if (LastShiftHullFrames.SegmentIsWindowBay(segment))
-                {
-                    // 프리팹이 없으면 불투명 판으로 메우지 않고 비운다. 회색 판이 창을 막는
-                    // 것은 뚫린 실루엣보다 나쁘다 — 그게 애초에 이 구간을 비워 뒀던 이유다.
-                    if (windowBay == null) continue;
-
-                    // 루트가 테두리 <b>밑면</b>이다(아트 정본 §5.1 "루트 = 밑면"). 중심 높이를
-                    // 주면 창이 제 높이의 절반만큼 뜬다. y·z 스케일은 1 로 둔다 — 세로로 늘이면
-                    // 스텝 프로파일 비율이 세그먼트마다 달라진다.
-                    var bay = (GameObject)PrefabUtility.InstantiatePrefab(windowBay, root.transform);
-                    bay.name = $"WindowBay_{segment:00}";
-                    bay.transform.localPosition =
-                        new Vector3(middle.x, LastShiftHullShell.RimBaseY, middle.y);
-                    bay.transform.localScale = new Vector3(chord.magnitude, 1f, 1f);
-                    bay.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-                    continue;
-                }
-
-                // 선수 창 판(BowWindowBay)이 여기 있었다. 관측실이 배에서 나가면서 그 창을
-                // 보는 자리가 없어졌고, 테두리는 선수 쪽에서 다시 통짜 판이 된다.
-
-                var panel = CreateCube($"Rim_{segment:00}", root.transform,
-                    new Vector3(middle.x,
-                        LastShiftHullShell.RimBaseY + LastShiftHullShell.RimHeight * 0.5f,
-                        middle.y),
-                    new Vector3(chord.magnitude, LastShiftHullShell.RimHeight, LastShiftHullShell.PanelThickness),
-                    discHullMaterial);
-
-                panel.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            }
-
-            CreateWindowMullions(root.transform, "WindowMullions", LastShiftHullFrames.WindowMullionSeams());
-            CreateHullFrames(root.transform);
-        }
-
-        /// <summary>원반 외피 프리팹 폴더. art 가 §28.1 에서 만든 개구부 부재가 여기 있다.</summary>
-        private const string HullPrefabFolder = "Assets/DoodleUp/Prefabs/Hull";
-
-        private static GameObject LoadHullPrefab(string name) =>
-            AssetDatabase.LoadAssetAtPath<GameObject>($"{HullPrefabFolder}/{name}.prefab");
-
-        /// <summary>
-        /// 창 구간 멀리언. <b>세그먼트가 아니라 이음매에 선다</b> — 어디가 이음매인지는
-        /// Runtime 의 <see cref="LastShiftHullFrames.WindowMullionSeams"/> 가 정한다.
-        ///
-        /// 회전은 그 점의 접선이다. 한쪽 세그먼트의 현 방향만 쓰면 기둥이 이웃 판과 반 칸
-        /// 틀어져 이음매가 벌어져 보이므로, 인접 두 현 방향의 평균을 쓴다.
-        ///
-        /// <b>스케일은 건드리지 않는다.</b> 창 판은 현 길이만큼 <c>x</c> 로 늘이지만 멀리언은
-        /// 기둥이라, 같이 늘이면 <c>0.16m</c> 기둥이 <c>0.8m</c> 짜리 벽이 된다(아트 정본 §3.3).
-        /// </summary>
-        private static void CreateWindowMullions(Transform parent, string groupName, int[] seams)
-        {
-            var prefab = LoadHullPrefab("LSHull_WindowMullion");
-            if (prefab == null) return;
-            if (seams.Length == 0) return;
-
-            var root = new GameObject(groupName);
-            root.transform.SetParent(parent, false);
-
-            foreach (var seam in seams)
-            {
-                var point = LastShiftHullShell.SegmentStart(seam);
-                var post = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root.transform);
-                post.name = $"Mullion_{seam:00}";
-                post.transform.localPosition =
-                    new Vector3(point.x, LastShiftHullShell.RimBaseY, point.y);
-                post.transform.localRotation = Quaternion.Euler(0f, SeamYaw(seam), 0f);
-            }
-        }
-
-        /// <summary>이음매의 접선 방향 yaw. 인접 두 현 방향의 평균이다.</summary>
-        private static float SeamYaw(int seam)
-        {
-            var count = LastShiftHullShell.SegmentCount;
-            var here = LastShiftHullShell.SegmentStart(seam);
-            var incoming = (here - LastShiftHullShell.SegmentStart((seam + count - 1) % count)).normalized;
-            var outgoing = (LastShiftHullShell.SegmentStart((seam + 1) % count) - here).normalized;
-            var tangent = incoming + outgoing;
-            return -Mathf.Atan2(tangent.y, tangent.x) * Mathf.Rad2Deg;
-        }
-
-        /// <summary>
-        /// 방 벽과 외피 사이 자투리를 채우는 격벽 프레임(§27.3). 좌표 정본은 Runtime 의
-        /// <see cref="LastShiftHullFrames"/> 이고, 어느 각에서 프레임이 얼마나 뻗는지는
-        /// 식이 아니라 그쪽 실측이 정한다.
-        ///
-        /// <b>전부 콜라이더 없는 장식이다.</b> 이 바깥에는 갑판이 없어 승무원이 애초에 못
-        /// 가고, 콜라이더를 남기면 저중력에서 뜬 물건이 골조에 끼어 회수가 어려워진다 —
-        /// 배관 장식(<see cref="CreatePipe"/>)에 콜라이더를 뺀 것과 같은 이유다.
-        /// </summary>
-        private static void CreateHullFrames(Transform parent)
-        {
-            var frames = new GameObject("HullFrames");
-            frames.transform.SetParent(parent, false);
-
-            for (var rib = 0; rib < LastShiftHullFrames.RibCount; rib++)
-            {
-                if (!LastShiftHullFrames.RibIsBuildable(rib)) continue;
-                var outer = LastShiftHullFrames.RibOuter(rib);
-                var inner = LastShiftHullFrames.RibInner(rib);
-                CreateFrameMember($"Rib_{rib:00}", frames.transform, inner, outer,
-                    LastShiftHullFrames.BaseY + LastShiftHullFrames.Height * 0.5f,
-                    LastShiftHullFrames.Height);
-            }
-
-            for (var segment = 0; segment < LastShiftHullShell.SegmentCount; segment++)
-            {
-                if (!LastShiftHullFrames.RingSegmentIsBuildable(segment)) continue;
-                var start = LastShiftHullFrames.RingSegmentStart(segment);
-                var end = LastShiftHullFrames.RingSegmentStart((segment + 1) % LastShiftHullShell.SegmentCount);
-                CreateFrameMember($"Girth_{segment:00}", frames.transform, start, end,
-                    LastShiftHullFrames.RingBeamY, LastShiftHullFrames.RibSection);
-            }
-        }
-
-        /// <summary>골조 부재 하나. 두 평면 점을 잇는 판·보이고 로컬 +x 를 그 방향에 맞춘다.</summary>
-        private static void CreateFrameMember(string name, Transform parent,
-            Vector2 from, Vector2 to, float centreY, float height)
-        {
-            var span = to - from;
-            var middle = (from + to) * 0.5f;
-            var member = CreateDecorCube(name, parent,
-                new Vector3(middle.x, centreY, middle.y),
-                new Vector3(span.magnitude, height, LastShiftHullFrames.RibSection),
-                discHullMaterial);
-            member.transform.localRotation =
-                Quaternion.Euler(0f, -Mathf.Atan2(span.y, span.x) * Mathf.Rad2Deg, 0f);
-        }
 
         /// <summary>
         /// 갑판 하부 우회 통로와 에어록(§5, §23). 좌표 정본은 Runtime 의
