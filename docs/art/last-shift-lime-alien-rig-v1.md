@@ -2,7 +2,7 @@
 
 ## 산출물
 
-- Blender 원본: `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigged.blend`
+- Blender 원본: `ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigged.blend` (Unity 임포트 대상이 아니다. [ArtSource/README.md](../../ArtSource/README.md) 참고)
 - 교환 파일: `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigged.fbx`
 - 중립 포즈 정면: `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rig_NeutralPose.png`
 - 중립 포즈 측면: `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rig_NeutralPose_Side.png`

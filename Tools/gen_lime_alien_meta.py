@@ -3,8 +3,9 @@
 - 애니메이션 FBX: 기존 형제 meta(Walk_Loop) 설정을 그대로 따라간다. clipAnimations 는
   프레임 구간을 임의로 지어내지 않고 비워 두어 Unity 가 take 기본 클립을 만들게 한다.
 - 리그 FBX: Rigged.fbx meta 설정(아바타를 이 모델에서 생성)을 따른다.
-- .blend 원본: 런타임 자산이 아니므로 애니메이션/머티리얼 임포트를 끈 최소 설정.
 - .png 검증 렌더: guid 만 고정하고 나머지는 Unity 가 기본값으로 채우게 둔다.
+
+.blend 원본은 ArtSource/ 로 옮겨 Unity 임포트 대상에서 뺐으므로 여기서 다루지 않는다.
 
 GUID 는 자산 경로의 md5 로 뽑아, 재실행해도 같은 값이 나오도록 한다.
 """
@@ -25,10 +26,6 @@ ANIM_FBX = [
     "LastShiftLimeAlien_Jump.fbx",
 ]
 RIG_FBX = ["LastShiftLimeAlien_Rigify_Test.fbx"]
-BLEND = [
-    "LastShiftLimeAlien_Rigged.blend",
-    "LastShiftLimeAlien_Rigify_Test.blend",
-]
 PNG = [
     "LastShiftLimeAlien_Rigify_Neutral.png",
     "LastShiftLimeAlien_Rigify_Overhead.png",
@@ -89,16 +86,6 @@ def drop_clip_animations(lines: list[str]) -> list[str]:
     return out
 
 
-def set_scalar(lines: list[str], key: str, value: str) -> list[str]:
-    out = list(lines)
-    for i, line in enumerate(out):
-        stripped = line.lstrip()
-        indent = line[: len(line) - len(stripped)]
-        if stripped.startswith(key + ":"):
-            out[i] = f"{indent}{key}: {value}\n"
-    return out
-
-
 def write_meta(asset: str, lines: list[str]) -> None:
     target = DIR / (asset + ".meta")
     if target.exists():
@@ -119,14 +106,6 @@ def main() -> None:
 
     for asset in RIG_FBX:
         write_meta(asset, replace_guid(rig_base, guid_for(asset)))
-
-    for asset in BLEND:
-        lines = replace_guid(rig_base, guid_for(asset))
-        lines = set_scalar(lines, "materialImportMode", "0")
-        lines = set_scalar(lines, "importAnimation", "0")
-        lines = set_scalar(lines, "animationType", "0")
-        lines = set_scalar(lines, "avatarSetup", "0")
-        write_meta(asset, lines)
 
     for asset in PNG:
         path = DIR / asset
