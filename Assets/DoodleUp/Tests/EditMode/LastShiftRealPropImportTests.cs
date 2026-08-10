@@ -16,6 +16,8 @@ namespace DoodleUp.Tests.EditMode
         /// </summary>
         private static readonly string[] Names =
         {
+            "LP_CargoCrate_0p7m", "LP_OxygenTank_1m", "LP_PortableBattery_0p5m",
+            "LP_Toolbox_0p6m", "LP_WorkLamp_0p5m",
             "LP_AirlockDoor", "LP_VentFan", "LP_EmergencyBeacon"
         };
 

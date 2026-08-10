@@ -21,14 +21,19 @@ namespace DoodleUp.Editor
         /// </summary>
         private static readonly string[] AssetNames =
         {
-            "LP_AirlockDoor", "LP_VentFan", "LP_EmergencyBeacon"
+            "LP_CargoCrate_0p7m", "LP_OxygenTank_1m", "LP_PortableBattery_0p5m",
+            "LP_Toolbox_0p6m", "LP_WorkLamp_0p5m", "LP_VentFan", "LP_EmergencyBeacon"
         };
 
         private static readonly Dictionary<string, string> DressingLinks = new()
         {
-            ["AirlockDoor_Main"] = "LP_AirlockDoor",
-            ["VentFan_Service"] = "LP_VentFan",
-            ["EmergencyBeacon_Service"] = "LP_EmergencyBeacon"
+            ["CrateStack_Aft"] = "LP_CargoCrate_0p7m",
+            ["CrateStack_Fore"] = "LP_CargoCrate_0p7m",
+            ["CrateStack_Mid"] = "LP_CargoCrate_0p7m",
+            ["O2TankBank_Fore"] = "LP_OxygenTank_1m",
+            ["O2TankBank_Aft"] = "LP_OxygenTank_1m",
+            ["PartsPallet"] = "LP_PortableBattery_0p5m",
+            ["ToolBoard_Port"] = "LP_Toolbox_0p6m"
         };
 
         [MenuItem("Last Shift/SP-02A/Import Real Prop Prefabs")]
@@ -38,6 +43,7 @@ namespace DoodleUp.Editor
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             var prefabs = BuildPrefabs();
             LinkDressing(prefabs);
+            EnsureServiceSlots(prefabs);
             LastShiftSceneBuilder.ForgetDressingSet();
             LastShiftNetworkSceneBuilder.RebuildSandboxForAutomation();
             AssetDatabase.SaveAssets();
@@ -113,6 +119,42 @@ namespace DoodleUp.Editor
                                  string.Join(", ", DressingLinks.Keys) + " 가 드레싱 데이터에 없다.");
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(set);
+        }
+
+        private static void EnsureServiceSlots(IReadOnlyDictionary<string, GameObject> prefabs)
+        {
+            var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
+            var props = new List<LastShiftDressingProp>(set.Props);
+            AddServiceSlot(props, "VentFan_Service", LastShiftZone.LifeSupport,
+                new Vector2(4.75f, 0f), 2.2f, new Vector3(0f, -90f, 0f), prefabs["LP_VentFan"]);
+            AddServiceSlot(props, "EmergencyBeacon_Service", LastShiftZone.Power,
+                new Vector2(0f, -3.75f), 2.65f, Vector3.zero, prefabs["LP_EmergencyBeacon"]);
+            set.ReplaceAll(props);
+            EditorUtility.SetDirty(set);
+        }
+
+        private static void AddServiceSlot(List<LastShiftDressingProp> props, string id, LastShiftZone zone,
+            Vector2 anchor, float bottomY, Vector3 eulerAngles, GameObject prefab)
+        {
+            var existing = props.Find(prop => prop != null && prop.id == id);
+            if (existing != null)
+            {
+                existing.prefab = prefab;
+                return;
+            }
+
+            props.Add(new LastShiftDressingProp
+            {
+                id = id,
+                space = LastShiftDressingSpace.Of(zone),
+                size = Vector3.one * 0.5f,
+                anchorMode = LastShiftDressingAnchorMode.MetersFromSpaceCenter,
+                anchor = anchor,
+                bottomY = bottomY,
+                clearance = 0.06f,
+                eulerAngles = eulerAngles,
+                prefab = prefab
+            });
         }
 
         private static int CountLinkedSlots()
