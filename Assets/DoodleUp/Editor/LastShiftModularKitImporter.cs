@@ -14,14 +14,33 @@ namespace DoodleUp.Editor
         private const string ModelFolder = "Assets/Art/LastShift/ModularKit";
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/LastShiftModularKit";
         private const string ControllerFolder = PrefabFolder + "/Animators";
+        private const string MaterialFolder = "Assets/DoodleUp/Art/Materials";
         private const string MapPath = "Assets/DoodleUp/Data/LastShiftModularMap.json";
         private static readonly string[] Names =
         {
             "LPK_Wall_Straight_2m", "LPK_Wall_Straight_4m", "LPK_Wall_Window_4m", "LPK_Wall_Curve_45", "LPK_Corner_Outer_90", "LPK_Corner_Inner_90",
             "LPK_Floor_Square_2m", "LPK_Floor_Curve_45", "LPK_Ceiling_Straight_4m", "LPK_Support_Pillar", "LPK_Door_Airlock_2m", "LPK_Connector_Neck_2m",
             "LPK_CentralLift_4m", "LPK_Cockpit_ControlConsole", "LPK_LifeSupport_Scrubber", "LPK_Power_Switchgear", "LPK_Cooling_Exchanger", "LPK_Quarters_Bunk"
-            ,"LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90", "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m", "LPK_Ceiling_Curve45", "LPK_Floor_Transition_2m", "LPK_Airlock_Exterior_4m", "LPK_DeckHatch_2m", "LPK_OxygenLeakPipe_2m", "LPK_RepairConsole_1m", "LPK_DamagedPipe_2m", "LPK_SalvagePad_4m", "LPK_TetherRack_2m"
+            ,"LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90", "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m", "LPK_Ceiling_Curve45", "LPK_Floor_Transition_2m", "LPK_Airlock_Exterior_4m", "LPK_DeckHatch_2m", "LPK_OxygenLeakPipe_2m", "LPK_RepairConsole_1m", "LPK_DamagedPipe_2m", "LPK_SalvagePad_4m", "LPK_TetherRack_2m", "LPK_Cockpit_WallMirror_1m"
         };
+
+        [MenuItem("Last Shift/SP-02A/Create Cockpit Mirror and Assemble")]
+        public static void CreateCockpitMirrorAndAssemble()
+        {
+            Directory.CreateDirectory(PrefabFolder);
+            Directory.CreateDirectory(MaterialFolder);
+            var prefabs = new Dictionary<string, GameObject>();
+            foreach (var name in Names)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabFolder}/{name}.prefab");
+                if (prefab == null && name == "LPK_Cockpit_WallMirror_1m") prefab = CreateCockpitWallMirrorPrefab();
+                if (prefab == null) throw new InvalidOperationException($"Required modular prefab missing: {name}");
+                prefabs[name] = prefab;
+            }
+            Assemble(LastShiftSceneBuilder.RebuildShipPrefab(), prefabs);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[LAST_SHIFT_MODULAR_MAP] cockpitMirror=1 result=PASS");
+        }
 
         [MenuItem("Last Shift/SP-02A/Import Modular Kit and Assemble")]
         public static void ImportAndAssemble()
@@ -38,6 +57,7 @@ namespace DoodleUp.Editor
 
         private static GameObject CreatePrefab(string name)
         {
+            if (name == "LPK_Cockpit_WallMirror_1m") return CreateCockpitWallMirrorPrefab();
             var modelPath = $"{ModelFolder}/{name}.fbx";
             ConfigureModelAxisConversion(modelPath);
             AssetDatabase.ImportAsset(modelPath, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
@@ -62,6 +82,55 @@ namespace DoodleUp.Editor
             UnityEngine.Object.DestroyImmediate(root);
             if (prefab == null) throw new InvalidOperationException($"Could not create prefab for {name}");
             return prefab;
+        }
+
+        private static GameObject CreateCockpitWallMirrorPrefab()
+        {
+            var path = $"{PrefabFolder}/LPK_Cockpit_WallMirror_1m.prefab";
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing;
+
+            Directory.CreateDirectory(MaterialFolder);
+            var surface = GetOrCreateMaterial("LastShiftMirrorSurface", new Color(0.10f, 0.16f, 0.23f), 0.68f, 0.72f);
+            var frame = GetOrCreateMaterial("LastShiftMirrorFrame", LastShiftUiTheme.Ivory, 0.1f, 0.28f);
+            var root = new GameObject("LPK_Cockpit_WallMirror_1m");
+            CreateMirrorPart(root.transform, "ReflectiveSurface", new Vector3(0f, 0.55f, 0f), new Vector3(0.66f, 0.96f, 0.04f), surface);
+            CreateMirrorPart(root.transform, "FrameTop", new Vector3(0f, 1.065f, 0f), new Vector3(0.80f, 0.07f, 0.07f), frame);
+            CreateMirrorPart(root.transform, "FrameBottom", new Vector3(0f, 0.035f, 0f), new Vector3(0.80f, 0.07f, 0.07f), frame);
+            CreateMirrorPart(root.transform, "FrameLeft", new Vector3(-0.365f, 0.55f, 0f), new Vector3(0.07f, 1.10f, 0.07f), frame);
+            CreateMirrorPart(root.transform, "FrameRight", new Vector3(0.365f, 0.55f, 0f), new Vector3(0.07f, 1.10f, 0.07f), frame);
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            return prefab;
+        }
+
+        private static void CreateMirrorPart(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
+        {
+            var part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            part.name = name;
+            UnityEngine.Object.DestroyImmediate(part.GetComponent<Collider>());
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = position;
+            part.transform.localScale = scale;
+            part.GetComponent<MeshRenderer>().sharedMaterial = material;
+        }
+
+        private static Material GetOrCreateMaterial(string name, Color color, float metallic, float smoothness)
+        {
+            var path = $"{MaterialFolder}/{name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null) return material;
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            material = shader != null
+                ? new Material(shader)
+                : new Material(AssetDatabase.GetBuiltinExtraResource<Material>("Default-Material.mat"));
+            material.name = name;
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            else material.color = color;
+            if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", metallic);
+            if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         private static void ConfigureModelAxisConversion(string modelPath)
