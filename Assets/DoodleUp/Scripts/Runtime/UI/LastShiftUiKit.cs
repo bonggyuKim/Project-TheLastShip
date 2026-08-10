@@ -3,7 +3,7 @@ using UnityEngine;
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 아이콘 게이지 8종. <b>색이 아니라 실루엣으로 갈린다</b> — 32px 에서도 서로 다른
+    /// 아이콘 게이지 10종. <b>색이 아니라 실루엣으로 갈린다</b> — 32px 에서도 서로 다른
     /// 모양이라 색각 이상에서도 구분이 남는다(키트 §"방향").
     ///
     /// 축마다 <c>base</c>(빈 외곽선)와 <c>fill</c>(컬러 채움) 두 장이 <b>같은 좌표에</b>
@@ -18,6 +18,8 @@ namespace DoodleUp.Runtime
         Docking,
         Thrust,
         Interact,
+        Power,
+        Heat,
         Warning
     }
 
@@ -48,6 +50,8 @@ namespace DoodleUp.Runtime
         [SerializeField] private Sprite iconDocking;
         [SerializeField] private Sprite iconThrust;
         [SerializeField] private Sprite iconInteract;
+        [SerializeField] private Sprite iconPower;
+        [SerializeField] private Sprite iconHeat;
         [SerializeField] private Sprite iconWarning;
 
         [Header("게이지 채움 128×128 — 같은 축의 아이콘과 짝이고 같은 좌표에 겹친다")]
@@ -58,6 +62,8 @@ namespace DoodleUp.Runtime
         [SerializeField] private Sprite fillDocking;
         [SerializeField] private Sprite fillThrust;
         [SerializeField] private Sprite fillInteract;
+        [SerializeField] private Sprite fillPower;
+        [SerializeField] private Sprite fillHeat;
         [SerializeField] private Sprite fillWarning;
 
         [Header("패널·프롬프트")]
@@ -121,6 +127,8 @@ namespace DoodleUp.Runtime
             LastShiftUiIcon.Docking => iconDocking,
             LastShiftUiIcon.Thrust => iconThrust,
             LastShiftUiIcon.Interact => iconInteract,
+            LastShiftUiIcon.Power => iconPower,
+            LastShiftUiIcon.Heat => iconHeat,
             _ => iconWarning
         };
 
@@ -138,6 +146,8 @@ namespace DoodleUp.Runtime
             LastShiftUiIcon.Docking => fillDocking,
             LastShiftUiIcon.Thrust => fillThrust,
             LastShiftUiIcon.Interact => fillInteract,
+            LastShiftUiIcon.Power => fillPower,
+            LastShiftUiIcon.Heat => fillHeat,
             _ => fillWarning
         };
 
@@ -156,6 +166,8 @@ namespace DoodleUp.Runtime
                 case nameof(iconDocking): iconDocking = sprite; break;
                 case nameof(iconThrust): iconThrust = sprite; break;
                 case nameof(iconInteract): iconInteract = sprite; break;
+                case nameof(iconPower): iconPower = sprite; break;
+                case nameof(iconHeat): iconHeat = sprite; break;
                 case nameof(iconWarning): iconWarning = sprite; break;
                 case nameof(fillMaintenance): fillMaintenance = sprite; break;
                 case nameof(fillMaterials): fillMaterials = sprite; break;
@@ -164,6 +176,8 @@ namespace DoodleUp.Runtime
                 case nameof(fillDocking): fillDocking = sprite; break;
                 case nameof(fillThrust): fillThrust = sprite; break;
                 case nameof(fillInteract): fillInteract = sprite; break;
+                case nameof(fillPower): fillPower = sprite; break;
+                case nameof(fillHeat): fillHeat = sprite; break;
                 case nameof(fillWarning): fillWarning = sprite; break;
                 case nameof(panel9Slice): panel9Slice = sprite; break;
                 case nameof(promptPlate): promptPlate = sprite; break;
@@ -188,6 +202,8 @@ namespace DoodleUp.Runtime
             (nameof(iconDocking), "icon_gauge_docking_base"),
             (nameof(iconThrust), "icon_gauge_thrust_base"),
             (nameof(iconInteract), "icon_gauge_interact_base"),
+            (nameof(iconPower), "icon_gauge_power_base"),
+            (nameof(iconHeat), "icon_gauge_heat_base"),
             (nameof(iconWarning), "icon_gauge_warning_base"),
             (nameof(fillMaintenance), "icon_gauge_maintenance_fill"),
             (nameof(fillMaterials), "icon_gauge_materials_fill"),
@@ -196,6 +212,8 @@ namespace DoodleUp.Runtime
             (nameof(fillDocking), "icon_gauge_docking_fill"),
             (nameof(fillThrust), "icon_gauge_thrust_fill"),
             (nameof(fillInteract), "icon_gauge_interact_fill"),
+            (nameof(fillPower), "icon_gauge_power_fill"),
+            (nameof(fillHeat), "icon_gauge_heat_fill"),
             (nameof(fillWarning), "icon_gauge_warning_fill"),
             (nameof(panel9Slice), "panel_9slice"),
             (nameof(promptPlate), "prompt_plate"),
@@ -226,6 +244,8 @@ namespace DoodleUp.Runtime
             nameof(iconDocking) => iconDocking,
             nameof(iconThrust) => iconThrust,
             nameof(iconInteract) => iconInteract,
+            nameof(iconPower) => iconPower,
+            nameof(iconHeat) => iconHeat,
             nameof(iconWarning) => iconWarning,
             nameof(fillMaintenance) => fillMaintenance,
             nameof(fillMaterials) => fillMaterials,
@@ -234,6 +254,8 @@ namespace DoodleUp.Runtime
             nameof(fillDocking) => fillDocking,
             nameof(fillThrust) => fillThrust,
             nameof(fillInteract) => fillInteract,
+            nameof(fillPower) => fillPower,
+            nameof(fillHeat) => fillHeat,
             nameof(fillWarning) => fillWarning,
             nameof(panel9Slice) => panel9Slice,
             nameof(promptPlate) => promptPlate,
