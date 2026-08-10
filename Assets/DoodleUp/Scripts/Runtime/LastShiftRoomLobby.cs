@@ -32,8 +32,8 @@ namespace DoodleUp.Runtime
         /// <summary>주소를 찾은 뒤 실제 접속이 성립하기를 기다리는 시간.</summary>
         private const float ConnectTimeoutSeconds = 10f;
 
-        private const float PanelWidth = 460f;
-        private const float PanelHeight = 250f;
+        private const float PanelWidth = 560f;
+        private const float PanelHeight = 486f;
         private const string CodeFieldName = "LastShiftRoomCodeField";
 
         /// <summary>로비 뒤에 깔리는 색. 판 화면이 아니라 메뉴 화면임이 첫 프레임에 읽혀야 한다.</summary>
@@ -61,10 +61,15 @@ namespace DoodleUp.Runtime
         private LastShiftRoomLookup lookup;
         private float connectDeadline;
         private bool focusRequested;
+        private bool joinExpanded;
 
         private GUIStyle titleStyle;
+        private GUIStyle subtitleStyle;
         private GUIStyle bodyStyle;
         private GUIStyle codeStyle;
+        private GUIStyle primaryButtonStyle;
+        private GUIStyle secondaryButtonStyle;
+        private GUIStyle exitButtonStyle;
 
         private void Awake()
         {
@@ -78,7 +83,8 @@ namespace DoodleUp.Runtime
         {
             SetPhase(Phase.Menu);
             status = string.Empty;
-            focusRequested = true;
+            focusRequested = false;
+            joinExpanded = false;
             ReleaseCursor();
         }
 
@@ -313,8 +319,9 @@ namespace DoodleUp.Runtime
             // 입력칸과 버튼은 IMGUI 로 남는다 — UGUI 로 옮기려면 EventSystem 과 InputField 가
             // 들어와야 하고, 그건 접속 경로 전체를 다시 검증해야 하는 별개의 일이다.
             LastShiftUiLayer.Instance?.Panel("lobby", panel, 0.96f);
-            GUILayout.BeginArea(new Rect(panel.x + 24f, panel.y + 20f, panel.width - 48f, panel.height - 40f));
-            GUILayout.Label("LAST SHIFT", titleStyle);
+            GUILayout.BeginArea(new Rect(panel.x + 32f, panel.y + 26f, panel.width - 64f, panel.height - 52f));
+            GUILayout.Label("DOODLE UP", titleStyle);
+            GUILayout.Label("LAST SHIFT", subtitleStyle);
 
             switch (phase)
             {
@@ -335,17 +342,28 @@ namespace DoodleUp.Runtime
 
         private void DrawMenu()
         {
-            GUILayout.Space(6f);
-            if (GUILayout.Button("방 열기 (호스트)", GUILayout.Height(38f))) HostRoom();
+            GUILayout.Space(24f);
+            if (GUILayout.Button("방 만들기", primaryButtonStyle, GUILayout.Height(52f))) HostRoom();
 
-            GUILayout.Space(14f);
-            GUILayout.Label("호스트에게 받은 방 코드", bodyStyle);
-            GUILayout.BeginHorizontal();
-            GUI.SetNextControlName(CodeFieldName);
-            var typed = GUILayout.TextField(typedCode, LastShiftRoomCode.Length + 4, codeStyle, GUILayout.Height(34f));
-            if (typed != typedCode) typedCode = LastShiftRoomCode.Normalize(typed);
-            var join = GUILayout.Button("입장", GUILayout.Width(96f), GUILayout.Height(34f));
-            GUILayout.EndHorizontal();
+            GUILayout.Space(12f);
+            if (GUILayout.Button("코드로 참가", secondaryButtonStyle, GUILayout.Height(48f)))
+            {
+                joinExpanded = true;
+                focusRequested = true;
+            }
+
+            var join = false;
+            if (joinExpanded)
+            {
+                GUILayout.Space(14f);
+                GUILayout.Label("호스트에게 받은 방 코드", bodyStyle);
+                GUILayout.BeginHorizontal();
+                GUI.SetNextControlName(CodeFieldName);
+                var typed = GUILayout.TextField(typedCode, LastShiftRoomCode.Length + 4, codeStyle, GUILayout.Height(48f));
+                if (typed != typedCode) typedCode = LastShiftRoomCode.Normalize(typed);
+                join = GUILayout.Button("입장", primaryButtonStyle, GUILayout.Width(112f), GUILayout.Height(48f));
+                GUILayout.EndHorizontal();
+            }
 
             if (focusRequested)
             {
@@ -363,6 +381,18 @@ namespace DoodleUp.Runtime
                 GUILayout.Space(8f);
                 GUILayout.Label(status, bodyStyle);
             }
+
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("종료", exitButtonStyle, GUILayout.Height(48f))) ExitApplication();
+        }
+
+        private static void ExitApplication()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private void DrawProgress()
@@ -414,23 +444,67 @@ namespace DoodleUp.Runtime
         {
             titleStyle ??= new GUIStyle(GUI.skin.label)
             {
-                fontSize = 22,
+                fontSize = 42,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white },
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = LastShiftUiTheme.Ivory },
+            };
+            subtitleStyle ??= new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 15,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = LastShiftUiTheme.Fault },
             };
             bodyStyle ??= new GUIStyle(GUI.skin.label)
             {
                 fontSize = 14,
                 wordWrap = true,
-                normal = { textColor = new Color(0.88f, 0.94f, 1f) },
+                normal = { textColor = LastShiftUiTheme.BodyText },
             };
             codeStyle ??= new GUIStyle(GUI.skin.textField)
             {
                 fontSize = 26,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.55f, 0.9f, 1f) },
+                normal = { textColor = LastShiftUiTheme.Nominal },
             };
+            primaryButtonStyle ??= CreateButtonStyle(20, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.Ivory,
+                LastShiftUiTheme.Nominal);
+            secondaryButtonStyle ??= CreateButtonStyle(17, LastShiftUiTheme.Ivory, LastShiftUiTheme.PanelNavy,
+                LastShiftUiTheme.Fault);
+            exitButtonStyle ??= CreateButtonStyle(16, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.BodyText,
+                LastShiftUiTheme.Fault);
+        }
+
+        private static GUIStyle CreateButtonStyle(int fontSize, Color background, Color foreground, Color hover)
+        {
+            var style = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = fontSize,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                padding = new RectOffset(12, 12, 8, 8),
+            };
+            style.normal.textColor = foreground;
+            style.hover.textColor = hover;
+            style.active.textColor = hover;
+            style.focused.textColor = hover;
+            style.normal.background = SolidTexture(background);
+            style.hover.background = SolidTexture(Color.Lerp(background, hover, 0.16f));
+            style.active.background = SolidTexture(Color.Lerp(background, hover, 0.28f));
+            return style;
+        }
+
+        private static Texture2D SolidTexture(Color color)
+        {
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
         }
     }
 }
