@@ -990,6 +990,13 @@ namespace DoodleUp.Editor
             const float thickness = LastShiftCompartments.PanelThickness;
             const float height = LastShiftCompartments.InteriorHeight;
 
+            // <b>여기서 재질을 만든다.</b> 예전에는 <c>CreateSpaceCeiling</c> 이 처음 불릴 때
+            // 곁들여 만들어졌고, 그 함수가 없어지자 <c>ceilingMaterial</c> 이 <c>null</c> 인 채로
+            // 남아 천장이 분홍으로 나왔다. 재질을 쓰는 자리가 스스로 확보해야 다른 함수가
+            // 없어져도 안 딸려 나간다.
+            ceilingMaterial ??= CreateMaterial("LS_Ceiling", new Color(0.21f, 0.23f, 0.26f));
+            floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.24f, 0.25f, 0.28f));
+
             var root = new GameObject(LastShiftCompartments.NameOf(spec));
             root.transform.SetParent(parent, false);
             root.transform.localPosition = new Vector3(spec.CenterX, 0f, spec.CenterZ);

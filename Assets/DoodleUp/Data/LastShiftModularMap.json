@@ -133,6 +133,28 @@
   ],
   "placementRules": [
     {
+      "id": "floorUnderlay",
+      "assetId": "LPK_Floor_Square_2m",
+      "target": [
+        "plaza",
+        "cockpit",
+        "lifeSupport",
+        "power",
+        "cooling",
+        "quarters"
+      ],
+      "operation": "tileBounds",
+      "tile": [
+        2,
+        2
+      ],
+      "positionY": -0.1,
+      "offset": [
+        1,
+        1
+      ]
+    },
+    {
       "id": "floor",
       "assetId": "LPK_Floor_Square_2m",
       "target": [

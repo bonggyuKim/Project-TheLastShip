@@ -311,7 +311,7 @@ namespace DoodleUp.Editor
             foreach (var rule in map.placementRules)
             {
                 if (rule.operation == "tileBounds")
-                    foreach (var target in rule.target) TileBounds(p[rule.assetId], root, rule.id, spaces[target], rule.tile, rule.positionY);
+                    foreach (var target in rule.target) TileBounds(p[rule.assetId], root, rule.id, spaces[target], rule.tile, rule.positionY, rule);
                 else if (rule.operation == "wallBoundsWithDoorGap")
                     InteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "spanBounds")
@@ -321,7 +321,11 @@ namespace DoodleUp.Editor
             }
             foreach (var space in map.spaces)
             {
-                Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
+                var door = Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
+                // 압력문이 붙는 자리가 아니면 열어 둔다. 안 그러면 아무도 애니메이터를 안
+                // 건드려 닫힌 자세로 남고, 통행은 되므로 닫힌 문을 그대로 통과하게 된다.
+                if (!HasPressureDoor(space.id) && door != null && door.GetComponent<Animator>() != null)
+                    door.AddComponent<LastShiftPassageDoor>();
                 Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
             }
             if (map.lights != null)
@@ -332,10 +336,20 @@ namespace DoodleUp.Editor
             RemoveInteriorWallsCoveredByShell(root);
         }
 
-        private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y)
+        private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y, MapRule rule = null)
         {
-            for (var x = space.bounds[0] + tile[0] * 0.5f; x < space.bounds[1]; x += tile[0])
-            for (var z = space.bounds[2] + tile[1] * 0.5f; z < space.bounds[3]; z += tile[1])
+            // <b>판 모서리가 깎여 있다.</b> 네 장이 만나는 자리에 마름모꼴 구멍이 남고,
+            // 갑판 아래가 빈 자리에서는 그 구멍으로 우주가 비친다(실측: 경계 표본 1382 중
+            // 54 곳). 판을 키워 겹치는 것으로는 못 막는다 — 같은 높이의 두 면이 겹치면
+            // 그 띠에서 z-fighting 이 난다.
+            //
+            // 그래서 <c>offset</c> 을 받는다. 반 칸 어긋난 두 번째 층을 조금 아래에 깔면
+            // 그 층의 <b>한가운데</b>가 위층의 모서리에 오므로 구멍이 메워지고, 높이가
+            // 달라 z-fighting 도 없다. 위층 밑에 가려 평소에는 안 보인다.
+            var offsetX = rule?.offset != null && rule.offset.Length > 0 ? rule.offset[0] : 0f;
+            var offsetZ = rule?.offset != null && rule.offset.Length > 1 ? rule.offset[1] : 0f;
+            for (var x = space.bounds[0] + tile[0] * 0.5f + offsetX; x < space.bounds[1]; x += tile[0])
+            for (var z = space.bounds[2] + tile[1] * 0.5f + offsetZ; z < space.bounds[3]; z += tile[1])
                 Place(prefab, root, name, new Vector3(x, y, z));
         }
 
@@ -536,14 +550,39 @@ namespace DoodleUp.Editor
         private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
         private static Vector3 VectorOrOne(float[] values) => values == null || values.Length == 0 ? Vector3.one : Vector(values);
 
-        private static void Place(GameObject prefab, Transform parent, string name, Vector3 position, float rotationY = 0f, Vector3? scale = null)
+        private static GameObject Place(GameObject prefab, Transform parent, string name, Vector3 position, float rotationY = 0f, Vector3? scale = null)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
             instance.name = name;
             instance.transform.localPosition = position;
             instance.transform.localRotation = Quaternion.Euler(0f, rotationY, 0f);
             instance.transform.localScale = scale ?? Vector3.one;
+            return instance;
         }
+
+        /// <summary>
+        /// 이 공간이 압력 경계 문을 갖는가. 경계는 셋뿐이고(전력·냉각·산소) 조종석·숙소는
+        /// 광장과 한 구역이라 압력문이 없다 — 정본은 <see cref="LastShiftPlazaLayout"/> 쪽이라
+        /// 여기 이름을 박지 않고 그쪽에 묻는다.
+        /// </summary>
+        private static bool HasPressureDoor(string spaceId)
+        {
+            for (var boundary = 0; boundary < LastShiftPlazaLayout.PressureBoundaryCount; boundary++)
+            {
+                var space = LastShiftPlazaLayout.RoomOf(LastShiftPlazaLayout.HighZoneOf(boundary));
+                if (string.Equals(SpaceIdOf(space), spaceId, StringComparison.Ordinal)) return true;
+            }
+            return false;
+        }
+
+        private static string SpaceIdOf(LastShiftPlazaSpace space) => space switch
+        {
+            LastShiftPlazaSpace.CockpitRoom => "cockpit",
+            LastShiftPlazaSpace.PowerRoom => "power",
+            LastShiftPlazaSpace.CoolingRoom => "cooling",
+            LastShiftPlazaSpace.LifeSupportRoom => "lifeSupport",
+            _ => "quarters"
+        };
 
         [Serializable] private sealed class ModularMap { public string schema; public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public MapLight[] lights; public string[] excluded; }
         [Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
@@ -551,6 +590,6 @@ namespace DoodleUp.Editor
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; }
         [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
-        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; }
+        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; }
     }
 }
