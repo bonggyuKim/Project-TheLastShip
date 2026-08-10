@@ -179,11 +179,11 @@ Reviewer / QA의 독립 검토
 - 카드와 디스패치 기록은 어떤 역할이 언제 작업했는지, 후속 검토가 필요한지를 확인하는 근거로 사용한다.
 - 실제 작업에서는 같은 Unity 저장소의 무거운 카드를 동시에 실행했을 때 cold import·compile과 컨텍스트 비용이 커지는 문제가 관찰됐다. 이는 이미 해결된 기능이 아니라, 카드 분할과 자원 인식 스케줄링이 필요한 개선 항목으로 기록했다.
 
-![AgentDesk 칸반](evidence/nan2026/agentdesk-kanban.jpg)
+![AgentDesk 칸반](evidence/nan2026/redacted/agentdesk-kanban-redacted.png)
 
-*AgentDesk 칸반 — 카드 상태·담당 역할·파이프라인 단계를 한 화면에서 확인한다.*
+*AgentDesk 칸반 — 카드 상태·담당 역할·파이프라인 단계를 한 화면에서 확인한다. 프로젝트 식별자는 제출용으로 비식별 처리했다.*
 
-![AgentDesk 카드 상세](evidence/nan2026/agentdesk-card-detail.jpg)
+![AgentDesk 카드 상세](evidence/nan2026/redacted/agentdesk-card-detail-redacted.png)
 
 *AgentDesk 카드 상세 — 작업 설명, 담당, 연결된 세션, 토큰·도구·오류 수와 실행 타임라인을 카드 단위로 추적한다.*
 
@@ -204,7 +204,7 @@ AgentDesk 전체 작업 타임라인
 병목·재작업·병렬 실행 영향 확인
 ```
 
-![AgentDesk 전체 작업 타임라인](evidence/nan2026/agentdesk-timeline.jpg)
+![AgentDesk 전체 작업 타임라인](evidence/nan2026/redacted/agentdesk-timeline-redacted.png)
 
 *AgentDesk 전체 작업 타임라인 — 프로젝트·카드·실행 단계를 계층적으로 펼쳐 상태와 시간 구간을 비교한다. 화면의 카드·실행 단계 수치는 캡처 시점의 운영 상태다.*
 
@@ -291,9 +291,9 @@ AnchorMind는 한 가지 종류의 메모장이 아니라, 작업 문맥과 개�
 | 작업 기억·단기 | 현재 카드의 목표, 상태, 남은 문제, 다음 역할에 넘길 내용 | 작업 시작·중단·인수인계 |
 | 개발 기억·장기 | 확정된 결정, 팀 규칙, 해결한 오류, 재사용 절차 | 새로운 작업을 시작할 때 |
 
-![AnchorMind 지식 그래프](evidence/nan2026/anchormind-knowledge-graph.jpg)
+![AnchorMind 지식 그래프](evidence/nan2026/redacted/anchormind-knowledge-graph-redacted.png)
 
-*AnchorMind 지식 그래프 — 사실·결정·오류·절차·선호·에피소드의 연결을 탐색해 다음 작업에 필요한 문맥을 찾는다. 화면의 노드·엣지 수치는 캡처 시점의 운영 상태다.*
+*AnchorMind 지식 그래프 — 사실·결정·오류·절차·선호·에피소드의 연결을 탐색해 다음 작업에 필요한 문맥을 찾는다. 프로젝트 식별자는 제출용으로 비식별 처리했으며, 노드·엣지 수치는 캡처 시점의 운영 상태다.*
 
 ### 기억이 이어지는 순서
 
