@@ -419,23 +419,12 @@ namespace DoodleUp.Editor
             // 중 하나만 빠져도 그 조각이 구멍에서 어긋난 채 조용히 통과한다.
             door.transform.localPosition = new Vector3(plazaDoor.Waypoint.x, 0f, plazaDoor.Waypoint.y);
 
-            // 비주얼은 아트 킷 프리팹이 통째로 낸다. 그레이박스 판 두 짝과 문틀은 여기서
-            // 영구히 빠졌다 — 씬에서 지우는 것으로는 다음 리빌드에 되살아나므로 삭제 지점은
-            // 이 함수여야 한다(game-art 인계 §7).
-            //
-            // 프리팹 정면은 로컬 +X, up 은 +Y 다(아트 규약 2). z 평면 문을 위에서 yaw 90° 로
-            // 세우므로 프리팹은 보정 없이 문 루트에 그대로 붙인다.
-            var kit = AssetDatabase.LoadAssetAtPath<GameObject>(DoorKitPrefabPath);
-            if (kit == null)
-                throw new System.IO.FileNotFoundException($"문 킷 프리팹이 없다: {DoorKitPrefabPath}");
-            var visual = (GameObject)PrefabUtility.InstantiatePrefab(kit, door.transform);
-            visual.name = $"{name}_Kit";
-            visual.transform.localPosition = Vector3.zero;
-            visual.transform.localRotation = Quaternion.identity;
-
-            var doorAnimator = visual.GetComponentInChildren<Animator>(true);
-            if (doorAnimator == null)
-                throw new MissingComponentException($"{DoorKitPrefabPath} 에 Animator 가 없다 — 문이 조용히 안 움직인다.");
+            // <b>비주얼은 여기서 안 만든다</b>(2026-08-11, 결정 A). 문 킷은 정본 지도가 소유하고
+            // LastShiftModularKitImporter 가 <space.id>Door 로 세운다. 여기서 또 인스턴스화하면
+            // 문 자리마다 킷이 두 벌이 되고, 좌표도 JSON 과 경계표 두 곳에서 나온다.
+            // 이 함수가 만드는 것은 통행 판정(차단 콜라이더)과 상태기(LastShiftZoneDoor)뿐이고,
+            // 판을 움직이는 Animator 는 컴포넌트가 런타임에 킷에서 찾아 문다 —
+            // 조립 순서(배를 굽고 나서 킷을 임포트한다)상 빌드 시점에는 아직 없기 때문이다.
 
             var blockerObject = new GameObject($"{name}_Blocker");
             blockerObject.transform.SetParent(door.transform, false);
@@ -444,7 +433,7 @@ namespace DoodleUp.Editor
             blocker.size = new Vector3(thickness, openingHeight, opening);
             blocker.enabled = false;
 
-            door.AddComponent<LastShiftZoneDoor>().Configure(boundary, doorAnimator, blocker);
+            door.AddComponent<LastShiftZoneDoor>().Configure(boundary, (Animator)null, blocker);
         }
         /// <summary>
         /// 조종석 좌현 창과 그 너머 별. 별은 실제 스카이박스 대신 창 밖에 놓은 점 격자다.

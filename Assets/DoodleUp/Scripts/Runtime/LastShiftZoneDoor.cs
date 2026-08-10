@@ -128,6 +128,34 @@ namespace DoodleUp.Runtime
             blocker = doorBlocker;
         }
 
+        /// <summary>
+        /// 정본 지도가 이 경계의 문 킷에 붙인 이름. <c>LastShiftModularKitImporter</c> 가
+        /// <c>space.id + "Door"</c> 로 세우므로 그 규칙을 그대로 따른다.
+        /// </summary>
+        private string KitObjectName => DoorOf(boundary).Space switch
+        {
+            LastShiftPlazaSpace.CockpitRoom => "cockpitDoor",
+            LastShiftPlazaSpace.LifeSupportRoom => "lifeSupportDoor",
+            LastShiftPlazaSpace.PowerRoom => "powerDoor",
+            LastShiftPlazaSpace.CoolingRoom => "coolingDoor",
+            _ => "quartersDoor"
+        };
+
+        /// <summary>
+        /// 킷의 <see cref="UnityEngine.Animator"/> 를 늦게 찾아 문다.
+        ///
+        /// <b>씬 빌드 시점에는 없다.</b> 배를 굽고 나서 킷을 임포트하는 순서라, 빌더가
+        /// 직렬화로 물려 줄 수가 없다. 그래서 첫 사용 시점에 이름으로 찾는다 —
+        /// 여기서 프리팹을 직접 세우면 문 킷이 두 벌이 되고, 그게 사용자가 지적한 중복이다.
+        /// </summary>
+        private Animator ResolveKitAnimator()
+        {
+            if (animator != null) return animator;
+            var kit = GameObject.Find(KitObjectName);
+            if (kit != null) animator = kit.GetComponentInChildren<Animator>(true);
+            return animator;
+        }
+
         private void Awake()
         {
             openAmount = IsOpen ? 1f : 0f;
@@ -158,11 +186,12 @@ namespace DoodleUp.Runtime
             // 아트 킷 문은 클립을 정규화 시간으로 스크럽한다. speed = 0 이라 Play 만으로는 다음
             // 프레임에야 반영되므로 Update(0) 으로 그 자리에서 평가시킨다 — 안 하면 판 위치가
             // 한 프레임 늦고, 문이 닫힌 순간과 차단 콜라이더가 켜지는 순간이 어긋나 보인다.
-            if (animator != null)
+            var kitAnimator = ResolveKitAnimator();
+            if (kitAnimator != null)
             {
-                animator.speed = 0f;
-                animator.Play(DoorClipState, 0, Mathf.Clamp01(openAmount));
-                animator.Update(0f);
+                kitAnimator.speed = 0f;
+                kitAnimator.Play(DoorClipState, 0, Mathf.Clamp01(openAmount));
+                kitAnimator.Update(0f);
             }
 
             // 통행 차단은 완전히 닫혔을 때만 건다. 움직이는 콜라이더로 막으면 CharacterController 가
