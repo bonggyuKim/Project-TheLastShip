@@ -20,7 +20,7 @@ FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 W, H = A4
 M = 42
 CW = W - M * 2
-PAGE_COUNT = 5
+PAGE_COUNT = 7
 
 NAVY = HexColor("#0B1728")
 NAVY_2 = HexColor("#142A43")
@@ -340,10 +340,97 @@ def draw_cover(c: canvas.Canvas) -> None:
     c.showPage()
 
 
-def draw_overview(c: canvas.Canvas) -> None:
+def draw_why_structure(c: canvas.Canvas) -> None:
     section_header(
         c,
         2,
+        "WHY STRUCTURE",
+        "AI 활용을 위해 먼저 개발 구조를 설계한다",
+        "AI는 빠르게 생성하지만, 목표·범위·맥락·완료 기준이 없으면 빠르게 잘못된 결과를 만든다.",
+    )
+
+    c.setFont("KR-Bold", 9)
+    c.setFillColor(INK)
+    c.drawString(M, 686, "AI를 쓰면서 실제로 생기는 문제와 구조적 대응")
+
+    problems = [
+        (
+            "모호한 요청",
+            "무엇을 만들지보다 왜 필요한지, 어디까지가 범위인지, 무엇이 완료인지 먼저 정해야 한다.",
+            "Planning Agent",
+            LIME,
+            SOFT_LIME,
+        ),
+        (
+            "큰 작업과 충돌",
+            "코드·아트·씬·테스트를 한 에이전트가 동시에 다루면 변경 경계와 책임이 무너진다.",
+            "역할·격리",
+            CYAN,
+            SOFT_CYAN,
+        ),
+        (
+            "컨텍스트 단절",
+            "세션이 바뀔 때마다 결정·오류·절차를 다시 설명하면 같은 실수가 반복된다.",
+            "AnchorMind",
+            VIOLET,
+            SOFT_VIOLET,
+        ),
+        (
+            "완료를 믿기 어려움",
+            "AI의 완료 문장만으로는 빌드·테스트·플레이 품질과 범위 준수를 확인할 수 없다.",
+            "증거·QA·승인",
+            YELLOW,
+            SOFT_YELLOW,
+        ),
+    ]
+    card_width = (CW - 10) / 2
+    for index, (title, body, response, accent, fill) in enumerate(problems):
+        row, col = divmod(index, 2)
+        x = M + col * (card_width + 10)
+        y = 535 - row * 130
+        accent_card(c, x, y, card_width, 112, title, body, accent, fill, title_size=9.4, body_size=7.1)
+        c.setFont("KR-Bold", 7.2)
+        c.setFillColor(accent)
+        c.drawRightString(x + card_width - 12, y + 13, f"→ {response}")
+
+    rounded_box(c, M, 188, CW, 129, fill=NAVY, stroke=None, radius=13)
+    c.setFont("KR-Bold", 9)
+    c.setFillColor(LIME)
+    c.drawString(M + 15, 291, "설계 원칙")
+    c.setFont("KR-Bold", 10)
+    c.setFillColor(white)
+    c.drawCentredString(W / 2, 264, "의도  →  범위  →  역할  →  증거  →  승인  →  기억")
+    c.setFont("KR", 7.4)
+    c.setFillColor(HexColor("#C0D2DF"))
+    draw_text(
+        c,
+        "AI를 한 명의 자율적인 개발자로 가정하지 않고, 명확한 경계와 검증 가능한 인수인계를 따라 일하는 역할 집합으로 사용한다.",
+        M + 28,
+        235,
+        CW - 56,
+        size=7.4,
+        color=HexColor("#C0D2DF"),
+        align="center",
+        max_lines=2,
+    )
+
+    benefit_cards(
+        c,
+        [
+            ("빠르게 만들기 전에 나눈다", "AI가 처리할 단위와 완료 조건을 먼저 고정한다.", LIME),
+            ("생성보다 인수인계가 중요하다", "다음 역할이 같은 기준으로 이어받을 수 있게 남긴다.", CYAN),
+            ("자동화와 통제를 함께 둔다", "반복 검증은 자동화하고 방향과 품질은 사람이 승인한다.", VIOLET),
+        ],
+        y=66,
+        height=91,
+    )
+    c.showPage()
+
+
+def draw_overview(c: canvas.Canvas) -> None:
+    section_header(
+        c,
+        3,
         "SYSTEM OVERVIEW",
         "AI 활용을 위한 게임 개발 구조화",
         "사람의 의도는 Planning으로 분해하고, 역할·격리·검증·기억을 연결해 AI가 안정적으로 일하도록 만든다.",
@@ -453,7 +540,7 @@ def draw_overview(c: canvas.Canvas) -> None:
 def draw_agentdesk(c: canvas.Canvas) -> None:
     section_header(
         c,
-        3,
+        4,
         "AGENTDESK",
         "AI가 일할 수 있도록 역할과 경계를 나눈다",
         "Planning Agent가 작업 단위를 정하고, 각 역할은 격리된 변경과 독립된 검증 결과를 남긴다.",
@@ -595,7 +682,7 @@ def message_bubble(
 def draw_discord(c: canvas.Canvas) -> None:
     section_header(
         c,
-        4,
+        5,
         "DISCORD BOT",
         "사람의 요청을 실행 가능한 AI 작업으로 바꾼다",
         "자연어 요청은 Planning·역할 배정·리뷰·승인으로 변환되어 추적 가능한 개발 흐름이 된다.",
@@ -693,10 +780,127 @@ def draw_discord(c: canvas.Canvas) -> None:
     c.showPage()
 
 
+def draw_verification(c: canvas.Canvas) -> None:
+    section_header(
+        c,
+        6,
+        "EVIDENCE & CONTROL",
+        "AI 결과를 증거와 인간 판단으로 닫는다",
+        "자동 검증은 반복 가능한 사실을 확인하고, 사람은 게임의 감각과 방향을 최종 승인한다.",
+    )
+
+    rounded_box(c, M, 470, CW, 205, fill=NAVY, stroke=None, radius=13)
+    c.setFont("KR-Bold", 9)
+    c.setFillColor(LIME)
+    c.drawString(M + 15, 646, "검증 루프")
+
+    checks = [
+        ("변경", "Git diff\n격리된 작업 공간", CYAN, SOFT_CYAN),
+        ("자동 검증", "compile · test\n정량 검산", LIME, SOFT_LIME),
+        ("독립 QA", "증거 확인\n완료 조건 검토", VIOLET, SOFT_VIOLET),
+        ("인간 승인", "실제 플레이\n방향·품질 판단", YELLOW, SOFT_YELLOW),
+    ]
+    check_gap = 11
+    check_width = (CW - 30 - check_gap * 3) / 4
+    for index, (title, body, accent, fill) in enumerate(checks):
+        x = M + 15 + index * (check_width + check_gap)
+        rounded_box(c, x, 525, check_width, 82, fill=fill, stroke=None, radius=9)
+        c.setFont("KR-Bold", 8.2)
+        c.setFillColor(INK)
+        c.drawCentredString(x + check_width / 2, 582, title)
+        draw_text(
+            c,
+            body,
+            x + 8,
+            562,
+            check_width - 16,
+            size=6.7,
+            color=MUTED,
+            leading=9,
+            align="center",
+            max_lines=3,
+        )
+        if index < 3:
+            arrow(c, x + check_width + 2, 566, x + check_width + check_gap - 2, 566, color=accent, head=4)
+
+    c.setFont("KR", 7.2)
+    c.setFillColor(HexColor("#C0D2DF"))
+    draw_text(
+        c,
+        "완료 선언이 아니라 변경·검증·판정의 흔적을 남기는 것이 AI 활용 구조의 종료 조건이다.",
+        M + 24,
+        500,
+        CW - 48,
+        size=7.2,
+        color=HexColor("#C0D2DF"),
+        align="center",
+        max_lines=1,
+    )
+
+    c.setFont("KR-Bold", 9)
+    c.setFillColor(INK)
+    c.drawString(M, 438, "실제 작업에서 분리한 책임")
+    widths = [115, 245, 151]
+    headers = ["질문", "남기는 증거", "판단 주체"]
+    table_top = 418
+    c.setFillColor(NAVY)
+    c.roundRect(M, table_top - 27, CW, 27, 8, fill=1, stroke=0)
+    xx = M
+    for width, header in zip(widths, headers):
+        draw_text(c, header, xx + 8, table_top - 11, width - 16, font="KR-Bold", size=7.1, color=white, max_lines=1)
+        xx += width
+
+    rows = [
+        ("변경이 의도한 범위인가?", "카드·완료 조건·Git diff", "Planning · Human"),
+        ("구현이 실제로 동작하는가?", "compile · EditMode/PlayMode · raw evidence", "Tech · QA"),
+        ("게임으로서 괜찮은가?", "실제 플레이 · 시각 검토 · 방향 피드백", "Human"),
+        ("다음 작업이 안전한가?", "결정·오류·절차의 기억 기록", "AnchorMind"),
+    ]
+    y = table_top - 27
+    for index, row in enumerate(rows):
+        row_h = 42
+        c.setFillColor(white if index % 2 == 0 else PAPER_2)
+        c.rect(M, y - row_h, CW, row_h, fill=1, stroke=0)
+        c.setStrokeColor(LINE)
+        c.line(M, y - row_h, W - M, y - row_h)
+        xx = M
+        for col, (width, value) in enumerate(zip(widths, row)):
+            if col:
+                c.line(xx, y, xx, y - row_h)
+            draw_text(
+                c,
+                value,
+                xx + 8,
+                y - 16,
+                width - 16,
+                font="KR-Bold" if col == 0 else "KR",
+                size=6.7,
+                color=INK if col == 0 else MUTED,
+                leading=9,
+                max_lines=2,
+            )
+            xx += width
+        y -= row_h
+    c.setStrokeColor(LINE)
+    c.roundRect(M, y, CW, table_top - y, 8, fill=0, stroke=1)
+
+    benefit_cards(
+        c,
+        [
+            ("UI 변경", "아트 자산·UGUI 연결·회귀 테스트·실제 플레이를 한 흐름으로 확인한다.", CYAN),
+            ("씬·배치 변경", "기획 도안·기술 재빌드·정량 검산·시각 검토를 분리한다.", LIME),
+            ("네트워크 작업", "host-client 범위와 후속 Relay/Lobby를 분리해 완료 기준을 고정한다.", VIOLET),
+        ],
+        y=66,
+        height=91,
+    )
+    c.showPage()
+
+
 def draw_memory(c: canvas.Canvas) -> None:
     section_header(
         c,
-        5,
+        7,
         "ANCHORMIND",
         "AI가 같은 기준으로 이어서 일하도록 기억을 공유한다",
         "작업 문맥과 장기 지식을 분리해 저장하고, 다음 역할이 검증된 기준을 이어받는다.",
@@ -800,9 +1004,11 @@ def build_pdf() -> Path:
     c.setCreator("Reproducible ReportLab generator")
 
     draw_cover(c)
+    draw_why_structure(c)
     draw_overview(c)
     draw_agentdesk(c)
     draw_discord(c)
+    draw_verification(c)
     draw_memory(c)
 
     c.save()
