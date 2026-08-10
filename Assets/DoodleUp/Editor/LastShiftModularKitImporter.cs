@@ -192,6 +192,8 @@ namespace DoodleUp.Editor
                 Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
                 Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
             }
+            if (map.lights != null)
+                foreach (var light in map.lights) PlaceLight(root, light);
             // Exterior panels own the footprint boundary.  This is a final
             // manifest-derived guard for a wall segment that is emitted on an
             // outer edge because of a non-rectangular union split.
@@ -311,6 +313,18 @@ namespace DoodleUp.Editor
                 if (System.Array.IndexOf(excluded, transform.name) >= 0) UnityEngine.Object.DestroyImmediate(transform.gameObject);
         }
 
+        private static void PlaceLight(Transform root, MapLight spec)
+        {
+            var lightRoot = new GameObject(spec.id);
+            lightRoot.transform.SetParent(root, false);
+            lightRoot.transform.localPosition = Vector(spec.position);
+            var light = lightRoot.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(spec.color[0], spec.color[1], spec.color[2]);
+            light.intensity = spec.intensity;
+            light.range = spec.range;
+        }
+
         private static void RemoveInteriorWallsCoveredByShell(Transform root)
         {
             var walls = new List<Transform>();
@@ -360,11 +374,12 @@ namespace DoodleUp.Editor
             instance.transform.localScale = scale ?? Vector3.one;
         }
 
-        [Serializable] private sealed class ModularMap { public string schema; public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public string[] excluded; }
+        [Serializable] private sealed class ModularMap { public string schema; public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; public MapLight[] lights; public string[] excluded; }
         [Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
         [Serializable] private sealed class MapPlaza { public float[] bounds; public float ceiling; }
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; }
+        [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
         [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; }
     }
 }
