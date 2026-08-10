@@ -159,9 +159,20 @@ namespace DoodleUp.Editor
             // Left/Right 는 전장 축(x)의 두 끝벽이고 Back/Front 는 전폭 축(z)의 긴 벽이다.
             // 이름은 예전 배치에서 굳은 것이라 그대로 두되, 좌표는 전부 치수 정본에서 파생한다.
             hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f));
-            CreatePlaza(ship.transform);
-            foreach (var zoneId in MainZones)
-                CreateMainRoom(ship.transform, zoneId);
+            // 광장·방의 바닥과 벽은 여기 있었다. 정본 지도가 같은 자리를 이미 깔고 있어
+            // 콜라이더가 두 벌(52 + 418)로 겹쳐 있었다.
+            //
+            // <b>지우는 데 오래 걸린 이유를 여기 남긴다.</b> 킷에는 광장과 방 사이 벽이
+            // 아예 안 서 있었다 — 압력 경계 다섯이 문만 있고 옆이 뚫린 채였는데, 이 벽들이
+            // 같은 자리를 메우고 있어 플레이로는 안 드러났다. 그것을 봐야 할 검사는
+            // <c>PlazaWall_*</c> 라는 <b>이 벽들의 이름</b>을 찾고 있어서, 지울 대상이
+            // 있는 한 무조건 통과했다. 대체물이 준비됐는지 재지 않은 채 "대체되면 지운다" 를
+            // 상태처럼 들고 있었던 것이다.
+            //
+            // <b>코어는 남는다.</b> 광장 한가운데 <c>4x4</c> 기둥은 장식이 아니라 SIMUL_ZONES
+            // 장치다 — 세 구역이 동시에 읽히는 자리를 이것이 없앤다(기획 정본 §4). 벽과 같이
+            // 지웠다가 검사가 잡았고, 그게 이 판이 벽이 아니라는 증거다.
+            CreatePlazaCore(ship.transform);
             // 압력 경계마다 문 하나. 벌크헤드는 광장 벽이 이미 세웠다 — 문은 그 구멍에 든다.
             for (var boundary = 0; boundary < LastShiftZoneAtlas.BoundaryCount; boundary++)
                 CreateBoundaryDoor($"B{boundary}", ship.transform, boundary);
@@ -230,152 +241,11 @@ namespace DoodleUp.Editor
             return new Vector3(LastShiftShipDimensions.RoomCenterX(zone), 2.25f, farZ);
         }
 
-        /// <summary>
-        /// 중앙 광장. <b>배 전체의 허브이고 통로가 아니다</b>(조항 P-1) — 고정 방 여섯이 전부
-        /// 이 정사각형의 네 변에 직결하며 경유 방이 없다.
-        ///
-        /// 벽 넷은 <b>자기 변에 난 문 구멍을 뺀 나머지</b>다. 방 쪽 면을 광장이 세우는 것이
-        /// 면 소유 규칙(문이 향하는 쪽이 세운다)이고, 그래서 방 빌더는 광장에 면한 벽을
-        /// 안 세운다 — 양쪽이 다 세우면 같은 평면에 판이 두 장 겹친다.
-        ///
-        /// 코어는 장식이 아니라 <c>SIMUL_ZONES ≤ 2</c> 의 성립 조건이다(§6.4). 형상·표면은
-        /// 아트 소관이지만 <b>점유 자체</b>는 게임플레이 가드레일이라 그레이박스가 세운다 —
-        /// 없으면 게이지 셋이 동시에 읽히는 자리가 광장 한가운데에 <c>3,688</c>점 남는다.
-        /// </summary>
-        private static void CreatePlaza(Transform ship)
-        {
-            var plaza = new GameObject("Plaza");
-            plaza.transform.SetParent(ship, false);
 
-            var footprint = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Plaza);
-            CreateSpaceFloor(plaza.transform, "Floor", footprint, LastShiftZone.Cockpit);
-            CreateSpaceCeiling(plaza.transform, "Ceiling", footprint);
 
-            // 벽 넷. 변마다 그 변에 얹힌 문 중심을 모아 한 번에 자른다 — 좌현·우현 변은
-            // 문이 둘씩(압력문 + 부속 생활문)이라 한 짝씩 따로 자르면 판이 겹친다.
-            CreatePlazaWall(plaza.transform, "PlazaWall_Bow", true, LastShiftPlazaLayout.PlazaMinX,
-                LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ);
-            CreatePlazaWall(plaza.transform, "PlazaWall_Stern", true, LastShiftPlazaLayout.PlazaMaxX,
-                LastShiftPlazaLayout.PlazaMinZ, LastShiftPlazaLayout.PlazaMaxZ);
-            CreatePlazaWall(plaza.transform, "PlazaWall_Port", false, LastShiftPlazaLayout.PlazaMinZ,
-                LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX);
-            CreatePlazaWall(plaza.transform, "PlazaWall_Starboard", false, LastShiftPlazaLayout.PlazaMaxZ,
-                LastShiftPlazaLayout.PlazaMinX, LastShiftPlazaLayout.PlazaMaxX);
 
-            CreateCube("PlazaCore", plaza.transform,
-                new Vector3(0f, CeilingInnerHeight * 0.5f, 0f),
-                new Vector3(LastShiftPlazaLayout.CoreHalfExtent * 2f, CeilingInnerHeight,
-                    LastShiftPlazaLayout.CoreHalfExtent * 2f), hullMaterial);
-        }
 
-        /// <summary>광장 한 변. 그 변 위에 얹힌 문 전부를 구멍으로 남긴다.</summary>
-        private static void CreatePlazaWall(Transform plaza, string name, bool alongX,
-            float plane, float freeMin, float freeMax)
-        {
-            var openings = LastShiftPlazaLayout.Doors
-                .Where(door => door.PlaneIsX == alongX && Mathf.Abs(door.Plane - plane) < 0.0001f)
-                .Select(door => door.Center)
-                .OrderBy(center => center)
-                .ToArray();
 
-            CreateWallWithOpenings(name, plaza, alongX, plane, freeMin, freeMax,
-                CeilingInnerHeight, LastShiftShipDimensions.HullThickness, hullMaterial, openings);
-        }
-
-        /// <summary>
-        /// 본선 방 하나. 광장에 면한 벽은 <b>안 세운다</b> — 그 면과 문 구멍은 광장이 소유한다.
-        /// 나머지 세 면과 바닥·천장을 세운다.
-        /// </summary>
-        private static void CreateMainRoom(Transform ship, LastShiftZone zoneId)
-        {
-            var space = LastShiftPlazaLayout.RoomOf(zoneId);
-            var footprint = LastShiftPlazaLayout.Of(space);
-            var door = LastShiftPlazaLayout.DoorOf(space);
-
-            var room = new GameObject("Room_" + space);
-            room.transform.SetParent(ship, false);
-
-            CreateSpaceFloor(room.transform, "Floor", footprint, zoneId);
-            CreateSpaceCeiling(room.transform, "Ceiling", footprint);
-
-            // 네 면 중 문이 얹힌 면만 건너뛴다. 판정을 좌표 비교로 두는 것이 요점이다 —
-            // "선미 면" 같은 이름으로 두면 발자국이 광장 반대편으로 옮겨갈 때 방이 안 닫힌다.
-            CreateRoomWall(room.transform, "Wall_Bow", true, footprint.MinX,
-                footprint.MinZ, footprint.MaxZ, door);
-            CreateRoomWall(room.transform, "Wall_Stern", true, footprint.MaxX,
-                footprint.MinZ, footprint.MaxZ, door);
-            // 조종석 좌현 벽만 창 띠를 문다. 창은 방 벽의 구멍이지 별도 오브젝트가 아니라
-            // 벽 빌더에 같이 넘긴다 — 통짜 벽을 세운 뒤 그 위에 창을 얹으면 문턱 판과 벽이
-            // 같은 평면에서 겹친다.
-            CreateRoomWall(room.transform, "Wall_Port", false, footprint.MinZ,
-                footprint.MinX, footprint.MaxX, door,
-                zoneId == LastShiftZone.Cockpit ? CockpitWindowBand() : null);
-            CreateRoomWall(room.transform, "Wall_Starboard", false, footprint.MaxZ,
-                footprint.MinX, footprint.MaxX, door);
-        }
-
-        private static void CreateRoomWall(Transform room, string name, bool alongX, float plane,
-            float freeMin, float freeMax, in LastShiftPlazaDoor door, WallAperture[] windows = null)
-        {
-            if (door.PlaneIsX == alongX && Mathf.Abs(door.Plane - plane) < 0.0001f) return;
-            CreateWallWithOpenings(name, room, alongX, plane, freeMin, freeMax,
-                CeilingInnerHeight, LastShiftShipDimensions.HullThickness, hullMaterial,
-                System.Array.Empty<float>(), windows);
-        }
-
-        /// <summary>
-        /// 공간 하나의 바닥. 승강구가 그 공간 안에 있으면 액자형 넉 장으로 두른다 —
-        /// 우회 통로 진입점이 조종석·산소실 방 안이라 그 둘만 해당한다.
-        /// </summary>
-        private static void CreateSpaceFloor(Transform parent, string name,
-            in LastShiftPlazaFootprint footprint, LastShiftZone zoneId)
-        {
-            const float thickness = LastShiftShipDimensions.HullThickness;
-            floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.30f, 0.32f, 0.35f));
-
-            if (!LastShiftBypassDuct.TryShaftInZone(zoneId, out var mouth) ||
-                !footprint.Contains(mouth.x, mouth.z))
-            {
-                CreateCube(name, parent,
-                    new Vector3(footprint.MinX + footprint.LengthX * 0.5f, -thickness * 0.5f,
-                        footprint.MinZ + footprint.WidthZ * 0.5f),
-                    new Vector3(footprint.LengthX, thickness, footprint.WidthZ), floorMaterial);
-                return;
-            }
-
-            var half = LastShiftDeckHatch.OpeningSpan * 0.5f;
-            CreateFloorSlab(parent, name + "_Fore", footprint.MinX, mouth.x - half, footprint.MinZ, footprint.MaxZ);
-            CreateFloorSlab(parent, name + "_Aft", mouth.x + half, footprint.MaxX, footprint.MinZ, footprint.MaxZ);
-            CreateFloorSlab(parent, name + "_ShaftPort", mouth.x - half, mouth.x + half, footprint.MinZ, mouth.z - half);
-            CreateFloorSlab(parent, name + "_ShaftStarboard", mouth.x - half, mouth.x + half, mouth.z + half, footprint.MaxZ);
-        }
-
-        /// <summary>
-        /// 공간 하나의 천장. 닫아야 하는 이유는 두 가지다 — "우주선 안" 이 읽히려면 위가 막혀
-        /// 있어야 하고, 저중력에서 뜬 물건이 위로 빠져나가 <c>ItemSafetyBounds</c> 복구를
-        /// 계속 밟는 것을 막아야 한다.
-        /// </summary>
-        private static void CreateSpaceCeiling(Transform parent, string name,
-            in LastShiftPlazaFootprint footprint)
-        {
-            ceilingMaterial ??= CreateMaterial("LS_Ceiling", new Color(0.21f, 0.23f, 0.26f));
-            var centerX = footprint.MinX + footprint.LengthX * 0.5f;
-            var centerZ = footprint.MinZ + footprint.WidthZ * 0.5f;
-            CreateCube(name, parent,
-                new Vector3(centerX, CeilingInnerHeight + CeilingThickness * 0.5f, centerZ),
-                new Vector3(footprint.LengthX + CeilingThickness * 2f, CeilingThickness,
-                    footprint.WidthZ + CeilingThickness * 2f), ceilingMaterial);
-
-            // 천장 리브. 평평한 판만 있으면 실내가 아니라 뚜껑처럼 보인다. 개수가 아니라
-            // 간격을 고정한다 — 개수를 고정하면 방마다 리브 간격이 달라져 같은 배로 안 읽힌다.
-            const float ribSpacing = 1.8f;
-            var ribCount = Mathf.FloorToInt((footprint.LengthX - ribSpacing) / ribSpacing);
-            var ribStart = centerX - (ribCount - 1) * ribSpacing * 0.5f;
-            for (var index = 0; index < ribCount; index++)
-                CreateDecorCube(name + "Rib_" + index, parent,
-                    new Vector3(ribStart + index * ribSpacing, CeilingInnerHeight - 0.06f, centerZ),
-                    new Vector3(0.18f, 0.12f, footprint.WidthZ), hullMaterial);
-        }
 
         /// <summary>
         /// 압력 경계의 문 하나. <b>벌크헤드는 여기서 안 세운다</b> — 광장 벽이 이미 구멍만
@@ -383,6 +253,21 @@ namespace DoodleUp.Editor
         /// 스파인에서 벌크헤드와 문이 한 함수였던 것은 경계 평면이 방 사이 허공이라 그 판을
         /// 세울 주인이 따로 없었기 때문이고, 방사형에서는 광장 벽이 그 주인이다.
         /// </summary>
+        /// <summary>
+        /// 광장 한가운데 <c>4x4</c> 코어. <b>SIMUL_ZONES 장치다</b> — 방 여섯이 같은 광장을
+        /// 보는 방사형에서는 두 구역이 서로 보이는 직선이 기하학적으로 반드시 남고, 이 판이
+        /// 쐐기 셋이 겹치는 자리를 없앤다(기획 정본 §4). 벽이 아니므로 정본 지도가 벽을
+        /// 맡은 뒤에도 여기 남는다.
+        /// </summary>
+        private static void CreatePlazaCore(Transform ship)
+        {
+            hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f));
+            CreateCube("PlazaCore", ship,
+                new Vector3(0f, CeilingInnerHeight * 0.5f, 0f),
+                new Vector3(LastShiftPlazaLayout.CoreHalfExtent * 2f, CeilingInnerHeight,
+                    LastShiftPlazaLayout.CoreHalfExtent * 2f), hullMaterial);
+        }
+
         private static void CreateBoundaryDoor(string side, Transform ship, int boundary)
         {
             CreateZoneDoor("ZoneDoor_" + side, ship, boundary, LastShiftZoneAtlas.BoundaryDoor(boundary));
