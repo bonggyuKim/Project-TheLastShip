@@ -516,15 +516,10 @@ namespace DoodleUp.Editor
         /// </summary>
         private static void CreateCoolingStack(Transform ship)
         {
-            var centerX = LastShiftShipDimensions.RoomCenterX(LastShiftZone.Cooling);
-            CreateCube("CoolingStack", ship, new Vector3(centerX, 0.90f, RoomBackWallZ(LastShiftZone.Cooling) - 0.60f),
-                new Vector3(2.2f, 1.8f, 0.6f), coolingMaterial);
-            // 방열 핀. 판 하나짜리 상자는 어느 방에 놔도 같아 보이므로, 실루엣에 결을 준다.
-            for (var index = 0; index < 5; index++)
-                CreateDecorCube($"CoolingStack_Fin_{index}", ship,
-                    new Vector3(centerX - 0.8f + index * 0.4f, 1.85f, RoomBackWallZ(LastShiftZone.Cooling) - 0.60f),
-                    new Vector3(0.14f, 0.5f, 0.7f), EnsureFixtureMaterial());
-
+            // <b>회색 상자 더미와 핀은 안 만든다</b>(game-art 확정 2026-08-12 — 실물 프롭 대체
+            // 전까지 제거). <b>밸브는 남는다</b>: 같은 함수가 만들고 있었지만 그쪽은 장식이
+            // 아니라 조작물이고(C-3 유지 동사), 이 배에서 "누르고 있는 동안" 형태를 갖는
+            // 유일한 물건이다. 통째로 지웠으면 그 동사가 씬에서 사라졌다.
             CreateCoolingValve(ship);
         }
 
@@ -1091,6 +1086,15 @@ namespace DoodleUp.Editor
             foreach (var prop in DressingSet.Props)
             {
                 if (prop == null || !SameSpace(prop.space, space)) continue;
+
+                // <b>상태 단서는 안 세운다</b>(game-art 확정 2026-08-12). 서리·그을음은 냉각이
+                // 얼거나 전력이 타야 보여야 하는데, 그것을 켜고 끄는 코드가 어디에도 없어서
+                // <b>상시 바닥에 깔린 판</b>으로 보였다 — 사용자가 지적한 것이 그 상태다.
+                //
+                // 데이터는 지우지 않는다. 이 항목들이 곧 그 이펙트가 붙을 자리의 정본이고
+                // (semantics = StateResponsive · "상태 연동 이펙트가 붙을 자리"), 검사도 그
+                // 좌표가 문 쐐기를 안 문다는 것을 계속 잰다. 세우는 것만 멈춘다.
+                if ((prop.semantics & LastShiftDressingSemantics.StateResponsive) != 0) continue;
 
                 var center = LastShiftDressingSpaces.WorldCenter(prop);
                 var local = parent.InverseTransformPoint(center);
