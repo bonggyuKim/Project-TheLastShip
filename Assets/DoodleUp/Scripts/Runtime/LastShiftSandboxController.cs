@@ -1187,6 +1187,15 @@ namespace DoodleUp.Runtime
         public bool IsZoneVacuum(Vector3 position)
         {
             if (LastShiftBypassDuct.IsUnpressurizedSpace(position)) return true;
+            // <b>산소 시계는 탑승 순간에 시작한다</b>(PM 확정 2026-08-11, 옛 에어록 규칙을
+            // 방향만 뒤집어 물려받음). 그전에는 해치를 나가야 탔는데, 그러면 상승 2단과
+            // 감압까지 다 지난 뒤라 <c>6.2</c>초가 공짜가 되고 온보딩 문안이 거짓말이 된다 -
+            // "발판이 시계의 시작선" 이라고 말하는 순간 아무 일도 안 일어난다.
+            //
+            // 봉인이 풀린 샤프트 안이 그 조건이다. 게이트가 열리는 순간부터 봉인이 아니고,
+            // 승무원이 발판에 올라서는 것도 그때다. 봉인 상태의 샤프트(아무도 안 탄 챔버)는
+            // 배 안이므로 여기 안 걸린다.
+            if (LastShiftEvaShaft.Contains(position.x, position.z) && !LastShiftAirlock.IsSealed) return true;
             // 선외는 덕트보다 더 확실한 진공이다. 덕트 판정 아래 두는 것은 순서 문제가
             // 아니라 읽는 순서다 — 덕트·에어록은 배 안 좌표라 원반 안이고, 선외 판정은
             // 그 밖을 본다. 이 줄이 없으면 바깥 해치로 나간 승무원이 머리 위 방의 압력을
