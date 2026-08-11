@@ -242,6 +242,9 @@ namespace DoodleUp.Runtime
             // 첫 기항이다. 무장 검사 뒤에 두는 것이 조건이다: 앞에 두면 둘째 판에서도 암전이
             // 한 번 지나간다.
             LastShiftWakeSequence.Begin();
+            // 기상 뒤 블록들도 같이 연다. 디렉터는 자기 신호가 올 때만 움직이므로
+            // (첫 줄이 광장 코어 접근이다) 숙소에서 깨는 동안 앞질러 뜰 수 없다.
+            LastShiftNarrationDirector.Begin();
             Enter(LastShiftTutorialStep.SightSalvage);
         }
 
@@ -259,6 +262,8 @@ namespace DoodleUp.Runtime
             // 도입부가 아직 돌고 있는 채로 출항하면 잠금이 따라 나간다. 안 도는 상태의
             // 게이트는 Free 이므로 이 한 줄이 그 경로를 닫는다.
             LastShiftWakeSequence.Clear();
+            LastShiftNarrationDirector.Clear();
+            LastShiftNarrationAudio.Clear();
         }
 
         // ── 전이 ────────────────────────────────────────────────────────────

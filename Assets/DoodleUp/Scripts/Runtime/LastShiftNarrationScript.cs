@@ -25,7 +25,8 @@ namespace DoodleUp.Runtime
         public readonly struct Line
         {
             public Line(string id, string trigger, LastShiftNarrationSfx sfx, string text,
-                string nudge = "", float nudgeAfterSeconds = 0f, string prompt = "")
+                string nudge = "", float nudgeAfterSeconds = 0f, string prompt = "",
+                float autoAfterSeconds = 0f)
             {
                 Id = id;
                 Trigger = trigger;
@@ -34,6 +35,7 @@ namespace DoodleUp.Runtime
                 Nudge = nudge;
                 NudgeAfterSeconds = nudgeAfterSeconds;
                 Prompt = prompt;
+                AutoAfterSeconds = autoAfterSeconds;
             }
 
             public string Id { get; }
@@ -53,8 +55,19 @@ namespace DoodleUp.Runtime
             public float NudgeAfterSeconds { get; }
             public string Prompt { get; }
 
+            /// <summary>
+            /// <b>앞줄이 뜬 뒤 이만큼 지나면 저절로 온다</b>(정본 표의 "앞줄 후 N초" 형 트리거).
+            /// <c>0</c> 이면 플레이어 행동이 밀어야 한다.
+            ///
+            /// 앞줄이 <b>표의 그 줄</b>이 아니라 <b>실제 진행 순서의 앞줄</b>인 것이 조건이다 —
+            /// <c>AI_F_15</c> 의 트리거가 "AI_F_14 후 2초" 로 적혀 있지만 조항 <c>N-6</c> 이 그
+            /// 줄을 도면 블록 뒤로 보내므로, 실제로 재는 앞줄은 <c>AI_B_17</c> 이다.
+            /// </summary>
+            public float AutoAfterSeconds { get; }
+
             public bool HasNudge => !string.IsNullOrEmpty(Nudge);
             public bool HasPrompt => !string.IsNullOrEmpty(Prompt);
+            public bool IsAutomatic => AutoAfterSeconds > 0f;
         }
 
         private const LastShiftNarrationSfx Long = LastShiftNarrationSfx.ChimeLong;
@@ -103,7 +116,8 @@ namespace DoodleUp.Runtime
             new("AI_B_01", "AI_T_11 후 광장 중앙 근접", Long,
                 "선체 밖으로 나갈 길은 하나뿐임."),
             new("AI_B_02", "AI_B_01 후 2초", Quiet,
-                "코어가 그 길임. 위로 올라가 밖으로 나감.", "코어로 갈 것.", 14f),
+                "코어가 그 길임. 위로 올라가 밖으로 나감.", "코어로 갈 것.", 14f,
+                autoAfterSeconds: 2f),
             // v1.15 — 긴 신호음이 여기 있었다. 블록 첫 줄이 아닌데 갖고 있었고, 본문도
             // AI_B_02("위로 올라가 밖으로 나감")와 같은 말이었다. 둘 다 v1.13 재매핑 자국이다.
             new("AI_F_01", "승강기 상호작용 사거리 최초 진입 (IsAtDeck)", Short,
@@ -138,7 +152,7 @@ namespace DoodleUp.Runtime
             new("AI_F_11", "자동 반입이 일어난 프레임", Short,
                 "들고 있던 것이 하치대로 들어감."),
             new("AI_F_12", "AI_F_11 후 2초", Quiet,
-                "경계는 문이 아니라 기압임. 따로 할 것 없음."),
+                "경계는 문이 아니라 기압임. 따로 할 것 없음.", autoAfterSeconds: 2f),
             new("AI_F_13", "잔해 잔량이 0 보다 큰 상태에서 AI_F_12 종료", Quiet,
                 "잔해에 아직 남음. 왕복이 세는 단위임.", "한 번 더 나갈 것.", 45f),
             new("AI_F_14", "잔해 필드 소진", Short,
@@ -159,7 +173,7 @@ namespace DoodleUp.Runtime
             new("AI_B_15", "배치 확정 성공", Short,
                 "계류 골조 설치됨. 자재 잔량 0."),
             new("AI_B_16", "AI_B_15 후 2초 · 선체 탭 해금과 동시", Quiet,
-                "선체는 자재가 아니라 정비 여력으로 지음. 잔량 0에서도 가능함."),
+                "선체는 자재가 아니라 정비 여력으로 지음. 잔량 0에서도 가능함.", autoAfterSeconds: 2f),
             new("AI_B_17", "선체 탭 최초 표시", Quiet,
                 "붙일 수 있는 면이 배 둘레 전체로 넓어짐.")
         };
@@ -172,9 +186,9 @@ namespace DoodleUp.Runtime
         public static readonly Line[] HandsOff =
         {
             new("AI_F_15", "AI_F_14 후 2초 (도면 블록 뒤에 온다 — 조항 N-6)", Long,
-                "루프는 셋임. 나가서 뜯고, 돌아와 쌓고, 도면에서 붙임."),
+                "루프는 셋임. 나가서 뜯고, 돌아와 쌓고, 도면에서 붙임.", autoAfterSeconds: 2f),
             new("AI_F_16", "AI_F_15 후 3초 (손 떼기)", Quiet,
-                "안내 종료. 다음 결정은 승무원이 함.")
+                "안내 종료. 다음 결정은 승무원이 함.", autoAfterSeconds: 3f)
         };
 
         /// <summary>
@@ -219,6 +233,13 @@ namespace DoodleUp.Runtime
         /// 마무리를 도면 뒤로 보내므로, 표 순서를 그대로 읽으면 어긋난다.
         /// </summary>
         public static readonly Line[] InPlayOrder = Concat(Wake, Exit, Farming, Blueprint, HandsOff);
+
+        /// <summary>
+        /// 기상 블록을 뺀 나머지. <see cref="LastShiftNarrationDirector"/> 가 이 순서로 민다 —
+        /// 기상은 시간과 입력 해금이 함께 묶여 있어 자기 상태기(<see cref="LastShiftWakeSequence"/>)
+        /// 가 따로 쥔다.
+        /// </summary>
+        public static readonly Line[] Directed = Concat(Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>상시 라인을 포함한 전체. 정본 총계 <c>50</c> 중 적재분이다.</summary>
         public static readonly Line[] All = Concat(InPlayOrder, Standing);

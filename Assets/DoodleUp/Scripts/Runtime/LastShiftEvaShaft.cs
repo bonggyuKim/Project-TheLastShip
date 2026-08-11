@@ -80,6 +80,13 @@ namespace DoodleUp.Runtime
         public static bool Contains(float x, float z) => LastShiftPlazaLayout.InsideCore(x, z);
 
         /// <summary>
+        /// 코어에서 <paramref name="margin"/> 안쪽인가 — <b>다가섰는가</b>를 재는 쪽이다.
+        /// 안에 선 것과 다가선 것을 대본이 다른 줄로 나누므로(접근 · 도착) 둘 다 필요하다.
+        /// </summary>
+        public static bool Contains(float x, float z, float margin) =>
+            Mathf.Abs(x) <= HalfExtent + margin && Mathf.Abs(z) <= HalfExtent + margin;
+
+        /// <summary>
         /// 이 높이가 <b>가압 구간</b>인가. 갑판에서 선체 상단까지가 배 안이고 그 위는 탑 내부다 —
         /// 탑도 해치를 닫고 있는 동안은 가압이므로, 비가압 판정은 높이가 아니라
         /// <see cref="LastShiftAirlock"/> 의 위상이 정한다. 여기서는 "배 형상 안인가" 만 답한다.

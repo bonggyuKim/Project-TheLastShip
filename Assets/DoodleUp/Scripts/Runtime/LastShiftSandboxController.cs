@@ -1096,6 +1096,10 @@ namespace DoodleUp.Runtime
             var crewLeftCockpit = false;
             var crewInChamber = false;
             var crewVacuum = false;
+            // 코어에 다가섰는가. 두 거리를 쓴다 — 접근(AI_B_01)과 도착(AI_F_01)이 대본에서
+            // 다른 줄이기 때문이다. 문 사거리를 그대로 빌려 쓰는 것은 새 숫자를 안 만들려는
+            // 것이고, 실제로 코어에 붙는 조작이 문 개폐와 같은 키다.
+            var crewNearCore = false;
 
             foreach (var targetPlayer in players)
             {
@@ -1112,6 +1116,8 @@ namespace DoodleUp.Runtime
                 crewInChamber |= LastShiftEvaShaft.Contains(position.x, position.z)
                                  && LastShiftEvaShaft.IsInsideHull(position.y);
                 crewVacuum |= LastShiftAirlock.IsOutside(position);
+                crewNearCore |= LastShiftEvaShaft.Contains(
+                    position.x, position.z, LastShiftZoneDoor.ReachDistance);
 
                 if (!IsZoneVacuum(position))
                 {
@@ -1140,7 +1146,50 @@ namespace DoodleUp.Runtime
                     LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                     LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
                 deltaTime);
+            AdvanceNarration(crewNearCore, crewInChamber, crewVacuum, deltaTime);
             AdvanceDepositBadge(deltaTime);
+        }
+
+        /// <summary>
+        /// 내레이션 진행 — <b>나가는 길</b> 블록(정본 §4-3). 관측을 한 벌 더 만들지 않고
+        /// 튜토리얼이 이미 세는 값을 그대로 읽는다.
+        ///
+        /// <b>조건을 여기서 안 센다.</b> 디렉터가 "다음 줄인가" 하나만 보므로, 사거리에
+        /// 드나들 때마다 오는 신호도 두 번째부터는 그냥 버려진다. 그래서 아래가 전부
+        /// <c>if</c> 없이 나열이다 — 실제로 뜨는 것은 그중 순서가 맞는 하나뿐이다.
+        ///
+        /// <b>아직 안 걸린 블록이 있다.</b> 파밍(<c>AI_F_07</c>~<c>14</c>)과 도면
+        /// (<c>AI_B_11</c>~<c>17</c>)의 신호는 각각 잔해와 배치 화면 쪽에 있어서 여기서 안
+        /// 보인다. 그 둘이 걸릴 때까지 디렉터는 <c>AI_F_06</c> 에서 선다.
+        /// </summary>
+        private static void AdvanceNarration(
+            bool crewNearCore, bool crewInChamber, bool crewVacuum, float deltaTime)
+        {
+            if (!LastShiftNarrationDirector.IsRunning) return;
+
+            // 코어 접근 -> 승강기 도착 -> 탑승. 셋이 거리로 갈린다.
+            LastShiftNarrationDirector.Notify("AI_B_01", crewNearCore);
+            LastShiftNarrationDirector.Notify("AI_F_01",
+                crewInChamber && LastShiftEvaLift.IsAtDeck);
+            LastShiftNarrationDirector.Notify("AI_F_01B", crewInChamber);
+
+            // 승강과 감압이 겹쳐 돌므로 네 줄이 그 겹침의 네 국면이다.
+            LastShiftNarrationDirector.Notify("AI_F_02", LastShiftEvaLift.IsMoving);
+            LastShiftNarrationDirector.Notify("AI_F_03",
+                LastShiftAirlock.IsCycling && !LastShiftEvaLift.IsMoving);
+            LastShiftNarrationDirector.Notify("AI_F_04",
+                LastShiftAirlock.IsOuterHatchOpen && LastShiftEvaLift.IsMoving);
+            LastShiftNarrationDirector.Notify("AI_F_05",
+                LastShiftEvaLift.IsAtHullTop && LastShiftAirlock.IsOuterHatchOpen);
+            LastShiftNarrationDirector.Notify("AI_F_06", crewVacuum);
+
+            // "앞줄 후 N초" 형은 여기서 흐른다. 사건을 먼저 받고 시간을 미는 순서인 것은,
+            // 같은 프레임에 사건이 들어온 줄의 시계가 0 에서 시작해야 하기 때문이다.
+            LastShiftNarrationDirector.Tick(deltaTime);
+
+            if (LastShiftNarrationDirector.HasLine)
+                LastShiftNarrationAudio.Announce(
+                    LastShiftNarrationDirector.Current.Id, LastShiftNarrationDirector.Current.Sfx);
         }
 
         /// <summary>
@@ -2036,7 +2085,23 @@ namespace DoodleUp.Runtime
             // 암전이 먼저다 — 튜토리얼 검사보다 위에 둔다. 알파가 0 이면 이 호출은 아무것도
             // 안 빌리므로 평상시 비용이 없다.
             layer.Fade(LastShiftWakeSequence.BlackoutAlpha);
-            if (DrawWakeBanner(layer)) return;
+            // 기상이 먼저다 — 도입부가 도는 동안은 디렉터가 아직 한 줄도 안 띄운 상태라
+            // 실제로 겹치지 않지만, 순서를 코드에도 남겨 둔다.
+            if (LastShiftWakeSequence.HasLine)
+            {
+                DrawNarrationBanner(layer, LastShiftWakeSequence.Current,
+                    LastShiftWakeSequence.LineElapsedSeconds,
+                    framed: LastShiftWakeSequence.BlackoutAlpha <= 0f);
+                return;
+            }
+
+            if (LastShiftNarrationDirector.HasLine)
+            {
+                DrawNarrationBanner(layer, LastShiftNarrationDirector.Current,
+                    LastShiftNarrationDirector.LineElapsedSeconds, framed: true);
+                return;
+            }
+
             if (!LastShiftTutorial.IsRunning) return;
 
             // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
@@ -2088,29 +2153,31 @@ namespace DoodleUp.Runtime
         /// <b>머리줄과 계기줄을 안 그린다.</b> 번호는 아직 없는 것이고, 자재·잔해 수는
         /// 숙소를 나가기 전에는 셋 다 <c>0</c> 이라 읽을 것이 없다.
         /// </summary>
-        private static bool DrawWakeBanner(LastShiftUiLayer layer)
+        private static void DrawNarrationBanner(LastShiftUiLayer layer,
+            in LastShiftNarrationScript.Line line, float lineElapsed, bool framed)
         {
-            if (!LastShiftWakeSequence.HasLine) return false;
-
-            var line = LastShiftWakeSequence.Current;
             var screen = LastShiftUiLayer.ScreenSize;
             var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
 
             // 암전 구간에는 띠를 안 깐다. 검정 위에 문장만 뜨는 것이 도입부의 그림이고,
             // 페이드가 걷히면서 띠가 같이 떠오른다.
-            var framed = LastShiftWakeSequence.BlackoutAlpha <= 0f;
             if (framed) layer.OnboardingPanel("tutorial", banner, 1f);
 
             layer.Label("tutorialSpeaker", new Rect(banner.x + 42f, banner.y + 18f, 420f, 24f),
                 "선내 관리 시스템", 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
 
             // 재촉은 그 줄이 뜬 뒤 시간으로 갈린다(조항 N-1 — 재촉에는 신호음이 없다).
-            var text = line.HasNudge && LastShiftWakeSequence.LineElapsedSeconds >= line.NudgeAfterSeconds
+            var text = line.HasNudge && lineElapsed >= line.NudgeAfterSeconds
                 ? line.Nudge
                 : LastShiftNarrationScript.Format(line);
             layer.Label("tutorialGuide", new Rect(banner.x + 42f, banner.y + 60f, banner.width - 84f, 96f),
                 text, 38, LastShiftUiTheme.Ivory, wrap: true);
-            return true;
+
+            // 조작 프롬프트가 있는 줄은 그 한 줄을 더 단다(조항 T-3 — 실패 사유 대신 조작).
+            if (line.HasPrompt)
+                layer.Label("tutorialPrompt",
+                    new Rect(banner.x + 42f, banner.y + 150f, banner.width - 84f, 24f),
+                    line.Prompt, LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
         }
 
         /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>
