@@ -1100,6 +1100,9 @@ namespace DoodleUp.Runtime
             // 다른 줄이기 때문이다. 문 사거리를 그대로 빌려 쓰는 것은 새 숫자를 안 만들려는
             // 것이고, 실제로 코어에 붙는 조작이 문 개폐와 같은 키다.
             var crewNearCore = false;
+            // 상시 경고가 읽는 둘. "선외에서" 가 조건이라 진공 노출과 같이 본다.
+            var crewWarningOutside = false;
+            var crewCriticalOutside = false;
             // 순회 블록이 읽는 것들. 방 판정은 이 루프가 이미 하고 있어서 여기서 접는다 —
             // 따로 돌면 "어느 방인가" 가 두 벌이 되고 그 둘이 갈리는 순간을 못 찾는다.
             var crewInPlaza = false;
@@ -1121,7 +1124,10 @@ namespace DoodleUp.Runtime
                 // 광장 중앙 코어다 - 평면 판정은 코어 그대로이고 높이는 배 안이면 된다.
                 crewInChamber |= LastShiftEvaShaft.Contains(position.x, position.z)
                                  && LastShiftEvaShaft.IsInsideHull(position.y);
-                crewVacuum |= LastShiftAirlock.IsOutside(position);
+                var outside = LastShiftAirlock.IsOutside(position);
+                crewVacuum |= outside;
+                crewWarningOutside |= outside && crew.IsWarning;
+                crewCriticalOutside |= outside && crew.IsCritical;
                 crewNearCore |= LastShiftEvaShaft.Contains(
                     position.x, position.z, LastShiftZoneDoor.ReachDistance);
 
@@ -1155,6 +1161,7 @@ namespace DoodleUp.Runtime
                     crew.SuitOxygen <= LastShiftAirlock.EvaReturnReserve)
                 {
                     RescueFromExtravehicular(targetPlayer, crew);
+                    LastShiftStandingNarration.NotifyAutoReturn();
                     continue;
                 }
 
@@ -1169,7 +1176,8 @@ namespace DoodleUp.Runtime
                 deltaTime);
             AdvanceNarration(
                 new NarrationSignals(crewNearCore, crewInChamber, crewVacuum,
-                    crewInPlaza, crewFacingScreen, crewAtFixture, crewAtAnyFixture),
+                    crewInPlaza, crewFacingScreen, crewAtFixture, crewAtAnyFixture,
+                    crewWarningOutside, crewCriticalOutside),
                 deltaTime);
             AdvanceDepositBadge(deltaTime);
         }
@@ -1190,8 +1198,11 @@ namespace DoodleUp.Runtime
         private readonly struct NarrationSignals
         {
             public NarrationSignals(bool nearCore, bool inChamber, bool vacuum,
-                bool inPlaza, bool facingScreen, LastShiftPlazaSpace atFixture, bool anyFixture)
+                bool inPlaza, bool facingScreen, LastShiftPlazaSpace atFixture, bool anyFixture,
+                bool warningOutside, bool criticalOutside)
             {
+                WarningOutside = warningOutside;
+                CriticalOutside = criticalOutside;
                 NearCore = nearCore;
                 InChamber = inChamber;
                 Vacuum = vacuum;
@@ -1208,12 +1219,22 @@ namespace DoodleUp.Runtime
             public bool FacingScreen { get; }
             public LastShiftPlazaSpace AtFixture { get; }
             public bool AnyFixture { get; }
+            public bool WarningOutside { get; }
+            public bool CriticalOutside { get; }
 
             public bool At(LastShiftPlazaSpace space) => AnyFixture && AtFixture == space;
         }
 
         private static void AdvanceNarration(in NarrationSignals signals, float deltaTime)
         {
+            // 상시 경고는 <b>디렉터 밖</b>이다. 진행이 어디까지 갔든 상태로 뜨고, 실제로
+            // 안내가 이미 끝난 뒤(손 떼기 이후)에도 산소는 계속 마른다.
+            LastShiftStandingNarration.Observe(
+                signals.WarningOutside, signals.CriticalOutside, deltaTime);
+            if (LastShiftStandingNarration.HasLine)
+                LastShiftNarrationAudio.Announce(
+                    LastShiftStandingNarration.Current.Id, LastShiftStandingNarration.Current.Sfx);
+
             if (!LastShiftNarrationDirector.IsRunning) return;
 
             // 순회 - 광장에서 시작해 둘레를 한 바퀴 돌고 광장으로 돌아온다. 방마다 두 줄이고,
@@ -2156,6 +2177,15 @@ namespace DoodleUp.Runtime
             layer.Fade(LastShiftWakeSequence.BlackoutAlpha);
             // 기상이 먼저다 — 도입부가 도는 동안은 디렉터가 아직 한 줄도 안 띄운 상태라
             // 실제로 겹치지 않지만, 순서를 코드에도 남겨 둔다.
+            // 상시 경고가 가장 위다 — 지금 하던 일과 무관하게 끼어드는 상태 통지라,
+            // 뜨는 동안은 진행 대사도 도입부도 덮는다.
+            if (LastShiftStandingNarration.HasLine)
+            {
+                DrawNarrationBanner(layer, LastShiftStandingNarration.Current,
+                    LastShiftStandingNarration.LineElapsedSeconds, 1f, 1f);
+                return;
+            }
+
             if (LastShiftWakeSequence.HasLine)
             {
                 DrawNarrationBanner(layer, LastShiftWakeSequence.Current,

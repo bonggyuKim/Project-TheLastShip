@@ -246,6 +246,7 @@ namespace DoodleUp.Runtime
             // (첫 줄이 광장 코어 접근이다) 숙소에서 깨는 동안 앞질러 뜰 수 없다.
             LastShiftNarrationDirector.Begin();
             LastShiftPatrol.Clear();
+            LastShiftStandingNarration.Clear();
             Enter(LastShiftTutorialStep.SightSalvage);
         }
 
@@ -266,6 +267,7 @@ namespace DoodleUp.Runtime
             LastShiftNarrationDirector.Clear();
             LastShiftNarrationAudio.Clear();
             LastShiftPatrol.Clear();
+            LastShiftStandingNarration.Clear();
         }
 
         // ── 전이 ────────────────────────────────────────────────────────────

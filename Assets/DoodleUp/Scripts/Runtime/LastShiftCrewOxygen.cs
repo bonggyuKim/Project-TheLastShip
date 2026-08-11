@@ -24,6 +24,7 @@ namespace DoodleUp.Runtime
         private AudioSource breathAudio;
         private bool wasDraining;
         private float autoReturnAt = float.NegativeInfinity;
+        private float warningAt = float.NegativeInfinity;
 
         /// <summary>남은 개인 예비 산소. 1.00 에서 시작해 진공 구역에서만 줄어든다.</summary>
         public float SuitOxygen { get; private set; } = LastShiftRecoveryTuning.SuitOxygenInitial;
@@ -58,6 +59,14 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool IsAutoReturnFlash =>
             !IsDead && LastShiftUiTheme.IsAutoReturnWarningPulse(AutoReturnElapsedSeconds);
+
+        /// <summary>
+        /// 첫 경고선을 넘은 그 순간의 <b>한 번짜리</b> 펄스(game-art 확정 — 경고는 한 번,
+        /// 회수는 두 번, 임계는 유지). <b>판당 한 번이다</b>: 산소가 한 상태에서 단조로워
+        /// 경계를 되넘지 않으므로 다시 깜빡일 자리가 없다.
+        /// </summary>
+        public bool IsWarningEntryFlash => !IsDead && warningAt > float.NegativeInfinity
+            && LastShiftUiTheme.IsWarningPulse(Time.unscaledTime - warningAt, 1);
 
         /// <summary>
         /// 첫 경고 구간. <b>임계보다 넓다</b> — <see cref="IsCritical"/> 이 참이면 이쪽도 참이다.
@@ -103,7 +112,7 @@ namespace DoodleUp.Runtime
             // 회수가 위기로 안 읽힌다(game-art 확정 — 회수는 실패 통보가 아니다).
             gauge.SetTone(crew.IsDead
                 ? new Color(0.45f, 0.45f, 0.45f)
-                : crew.IsAutoReturnFlash
+                : crew.IsAutoReturnFlash || crew.IsWarningEntryFlash
                     ? LastShiftUiTheme.Fault
                     : crew.IsCritical
                         ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), LastShiftUiTheme.Crisis, BlinkPhase)
@@ -140,6 +149,8 @@ namespace DoodleUp.Runtime
 
             IsDraining = true;
             SuitOxygen = Mathf.Max(0f, SuitOxygen - LastShiftRecoveryTuning.SuitOxygenDrainPerSecond * deltaTime);
+            // 경고선을 처음 넘은 시각. 되넘지 않으므로 한 번만 찍힌다.
+            if (warningAt <= float.NegativeInfinity && IsWarning) warningAt = Time.unscaledTime;
             UpdateBreathAudio();
             if (SuitOxygen > LastShiftRecoveryTuning.AsphyxiationSuitOxygenThreshold) return;
 

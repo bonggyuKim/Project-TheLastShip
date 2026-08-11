@@ -75,10 +75,16 @@ namespace DoodleUp.Runtime
         /// 회수는 실패 통보가 아니라 왕복 손실로 읽힌다.
         /// </summary>
         public static bool IsAutoReturnWarningPulse(float elapsedSeconds)
+            => IsWarningPulse(elapsedSeconds, 2);
+
+        /// <summary>
+        /// 같은 박자로 <paramref name="pulses"/> 번만 깜빡인다. 회수는 두 번, 첫 경고 진입은
+        /// 한 번이다(game-art 확정) — 박자를 공유해야 둘이 같은 계통의 신호로 읽힌다.
+        /// </summary>
+        public static bool IsWarningPulse(float elapsedSeconds, int pulses)
         {
             const float onSeconds = 0.12f;
             const float offSeconds = 0.08f;
-            const int pulses = 2;
             if (elapsedSeconds < 0f || elapsedSeconds >= (onSeconds + offSeconds) * pulses) return false;
             return elapsedSeconds % (onSeconds + offSeconds) < onSeconds;
         }
