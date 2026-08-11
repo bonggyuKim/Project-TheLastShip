@@ -361,7 +361,7 @@ namespace DoodleUp.Editor
             for (var x = startX; x < endX; x += tile[0])
             for (var z = startZ; z < endZ; z += tile[1])
             {
-                if (CoversDeckHatch(x, z, tile, y)) continue;
+                if (CoversEvaShaft(x, z, tile, y)) continue;
                 var facing = BoundaryFacing(space, x, z, tile);
                 var instance = Place(prefab, root, name, new Vector3(x, y, z), facing ?? 0f);
                 // 접지면 <b>아래</b>에 깔리는 층(밑깔개)에는 마감을 안 붙인다. 그 층은 반 칸
@@ -390,15 +390,17 @@ namespace DoodleUp.Editor
 
             var deck = new GameObject("DeckCollision");
             deck.transform.SetParent(root, false);
+            // 갑판에는 이제 구멍이 없다. 승강구 둘을 피해 발자국을 쪼개던 자리인데,
+            // EVA 가 위로 뒤집히면서 아래로 뚫린 곳이 사라졌다 - 방마다 한 장이면 된다.
             foreach (var space in spaces.Values)
-                foreach (var slab in SplitAroundShafts(space.bounds))
-                {
-                    var piece = new GameObject("DeckSlab");
-                    piece.transform.SetParent(deck.transform, false);
-                    var box = piece.AddComponent<BoxCollider>();
-                    box.center = new Vector3((slab[0] + slab[1]) * 0.5f, deckY - 0.1f, (slab[2] + slab[3]) * 0.5f);
-                    box.size = new Vector3(slab[1] - slab[0], 0.2f, slab[3] - slab[2]);
-                }
+            {
+                var b = space.bounds;
+                var piece = new GameObject("DeckSlab");
+                piece.transform.SetParent(deck.transform, false);
+                var box = piece.AddComponent<BoxCollider>();
+                box.center = new Vector3((b[0] + b[1]) * 0.5f, deckY - 0.1f, (b[2] + b[3]) * 0.5f);
+                box.size = new Vector3(b[1] - b[0], 0.2f, b[3] - b[2]);
+            }
             Debug.Log($"[LAST_SHIFT_DECK_COLLISION] deckY={deckY:F3} slabs={deck.transform.childCount}");
         }
 
@@ -427,69 +429,24 @@ namespace DoodleUp.Editor
                 : structural.transform.localToWorldMatrix.MultiplyPoint(structural.sharedMesh.bounds.max).y;
         }
 
-        /// <summary>
-        /// 공간 발자국을 승강구를 피해 조각으로 자른다. 승강구가 없는 공간은 통째로 한 장이다.
-        /// </summary>
-        private static List<float[]> SplitAroundShafts(float[] bounds)
-        {
-            var pieces = new List<float[]> { new[] { bounds[0], bounds[1], bounds[2], bounds[3] } };
-            for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
-            {
-                var half = LastShiftBypassDuct.Section * 0.5f;
-                var hx0 = LastShiftBypassDuct.ShaftX(shaft) - half;
-                var hx1 = LastShiftBypassDuct.ShaftX(shaft) + half;
-                var hz0 = LastShiftBypassDuct.ShaftZ(shaft) - half;
-                var hz1 = LastShiftBypassDuct.ShaftZ(shaft) + half;
-                var next = new List<float[]>();
-                foreach (var p in pieces)
-                {
-                    if (hx1 <= p[0] || hx0 >= p[1] || hz1 <= p[2] || hz0 >= p[3]) { next.Add(p); continue; }
-                    // 구멍을 뺀 나머지를 최대 넉 장으로 나눈다. 겹치지 않게 x 를 먼저 자른다.
-                    if (hx0 > p[0]) next.Add(new[] { p[0], hx0, p[2], p[3] });
-                    if (hx1 < p[1]) next.Add(new[] { hx1, p[1], p[2], p[3] });
-                    var mx0 = Mathf.Max(p[0], hx0);
-                    var mx1 = Mathf.Min(p[1], hx1);
-                    if (hz0 > p[2]) next.Add(new[] { mx0, mx1, p[2], hz0 });
-                    if (hz1 < p[3]) next.Add(new[] { mx0, mx1, hz1, p[3] });
-                }
-                pieces = next;
-            }
-            return pieces;
-        }
 
         /// <summary>
-        /// 이 판이 갑판 승강구를 덮는가. 덮으면 깔지 않는다.
+        /// 이 판이 EVA 샤프트를 막는가. 막으면 깔지 않는다.
         ///
-        /// <b>갑판에는 구멍이 둘 있다.</b> 예전에는 그레이박스 바닥이 그 자리를 비워 뒀는데,
-        /// 그 바닥을 지우고 지도의 바닥 판이 방을 빈틈없이 덮으면서 승강구가 통째로 메워졌다.
-        /// 해치는 열리는데 발밑이 막혀 있으니 갑판 아래로 내려갈 수가 없고, 튜토리얼
-        /// <c>CrossPlaza</c> 단계(<c>CrewBelowDeck</c>)가 거기서 멈춘다. PlayMode 검사 둘이
-        /// 정확히 그것을 잡았다.
+        /// <b>구멍이 갑판에서 천장으로 옮겨 갔다</b>(기획 확정 2026-08-11). 예전에는 갑판에
+        /// 승강구 둘이 뚫려 아래로 내려갔고, 지금은 광장 코어가 위로 올라가므로 <b>천장</b>이
+        /// 열려야 한다. 바닥은 도로 막는다 - 리프트 플랫폼이 갑판 높이에 서 있고 승무원이
+        /// 그 위에 서므로, 여기를 비우면 광장 한가운데가 구덩이가 된다.
         ///
-        /// 접지면 아래 층(밑깔개)에도 같이 적용한다 — 그쪽만 남으면 구멍이 다시 막힌다.
+        /// 코어는 <c>4x4</c> 라 <c>2m</c> 판 넉 장이 정확히 그 자리를 덮는다.
         /// </summary>
-        private static bool CoversDeckHatch(float x, float z, float[] tile, float y)
+        private static bool CoversEvaShaft(float x, float z, float[] tile, float y)
         {
-            if (y > 0.5f) return false;                       // 천장은 갑판이 아니다
+            if (y < 0.5f) return false;                       // 갑판은 안 뚫는다
             var halfX = tile[0] * 0.5f;
             var halfZ = tile[1] * 0.5f;
-
-            // <b>승강구 중심이 든 판 하나만 걷어낸다.</b> 처음에는 판과 승강구가 조금이라도
-            // 겹치면 걷어냈는데, 판이 <c>2m</c> 이고 승강구가 <c>1m</c> 이라 <c>15cm</c> 걸친
-            // 이웃 판까지 같이 날아갔다. 그래서 갑판에 <c>2x4m</c> 구덩이가 생겼고, 하필
-            // 스폰 자리가 그 안이라 승무원이 밑깔개 위(<c>-0.02</c>)에 내려앉아 미끄러졌다.
-            // PlayMode 의 슬롯 복귀 검사 둘이 <c>0.149m</c> 어긋난 것이 이것이다.
-            //
-            // 남는 <c>15cm</c> 턱은 통행을 안 막는다 — 승강구 <c>1m</c> 중 <c>0.85m</c> 가
-            // 열려 있고 웅크린 승무원 캡슐은 지름 <c>0.56m</c> 다. 실제로 통과하는지는
-            // <c>LastShiftBypassDuctPlayModeTests</c> 가 판정한다.
-            for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
-            {
-                var sx = LastShiftBypassDuct.ShaftX(shaft);
-                var sz = LastShiftBypassDuct.ShaftZ(shaft);
-                if (Mathf.Abs(sx - x) < halfX && Mathf.Abs(sz - z) < halfZ) return true;
-            }
-            return false;
+            var half = LastShiftEvaShaft.HalfExtent;
+            return Mathf.Abs(x) < halfX + half - 0.01f && Mathf.Abs(z) < halfZ + half - 0.01f;
         }
 
         /// <summary>

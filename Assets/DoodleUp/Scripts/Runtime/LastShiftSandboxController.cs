@@ -1072,6 +1072,11 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void AdvanceExtravehicular(float deltaTime)
         {
+            // <b>리프트와 에어록은 같은 프레임에 돌아야 한다.</b> 감압을 승강 중에 겹쳐
+            // 돌리는 것이 balance 통과 조건이라(순차면 여유 0.3초), 둘 중 하나만 여기 있으면
+            // 겹침이 성립하지 않는다. 실제로 리프트 tick 이 빠져 있었고 EditMode 검사가
+            // 직접 돌려서 통과하고 있었다 - 게임에서는 리프트가 영영 안 움직이는 상태였다.
+            LastShiftEvaLift.Tick(deltaTime);
             LastShiftAirlock.Tick(deltaTime);
             LastShiftSalvage.Tick(deltaTime);
             if (!LastShiftAirlock.IsAtPort || players == null) return;
