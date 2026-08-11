@@ -247,14 +247,34 @@ namespace DoodleUp.Editor
         /// </summary>
         private static (int samples, int worst) VerifySimultaneousZoneReadings(GameObject[] roots)
         {
-            var core = roots
-                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
-                .Where(x => x.name == "PlazaCore")
-                .ToArray();
+            // <b>코어는 통짜 큐브가 아니라 3면 고정 셸이다</b>(PM 승인 2026-08-11, P0).
+            // 승강 샤프트가 이 자리를 쓰게 되면서 속을 열었고, 조종석 쪽 한 면만 게이트다.
+            // 그래서 여기서 재는 것이 "큐브 하나의 스케일" 에서 "세 면이 서 있는가" 로 바뀐다 —
+            // 판정이 지키는 것은 형상이 아니라 <b>그 세 방향이 막혀 있다</b> 이기 때문이다.
+            var all = roots.SelectMany(root => root.GetComponentsInChildren<Transform>(true)).ToArray();
+            var core = all.Where(x => x.name == "PlazaCore").ToArray();
             Require(core.Length == 1, "plaza core must exist exactly once — it is the SIMUL_ZONES device, not decor");
+
             var half = LastShiftPlazaLayout.CoreHalfExtent;
-            Require(Mathf.Abs(core[0].localScale.x - half * 2f) < 0.0001f &&
-                    Mathf.Abs(core[0].localScale.z - half * 2f) < 0.0001f,
+            foreach (var face in new[] { "PlazaCore_Stern", "PlazaCore_Port", "PlazaCore_Starboard" })
+                Require(all.Count(x => x.name == face) == 1,
+                    $"{face} 가 없다 — 그 방향으로 시야가 열려 SIMUL_ZONES 가 깨진다");
+
+            // 조종석 쪽만 게이트다. 나머지 셋에는 열 수단이 없어야 한다 — 끌 수 있는 스위치를
+            // 만들어 두면 언젠가 꺼진다.
+            var gates = all.SelectMany(x => x.GetComponents<LastShiftEvaGate>()).ToArray();
+            Require(gates.Length == 1, $"코어 게이트가 {gates.Length} 개다 — 조종석 쪽 하나여야 한다");
+
+            var faces = all.Where(x => x.name.StartsWith("PlazaCore_")).ToArray();
+            Require(faces.Length > 0, "plaza core shell has no faces");
+            var footprint = faces[0].position;
+            var minX = footprint.x; var maxX = footprint.x; var minZ = footprint.z; var maxZ = footprint.z;
+            foreach (var f in faces)
+            {
+                minX = Mathf.Min(minX, f.position.x); maxX = Mathf.Max(maxX, f.position.x);
+                minZ = Mathf.Min(minZ, f.position.z); maxZ = Mathf.Max(maxZ, f.position.z);
+            }
+            Require(Mathf.Abs(maxX - minX - half * 2f) < 0.01f && Mathf.Abs(maxZ - minZ - half * 2f) < 0.01f,
                 $"plaza core footprint must stay {half * 2f:F1}m square");
 
             const float step = 0.05f;

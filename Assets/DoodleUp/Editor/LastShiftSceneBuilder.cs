@@ -254,24 +254,70 @@ namespace DoodleUp.Editor
 
 
         /// <summary>
-        /// 압력 경계의 문 하나. <b>벌크헤드는 여기서 안 세운다</b> — 광장 벽이 이미 구멍만
-        /// 남기고 다 세웠고, 인방도 <see cref="CreateWallWithOpenings"/> 가 얹었다. 일자
-        /// 스파인에서 벌크헤드와 문이 한 함수였던 것은 경계 평면이 방 사이 허공이라 그 판을
-        /// 세울 주인이 따로 없었기 때문이고, 방사형에서는 광장 벽이 그 주인이다.
-        /// </summary>
-        /// <summary>
-        /// 광장 한가운데 <c>4x4</c> 코어. <b>SIMUL_ZONES 장치다</b> — 방 여섯이 같은 광장을
-        /// 보는 방사형에서는 두 구역이 서로 보이는 직선이 기하학적으로 반드시 남고, 이 판이
-        /// 쐐기 셋이 겹치는 자리를 없앤다(기획 정본 §4). 벽이 아니므로 정본 지도가 벽을
-        /// 맡은 뒤에도 여기 남는다.
+        /// 광장 중앙 코어. <b>속 빈 통이다</b>(PM 승인 2026-08-11, P0).
+        ///
+        /// 예전에는 통짜 큐브였다. 그것이 SIMUL_ZONES 장치인 것은 맞지만
+        /// (기획 §4.2 "벽이 아니라 설 수 없는 자리로 막는다"), EVA 가 이 자리를 승강 샤프트로
+        /// 쓰게 되면서 <b>아무도 승강기에 탈 수 없는 상태</b>가 됐다 — 플랫폼이 솔리드 안에
+        /// 있었다. 실측으로 코어 안 어느 자리에서든 승무원 캡슐이 겹쳤다.
+        ///
+        /// 그래서 네 면 중 <b>셋만 남기고</b> 속을 연다. 시야 차단은 벽이 그대로 하므로
+        /// §4.2 의 0점 보장은 유지된다(planning 확인: 3면이 항상 닫혀 있으면 차단 효과가
+        /// 통짜 큐브와 같아 재실측이 필요 없다).
+        ///
+        /// 여는 면은 <b>조종석 쪽 하나</b>다. 전력실·냉각실·산소실 세 방향은 언제나 고정
+        /// 솔리드로 둔다 — 그 셋이 동시 판독을 만드는 조합이고, 이전 게이트 방식 결정을
+        /// 그대로 물려받는다.
         /// </summary>
         private static void CreatePlazaCore(Transform ship)
         {
             hullMaterial ??= CreateMaterial("LS_Hull", new Color(0.18f, 0.20f, 0.23f));
-            CreateCube("PlazaCore", ship,
-                new Vector3(0f, CeilingInnerHeight * 0.5f, 0f),
-                new Vector3(LastShiftPlazaLayout.CoreHalfExtent * 2f, CeilingInnerHeight,
-                    LastShiftPlazaLayout.CoreHalfExtent * 2f), hullMaterial);
+            const float thickness = LastShiftCompartments.PanelThickness;
+            var half = LastShiftPlazaLayout.CoreHalfExtent;
+            var span = half * 2f;
+            var height = CeilingInnerHeight;
+
+            var core = new GameObject("PlazaCore");
+            core.transform.SetParent(ship, false);
+
+            // 고정 3면. 이름에 방향을 적어 두는 것은 나중에 누가 하나를 지웠을 때 어느 구역
+            // 조합이 열렸는지가 이름만으로 읽히게 하려는 것이다.
+            CreateCube("PlazaCore_Stern", core.transform, new Vector3(half, height * 0.5f, 0f),
+                new Vector3(thickness, height, span), hullMaterial);
+            CreateCube("PlazaCore_Port", core.transform, new Vector3(0f, height * 0.5f, -half),
+                new Vector3(span, height, thickness), hullMaterial);
+            CreateCube("PlazaCore_Starboard", core.transform, new Vector3(0f, height * 0.5f, half),
+                new Vector3(span, height, thickness), hullMaterial);
+
+            // 조종석 쪽 게이트. 문틀은 남기고 개구부만 비운다 — 개구부 폭·높이는 압력문과
+            // 같은 값이라 배 안에서 "지나갈 수 있는 구멍" 이 한 종류로 읽힌다.
+            var opening = LastShiftEvaShaft.HatchOpening;
+            var openingHeight = LastShiftZoneDoor.OpeningHeight;
+            var side = (span - opening) * 0.5f;
+            for (var sign = -1; sign <= 1; sign += 2)
+                CreateCube($"PlazaCore_BowJamb_{(sign < 0 ? "Port" : "Starboard")}", core.transform,
+                    new Vector3(-half, height * 0.5f, sign * (opening + side) * 0.5f),
+                    new Vector3(thickness, height, side), hullMaterial);
+            CreateCube("PlazaCore_BowLintel", core.transform,
+                new Vector3(-half, (openingHeight + height) * 0.5f, 0f),
+                new Vector3(thickness, height - openingHeight, opening), hullMaterial);
+
+            CreateCoreGate(core.transform, new Vector3(-half, openingHeight * 0.5f, 0f),
+                new Vector3(thickness, openingHeight, opening));
+        }
+
+        /// <summary>
+        /// 코어 게이트의 차단면. <see cref="LastShiftEvaGate"/> 가 에어록 위상을 보고 켜고 끈다 —
+        /// 압력문과 같은 방식이고, 상태를 여기서 따로 들지 않는다.
+        /// </summary>
+        private static void CreateCoreGate(Transform core, Vector3 centre, Vector3 size)
+        {
+            var gate = new GameObject("PlazaCore_BowGate");
+            gate.transform.SetParent(core, false);
+            gate.transform.localPosition = centre;
+            var blocker = gate.AddComponent<BoxCollider>();
+            blocker.size = size;
+            gate.AddComponent<LastShiftEvaGate>().Configure(blocker);
         }
 
         private static void CreateBoundaryDoor(string side, Transform ship, int boundary)
