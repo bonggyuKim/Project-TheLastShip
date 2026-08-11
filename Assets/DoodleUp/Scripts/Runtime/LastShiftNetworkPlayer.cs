@@ -542,8 +542,18 @@ namespace DoodleUp.Runtime
             // 하려면 셰이더 마스크나 메시 분리가 필요하고 그건 아트 작업이다.
             foreach (var renderer in body.GetComponentsInChildren<Renderer>(true))
                 renderer.enabled = true;
-            localHeadBone = isLocalPlayer ? FindBone(body, "head") : null;
-            if (localHeadBone != null) localHeadBone.localScale = Vector3.zero;
+
+            // <b>멀티에서 남의 머리는 그대로 보인다.</b> 뼈 스케일은 복제되지 않고
+            // <see cref="ApplyLocalPresentation"/> 은 클라이언트마다 자기 <see cref="IsOwner"/> 로
+            // 도므로, 접히는 것은 <b>각자 자기 인스턴스</b>뿐이다. 내 화면의 동료 오브젝트는
+            // <c>isLocalPlayer=false</c> 로 들어와 머리가 남는다.
+            //
+            // 그래서 <b>양쪽을 다 적는다</b>. 비소유자에서 그냥 손을 떼면 될 것 같지만,
+            // 소유권이 옮겨간 오브젝트는 접힌 채로 남아 그 뒤로 아무 화면에서도 머리가
+            // 안 보이게 된다.
+            var head = FindBone(body, "head");
+            if (head != null) head.localScale = isLocalPlayer ? Vector3.zero : Vector3.one;
+            localHeadBone = isLocalPlayer ? head : null;
             bodyRenderer.material.color = PlayerColor;
         }
 

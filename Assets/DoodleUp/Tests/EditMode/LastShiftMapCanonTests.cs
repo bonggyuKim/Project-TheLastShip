@@ -49,6 +49,27 @@ namespace DoodleUp.Tests.EditMode
                 "스폰이 조종석 발자국 밖이다");
         }
 
+        /// <summary>
+        /// <b>남의 화면에서는 머리가 보인다.</b> 1인칭에서 자기 머리를 접는 것은 소유자
+        /// 인스턴스에만 거는 표현이고, 뼈 스케일은 복제되지 않는다. 그 전제가 성립하려면
+        /// 프리팹이 <b>펴진 머리</b>로 저장돼 있어야 한다 — 접힌 채 저장되면 모든 클라이언트가
+        /// 머리 없는 동료를 보게 되고, 소유자 쪽 코드로는 그 사실이 드러나지 않는다.
+        /// </summary>
+        [Test]
+        public void PlayerPrefabShipsWithTheHeadUnfolded()
+        {
+            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/DoodleUp/Prefabs/LastShiftNetworkPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+
+            Transform head = null;
+            foreach (var bone in prefab.GetComponentsInChildren<Transform>(true))
+                if (bone.name == "head") head = bone;
+            Assert.That(head, Is.Not.Null, "head 뼈가 없다 — 1인칭 머리 접기가 이 이름에 걸려 있다");
+            Assert.That(head.localScale, Is.EqualTo(Vector3.one),
+                $"프리팹 머리가 {head.localScale} 로 저장돼 있다 — 동료 화면에서도 머리가 사라진다");
+        }
+
         [System.Serializable] private sealed class MapRoot { public MapCamera cockpitCamera; }
         [System.Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
     }
