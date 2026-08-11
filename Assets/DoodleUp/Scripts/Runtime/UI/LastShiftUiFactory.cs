@@ -105,6 +105,20 @@ namespace DoodleUp.Runtime
             return image;
         }
 
+        /// <summary>프레임만 바꾼다. 본문·타이핑은 사건 코드가 계속 소유한다.</summary>
+        public static void SetOnboardingPanelTone(Image image, LastShiftOnboardingPanelTone tone)
+        {
+            if (image == null) return;
+            var kit = LastShiftUiKit.Instance;
+            image.sprite = kit == null ? null : tone switch
+            {
+                LastShiftOnboardingPanelTone.Warning => kit.OnboardingPanelWarning,
+                LastShiftOnboardingPanelTone.Crisis => kit.OnboardingPanelCrisis,
+                _ => kit.OnboardingPanel
+            };
+            image.type = image.sprite == null ? Image.Type.Simple : Image.Type.Sliced;
+        }
+
         public static Text CreateText(Transform parent, string name, int fontSize, TextAnchor anchor, Color color)
         {
             var rect = CreateRect(parent, name);

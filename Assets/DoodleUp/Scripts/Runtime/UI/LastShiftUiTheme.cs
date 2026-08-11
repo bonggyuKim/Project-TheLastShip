@@ -70,6 +70,19 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// O-7 자동 복귀 전용: warning 프레임을 빠르게 두 번만 켠다.
+        /// 위기색·사망 암전·반복 경보와 분리해, 회수는 실패 통보가 아니라 왕복 손실로 읽힌다.
+        /// </summary>
+        public static bool IsAutoReturnWarningPulse(float elapsedSeconds)
+        {
+            const float onSeconds = 0.12f;
+            const float offSeconds = 0.08f;
+            const int pulses = 2;
+            if (elapsedSeconds < 0f || elapsedSeconds >= (onSeconds + offSeconds) * pulses) return false;
+            return elapsedSeconds % (onSeconds + offSeconds) < onSeconds;
+        }
+
+        /// <summary>
         /// <see cref="UnityEngine.UI.CanvasScaler"/> 가 <c>ScaleWithScreenSize</c>·
         /// <c>MatchWidthOrHeight</c> 에서 쓰는 배율과 <b>같은 식</b>이다. 유니티가 내부에서
         /// 계산하는 값을 우리가 다시 알아야 하는 이유는 IMGUI 좌표를 캔버스 좌표로 옮기기

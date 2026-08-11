@@ -23,6 +23,14 @@ namespace DoodleUp.Runtime
         Warning
     }
 
+    /// <summary>AI 내레이션 프레임의 사건별 아트 상태.</summary>
+    public enum LastShiftOnboardingPanelTone
+    {
+        Normal,
+        Warning,
+        Crisis
+    }
+
     /// <summary>
     /// UI 아트 키트 v1 의 스프라이트 묶음.
     ///

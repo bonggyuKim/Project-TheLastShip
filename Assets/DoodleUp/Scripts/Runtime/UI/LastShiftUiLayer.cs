@@ -130,11 +130,16 @@ namespace DoodleUp.Runtime
 
         /// <summary>온보딩 전용 9-slice 패널. 일반 HUD와 스프라이트를 공유하지 않는다.</summary>
         public Image OnboardingPanel(string id, Rect screenRect, float alpha = 1f)
+            => OnboardingPanel(id, screenRect, LastShiftOnboardingPanelTone.Normal, alpha);
+
+        /// <summary>온보딩 사건의 normal/warning/crisis 프레임을 고른다.</summary>
+        public Image OnboardingPanel(string id, Rect screenRect, LastShiftOnboardingPanelTone tone, float alpha = 1f)
         {
             var image = Borrow(panels, id, () =>
                 LastShiftUiFactory.CreateOnboardingPanel(panelRoot, $"OnboardingPanel:{id}"));
             LastShiftUiFactory.PlacePanel((RectTransform)image.transform,
                 LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
+            LastShiftUiFactory.SetOnboardingPanelTone(image, tone);
             image.color = new Color(1f, 1f, 1f, alpha);
             return image;
         }
