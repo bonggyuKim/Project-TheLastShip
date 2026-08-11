@@ -92,6 +92,7 @@ namespace DoodleUp.Editor
             if (name is "LPK_EVA_ConningTower_3m" or "LPK_EVA_TopHatch_1p6m")
                 AlignModelToBottom(modelInstance);
             AddStructuralColliders(modelInstance, name);
+            AddSolidPropCollider(modelInstance, name);
             if (TryCreateAnimator(name, root, out var controller))
                 root.AddComponent<Animator>().runtimeAnimatorController = controller;
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{name}.prefab");
@@ -129,11 +130,7 @@ namespace DoodleUp.Editor
             "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m",
             // 탑은 밟고 서는 구조물이다. 해치 뚜껑(LPK_EVA_TopHatch_1p6m)은 여기 없다 -
             // 열려야 하는 것이라 압력문·갑판해치와 같은 규칙을 탄다.
-            "LPK_EVA_ConningTower_3m",
-            // 조종석 콘솔. 벽은 아니지만 <b>몸으로 못 지나가야 하는 물건</b>이라 여기 든다 —
-            // 회색상자 시절에는 그쪽에만 콜라이더가 있었고, 그것을 지우면서 콘솔이 통과
-            // 가능해지는 것을 막는다. 부피 규칙이 본체만 고르고 화면은 거른다.
-            "LPK_Cockpit_ControlConsole"
+            "LPK_EVA_ConningTower_3m"
         };
 
         /// <summary>
@@ -144,6 +141,45 @@ namespace DoodleUp.Editor
         /// 걸려서 문짝과 해치까지 막아 버린다. 어떤 조각이 막고 어떤 조각이 통하는지는 레벨
         /// 규칙이지 임포트 설정이 아니므로, 판단을 코드 쪽에 둔다.
         /// </summary>
+        /// <summary>
+        /// 벽은 아니지만 <b>몸으로 못 지나가야 하는 가구</b>. 구조물과 달리 <b>상자 하나</b>를
+        /// 씌운다 — 형상이 오목하고 장식 요철이 많아 메시 콜라이더로 두면 비싸고, 승무원이
+        /// 모서리에 걸린다. 막고 싶은 것은 "책상을 통과하지 않는다" 하나다.
+        ///
+        /// 조종석 콘솔이 여기 드는 이유는 <b>회색상자 시절에 그쪽에만 콜라이더가 있었기</b>
+        /// 때문이다(2026-08-12 정리). 그 상자를 걷으면서 실물이 그 역할을 넘겨받는다.
+        /// </summary>
+        private static readonly HashSet<string> SolidPropNames = new()
+        {
+            "LPK_Cockpit_ControlConsole"
+        };
+
+        /// <summary>
+        /// 가구에 <b>본체 크기 그대로</b> 상자 하나를 씌운다. 가장 큰 렌더러가 본체다 —
+        /// 조종석 콘솔이면 <c>_Body</c> 이고 <c>_Screen</c> 은 그 안에 들어간다.
+        /// </summary>
+        private static void AddSolidPropCollider(GameObject modelInstance, string name)
+        {
+            if (!SolidPropNames.Contains(name)) return;
+
+            MeshRenderer body = null;
+            var largest = 0f;
+            foreach (var renderer in modelInstance.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                var size = renderer.bounds.size;
+                var volume = size.x * size.y * size.z;
+                if (volume <= largest) continue;
+                largest = volume;
+                body = renderer;
+            }
+
+            if (body == null || body.GetComponent<Collider>() != null) return;
+            var box = body.gameObject.AddComponent<BoxCollider>();
+            var local = body.transform.InverseTransformVector(body.bounds.size);
+            box.center = body.transform.InverseTransformPoint(body.bounds.center);
+            box.size = new Vector3(Mathf.Abs(local.x), Mathf.Abs(local.y), Mathf.Abs(local.z));
+        }
+
         private static void AddStructuralColliders(GameObject modelInstance, string name)
         {
             if (!StructuralNames.Contains(name)) return;
