@@ -314,13 +314,20 @@ namespace DoodleUp.Tests.EditMode
 
             // 선외 판정이 잔해 자리와 에어록 밖을 둘 다 잡고, 배 안은 하나도 안 잡는다.
             Assert.That(LastShiftAirlock.IsOutside(LastShiftSalvage.FieldCenter), Is.True);
+            // 해치 문턱보다 <b>위</b>가 선외다. EVA 가 상향으로 뒤집히면서 부등호가 바뀌었고,
+            // 예전에는 같은 자리를 "보행면보다 1m 아래" 로 적었다.
             Assert.That(LastShiftAirlock.IsOutside(
-                new Vector3(LastShiftBypassDuct.AirlockCenterX,
-                    LastShiftAirlock.OutsideWalkY - 1f, LastShiftBypassDuct.AirlockCenterZ)), Is.True);
+                new Vector3(0f, LastShiftAirlock.OutsideWalkY + 1f, 0f)), Is.True);
+            // 탑 안(문턱 아래)은 아직 선외가 아니다 — 챔버와 진공의 경계가 여기다.
+            Assert.That(LastShiftAirlock.IsOutside(
+                new Vector3(0f, LastShiftEvaShaft.HullTopY + 0.5f, 0f)), Is.False,
+                "탑 안이 선외로 잡힌다 — 감압 전에 산소가 탄다.");
             Assert.That(LastShiftAirlock.IsOutside(LastShiftShipDimensions.SpawnPoint), Is.False,
                 "스폰 지점이 선외로 잡힌다 — 배 안에서 산소가 탄다.");
-            Assert.That(LastShiftAirlock.IsOutside(LastShiftAirlock.ReturnPoint), Is.False,
-                "에어록 바닥이 선외로 잡힌다 — 챔버와 진공의 경계가 사라진다.");
+            // 복귀지점은 해치 문턱이라 <b>선외로 잡히는 것이 맞다</b>. 예전 모델에서는 이 자리가
+            // 챔버 바닥(배 밑)이라 선내였는데, 이제는 나가고 들어오는 경계 그 자체다.
+            Assert.That(LastShiftAirlock.IsOutside(LastShiftAirlock.ReturnPoint), Is.True,
+                "복귀지점이 선내로 잡힌다 — 돌아온 자리와 나간 자리가 갈린다.");
         }
 
         /// <summary>
@@ -332,7 +339,7 @@ namespace DoodleUp.Tests.EditMode
         public void TheOutsideWalkPlaneIsTheOuterHatchPlane()
         {
             Assert.That(LastShiftAirlock.OutsideWalkY,
-                Is.EqualTo(LastShiftBypassDuct.AirlockFloorY).Within(Tolerance));
+                Is.EqualTo(LastShiftEvaShaft.TopHatchY).Within(Tolerance));
             Assert.That(LastShiftAirlock.ReturnPoint.y,
                 Is.EqualTo(LastShiftAirlock.OutsideWalkY).Within(Tolerance));
             Assert.That(LastShiftSalvage.FieldCenter.y,

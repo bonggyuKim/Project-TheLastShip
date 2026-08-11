@@ -85,12 +85,17 @@ namespace DoodleUp.Runtime
         public const float CycleSeconds = 4f;
 
         /// <summary>
-        /// 선외 보행면의 y. <b>배 밑면과 같은 평면이다</b> — 바깥 해치가 거기 있으므로
-        /// (<see cref="LastShiftBypassDuct.AirlockFloorY"/>), 나가는 순간 발이 닿는 면도 같아야
-        /// 새 이동 동사(추진·유영)가 필요 없다. §4.1-3 이 별도 씬을 물리친 것과 같은 절약이고,
-        /// 연출은 우주복 자력 부츠가 잡는다.
+        /// 선외 보행면의 y. <b>나가는 해치와 같은 평면이다</b> — 나가는 순간 발이 닿는 면이
+        /// 해치 문턱과 같아야 새 이동 동사(추진·유영)가 필요 없다. §4.1-3 이 별도 씬을 물리친
+        /// 것과 같은 절약이고, 연출은 우주복 자력 부츠가 잡는다.
+        ///
+        /// <b>EVA 가 상향으로 뒤집히면서 이 면이 배 밑에서 탑 정상으로 올라왔다</b>
+        /// (기획 확정 2026-08-11). 예전에는 <c>LastShiftBypassDuct.AirlockFloorY</c>(-4.2) 였고,
+        /// 이제는 <see cref="LastShiftEvaShaft.TopHatchY"/>(6.2) 다. 잔해 필드의 y 도 이 값을
+        /// 그대로 쓰므로(<see cref="LastShiftSalvage.FieldCenter"/>) 여기만 옮기면 따라온다 —
+        /// 나간 높이에서 그대로 걸어간다는 규칙이 그 연결이다.
         /// </summary>
-        public const float OutsideWalkY = LastShiftBypassDuct.AirlockFloorY;
+        public const float OutsideWalkY = LastShiftEvaShaft.TopHatchY;
 
         /// <summary>
         /// 선외 판정에 쓰는 여유. 배 밑면과 정확히 같은 높이를 <c>0</c> 여유로 가르면 발 높이
@@ -136,22 +141,24 @@ namespace DoodleUp.Runtime
                 or LastShiftSegmentTransition.TowedToPort;
 
         /// <summary>
-        /// 이 좌표가 선외인가. <b>덕트·에어록을 먼저 빼는 것이 핵심이다</b> — 그 둘은 배 밑면
-        /// 아래에 있지만 선외가 아니고, 그 판정은 이미 <see cref="LastShiftBypassDuct"/> 가
-        /// 갖고 있다. 빼지 않으면 에어록 바닥에 서 있는 것과 바깥 해치로 나간 것이 같은
+        /// 이 좌표가 선외인가. <b>샤프트를 먼저 빼는 것이 핵심이다</b> — 탑 안은 선체 상단보다
+        /// 위에 있지만 선외가 아니다. 빼지 않으면 챔버에 서 있는 것과 해치로 나간 것이 같은
         /// 좌표대라 갈리지 않는다.
         ///
-        /// 남은 둘 중 하나면 선외다 — <b>배 밑면 아래</b>(바깥 해치로 나간 자리)이거나
+        /// 남은 둘 중 하나면 선외다 — <b>선체 상단보다 위</b>(해치로 나간 자리)이거나
         /// <b>원반 테두리 밖</b>(잔해까지 가는 길)이다. 배 안 좌표는 어느 쪽에도 안 걸린다:
-        /// 갑판은 <c>y = 0</c> 으로 밑면(<see cref="LastShiftHullShell.RimBaseY"/>) 위이고,
-        /// 방은 전부 원반(<c>42 × 20</c>) 한참 안쪽이다.
+        /// 갑판은 <c>y = 0</c> 이고 방은 전부 원반 한참 안쪽이다.
+        ///
+        /// <b>EVA 가 상향으로 뒤집히면서 부등호 방향이 바뀌었다</b>(기획 확정 2026-08-11).
+        /// 예전에는 "배 밑면 아래" 가 선외였다 — 바깥 해치가 배 밑에 있었기 때문이다.
         /// </summary>
         public static bool IsOutside(Vector3 position)
         {
-            if (LastShiftBypassDuct.Contains(position) ||
-                LastShiftBypassDuct.ShaftContains(position)) return false;
+            // 탑(승강 샤프트) 안은 선외가 아니다. 해치 문턱에 서면 그때부터 선외다.
+            if (LastShiftEvaShaft.Contains(position.x, position.z) &&
+                position.y < LastShiftEvaShaft.TopHatchY) return false;
 
-            return position.y < LastShiftHullShell.RimBaseY - OutsideMargin ||
+            return position.y > LastShiftEvaShaft.HullTopY + OutsideMargin ||
                    !LastShiftHullShell.Contains(position.x, position.z);
         }
 
@@ -167,10 +174,7 @@ namespace DoodleUp.Runtime
         /// 사이클이 끝났을 때의 기준점이 <b>같은 좌표여야 한다</b>. 두 벌로 두면 산소가 마른
         /// 승무원이 돌아온 자리와 걸어 들어온 자리가 달라진다.
         /// </summary>
-        public static Vector3 ReturnPoint => new(
-            LastShiftBypassDuct.AirlockCenterX,
-            LastShiftBypassDuct.AirlockFloorY,
-            LastShiftBypassDuct.AirlockCenterZ);
+        public static Vector3 ReturnPoint => new(0f, LastShiftEvaShaft.TopHatchY, 0f);
 
         // ── 전이 ────────────────────────────────────────────────────────────
 
