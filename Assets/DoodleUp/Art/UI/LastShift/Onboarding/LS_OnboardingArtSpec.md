@@ -28,5 +28,5 @@
 | `SuitOxygenCriticalThreshold` 진입 | `산소 {threshold}%. 복귀 외 행동 권장하지 않음.` | 패널 프레임과 산소 HUD가 같은 프레임에 위기색 밝기 pulse 2회. | `CHIME_ALERT` 1회 |
 | 산소 0% 자동 회수 | `산소 고갈. 강제 회수됨.` | 2회 빠른 점멸 뒤 차콜 정상 상태로 복귀. | `CHIME_ALERT` 1회 |
 
-- 임계 숫자는 문자열 상수가 아니라 `LastShiftRecoveryTuning`의 활성 threshold를 `{threshold}`로 표시한다. Warning/Critical은 배타 상태가 아니므로 Critical에서도 Warning 시각 상태를 끄지 않는다.
+- 임계 숫자는 문자열 상수가 아니라 `LastShiftRecoveryTuning`의 활성 threshold를 `{threshold}`로 표시한다. 현재 활성값은 Warning `45%`(단발)·Critical `30%`(crisis pulse)이며, Warning/Critical은 배타 상태가 아니므로 Critical에서도 Warning 시각 상태를 끄지 않는다.
 - CHIME·문안 노출·첫 점멸 프레임은 같은 이벤트에서 시작한다. crisis는 `LastShiftUiTheme.PulseCrisis(Time.unscaledTime)`의 1.5Hz 밝기 pulse를 사용하며, 알파 점멸이나 반복 경고음은 사용하지 않는다.
