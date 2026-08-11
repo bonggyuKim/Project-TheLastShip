@@ -44,6 +44,24 @@ namespace DoodleUp.Runtime
         /// <summary>샤프트 총 이동 거리. 승강 시간·산소 예산 계산의 기준이다.</summary>
         public const float TravelHeight = TopHatchY - DeckY;
 
+        /// <summary>
+        /// 승강 속도. <b>리터럴이 아니라 사이클과 묶는다</b> — 감압/재가압을 승강 중에 겹쳐
+        /// 돌리기로 했으므로(game-balance 채택 2026-08-11), 리프트가 <b>사이클이 끝나는
+        /// 바로 그 순간</b> 도착하는 속도가 유일하게 낭비가 없는 값이다.
+        ///
+        /// 이보다 느리면 사이클이 끝나고도 아직 올라가는 중이고, 빠르면 도착해 놓고 사이클을
+        /// 기다린다. 어느 쪽이든 EVA 왕복 시간은 느린 쪽에 묶이므로 여기서 맞춘다.
+        /// 둘 중 하나가 바뀌면 속도가 따라간다.
+        ///
+        /// 실측 <c>6.2 / 4 = 1.55 m/s</c>. game-balance 최소 요구(겹침 <c>0.64</c>,
+        /// 순차 <c>1.10</c>)를 <b>둘 다</b> 넘으므로, 나중에 겹침을 못 쓰게 되어도 산소 예산이
+        /// 성립한다.
+        /// </summary>
+        public static float LiftSpeed => TravelHeight / LastShiftAirlock.CycleSeconds;
+
+        /// <summary>승강 한 번에 걸리는 시간. 겹침이 성립하면 사이클 시간과 같다.</summary>
+        public static float LiftSeconds => TravelHeight / LiftSpeed;
+
         /// <summary>이 평면 좌표가 샤프트 안인가. 코어 판정을 그대로 쓴다.</summary>
         public static bool Contains(float x, float z) => LastShiftPlazaLayout.InsideCore(x, z);
 
