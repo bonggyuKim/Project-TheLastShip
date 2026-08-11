@@ -53,39 +53,38 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 긴 신호음이 어디에 붙어 있는가. 정본 §2 는 <b>"단계 전환 첫 줄에만 · 이 대본에서
-        /// 정확히 5회"</b> 라고 적는다.
+        /// 조항 §2 — <b>긴 신호음은 블록 첫 줄에만.</b> 이제 예외가 없으므로 자리를 나열하는
+        /// 대신 <b>규칙 자체</b>를 건다. 블록을 추가하면 그 첫 줄도 자동으로 이 검사에 걸린다.
         ///
-        /// <b>그런데 표에는 6회다.</b> 적재한 구간에서 <c>AI_F_01</c>(승강기 사거리 최초 진입)이
-        /// 블록 첫 줄이 아닌데 긴 신호음을 갖는다 — <c>AI_B_01</c> 이 이미 "나가는 길" 을 열고
-        /// 있기 때문이다. v1.13 이 블록을 재매핑하면서 <c>AI_F_01</c> 이 블록 <b>중간</b>으로
-        /// 옮겨간 자국으로 보인다(예전에는 파밍이 승강기에서 시작했다).
-        ///
-        /// <b>데이터를 임의로 고치지 않는다.</b> 문안은 game-writer 소관이고, 여기서 소리를
-        /// 하나 지우면 대본과 코드가 갈린다. 대신 지금 상태를 그대로 못박아 둔다 — 정본이
-        /// 고쳐지면 이 검사가 먼저 깨지고, 그때 같이 맞춘다.
+        /// v1.15 이전에는 <c>AI_F_01</c> 이 블록 중간인데 긴 신호음을 갖고 있었다. v1.13 이
+        /// 파밍의 시작을 승강기에서 잔해로 옮기면서 소리가 안 따라간 자국이었고, 적재 중
+        /// 발견해 정본이 <c>AI_F_01 → AI_F_07</c> 로 고쳤다. 그때 이 검사가 먼저 깨졌다.
         /// </summary>
         [Test]
-        public void TheLongChimeSitsWhereTheScriptPutIt()
+        public void EveryLongChimeOpensABlock()
         {
+            var blocks = new[]
+            {
+                LastShiftNarrationScript.Exit,
+                LastShiftNarrationScript.Farming,
+                LastShiftNarrationScript.Blueprint,
+                LastShiftNarrationScript.HandsOff
+            };
+            var openers = blocks.Select(block => block[0].Id).ToArray();
+
             var longs = LastShiftNarrationScript.InPlayOrder
                 .Where(line => line.Sfx == LastShiftNarrationSfx.ChimeLong)
                 .Select(line => line.Id)
                 .ToArray();
 
-            Assert.That(longs, Is.EqualTo(new[] { "AI_B_01", "AI_F_01", "AI_B_11", "AI_F_15" }),
-                "긴 신호음 자리가 대본과 달라졌다 — 정본 §2 와 대조할 것");
+            Assert.That(longs, Is.EquivalentTo(openers),
+                "긴 신호음이 블록 첫 줄과 일대일이 아니다 — 정본 §2 의 여섯 목록과 대조할 것");
 
-            // 넷 중 셋은 블록 첫 줄이다. AI_F_01 하나만 중간이고 그것이 위에 적은 불일치다.
-            var openers = new[]
-            {
-                LastShiftNarrationScript.Exit[0].Id,
-                LastShiftNarrationScript.Blueprint[0].Id,
-                LastShiftNarrationScript.HandsOff[0].Id
-            };
-            Assert.That(longs.Intersect(openers).Count(), Is.EqualTo(3));
-            Assert.That(longs.Except(openers), Is.EqualTo(new[] { "AI_F_01" }),
-                "블록 중간의 긴 신호음이 AI_F_01 말고 또 생겼다");
+            // 블록 안쪽 줄에는 하나도 없어야 한다.
+            foreach (var block in blocks)
+                foreach (var line in block.Skip(1))
+                    Assert.That(line.Sfx, Is.Not.EqualTo(LastShiftNarrationSfx.ChimeLong),
+                        $"{line.Id} 은 블록 중간인데 긴 신호음을 갖는다");
         }
 
         /// <summary>재촉이 있으면 전환 초도 있어야 한다. 없으면 영영 안 갈린다.</summary>
