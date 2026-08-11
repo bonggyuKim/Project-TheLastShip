@@ -351,6 +351,7 @@ namespace DoodleUp.Editor
                     var placed = Place(p[rule.assetId], root, rule.id,
                         Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
                     if (rule.id == "evaTopHatch") AttachTopHatch(placed);
+                    if (rule.id == "plazaLift") AttachLiftPlatform(placed);
                 }
             }
             foreach (var space in map.spaces)
@@ -402,6 +403,26 @@ namespace DoodleUp.Editor
                 // 어긋나 있어 판 경계가 방 외곽과 안 맞고, 마감 띠가 위층 바닥을 뚫고 올라온다.
                 ApplyEdgeTrim(instance, facing.HasValue && y >= 0f);
             }
+        }
+
+        /// <summary>
+        /// 승강 플랫폼을 <see cref="LastShiftEvaLift"/> 에 묶는다.
+        ///
+        /// 아트 프리팹이 <b>가동 자산</b>이라 별도 모듈을 만들지 않는다(game-art 확인
+        /// 2026-08-11) — <c>LiftPlatformPivot</c> 이 이미 그 자리에 있다.
+        /// </summary>
+        private static void AttachLiftPlatform(GameObject lift)
+        {
+            if (lift == null) return;
+            Transform pivot = null;
+            foreach (var t in lift.GetComponentsInChildren<Transform>(true))
+                if (t.name == "LiftPlatformPivot") pivot = t;
+            if (pivot == null)
+            {
+                Debug.LogWarning("[LAST_SHIFT_LIFT] LiftPlatformPivot 이 없다 — 판이 안 움직인다.");
+                return;
+            }
+            lift.AddComponent<LastShiftEvaLiftVisual>().Configure(pivot);
         }
 
         /// <summary>
