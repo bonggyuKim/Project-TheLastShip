@@ -129,7 +129,11 @@ namespace DoodleUp.Editor
             "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m",
             // 탑은 밟고 서는 구조물이다. 해치 뚜껑(LPK_EVA_TopHatch_1p6m)은 여기 없다 -
             // 열려야 하는 것이라 압력문·갑판해치와 같은 규칙을 탄다.
-            "LPK_EVA_ConningTower_3m"
+            "LPK_EVA_ConningTower_3m",
+            // 조종석 콘솔. 벽은 아니지만 <b>몸으로 못 지나가야 하는 물건</b>이라 여기 든다 —
+            // 회색상자 시절에는 그쪽에만 콜라이더가 있었고, 그것을 지우면서 콘솔이 통과
+            // 가능해지는 것을 막는다. 부피 규칙이 본체만 고르고 화면은 거른다.
+            "LPK_Cockpit_ControlConsole"
         };
 
         /// <summary>

@@ -187,7 +187,9 @@ namespace DoodleUp.Editor
             //
             // 오늘 한 번 지웠다가 되돌린 자리다(5c1b9c9 -> 5129e43). 그때는 튜토리얼이
             // 여기를 지나서 못 지웠고, 이번에는 그 의존을 먼저 옮기고 지운다.
-            CreateCube("CockpitConsole", ship.transform, new Vector3(LastShiftShipDimensions.CockpitCenterX - 1.3f, 0.55f, 0f), new Vector3(0.7f, 1.1f, 2.5f), cockpitMaterial);
+            // <b>조종석 콘솔은 여기서 안 만든다.</b> 아트 킷의 LPK_Cockpit_ControlConsole 이
+            // 1.3m 옆에 이미 서 있어서 회색상자와 <b>둘이 나란히</b> 보였다 — 사용자가 지적한
+            // 레거시가 이것이다. 콜라이더는 킷 임포터가 실물 쪽에 붙인다(StructuralNames).
             CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, RoomBackWallZ(LastShiftZone.Power) + 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, RoomBackWallZ(LastShiftZone.LifeSupport) - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
             CreateCoolingStack(ship.transform);
