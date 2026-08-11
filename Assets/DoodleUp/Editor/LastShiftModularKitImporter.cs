@@ -356,6 +356,16 @@ namespace DoodleUp.Editor
             }
             foreach (var space in map.spaces)
             {
+                // <b>개구부에는 문을 안 세운다.</b> 정본이 kind 로 셋을 가르는데
+                // (opening · pressure · plain) 임포터가 그 열을 아예 안 읽어서, 문짝이 없어야
+                // 할 자리에 압력문 킷이 통째로 서 있었다 — 사용자가 "문이 보이는데 그냥
+                // 통과된다" 로 지적한 그 자리다. AI_T_03 의 문안도 "문이 없는 개구부" 다.
+                if (IsOpening(space.door))
+                {
+                    Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
+                    continue;
+                }
+
                 var door = Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
                 // 압력문이 붙는 자리가 아니면 열어 둔다. 안 그러면 아무도 애니메이터를 안
                 // 건드려 닫힌 자세로 남고, 통행은 되므로 닫힌 문을 그대로 통과하게 된다.
@@ -596,6 +606,13 @@ namespace DoodleUp.Editor
         /// 한가운데가 <c>8x8</c> 상자로 갇혔다. 판이 통과 가능한 장식이던 동안에는 안 드러났고,
         /// 킷에 콜라이더가 붙는 순간 진짜 벽이 됐다.
         /// </summary>
+        /// <summary>
+        /// 이 자리가 <b>개구부</b>인가 — 문짝이 없는 구멍이다. 정본 <c>kind</c> 를 그대로 읽고,
+        /// 값이 없으면 문으로 본다: 모르는 자리에 구멍을 뚫는 것보다 문을 세우는 쪽이 안전하다.
+        /// </summary>
+        private static bool IsOpening(MapDoor door) =>
+            door != null && string.Equals(door.kind, "opening", StringComparison.OrdinalIgnoreCase);
+
         private static bool Divides(List<MapSpace> spaces, float ax, float az, float bx, float bz)
         {
             var a = SpaceAt(spaces, ax, az);
@@ -800,7 +817,7 @@ namespace DoodleUp.Editor
         [Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
         [Serializable] private sealed class MapPlaza { public float[] bounds; public float ceiling; }
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
-        [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; }
+        [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; public string kind; }
         [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
         [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; }
     }
