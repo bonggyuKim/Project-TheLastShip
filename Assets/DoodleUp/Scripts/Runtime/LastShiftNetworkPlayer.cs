@@ -75,6 +75,9 @@ namespace DoodleUp.Runtime
         public LastShiftNetworkGrabbable HeldItem => heldItem;
         public Renderer BodyRenderer => bodyRenderer;
         public bool IsBodyVisible => bodyRenderer != null && bodyRenderer.enabled;
+
+        /// <summary>소유자의 머리가 접혀 있는가. 소유자가 아니면 접을 것이 없으므로 <c>false</c> 다.</summary>
+        public bool IsLocalHeadHidden => localHeadBone != null && localHeadBone.localScale == Vector3.zero;
         public Color PlayerColor => ColorForClient(OwnerClientId);
         public Transform HoldSocket => playerController != null ? playerController.HoldSocket : null;
         public Vector3 HoldPosition => IsOwner && HoldSocket != null ? HoldSocket.position : holdPosition.Value;
@@ -202,6 +205,9 @@ namespace DoodleUp.Runtime
 
         private void LateUpdate()
         {
+            // Animator 평가 뒤에 다시 접는다. 클립이 스케일 커브를 들고 있으면 매 프레임
+            // 1 로 되돌아가고, 그러면 머리가 깜빡이며 화면을 가린다.
+            if (localHeadBone != null) localHeadBone.localScale = Vector3.zero;
             if (IsSpawned) SyncCrewOxygen();
             // Shutdown 과 scene teardown 사이 프레임에는 object 가 아직 살아 있지만 RPC 전송기는
             // 이미 멈춰 있다. 이 구간에서 매 프레임 RPC 를 호출하면 오류 로그가 폭주하고
@@ -517,10 +523,45 @@ namespace DoodleUp.Runtime
             // 남의 자리 기준으로 계산되는데 경고 한 줄 말고는 표가 안 난다.
             LastShiftZoneAudio.EnsureListener(playerCamera, isLocalPlayer);
             if (bodyRenderer == null) return;
-            foreach (var renderer in bodyRenderer.transform.root.Find("Remote Body")
-                         .GetComponentsInChildren<Renderer>(true))
+            var body = bodyRenderer.transform.root.Find("Remote Body");
+
+            // <b>내 몸도 보인다. 머리만 없앤다.</b>
+            //
+            // 예전에는 소유자에게 <c>Remote Body</c> 를 통째로 껐다. 그런데 이 프리팹에는
+            // 1인칭 손 메시가 따로 없어서, 끄고 나면 화면에 <b>아무것도</b> 안 남는다 —
+            // 손도 팔도 없고 애니메이션은 돌지만 볼 수가 없다. 사용자가 "애니메이션이 연결
+            // 안 됐다" 고 본 것이 그 상태다.
+            //
+            // 손 메시를 새로 만들지 않는다. 시야를 막는 것은 머리 하나뿐이고, 이 리그에는
+            // <c>head</c> 뼈가 따로 있어 그것만 접으면 팔·다리·몸통이 그대로 남는다.
+            // 내려다볼 때 자기 몸이 보이는 것은 1인칭에서 <b>의도하는</b> 쪽이다 — 없으면
+            // 공중에 뜬 느낌이 난다.
+            //
+            // <b>몸통만 숨기는 것은 못 한다.</b> <c>spine</c>/<c>chest</c> 는 팔의 부모라
+            // 접으면 팔이 딸려 사라지고, 서브메시도 몸/흰자로 갈려 있어 몸통만 뺄 수 없다.
+            // 하려면 셰이더 마스크나 메시 분리가 필요하고 그건 아트 작업이다.
+            foreach (var renderer in body.GetComponentsInChildren<Renderer>(true))
                 renderer.enabled = true;
+            localHeadBone = isLocalPlayer ? FindBone(body, "head") : null;
+            if (localHeadBone != null) localHeadBone.localScale = Vector3.zero;
             bodyRenderer.material.color = PlayerColor;
+        }
+
+        /// <summary>
+        /// 접어 둘 머리 뼈. 소유자가 아니면 <c>null</c> 이고, 그때는 아무것도 안 건드린다.
+        /// </summary>
+        private Transform localHeadBone;
+
+        /// <summary>
+        /// <b>매 프레임 다시 접는다.</b> 애니메이션 클립이 스케일 커브를 들고 있으면 Animator 가
+        /// 매 프레임 <c>1</c> 로 되돌리고, 그러면 머리가 한 프레임씩 깜빡이며 화면을 가린다.
+        /// <c>LateUpdate</c> 는 Animator 평가 뒤라 여기서 덮으면 확실하다.
+        /// </summary>
+        private static Transform FindBone(Transform root, string boneName)
+        {
+            foreach (var bone in root.GetComponentsInChildren<Transform>(true))
+                if (bone.name == boneName) return bone;
+            return null;
         }
 
         private static Color ColorForClient(ulong clientId)

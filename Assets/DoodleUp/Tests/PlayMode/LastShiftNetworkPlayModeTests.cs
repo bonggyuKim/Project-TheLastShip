@@ -85,7 +85,14 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(controller.enabled, Is.True);
             Assert.That(controller.TargetCamera.enabled, Is.True);
             Assert.That(player.BodyRenderer, Is.Not.Null);
-            Assert.That(player.IsBodyVisible, Is.False);
+            // <b>소유자도 자기 몸이 보인다. 안 보이는 것은 머리뿐이다</b>(2026-08-11 사용자 결정).
+            //
+            // 예전에는 여기서 <c>IsBodyVisible == false</c> 를 요구했다. 그 규칙은 1인칭 손
+            // 메시가 따로 있다는 전제였는데 이 프리팹에는 그런 메시가 없어서, 몸을 통째로
+            // 끄면 화면에 아무것도 안 남았다 - 사용자가 "애니메이션이 연결 안 됐다" 고 본 것이
+            // 그 상태다. 시야를 막는 것은 머리 하나뿐이라 그것만 접는다.
+            Assert.That(player.IsBodyVisible, Is.True, "소유자 몸이 꺼져 있다 - 1인칭에 아무것도 안 남는다");
+            Assert.That(player.IsLocalHeadHidden, Is.True, "소유자 머리가 안 접혔다 - 화면을 가린다");
             Assert.That(sandbox.Players, Does.Contain(controller));
 
             var originalPosition = player.transform.position;
