@@ -1,5 +1,7 @@
 # 파밍 출정소 확정 (v1) — 에어록을 갑판 하부 분기에서 갑판층 전용 방으로
 
+> **⚠ 전면 폐기 (`2026-08-11`, `central-lift-eva-ascent-v1.md`).** 사용자가 EVA 방향을 하향식(배 밑 에어록)에서 상향식(광장 중앙 코어 승강 샤프트 → 선체 상단 해치)으로 뒤집으면서, 이 문서가 정의한 **에어록 홀은 방으로서 완전히 사라졌다.** 아래 내용(감압 챔버 위치·좌표·인터록·트레이드오프 전부)은 더 이상 유효하지 않다 — 역사적 근거로만 남긴다. 갑판 아래 구조(`LastShiftAirlock.cs`/`LastShiftBypassDuct.cs`)도 삭제 확정이다. 현재 정본은 `central-lift-eva-ascent-v1.md`다.
+>
 > 상태: `game-planning` 확정 v1 · `2026-08-10` · 카드 `af778a45-6f48-43aa-a926-304924492847`
 > 상위 정본: `outboard-outpost-and-map-final-v1.md`(선외 파밍 루프·조항 `O-*`) · `corridor-4p-redesign-v1.md` §5·§23(갑판 하부 우회 통로) · `core-four-rooms-and-hull-schematic-v1.md`(고정 4실·선체 원반)
 > **이 문서가 갱신하는 것**: `corridor-4p-redesign-v1.md` §23.5(에어록 좌표 = `L` 자 모서리 하부 분기) 를 폐기하고 대체한다. `outboard-outpost-and-map-final-v1.md` §4.1 의 "에어록이 이미 좌표까지 있다" 는 근거는 **좌표가 바뀔 뿐 결론(같은 씬·에어록 바깥)은 그대로 산다**. 조항 `O-4`·`O-5`·`O-7` 전부 유효하다.
