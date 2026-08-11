@@ -334,6 +334,7 @@ namespace DoodleUp.Editor
             // manifest-derived guard for a wall segment that is emitted on an
             // outer edge because of a non-rectangular union split.
             RemoveInteriorWallsCoveredByShell(root);
+            BuildDeckCollision(map, spaces, p, root);
         }
 
         private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y, MapRule rule = null)
@@ -370,6 +371,93 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
+        /// <b>걷는 면을 평평하게 만든다.</b> 바닥 판은 가장자리가 파인 패널이라, 2m 간격으로
+        /// 깔면 갑판이 <c>12cm</c> 깊이 홈 격자가 된다(실측: 판 윗면 <c>0.12</c>, 테두리 홈
+        /// <c>0.00</c>). 승무원은 그 홈에 계속 걸리고, 스폰 높이 <c>0.1</c> 은 판 윗면보다
+        /// 아래라 스폰하자마자 판 옆면에 끼어 밀린다 — PlayMode 슬롯 복귀 검사 둘이
+        /// <c>0.149m</c> 어긋난 것이 이것이다. 소품이 땅에 박혀 보이는 것도 같은 이유고,
+        /// 드레싱 좌표는 <c>y=0</c>(홈 바닥) 기준인데 걷는 면은 <c>0.12</c> 다.
+        ///
+        /// 홈은 <b>보이는 채로 둔다</b> — 아트가 만든 마감이고 형상은 지도 소관이다. 대신
+        /// 판 윗면 높이에 보이지 않는 충돌면을 한 장 깔아 통행만 평평하게 만든다.
+        /// 승강구 자리는 비운다. 안 비우면 이 판이 해치를 다시 막는다.
+        /// </summary>
+        private static void BuildDeckCollision(ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces,
+            IReadOnlyDictionary<string, GameObject> prefabs, Transform root)
+        {
+            var deckY = PanelTopY(prefabs["LPK_Floor_Square_2m"]);
+            if (float.IsNaN(deckY)) return;
+
+            var deck = new GameObject("DeckCollision");
+            deck.transform.SetParent(root, false);
+            foreach (var space in spaces.Values)
+                foreach (var slab in SplitAroundShafts(space.bounds))
+                {
+                    var piece = new GameObject("DeckSlab");
+                    piece.transform.SetParent(deck.transform, false);
+                    var box = piece.AddComponent<BoxCollider>();
+                    box.center = new Vector3((slab[0] + slab[1]) * 0.5f, deckY - 0.1f, (slab[2] + slab[3]) * 0.5f);
+                    box.size = new Vector3(slab[1] - slab[0], 0.2f, slab[3] - slab[2]);
+                }
+            Debug.Log($"[LAST_SHIFT_DECK_COLLISION] deckY={deckY:F3} slabs={deck.transform.childCount}");
+        }
+
+        /// <summary>
+        /// 판 윗면의 높이. 리터럴로 박지 않는다 — 아트가 판을 바꾸면 따라와야 한다.
+        ///
+        /// <b>구조 메시만 본다.</b> 전부를 재면 <c>_Edge</c> 마감 띠가 잡혀 <c>0.19</c> 가
+        /// 나오는데, 그건 밟는 면이 아니라 테두리 장식이라 승무원이 <c>7cm</c> 떠서 걷게 된다.
+        /// 콜라이더를 붙일 때와 같은 기준(부피가 가장 큰 메시)을 쓴다.
+        /// </summary>
+        private static float PanelTopY(GameObject floorPrefab)
+        {
+            MeshFilter structural = null;
+            var largest = 0f;
+            foreach (var filter in floorPrefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                var size = filter.sharedMesh.bounds.size;
+                var volume = size.x * size.y * size.z;
+                if (structural != null && volume <= largest) continue;
+                structural = filter;
+                largest = volume;
+            }
+            return structural == null
+                ? float.NaN
+                : structural.transform.localToWorldMatrix.MultiplyPoint(structural.sharedMesh.bounds.max).y;
+        }
+
+        /// <summary>
+        /// 공간 발자국을 승강구를 피해 조각으로 자른다. 승강구가 없는 공간은 통째로 한 장이다.
+        /// </summary>
+        private static List<float[]> SplitAroundShafts(float[] bounds)
+        {
+            var pieces = new List<float[]> { new[] { bounds[0], bounds[1], bounds[2], bounds[3] } };
+            for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
+            {
+                var half = LastShiftBypassDuct.Section * 0.5f;
+                var hx0 = LastShiftBypassDuct.ShaftX(shaft) - half;
+                var hx1 = LastShiftBypassDuct.ShaftX(shaft) + half;
+                var hz0 = LastShiftBypassDuct.ShaftZ(shaft) - half;
+                var hz1 = LastShiftBypassDuct.ShaftZ(shaft) + half;
+                var next = new List<float[]>();
+                foreach (var p in pieces)
+                {
+                    if (hx1 <= p[0] || hx0 >= p[1] || hz1 <= p[2] || hz0 >= p[3]) { next.Add(p); continue; }
+                    // 구멍을 뺀 나머지를 최대 넉 장으로 나눈다. 겹치지 않게 x 를 먼저 자른다.
+                    if (hx0 > p[0]) next.Add(new[] { p[0], hx0, p[2], p[3] });
+                    if (hx1 < p[1]) next.Add(new[] { hx1, p[1], p[2], p[3] });
+                    var mx0 = Mathf.Max(p[0], hx0);
+                    var mx1 = Mathf.Min(p[1], hx1);
+                    if (hz0 > p[2]) next.Add(new[] { mx0, mx1, p[2], hz0 });
+                    if (hz1 < p[3]) next.Add(new[] { mx0, mx1, hz1, p[3] });
+                }
+                pieces = next;
+            }
+            return pieces;
+        }
+
+        /// <summary>
         /// 이 판이 갑판 승강구를 덮는가. 덮으면 깔지 않는다.
         ///
         /// <b>갑판에는 구멍이 둘 있다.</b> 예전에는 그레이박스 바닥이 그 자리를 비워 뒀는데,
@@ -385,12 +473,21 @@ namespace DoodleUp.Editor
             if (y > 0.5f) return false;                       // 천장은 갑판이 아니다
             var halfX = tile[0] * 0.5f;
             var halfZ = tile[1] * 0.5f;
-            var half = LastShiftBypassDuct.Section * 0.5f;
+
+            // <b>승강구 중심이 든 판 하나만 걷어낸다.</b> 처음에는 판과 승강구가 조금이라도
+            // 겹치면 걷어냈는데, 판이 <c>2m</c> 이고 승강구가 <c>1m</c> 이라 <c>15cm</c> 걸친
+            // 이웃 판까지 같이 날아갔다. 그래서 갑판에 <c>2x4m</c> 구덩이가 생겼고, 하필
+            // 스폰 자리가 그 안이라 승무원이 밑깔개 위(<c>-0.02</c>)에 내려앉아 미끄러졌다.
+            // PlayMode 의 슬롯 복귀 검사 둘이 <c>0.149m</c> 어긋난 것이 이것이다.
+            //
+            // 남는 <c>15cm</c> 턱은 통행을 안 막는다 — 승강구 <c>1m</c> 중 <c>0.85m</c> 가
+            // 열려 있고 웅크린 승무원 캡슐은 지름 <c>0.56m</c> 다. 실제로 통과하는지는
+            // <c>LastShiftBypassDuctPlayModeTests</c> 가 판정한다.
             for (var shaft = 0; shaft < LastShiftBypassDuct.ShaftCount; shaft++)
             {
                 var sx = LastShiftBypassDuct.ShaftX(shaft);
                 var sz = LastShiftBypassDuct.ShaftZ(shaft);
-                if (Mathf.Abs(sx - x) < halfX + half && Mathf.Abs(sz - z) < halfZ + half) return true;
+                if (Mathf.Abs(sx - x) < halfX && Mathf.Abs(sz - z) < halfZ) return true;
             }
             return false;
         }
