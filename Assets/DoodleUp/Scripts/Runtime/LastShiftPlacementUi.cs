@@ -330,6 +330,8 @@ namespace DoodleUp.Runtime
 
             if (!Open()) return;
             tutorialSchematicOpened = true;
+            // AI_B_12 — 도면이 저절로 열렸다.
+            LastShiftNarrationDirector.Notify("AI_B_12");
         }
 
         /// <summary>
@@ -362,6 +364,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static void NotifyCursorTouched()
         {
+            // AI_B_13 — 커서가 자유면에 들어왔다. 단계와 무관하게 한 번만 먹는다.
+            LastShiftNarrationDirector.Notify("AI_B_13");
+
             switch (LastShiftTutorial.Step)
             {
                 case LastShiftTutorialStep.Schematic:
@@ -461,11 +466,17 @@ namespace DoodleUp.Runtime
                     ? $"자재가 모자란다 — {outpostCursor.Kind.Name} {outpostCursor.Kind.MaterialCost} · " +
                       $"잔액 {LastShiftMaterials.Balance}"
                     : outcome.Message;
+                // AI_B_14 — 발자국이 안 맞아 확정이 튕겼다. 자재 부족은 다른 실패이므로 뺀다:
+                // 그 문안은 "돌려서 맞출 것" 인데 돌려도 안 되는 상황이다.
+                if (outcome.Result != LastShiftPlacementCommandResult.Unaffordable)
+                    LastShiftNarrationDirector.Notify("AI_B_14");
                 return false;
             }
 
             var built = LastShiftOutpostAssembler.Rebuild(palette);
 
+            // AI_B_15 — 섰다. 탭이 열리기 전이어야 순서가 맞는다(AI_B_16 이 그 사이 2초다).
+            LastShiftNarrationDirector.Notify("AI_B_15");
             UnlockHullTabAfterTutorialFrame();
 
             lastResult = $"거점 확정 #{outcome.Index} · 자재 -{outcome.Cost} → 잔액 {LastShiftMaterials.Balance} · " +
@@ -490,6 +501,9 @@ namespace DoodleUp.Runtime
             // 잠금이 단계를 보므로 순서가 뒤집히면 안 된다 — 먼저 9단계로 올려야 탭이 열린다.
             LastShiftTutorial.AdvanceTo(LastShiftTutorialStep.HullUnlocked);
             SelectTab(LastShiftPlacementTab.Hull);
+            // AI_B_17 — 선체 탭이 처음 뜬다. AI_B_16(잔액 0 에서도 지을 수 있다)이 시간으로
+            // 그 사이에 들어가므로, 여기서는 알리기만 하고 순서는 디렉터가 지킨다.
+            LastShiftNarrationDirector.Notify("AI_B_17");
         }
 
         private bool UndoLastOutpost()

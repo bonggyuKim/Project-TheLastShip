@@ -187,6 +187,39 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
+        /// <b>처음부터 끝까지 한 번에 흐르는가.</b> 이제 신호가 전부 배선됐으므로 막히는 줄이
+        /// 하나라도 있으면 여기서 걸린다 — 어느 줄에서 섰는지가 실패 메시지에 남는다.
+        /// </summary>
+        [Test]
+        public void TheWholeScriptRunsFromEndToEnd()
+        {
+            LastShiftNarrationDirector.Begin();
+            RunBlock(LastShiftNarrationScript.Directed);
+
+            Assert.That(LastShiftNarrationDirector.IsComplete, Is.True);
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_F_16"));
+            Assert.That(LastShiftNarrationDirector.NextId, Is.Null);
+        }
+
+        /// <summary>
+        /// <c>AI_F_13</c> 을 건너뛰어도 끝까지 간다 — 한 번에 다 뜯은 판이다.
+        /// </summary>
+        [Test]
+        public void SkippingTheSecondTripStillReachesTheEnd()
+        {
+            LastShiftNarrationDirector.Begin();
+            foreach (var line in LastShiftNarrationScript.Directed)
+            {
+                if (line.Id == "AI_T_02B" || line.Id == "AI_F_13") continue;
+                if (line.IsAutomatic) LastShiftNarrationDirector.Tick(line.AutoAfterSeconds);
+                else Assert.That(LastShiftNarrationDirector.Notify(line.Id), Is.True,
+                    $"{line.Id} 에서 막혔다");
+            }
+
+            Assert.That(LastShiftNarrationDirector.IsComplete, Is.True);
+        }
+
+        /// <summary>
         /// 조항 <c>N-6</c> — 마무리 두 줄이 도면 뒤다. 배열 순서가 곧 진행 순서라
         /// 따로 검사할 것이 없다는 것을 여기서 못박는다.
         /// </summary>

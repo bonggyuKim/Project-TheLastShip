@@ -96,6 +96,22 @@ namespace DoodleUp.Runtime
 
         public static LastShiftOutpostKind At(int index) => entries[index];
 
+        /// <summary>
+        /// 표에서 가장 싼 것의 자재 값. <b>"이제 뭔가 지을 수 있다" 의 경계</b>다 —
+        /// 내레이션이 그 순간을 짚으므로(<c>AI_B_11</c>), 표에 항목이 늘어도 그 경계가
+        /// 저절로 따라오도록 세어서 낸다.
+        /// </summary>
+        public static int CheapestMaterialCost
+        {
+            get
+            {
+                var cheapest = int.MaxValue;
+                foreach (var entry in entries)
+                    if (entry.MaterialCost < cheapest) cheapest = entry.MaterialCost;
+                return cheapest;
+            }
+        }
+
         /// <summary>목록을 순환으로 읽는다. 화면에서 다음/이전을 누르는 자리가 쓴다.</summary>
         public static int Wrap(int index)
         {

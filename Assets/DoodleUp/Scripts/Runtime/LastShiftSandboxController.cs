@@ -1103,6 +1103,7 @@ namespace DoodleUp.Runtime
             // 상시 경고가 읽는 둘. "선외에서" 가 조건이라 진공 노출과 같이 본다.
             var crewWarningOutside = false;
             var crewCriticalOutside = false;
+            var crewAtSalvage = false;
             // 순회 블록이 읽는 것들. 방 판정은 이 루프가 이미 하고 있어서 여기서 접는다 —
             // 따로 돌면 "어느 방인가" 가 두 벌이 되고 그 둘이 갈리는 순간을 못 찾는다.
             var crewInPlaza = false;
@@ -1126,6 +1127,7 @@ namespace DoodleUp.Runtime
                                  && LastShiftEvaShaft.IsInsideHull(position.y);
                 var outside = LastShiftAirlock.IsOutside(position);
                 crewVacuum |= outside;
+                crewAtSalvage |= LastShiftSalvage.IsWithinReach(position);
                 crewWarningOutside |= outside && crew.IsWarning;
                 crewCriticalOutside |= outside && crew.IsCritical;
                 crewNearCore |= LastShiftEvaShaft.Contains(
@@ -1177,7 +1179,7 @@ namespace DoodleUp.Runtime
             AdvanceNarration(
                 new NarrationSignals(crewNearCore, crewInChamber, crewVacuum,
                     crewInPlaza, crewFacingScreen, crewAtFixture, crewAtAnyFixture,
-                    crewWarningOutside, crewCriticalOutside),
+                    crewWarningOutside, crewCriticalOutside, crewAtSalvage),
                 deltaTime);
             AdvanceDepositBadge(deltaTime);
         }
@@ -1199,10 +1201,11 @@ namespace DoodleUp.Runtime
         {
             public NarrationSignals(bool nearCore, bool inChamber, bool vacuum,
                 bool inPlaza, bool facingScreen, LastShiftPlazaSpace atFixture, bool anyFixture,
-                bool warningOutside, bool criticalOutside)
+                bool warningOutside, bool criticalOutside, bool atSalvage)
             {
                 WarningOutside = warningOutside;
                 CriticalOutside = criticalOutside;
+                AtSalvage = atSalvage;
                 NearCore = nearCore;
                 InChamber = inChamber;
                 Vacuum = vacuum;
@@ -1221,6 +1224,7 @@ namespace DoodleUp.Runtime
             public bool AnyFixture { get; }
             public bool WarningOutside { get; }
             public bool CriticalOutside { get; }
+            public bool AtSalvage { get; }
 
             public bool At(LastShiftPlazaSpace space) => AnyFixture && AtFixture == space;
         }
@@ -1272,6 +1276,25 @@ namespace DoodleUp.Runtime
             LastShiftNarrationDirector.Notify("AI_F_05",
                 LastShiftEvaLift.IsAtHullTop && LastShiftAirlock.IsOuterHatchOpen);
             LastShiftNarrationDirector.Notify("AI_F_06", signals.Vacuum);
+
+            // 파밍 - 잔해에 붙어 뜯고, 손이 차면 돌아와 쌓는다.
+            LastShiftNarrationDirector.Notify("AI_F_07", signals.AtSalvage);
+            LastShiftNarrationDirector.Notify("AI_F_08", LastShiftSalvage.Carried > 0);
+            LastShiftNarrationDirector.Notify("AI_F_09",
+                LastShiftSalvage.Carried >= LastShiftSalvage.CarryCapacity);
+            LastShiftNarrationDirector.Notify("AI_F_10", LastShiftEvaLift.IsMoving);
+            // 반입은 <b>횟수</b>로 본다. 잔액 차이로 잡으면 골조를 사서 줄어든 것과 구분이 안 된다
+            // - 배지 팝이 같은 이유로 같은 값을 읽는다.
+            LastShiftNarrationDirector.Notify("AI_F_11",
+                LastShiftMaterials.DepositRevision > 0);
+            // AI_F_13 은 선택 줄이다. 한 번에 다 뜯으면 "아직 남음" 이 거짓말이 되므로
+            // 그때는 AI_F_14 가 이 줄을 건너뛴다.
+            LastShiftNarrationDirector.Notify("AI_F_13", LastShiftSalvage.Remaining > 0);
+            LastShiftNarrationDirector.Notify("AI_F_14", LastShiftSalvage.Remaining == 0);
+
+            // 도면 첫 줄. 나머지 여섯은 배치 화면이 직접 민다 - 커서와 확정은 여기서 안 보인다.
+            LastShiftNarrationDirector.Notify("AI_B_11",
+                LastShiftMaterials.Balance >= LastShiftOutpostCatalog.CheapestMaterialCost);
 
             // "앞줄 후 N초" 형은 여기서 흐른다. 사건을 먼저 받고 시간을 미는 순서인 것은,
             // 같은 프레임에 사건이 들어온 줄의 시계가 0 에서 시작해야 하기 때문이다.
