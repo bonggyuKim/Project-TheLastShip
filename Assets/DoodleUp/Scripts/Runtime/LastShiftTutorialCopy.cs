@@ -11,7 +11,8 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftTutorialLine
     {
         public LastShiftTutorialLine(
-            LastShiftTutorialStep step, string title, string guide, string nudge, float nudgeAfterSeconds, string prompt = "")
+            LastShiftTutorialStep step, string title, string guide, string nudge, float nudgeAfterSeconds,
+            string prompt = "", LastShiftNarrationSfx sfx = LastShiftNarrationSfx.None, string trigger = "")
         {
             Step = step;
             Title = title;
@@ -19,6 +20,8 @@ namespace DoodleUp.Runtime
             Nudge = nudge;
             NudgeAfterSeconds = nudgeAfterSeconds;
             Prompt = prompt;
+            Sfx = sfx;
+            Trigger = trigger;
         }
 
         public LastShiftTutorialStep Step { get; }
@@ -48,6 +51,18 @@ namespace DoodleUp.Runtime
         public string Prompt { get; }
 
         public bool HasPrompt => !string.IsNullOrEmpty(Prompt);
+
+        /// <summary>
+        /// 이 줄과 함께 울리는 신호음(대본 §2). <b>재촉에는 안 붙는다</b>(조항 <c>N-1</c>) —
+        /// 재촉은 같은 사건을 다시 말하는 것이라 소리를 또 내면 새 사건으로 읽힌다.
+        /// </summary>
+        public LastShiftNarrationSfx Sfx { get; }
+
+        /// <summary>
+        /// 이 줄이 뜨는 시점을 사람 말로 적은 것. <b>코드가 읽는 값이 아니라 대조용이다</b> —
+        /// 대본과 배선이 갈렸을 때 어느 줄이 어긋났는지를 여기서 찾는다.
+        /// </summary>
+        public string Trigger { get; }
 
         /// <summary>이 단계에서 지금 띄울 한 줄. 머문 시간만으로 갈린다.</summary>
         public string GuideAt(float stepElapsedSeconds) =>
