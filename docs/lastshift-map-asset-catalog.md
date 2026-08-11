@@ -39,6 +39,15 @@
 | `LPK_DamagedPipe_2m` | lifeSupport | 손상 상태 목표물 | 유지 |
 | `CoolingValve` | cooling | C-3 누르고 유지하는 조작 동사 | 유지; 실프롭 교체 가능 |
 
+## 느슨한 상호작용 아이템
+
+| 에셋 | 배치 | 용도 | 상태 |
+|---|---|---|---|
+| `CoolingCanister` | cooling nominal spawn | 냉각 시스템 복구용으로 집어 옮기는 bulky 아이템 | 유지 |
+| `Battery` | power nominal spawn | 전력 복구용 휴대 아이템 | 유지 |
+| `PatchPlate` | repair nominal spawn | 선체 손상 수리용 bulky 아이템 | 유지 |
+| `Tether` | tether rack 인접 spawn | EVA/회수 흐름의 휴대 아이템 | 유지 |
+
 ## 구역 가독성
 
 | 유형 | 배치 | 용도 | 상태 |
