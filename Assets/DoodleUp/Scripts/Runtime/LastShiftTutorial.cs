@@ -20,7 +20,7 @@ namespace DoodleUp.Runtime
         CrossPlaza = 2,
 
         /// <summary><c>3</c>. 홀 안. 바닥 우물에 발을 딛으면 <c>SuitOxygen</c> 이 처음 뜬다.</summary>
-        AirlockHall = 3,
+        CentralLift = 3,
 
         /// <summary><c>4</c>. 자재를 뜯는다. 두 덩이째에서 손이 찬다.</summary>
         Harvest = 4,
@@ -271,7 +271,7 @@ namespace DoodleUp.Runtime
 
             // 바닥 우물을 넘는 것이 곧 선외다. 산소 게이지가 뜨는 조건과 같은 판정을 쓴다 —
             // 따로 재면 화면에 게이지가 뜬 단계와 상태기가 센 단계가 갈린다.
-            LastShiftTutorialStep.AirlockHall => o.CrewVacuum,
+            LastShiftTutorialStep.CentralLift => o.CrewVacuum,
 
             // 손이 찬다. 세 번째가 안 뜯기는 것이 §1-1 이 짚은 오학습 지점이고, 그 순간이
             // 곧 <c>5</c>단계 진입이다.

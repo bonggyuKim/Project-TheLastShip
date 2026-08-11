@@ -94,7 +94,7 @@ namespace DoodleUp.Tests.EditMode
                 "조종석을 벗어나면 2단계다");
 
             LastShiftTutorial.Observe(Now(true, inHall: true), 1f);
-            Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.AirlockHall));
+            Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.CentralLift));
 
             LastShiftTutorial.Observe(Now(true, true, outside: true), 1f);
             Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.Harvest),
