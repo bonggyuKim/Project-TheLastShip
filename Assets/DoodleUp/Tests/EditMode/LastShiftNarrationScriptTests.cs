@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using DoodleUp.Runtime;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace DoodleUp.Tests.EditMode
 {
@@ -110,7 +111,30 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftNarrationScript.Farming.Length, Is.EqualTo(8));
             Assert.That(LastShiftNarrationScript.Blueprint.Length, Is.EqualTo(7));
             Assert.That(LastShiftNarrationScript.HandsOff.Length, Is.EqualTo(2));
+            Assert.That(LastShiftNarrationScript.Standing.Length, Is.EqualTo(4));
             Assert.That(LastShiftNarrationScript.Count, Is.EqualTo(26));
+        }
+
+        /// <summary>
+        /// 상시 경고 두 줄이 <b>지금 임계</b>를 말하는가. 정본 표에는 <c>40%</c>·<c>25%</c> 가
+        /// 문자열에 박혀 있는데 값은 <c>45</c>/<c>30</c> 으로 옮겨갔다 — 박힌 채로 뒀으면
+        /// 경고가 뜨는 조건과 화면 숫자가 갈렸을 자리다.
+        /// </summary>
+        [Test]
+        public void TheStandingWarningsSpeakTheLiveThreshold()
+        {
+            foreach (var line in LastShiftNarrationScript.Standing)
+                Assert.That(Regex.IsMatch(line.Text, @"\d+\s*%"), Is.False,
+                    $"{line.Id} 에 임계 숫자가 박혀 있다: {line.Text}");
+
+            var warning = LastShiftNarrationScript.Format(LastShiftNarrationScript.Of("AI_F_W1"));
+            var critical = LastShiftNarrationScript.Format(LastShiftNarrationScript.Of("AI_F_W2"));
+            Assert.That(warning, Does.Contain(
+                Mathf.RoundToInt(LastShiftRecoveryTuning.SuitOxygenWarningThreshold * 100f).ToString()));
+            Assert.That(critical, Does.Contain(
+                Mathf.RoundToInt(LastShiftRecoveryTuning.SuitOxygenCriticalThreshold * 100f).ToString()));
+            Assert.That(warning, Does.Not.Contain("{threshold}"));
+            Assert.That(critical, Does.Not.Contain("{threshold}"));
         }
     }
 }

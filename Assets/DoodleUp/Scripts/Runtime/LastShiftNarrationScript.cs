@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace DoodleUp.Runtime
 {
@@ -58,6 +59,7 @@ namespace DoodleUp.Runtime
 
         private const LastShiftNarrationSfx Long = LastShiftNarrationSfx.ChimeLong;
         private const LastShiftNarrationSfx Short = LastShiftNarrationSfx.ChimeShort;
+        private const LastShiftNarrationSfx Alert = LastShiftNarrationSfx.ChimeAlert;
         private const LastShiftNarrationSfx Quiet = LastShiftNarrationSfx.None;
 
         /// <summary>
@@ -141,17 +143,57 @@ namespace DoodleUp.Runtime
         };
 
         /// <summary>
+        /// <b>상시 라인</b>. 어느 블록에도 안 든다 — 단계 진행이 아니라 <b>상태</b>로 뜨기
+        /// 때문이다(정본 §4-4). 판당 한 번씩만 뜬다.
+        ///
+        /// <b>임계 숫자를 <c>{threshold}</c> 로 둔다</b>(조항 <c>N-7</c>). 정본 표에는 <c>40%</c>·
+        /// <c>25%</c> 가 문자열에 박혀 있는데, 그 값은 오늘 <c>45</c>/<c>30</c> 으로 옮겨갔다 —
+        /// 박아 두면 경고가 뜨는 조건과 화면 숫자가 갈린다. <see cref="Format"/> 가 그 자리에
+        /// 지금 값을 넣는다. game-art 규격서도 같은 <c>{threshold}</c> 바인딩을 전제한다.
+        ///
+        /// <c>AI_F_W3</c>·<c>W4</c> 는 조항 <c>O-7</c> 자동 회수다. <b>사망 통보가 아니다</b> —
+        /// 잃는 것은 목숨이 아니라 그 왕복이라, 죽음·위험 계열 단어를 쓰지 않는다.
+        /// </summary>
+        public static readonly Line[] Standing =
+        {
+            new("AI_F_W1", "선외에서 슈트 산소가 경고선 도달 (판당 1회)", Alert,
+                "산소 {threshold}%. 하강과 재가압 시간까지 계산할 것."),
+            new("AI_F_W2", "선외에서 슈트 산소가 임계선 도달 (판당 1회)", Alert,
+                "산소 {threshold}%. 복귀 외 행동 권장하지 않음."),
+            new("AI_F_W3", "O-7 자동 복귀 발생", Alert,
+                "산소 고갈. 강제 회수됨."),
+            new("AI_F_W4", "AI_F_W3 후 2초 (튜토리얼 한정 · 조항 T-8)", Quiet,
+                "들고 있던 것은 잔해로 되돌아감. 다시 나갈 것.")
+        };
+
+        /// <summary>
+        /// 화면에 낼 문장. <c>{threshold}</c> 자리에 <b>지금 값</b>을 넣는다 — 경고를 띄우는
+        /// 조건과 화면에 적히는 숫자가 같은 상수에서 나와야 갈리지 않는다(조항 <c>N-7</c>).
+        /// </summary>
+        public static string Format(in Line line)
+        {
+            if (!line.Text.Contains("{threshold}")) return line.Text;
+            var ratio = line.Id == "AI_F_W2"
+                ? LastShiftRecoveryTuning.SuitOxygenCriticalThreshold
+                : LastShiftRecoveryTuning.SuitOxygenWarningThreshold;
+            return line.Text.Replace("{threshold}", Mathf.RoundToInt(ratio * 100f).ToString());
+        }
+
+        /// <summary>
         /// 실제로 뜨는 순서. <b>배열 정의 순서가 아니라 이쪽이 정본이다</b> — 조항 <c>N-6</c> 이
         /// 마무리를 도면 뒤로 보내므로, 표 순서를 그대로 읽으면 어긋난다.
         /// </summary>
         public static readonly Line[] InPlayOrder = Concat(Exit, Farming, Blueprint, HandsOff);
+
+        /// <summary>상시 라인을 포함한 전체. 정본 총계 <c>50</c> 중 적재분이다.</summary>
+        public static readonly Line[] All = Concat(InPlayOrder, Standing);
 
         public static int Count => InPlayOrder.Length;
 
         /// <summary>id 로 한 줄을 찾는다. 없으면 예외다 — 오타를 조용히 넘기지 않는다.</summary>
         public static Line Of(string id)
         {
-            foreach (var line in InPlayOrder)
+            foreach (var line in All)
                 if (string.Equals(line.Id, id, StringComparison.Ordinal)) return line;
             throw new ArgumentOutOfRangeException(nameof(id), id, "대본에 없는 라인 id 다");
         }
