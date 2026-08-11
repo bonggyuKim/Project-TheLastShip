@@ -78,6 +78,13 @@ namespace DoodleUp.Runtime
         public static Rect TutorialBannerRect(float screenHeight) =>
             new(PanelX, screenHeight - 120f, 680f, 104f);
 
+        /// <summary>AI 내레이션은 하단 중앙·화면 폭 70% 이내의 계기판으로 표시한다.</summary>
+        public static Rect OnboardingNarrationRect(float screenWidth, float screenHeight)
+        {
+            var width = Mathf.Min(screenWidth * 0.70f, 1344f);
+            return new Rect((screenWidth - width) * 0.5f, screenHeight - 216f, width, 184f);
+        }
+
         /// <summary>개인 예비 산소 줄. 튜토리얼 띠 위로 쌓는다.</summary>
         public static Rect SuitGaugeRect(float screenHeight, int row) =>
             new(24f, screenHeight - 96f - row * GaugePitch, 420f, GaugeHeight);

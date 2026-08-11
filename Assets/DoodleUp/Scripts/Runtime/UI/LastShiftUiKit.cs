@@ -68,6 +68,11 @@ namespace DoodleUp.Runtime
 
         [Header("패널·프롬프트")]
         [SerializeField] private Sprite panel9Slice;
+        [SerializeField] private Sprite onboardingPanel9Slice;
+        [SerializeField] private Sprite onboardingPanelWarning;
+        [SerializeField] private Sprite onboardingPanelCrisis;
+        [SerializeField] private Sprite onboardingSignal;
+        [SerializeField] private Sprite oxygenAlert;
         [SerializeField] private Sprite promptPlate;
         [SerializeField] private Sprite keycap;
 
@@ -105,6 +110,11 @@ namespace DoodleUp.Runtime
         }
 
         public Sprite Panel => panel9Slice;
+        public Sprite OnboardingPanel => onboardingPanel9Slice;
+        public Sprite OnboardingPanelWarning => onboardingPanelWarning;
+        public Sprite OnboardingPanelCrisis => onboardingPanelCrisis;
+        public Sprite OnboardingSignal => onboardingSignal;
+        public Sprite OxygenAlert => oxygenAlert;
         public Sprite PromptPlate => promptPlate;
         public Sprite Keycap => keycap;
 
@@ -180,6 +190,11 @@ namespace DoodleUp.Runtime
                 case nameof(fillHeat): fillHeat = sprite; break;
                 case nameof(fillWarning): fillWarning = sprite; break;
                 case nameof(panel9Slice): panel9Slice = sprite; break;
+                case nameof(onboardingPanel9Slice): onboardingPanel9Slice = sprite; break;
+                case nameof(onboardingPanelWarning): onboardingPanelWarning = sprite; break;
+                case nameof(onboardingPanelCrisis): onboardingPanelCrisis = sprite; break;
+                case nameof(onboardingSignal): onboardingSignal = sprite; break;
+                case nameof(oxygenAlert): oxygenAlert = sprite; break;
                 case nameof(promptPlate): promptPlate = sprite; break;
                 case nameof(keycap): keycap = sprite; break;
                 default: Debug.LogWarning($"[LastShiftUiKit] 모르는 칸: {field}"); break;
@@ -216,6 +231,11 @@ namespace DoodleUp.Runtime
             (nameof(fillHeat), "icon_gauge_heat_fill"),
             (nameof(fillWarning), "icon_gauge_warning_fill"),
             (nameof(panel9Slice), "panel_9slice"),
+            (nameof(onboardingPanel9Slice), "Onboarding/UGUI/LS_UI_NarrationPanel_256x128"),
+            (nameof(onboardingPanelWarning), "Onboarding/UGUI/LS_UI_NarrationPanel_Warning_256x128"),
+            (nameof(onboardingPanelCrisis), "Onboarding/UGUI/LS_UI_NarrationPanel_Crisis_256x128"),
+            (nameof(onboardingSignal), "Onboarding/UGUI/LS_UI_NarrationSignal_128"),
+            (nameof(oxygenAlert), "Onboarding/UGUI/LS_UI_OxygenAlert_128"),
             (nameof(promptPlate), "prompt_plate"),
             (nameof(keycap), "keycap")
         };
@@ -258,6 +278,11 @@ namespace DoodleUp.Runtime
             nameof(fillHeat) => fillHeat,
             nameof(fillWarning) => fillWarning,
             nameof(panel9Slice) => panel9Slice,
+            nameof(onboardingPanel9Slice) => onboardingPanel9Slice,
+            nameof(onboardingPanelWarning) => onboardingPanelWarning,
+            nameof(onboardingPanelCrisis) => onboardingPanelCrisis,
+            nameof(onboardingSignal) => onboardingSignal,
+            nameof(oxygenAlert) => oxygenAlert,
             nameof(promptPlate) => promptPlate,
             nameof(keycap) => keycap,
             _ => null

@@ -2028,36 +2028,42 @@ namespace DoodleUp.Runtime
 
             // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
             // 길어서 계기 셋과 같은 줄에 붙이면 잘린다.
-            var banner = LastShiftHudLayout.TutorialBannerRect(LastShiftUiLayer.ScreenSize.y);
-            layer.Panel("tutorial", banner, 0.82f);
+            var screen = LastShiftUiLayer.ScreenSize;
+            var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
+            layer.OnboardingPanel("tutorial", banner, 1f);
             var top = banner.y;
-            layer.Label("tutorialHeading", new Rect(28f, top + 8f, 660f, 26f),
+            layer.Label("tutorialSpeaker", new Rect(banner.x + 42f, top + 18f, 420f, 24f),
+                "선내 관리 시스템", 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
+            layer.Label("tutorialHeading", new Rect(banner.x + 42f, top + 48f, banner.width - 220f, 24f),
                 LastShiftTutorialCopy.Heading(LastShiftTutorial.Step),
-                LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
+                LastShiftHudLayout.HeadingFontSize, LastShiftUiTheme.Ivory, fontStyle: FontStyle.Bold);
 
             // 안내는 단계에 머문 시간으로 재촉으로 갈린다(LastShiftTutorialCopy 주석) —
             // 그 시간은 상태기가 이미 세고 있어서 여기서 따로 잴 것이 없다.
-            layer.Label("tutorialGuide", new Rect(28f, top + 38f, 660f, 24f),
+            layer.Label("tutorialGuide", new Rect(banner.x + 42f, top + 80f, banner.width - 84f, 48f),
                 LastShiftTutorialCopy.Guide(LastShiftTutorial.Step, LastShiftTutorial.StepElapsedSeconds),
-                LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
+                38, LastShiftUiTheme.Ivory, wrap: true);
 
-            layer.Label("tutorialCarried", new Rect(28f, top + 68f, 200f, 24f),
+            layer.Label("tutorialCarried", new Rect(banner.x + 42f, top + 142f, 240f, 24f),
                 $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}",
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
-            layer.Label("tutorialRemaining", new Rect(232f, top + 68f, 200f, 24f),
+            layer.Label("tutorialRemaining", new Rect(banner.x + 286f, top + 142f, 220f, 24f),
                 $"잔해 남음 {LastShiftSalvage.Remaining}",
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
 
             // 배지는 팝 하는 동안만 굵고 밝다. 조각을 하나로 두고 모양만 갈아 끼우는 이유는
             // 둘로 나누면 팝이 끝나는 프레임에 두 조각이 같이 보이기 때문이다.
             var popping = depositBadgePopSeconds > 0f;
-            layer.Label("tutorialBalance", new Rect(436f, top + 68f, 250f, 24f),
+            layer.Label("tutorialBalance", new Rect(banner.x + 510f, top + 142f, 250f, 24f),
                 popping
                     ? $"자재 {LastShiftMaterials.Balance}  ▲ +{LastShiftMaterials.LastDeposited}"
                     : $"자재 {LastShiftMaterials.Balance}",
                 popping ? LastShiftHudLayout.BadgeFontSize : LastShiftHudLayout.BodyFontSize,
                 popping ? DepositBadgeColor : LastShiftUiTheme.BodyText,
                 fontStyle: popping ? FontStyle.Bold : FontStyle.Normal);
+            layer.Label("tutorialLog", new Rect(banner.x + banner.width - 180f, top + 20f, 138f, 20f),
+                $"LOG / {(int)LastShiftTutorial.Step:00}", 14, new Color(0.32f, 0.82f, 0.82f),
+                anchor: TextAnchor.UpperRight);
         }
 
         /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>

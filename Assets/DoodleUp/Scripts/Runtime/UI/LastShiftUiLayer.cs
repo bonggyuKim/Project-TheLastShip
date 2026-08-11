@@ -128,6 +128,17 @@ namespace DoodleUp.Runtime
             return image;
         }
 
+        /// <summary>온보딩 전용 9-slice 패널. 일반 HUD와 스프라이트를 공유하지 않는다.</summary>
+        public Image OnboardingPanel(string id, Rect screenRect, float alpha = 1f)
+        {
+            var image = Borrow(panels, id, () =>
+                LastShiftUiFactory.CreateOnboardingPanel(panelRoot, $"OnboardingPanel:{id}"));
+            LastShiftUiFactory.PlacePanel((RectTransform)image.transform,
+                LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
+            image.color = new Color(1f, 1f, 1f, alpha);
+            return image;
+        }
+
         /// <summary>
         /// 이미 캔버스 단위로 잡아 둔 자리에 패널을 빌린다. 프롬프트·조작줄처럼 <b>완전히</b>
         /// UGUI 로 옮긴 화면이 쓴다 — 그쪽은 애초에 1920×1080 자로 계산하므로 화면 픽셀로

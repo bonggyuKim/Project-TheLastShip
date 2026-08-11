@@ -33,5 +33,10 @@ MonoBehaviour:
   fillHeat: {fileID: 21300000, guid: 3a02ef369a0b7cbb1098adbead762001, type: 3}
   fillWarning: {fileID: 21300000, guid: ce375803255b8b01b9aa009c816ad9fa, type: 3}
   panel9Slice: {fileID: 21300000, guid: 89eb738cf0930c2d232dfd539b806869, type: 3}
+  onboardingPanel9Slice: {fileID: 21300000, guid: 8e4cbaec021cd1549a147ff46310968a, type: 3}
+  onboardingPanelWarning: {fileID: 21300000, guid: fd187015fd2ac2f41891a5f6e9f1117c, type: 3}
+  onboardingPanelCrisis: {fileID: 21300000, guid: 119c62a1f3a5ba44fa3b1b22eda4a728, type: 3}
+  onboardingSignal: {fileID: 21300000, guid: cadc1dea644a65c41a8e69a3d3a3d97a, type: 3}
+  oxygenAlert: {fileID: 21300000, guid: ba457910656ddde46b814d6dd905912c, type: 3}
   promptPlate: {fileID: 21300000, guid: a8a22d2813573fdf5f63f01449fbb37d, type: 3}
   keycap: {fileID: 21300000, guid: 04d03fa7f0b14c8e12e33cb88a7d2a0d, type: 3}

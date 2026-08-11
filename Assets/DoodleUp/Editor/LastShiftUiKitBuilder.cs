@@ -75,6 +75,10 @@ namespace DoodleUp.Editor
         private static Vector4 BorderOf(string fileName) => fileName switch
         {
             "panel_9slice" => new Vector4(16f, 16f, 16f, 16f),
+            // 256×128 납품 패널의 코너 노드·프레임을 보존하고 중앙 차콜 면만 늘린다.
+            "Onboarding/UGUI/LS_UI_NarrationPanel_256x128" => new Vector4(16f, 16f, 16f, 16f),
+            "Onboarding/UGUI/LS_UI_NarrationPanel_Warning_256x128" => new Vector4(16f, 16f, 16f, 16f),
+            "Onboarding/UGUI/LS_UI_NarrationPanel_Crisis_256x128" => new Vector4(16f, 16f, 16f, 16f),
             "prompt_plate" => new Vector4(44f, 20f, 24f, 20f),
             _ => Vector4.zero
         };

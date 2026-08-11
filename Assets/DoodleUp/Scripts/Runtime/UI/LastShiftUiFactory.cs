@@ -95,6 +95,16 @@ namespace DoodleUp.Runtime
             return image;
         }
 
+        /// <summary>화자가 있는 AI 온보딩만 쓰는 계기판 패널.</summary>
+        public static Image CreateOnboardingPanel(Transform parent, string name)
+        {
+            var kit = LastShiftUiKit.Instance;
+            var sprite = kit != null ? kit.OnboardingPanel : null;
+            var image = CreateImage(parent, name, sprite, Image.Type.Sliced);
+            image.color = sprite != null ? Color.white : new Color(0.094f, 0.149f, 0.188f, 0.94f);
+            return image;
+        }
+
         public static Text CreateText(Transform parent, string name, int fontSize, TextAnchor anchor, Color color)
         {
             var rect = CreateRect(parent, name);
