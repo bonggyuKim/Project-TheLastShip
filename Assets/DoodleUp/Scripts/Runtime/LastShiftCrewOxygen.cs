@@ -107,7 +107,12 @@ namespace DoodleUp.Runtime
             gauge.SetValueLabel(crew.IsDead ? "0%" : $"{crew.SuitOxygen:P0}");
 
             // 사망은 회색이다. 위기색으로 두면 "아직 손쓸 수 있다" 로 읽히는데 이 줄은
-            // 이미 끝난 상태를 적는다. 위기 점멸은 사이렌 칸과 같은 박자를 쓴다.
+            // 이미 끝난 상태를 적는다.
+            //
+            // <b>위기 점멸은 다른 게이지와 같은 함수를 쓴다</b>(PulseCrisis). 전에는 여기서만
+            // 직접 섞어 사이렌 칸의 박자를 따라갔는데, 아트 규격이 이 자리에 PulseCrisis 를
+            // 지목했고 자원 게이지도 이미 그것을 쓴다 - 게이지끼리 맞추는 쪽이 옳다. 사이렌은
+            // 선체 사건이고 이쪽은 사람의 산소라 같은 사건도 아니다.
             // 자동 복귀 펄스는 <b>위기색 앞</b>에 온다. 회수 직후에는 예비가 다시 차 있어
             // IsCritical 이 이미 거짓이지만, 순서를 남겨 둬야 나중에 회수 임계가 바뀌어도
             // 회수가 위기로 안 읽힌다(game-art 확정 — 회수는 실패 통보가 아니다).
@@ -116,7 +121,7 @@ namespace DoodleUp.Runtime
                 : crew.IsAutoReturnFlash || crew.IsWarningEntryFlash
                     ? LastShiftUiTheme.Fault
                     : crew.IsCritical
-                        ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), LastShiftUiTheme.Crisis, BlinkPhase)
+                        ? LastShiftUiTheme.PulseCrisis(Time.unscaledTime)
                         : LastShiftUiTheme.Nominal);
             gauge.SetThresholds();
         }
