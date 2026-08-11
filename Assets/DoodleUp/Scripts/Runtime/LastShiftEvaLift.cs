@@ -35,24 +35,25 @@ namespace DoodleUp.Runtime
         public static bool IsAtHullTop => !IsMoving && Y >= LastShiftEvaShaft.TopHatchY - Epsilon;
 
         /// <summary>
-        /// 올라간다. <b>출발과 동시에 감압을 건다</b> — 이 한 줄이 겹침의 전부다.
+        /// 올라간다 — <b>1단까지만</b>. 출발과 동시에 감압을 건다: 이 한 줄이 겹침의 전부다.
         ///
-        /// 안쪽(하단) 게이트가 열려 있어야 한다. <see cref="LastShiftAirlock.TryBeginDepressurize"/>
-        /// 가 그 게이트를 자동으로 닫으므로 여기서 따로 닫지 않는다 — 감압은 닫힌 챔버에서만
-        /// 성립하고, 두 동작으로 나누면 그 사이 상태에 이름을 붙일 게 없다.
+        /// 2단(문턱까지)은 <see cref="Tick"/> 이 감압 완료를 보고 이어서 올린다. 사람이 버튼을
+        /// 두 번 누르게 하지 않는 이유는, 감압이 끝난 챔버에 그대로 서 있을 이유가 없어서다 —
+        /// 나가려고 탄 것이고 그 사이에 할 수 있는 선택이 없다.
         /// </summary>
         public static bool TryAscend()
         {
             if (!IsAtDeck) return false;
             if (!LastShiftAirlock.TryBeginDepressurize()) return false;
 
-            TargetY = LastShiftEvaShaft.TopHatchY;
-            Debug.Log($"[LAST_SHIFT_LIFT] depart=up from={Y:F2} to={TargetY:F2} cycle=BEGIN");
+            TargetY = LastShiftEvaShaft.DepressurizeStopY;
+            Debug.Log($"[LAST_SHIFT_LIFT] depart=up stage=1 to={TargetY:F2} cycle=BEGIN");
             return true;
         }
 
         /// <summary>
-        /// 내려온다. 올라갈 때와 대칭으로 출발과 동시에 재가압을 건다.
+        /// 내려온다 — 문턱에서 <b>1단 자리까지</b>. 올라갈 때와 대칭으로 출발과 동시에
+        /// 재가압을 걸고, 재가압이 끝나면 <see cref="Tick"/> 이 갑판까지 마저 내린다.
         /// 재가압은 기항 게이트를 안 보므로(<c>RG-3</c> 영구 잠금 금지) 여기서도 안 본다.
         /// </summary>
         public static bool TryDescend()
@@ -60,24 +61,35 @@ namespace DoodleUp.Runtime
             if (!IsAtHullTop) return false;
             if (!LastShiftAirlock.TryBeginRepressurize()) return false;
 
-            TargetY = LastShiftEvaShaft.DeckY;
-            Debug.Log($"[LAST_SHIFT_LIFT] depart=down from={Y:F2} to={TargetY:F2} cycle=BEGIN");
+            TargetY = LastShiftEvaShaft.DepressurizeStopY;
+            Debug.Log($"[LAST_SHIFT_LIFT] depart=down stage=1 to={TargetY:F2} cycle=BEGIN");
             return true;
         }
 
         /// <summary>
         /// 시계를 한 스텝 돌린다. sandbox 가 <see cref="LastShiftAirlock.Tick"/> 과 같은 자리에서
         /// 부른다 — 둘이 같은 프레임에 돌아야 겹침이 실제로 겹친다.
+        ///
+        /// 1단에 도착해 있고 사이클이 끝났으면 여기서 2단을 잇는다.
         /// </summary>
         public static void Tick(float deltaTime)
         {
-            if (!IsMoving || deltaTime <= 0f) return;
+            if (deltaTime <= 0f) return;
 
-            Y = Mathf.MoveTowards(Y, TargetY, LastShiftEvaShaft.LiftSpeed * deltaTime);
-            if (Mathf.Abs(TargetY - Y) > Epsilon) return;
+            if (IsMoving)
+            {
+                Y = Mathf.MoveTowards(Y, TargetY, LastShiftEvaShaft.LiftSpeed * deltaTime);
+                if (Mathf.Abs(TargetY - Y) > Epsilon) return;
+                Y = TargetY;
+                Debug.Log($"[LAST_SHIFT_LIFT] arrive y={Y:F2} airlock={LastShiftAirlock.Phase}");
+            }
 
-            Y = TargetY;
-            Debug.Log($"[LAST_SHIFT_LIFT] arrive y={Y:F2} airlock={LastShiftAirlock.Phase}");
+            if (Mathf.Abs(Y - LastShiftEvaShaft.DepressurizeStopY) > Epsilon) return;
+
+            // 감압이 끝났으면 문턱까지, 재가압이 끝났으면 갑판까지 — 1단 자리는 지나가는
+            // 자리이지 서 있는 자리가 아니다.
+            if (LastShiftAirlock.IsOuterHatchOpen) TargetY = LastShiftEvaShaft.TopHatchY;
+            else if (LastShiftAirlock.IsInnerHatchOpen) TargetY = LastShiftEvaShaft.DeckY;
         }
 
         /// <summary>씬 전환·검사 격리용. 정적 상태라 안 지우면 다음 판으로 새어 나간다.</summary>

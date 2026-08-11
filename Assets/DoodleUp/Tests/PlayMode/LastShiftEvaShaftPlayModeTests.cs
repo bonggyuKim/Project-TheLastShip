@@ -83,7 +83,7 @@ namespace DoodleUp.Tests.PlayMode
 
             // 손으로 tick 하지 않는다. sandbox 가 돌리는지를 보는 것이 이 검사의 전부다.
             var waited = 0f;
-            while (waited < LastShiftEvaShaft.LiftSeconds * 3f + 2f)
+            while (waited < LastShiftEvaShaft.AscentSeconds * 3f + 2f)
             {
                 if (LastShiftEvaLift.IsAtHullTop && LastShiftAirlock.IsOuterHatchOpen) break;
                 waited += Time.deltaTime;

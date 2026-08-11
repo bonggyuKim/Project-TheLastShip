@@ -45,22 +45,36 @@ namespace DoodleUp.Runtime
         public const float TravelHeight = TopHatchY - DeckY;
 
         /// <summary>
-        /// 승강 속도. <b>리터럴이 아니라 사이클과 묶는다</b> — 감압/재가압을 승강 중에 겹쳐
-        /// 돌리기로 했으므로(game-balance 채택 2026-08-11), 리프트가 <b>사이클이 끝나는
-        /// 바로 그 순간</b> 도착하는 속도가 유일하게 낭비가 없는 값이다.
+        /// 감압 정지 높이. <b>2단 승강의 1단이다</b>(사용자 승인 2026-08-11).
         ///
-        /// 이보다 느리면 사이클이 끝나고도 아직 올라가는 중이고, 빠르면 도착해 놓고 사이클을
-        /// 기다린다. 어느 쪽이든 EVA 왕복 시간은 느린 쪽에 묶이므로 여기서 맞춘다.
-        /// 둘 중 하나가 바뀌면 속도가 따라간다.
+        /// 승무원이 탑 <b>안에</b> 선 채로 감압이 돌아야 "챔버 안에서 감압" 이 그림으로
+        /// 성립한다. 그러려면 발밑이 해치 문턱에서 표준 서는 높이만큼 내려와 있어야 한다 —
+        /// 그 높이가 압력문 개구부 높이라 그대로 쓴다. 실측 <c>6.2 - 2.2 = 4.0</c>.
         ///
-        /// 실측 <c>6.2 / 4 = 1.55 m/s</c>. game-balance 최소 요구(겹침 <c>0.64</c>,
-        /// 순차 <c>1.10</c>)를 <b>둘 다</b> 넘으므로, 나중에 겹침을 못 쓰게 되어도 산소 예산이
-        /// 성립한다.
+        /// 여기까지가 1단이고, 감압이 끝나면 2단으로 문턱까지 마저 올라가 걸어 나간다.
+        /// 1단에서 멈추고 끝내면 나가는 데 <c>2.2m</c> 를 올라가야 하는데 점프 정점이
+        /// <c>1.30m</c> 라 못 나간다 — 그것이 2단이 필요한 이유다.
         /// </summary>
-        public static float LiftSpeed => TravelHeight / LastShiftAirlock.CycleSeconds;
+        public static float DepressurizeStopY => TopHatchY - LastShiftZoneDoor.OpeningHeight;
 
-        /// <summary>승강 한 번에 걸리는 시간. 겹침이 성립하면 사이클 시간과 같다.</summary>
-        public static float LiftSeconds => TravelHeight / LiftSpeed;
+        /// <summary>
+        /// 승강 속도. <b>1단 구간이 사이클과 같은 시간에 끝나도록</b> 묶는다.
+        ///
+        /// 감압은 1단에서만 돌므로 겹침의 기준 구간도 1단이다. 2단은 이미 감압이 끝난 뒤라
+        /// 겹칠 것이 없다. 실측 <c>4.0 / 4 = 1.00 m/s</c> 이고, game-balance 가 제안한
+        /// <c>0.9~1.0</c> 범위에 그대로 떨어진다 — 유추로 고른 값과 파생값이 만난 자리다.
+        /// </summary>
+        public static float LiftSpeed => (DepressurizeStopY - DeckY) / LastShiftAirlock.CycleSeconds;
+
+        /// <summary>1단(갑판 → 감압 정지)에 걸리는 시간. 겹침이 성립하면 사이클 시간과 같다.</summary>
+        public static float CycleStageSeconds => (DepressurizeStopY - DeckY) / LiftSpeed;
+
+        /// <summary>2단(감압 정지 → 해치 문턱)에 걸리는 시간. 실측 <c>2.20</c>초.</summary>
+        public static float ExitStageSeconds => (TopHatchY - DepressurizeStopY) / LiftSpeed;
+
+        /// <summary>상승 전체에 걸리는 시간. 1단은 사이클에 흡수되고 2단이 그대로 더해진다.</summary>
+        public static float AscentSeconds => Mathf.Max(CycleStageSeconds, LastShiftAirlock.CycleSeconds)
+                                             + ExitStageSeconds;
 
         /// <summary>이 평면 좌표가 샤프트 안인가. 코어 판정을 그대로 쓴다.</summary>
         public static bool Contains(float x, float z) => LastShiftPlazaLayout.InsideCore(x, z);

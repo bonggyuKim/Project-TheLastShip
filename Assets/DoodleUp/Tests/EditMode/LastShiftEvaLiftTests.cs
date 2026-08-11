@@ -60,13 +60,14 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftEvaLift.IsMoving, Is.True);
 
             var seconds = RunAscent();
-            var sequential = LastShiftEvaShaft.LiftSeconds + LastShiftAirlock.CycleSeconds;
-            var overlapped = Mathf.Max(LastShiftEvaShaft.LiftSeconds, LastShiftAirlock.CycleSeconds);
+            // 순차라면 1단을 다 올라간 뒤에 사이클을 돌린다. 겹치면 1단이 사이클에 흡수된다.
+            var sequential = LastShiftEvaShaft.CycleStageSeconds + LastShiftAirlock.CycleSeconds
+                             + LastShiftEvaShaft.ExitStageSeconds;
 
             Assert.That(seconds, Is.LessThan(sequential - 0.5f),
                 $"상승에 {seconds:F2}초 걸렸다 — 순차({sequential:F2}초)와 구분이 안 된다.");
-            Assert.That(seconds, Is.EqualTo(overlapped).Within(0.2f),
-                $"겹쳤다면 느린 쪽({overlapped:F2}초)에 묶여야 한다. 실측 {seconds:F2}초.");
+            Assert.That(seconds, Is.EqualTo(LastShiftEvaShaft.AscentSeconds).Within(0.2f),
+                $"겹쳤다면 {LastShiftEvaShaft.AscentSeconds:F2}초여야 한다. 실측 {seconds:F2}초.");
         }
 
         /// <summary>
@@ -76,9 +77,19 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void TheLiftArrivesExactlyWhenTheCycleEnds()
         {
-            Assert.That(LastShiftEvaShaft.LiftSeconds,
+            // 1단(갑판 -> 감압 정지)이 사이클과 같은 시간에 끝나야 한다. 감압은 1단에서만
+            // 돌므로 겹침의 기준 구간도 1단이다.
+            Assert.That(LastShiftEvaShaft.CycleStageSeconds,
                 Is.EqualTo(LastShiftAirlock.CycleSeconds).Within(0.01f),
-                "승강 시간과 사이클 시간이 갈렸다 — 겹쳐도 한쪽이 놀고 있다.");
+                "1단 승강 시간과 사이클 시간이 갈렸다 — 겹쳐도 한쪽이 놀고 있다.");
+            // 2단은 감압이 끝난 뒤라 겹칠 것이 없다. 그만큼은 그대로 더해진다.
+            Assert.That(LastShiftEvaShaft.AscentSeconds,
+                Is.EqualTo(LastShiftAirlock.CycleSeconds + LastShiftEvaShaft.ExitStageSeconds).Within(0.01f));
+            // 1단에서 멈추면 문턱까지 점프로 못 올라간다 - 2단이 필요한 이유다.
+            Assert.That(LastShiftEvaShaft.TopHatchY - LastShiftEvaShaft.DepressurizeStopY,
+                Is.GreaterThan(LastShiftShipPhysics.JumpSpeed * LastShiftShipPhysics.JumpSpeed
+                               / (2f * Mathf.Abs(LastShiftShipPhysics.GravityY))),
+                "1단에서 문턱까지가 점프 정점보다 낮다 — 2단이 필요 없다는 뜻이라 설계가 바뀐 것이다.");
         }
 
         /// <summary>
