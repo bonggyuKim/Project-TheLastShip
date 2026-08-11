@@ -60,6 +60,28 @@ namespace DoodleUp.Runtime
         /// <summary>안내가 닫혔는가 — <c>AI_T_11</c> 까지 나왔다.</summary>
         public static bool IsComplete => IsRunning && Played[IndexOf("AI_T_11")];
 
+        /// <summary>
+        /// 설비 앞까지 간 방 수. <b>순회 교육 내용의 절반이 이 넷에 있다</b> — 방 이름만 듣고
+        /// 지나가면 배전반·게이지·냉각통·전면 스크린 이야기를 하나도 안 듣는다.
+        ///
+        /// 판정선은 이것을 못 잡는다(늘어짐만 잡는다). 그래서 안내가 닫히는 자리에서 한 줄
+        /// 남긴다 — <b>진행을 막지는 않는다.</b> 설비 접근을 필수로 걸면 들어왔다 그냥 나온
+        /// 방 하나에 온보딩이 서고, 그건 이 지표가 재려는 것보다 훨씬 무겁다.
+        /// </summary>
+        public static int FixturesReached
+        {
+            get
+            {
+                var reached = 0;
+                foreach (var room in Rooms)
+                    if (Played[IndexOf(room.FixtureId)]) reached++;
+                return reached;
+            }
+        }
+
+        /// <summary>세는 방 수. 지표의 분모다.</summary>
+        public static int RoomCount => Rooms.Length;
+
         /// <summary>아직 안 들어간 방 수. 로그와 검사가 읽는다.</summary>
         public static int RoomsLeft
         {
@@ -88,7 +110,16 @@ namespace DoodleUp.Runtime
         {
             if (!IsRunning) return;
             if (Play("AI_T_01")) return;
-            if (RoomsLeft == 0) Play("AI_T_11");
+            if (RoomsLeft != 0 || !Play("AI_T_11")) return;
+
+            // 안내가 닫히는 자리에서 <b>한 번만</b> 남긴다. 프레임마다 찍는 계기가 아니라
+            // 판 하나의 결과이고, game-balance 가 판정선으로 못 잡는 축을 여기서 읽는다.
+            var missed = new System.Text.StringBuilder();
+            foreach (var room in Rooms)
+                if (!Played[IndexOf(room.FixtureId)])
+                    missed.Append(missed.Length > 0 ? "," : string.Empty).Append(room.FixtureId);
+            Debug.Log($"[LAST_SHIFT_PATROL] action=CLOSE fixtures={FixturesReached}/{RoomCount}" +
+                      $" missed={(missed.Length > 0 ? missed.ToString() : "none")}");
         }
 
         /// <summary><c>AI_T_02B</c> — 코어 사거리. 순서 무관 · 판당 한 번이다.</summary>

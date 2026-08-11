@@ -184,6 +184,49 @@ namespace DoodleUp.Tests.EditMode
                 "새 줄이 떴는데 앞줄의 재촉 시계가 이어졌다");
         }
 
+        /// <summary>
+        /// 설비 도달률. <b>순회를 빨리 끝내면 교육 내용의 절반을 안 듣는다</b> — 판정선은
+        /// 늘어짐만 잡아서 이 축을 못 본다(game-balance 지적). 진행은 안 막고 수만 센다.
+        /// </summary>
+        [Test]
+        public void TheFixtureCountSeesARushedTour()
+        {
+            Open();
+            foreach (var space in new[]
+                     {
+                         LastShiftPlazaSpace.CockpitRoom, LastShiftPlazaSpace.PowerRoom,
+                         LastShiftPlazaSpace.LifeSupportRoom, LastShiftPlazaSpace.CoolingRoom
+                     })
+                LastShiftPatrolNarration.NotifyRoomEntered(space);
+
+            Assert.That(LastShiftPatrolNarration.RoomsLeft, Is.Zero);
+            Assert.That(LastShiftPatrolNarration.FixturesReached, Is.Zero,
+                "설비 앞에 한 번도 안 갔는데 도달로 세었다");
+
+            // 그래도 안내는 닫힌다 — 지표이지 관문이 아니다.
+            LastShiftPatrolNarration.NotifyInPlaza();
+            Assert.That(LastShiftPatrolNarration.IsComplete, Is.True);
+        }
+
+        /// <summary>다 들렀으면 <c>4/4</c> 다.</summary>
+        [Test]
+        public void TheFixtureCountReachesFourOnAFullTour()
+        {
+            Open();
+            foreach (var space in new[]
+                     {
+                         LastShiftPlazaSpace.CockpitRoom, LastShiftPlazaSpace.PowerRoom,
+                         LastShiftPlazaSpace.LifeSupportRoom, LastShiftPlazaSpace.CoolingRoom
+                     })
+            {
+                LastShiftPatrolNarration.NotifyRoomEntered(space);
+                LastShiftPatrolNarration.NotifyAtFixture(space);
+            }
+
+            Assert.That(LastShiftPatrolNarration.FixturesReached,
+                Is.EqualTo(LastShiftPatrolNarration.RoomCount));
+        }
+
         /// <summary>여는 두 줄까지 밀어 둔다 — 방 검사들의 공통 준비다.</summary>
         private static void Open()
         {
