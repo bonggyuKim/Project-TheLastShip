@@ -14,6 +14,13 @@ namespace DoodleUp.Runtime
     ///
     /// <b>방이 빠지는 조건은 "들어왔다" 하나다.</b> 설비 앞까지 가야 빠지게 하면, 들어왔다가
     /// 그냥 나온 방 때문에 안내가 영영 안 닫힌다 — 설비 줄은 재촉이 데려가지 강제하지 않는다.
+    ///
+    /// <b>조항 <c>N-8</c> — 설비 줄은 안 들렀으면 <b>방을 나갈 때</b> 나온다.</b> 방마다 두 줄 중
+    /// 앞이 위치이고 뒤가 기능인데, 빠지는 쪽은 항상 기능이었다(순회 교육의 절반이다).
+    /// 타이머가 아니라 퇴장 시점인 것이 요점이다 — 진입 후 <c>n</c>초로 두면 이미 나온 뒤
+    /// 복도에서 떠서 그 줄이 어느 방 얘기인지 흐려진다. 퇴장에 붙이면 <b>그 방에 대한 마지막
+    /// 한 줄</b>이 된다. 강제로 데려가는 것이 아니라 안 갔을 때 줄만 재생하는 것이라, 위
+    /// 규약과 충돌하지 않는다.
     /// </summary>
     public static class LastShiftPatrolNarration
     {
@@ -45,8 +52,10 @@ namespace DoodleUp.Runtime
         };
 
         private static readonly bool[] Played = new bool[LastShiftNarrationScript.Patrol.Length];
+        private static readonly bool[] Approached = new bool[4];
         private static int showing = -1;
         private static float lineElapsed;
+        private static int occupiedRoom = -1;
 
         public static bool IsRunning { get; private set; }
 
@@ -79,6 +88,23 @@ namespace DoodleUp.Runtime
             }
         }
 
+        /// <summary>
+        /// <b>설비 앞까지 실제로 걸어간</b> 방 수. 조항 <c>N-8</c> 이 들어오면서
+        /// <see cref="FixturesReached"/> 는 거의 항상 <c>4</c> 가 된다 — 안 들러도 나갈 때
+        /// 나오기 때문이다. 그래서 balance 가 재려던 축("빨리 훑고 지나갔는가")을 이쪽이
+        /// 따로 든다. 둘을 한 값으로 두면 지표가 그 자리에서 죽는다.
+        /// </summary>
+        public static int FixturesApproached
+        {
+            get
+            {
+                var count = 0;
+                foreach (var seen in Approached)
+                    if (seen) count++;
+                return count;
+            }
+        }
+
         /// <summary>세는 방 수. 지표의 분모다.</summary>
         public static int RoomCount => Rooms.Length;
 
@@ -98,8 +124,10 @@ namespace DoodleUp.Runtime
         {
             IsRunning = true;
             for (var i = 0; i < Played.Length; i++) Played[i] = false;
+            for (var i = 0; i < Approached.Length; i++) Approached[i] = false;
             showing = -1;
             lineElapsed = 0f;
+            occupiedRoom = -1;
         }
 
         /// <summary>
@@ -109,8 +137,13 @@ namespace DoodleUp.Runtime
         public static void NotifyInPlaza()
         {
             if (!IsRunning) return;
+            LeaveRoom();
             if (Play("AI_T_01")) return;
-            if (RoomsLeft != 0 || !Play("AI_T_11")) return;
+            if (RoomsLeft != 0) return;
+            // 방을 나오며 막 뜬 설비 줄이 <b>다 찍히기 전에는 안 덮는다</b>. 마지막 방에서
+            // 나오는 프레임에 닫는 줄이 겹치면 그 방의 기능 설명이 한 프레임도 안 보인다.
+            if (lineElapsed < LastShiftNarrationScript.TypingSeconds) return;
+            if (!Play("AI_T_11")) return;
 
             // 안내가 닫히는 자리에서 <b>한 번만</b> 남긴다. 프레임마다 찍는 계기가 아니라
             // 판 하나의 결과이고, game-balance 가 판정선으로 못 잡는 축을 여기서 읽는다.
@@ -118,7 +151,10 @@ namespace DoodleUp.Runtime
             foreach (var room in Rooms)
                 if (!Played[IndexOf(room.FixtureId)])
                     missed.Append(missed.Length > 0 ? "," : string.Empty).Append(room.FixtureId);
-            Debug.Log($"[LAST_SHIFT_PATROL] action=CLOSE fixtures={FixturesReached}/{RoomCount}" +
+            // 두 수를 같이 낸다. played 는 조항 N-8 덕에 거의 항상 4 이고, approached 가
+            // balance 가 재려던 "빨리 훑고 지나갔는가" 다.
+            Debug.Log($"[LAST_SHIFT_PATROL] action=CLOSE played={FixturesReached}/{RoomCount}" +
+                      $" approached={FixturesApproached}/{RoomCount}" +
                       $" missed={(missed.Length > 0 ? missed.ToString() : "none")}");
         }
 
@@ -133,18 +169,29 @@ namespace DoodleUp.Runtime
         public static void NotifyRoomEntered(LastShiftPlazaSpace space)
         {
             if (!IsRunning || !Played[IndexOf("AI_T_01")]) return;
-            foreach (var room in Rooms)
-                if (room.Space == space) Play(room.EntryId);
+            for (var i = 0; i < Rooms.Length; i++)
+            {
+                if (Rooms[i].Space != space) continue;
+                // 다른 방에서 곧장 넘어왔으면 그쪽을 먼저 닫는다(조항 N-8).
+                if (occupiedRoom != i) LeaveRoom();
+                occupiedRoom = i;
+                Play(Rooms[i].EntryId);
+                return;
+            }
         }
 
         /// <summary>그 방 설비 앞이다. <b>그 방에 들어온 뒤에만</b> 받는다.</summary>
         public static void NotifyAtFixture(LastShiftPlazaSpace space)
         {
             if (!IsRunning) return;
-            foreach (var room in Rooms)
+            for (var i = 0; i < Rooms.Length; i++)
             {
-                if (room.Space != space) continue;
-                if (Played[IndexOf(room.EntryId)]) Play(room.FixtureId);
+                if (Rooms[i].Space != space) continue;
+                if (!Played[IndexOf(Rooms[i].EntryId)]) return;
+                // 실제로 걸어간 것은 여기서만 센다 — 퇴장으로 뜬 줄과 구분해야 지표가 산다.
+                Approached[i] = true;
+                Play(Rooms[i].FixtureId);
+                return;
             }
         }
 
@@ -168,8 +215,21 @@ namespace DoodleUp.Runtime
         {
             IsRunning = false;
             for (var i = 0; i < Played.Length; i++) Played[i] = false;
+            for (var i = 0; i < Approached.Length; i++) Approached[i] = false;
             showing = -1;
             lineElapsed = 0f;
+            occupiedRoom = -1;
+        }
+
+        /// <summary>
+        /// 지금 있던 방을 나선다. 안 들른 설비 줄이 <b>여기서</b> 나온다(조항 <c>N-8</c>).
+        /// </summary>
+        private static void LeaveRoom()
+        {
+            if (occupiedRoom < 0) return;
+            var room = Rooms[occupiedRoom];
+            occupiedRoom = -1;
+            if (Played[IndexOf(room.EntryId)]) Play(room.FixtureId);
         }
 
         private static bool Play(string id)

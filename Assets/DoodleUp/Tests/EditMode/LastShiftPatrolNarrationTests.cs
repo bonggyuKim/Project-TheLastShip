@@ -108,6 +108,8 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.False, "광장에 안 돌아왔는데 닫혔다");
 
             LastShiftPatrolNarration.NotifyInPlaza();
+            LastShiftPatrolNarration.Tick(LastShiftNarrationScript.TypingSeconds);
+            LastShiftPatrolNarration.NotifyInPlaza();
 
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_11"));
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.True);
@@ -200,12 +202,23 @@ namespace DoodleUp.Tests.EditMode
                 LastShiftPatrolNarration.NotifyRoomEntered(space);
 
             Assert.That(LastShiftPatrolNarration.RoomsLeft, Is.Zero);
-            Assert.That(LastShiftPatrolNarration.FixturesReached, Is.Zero,
-                "설비 앞에 한 번도 안 갔는데 도달로 세었다");
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero,
+                "설비 앞에 한 번도 안 갔는데 접근으로 세었다");
+            // 조항 N-8 — 안 들렀어도 나갈 때 나왔으므로 마지막 방 것만 아직이다.
+            Assert.That(LastShiftPatrolNarration.FixturesReached,
+                Is.EqualTo(LastShiftPatrolNarration.RoomCount - 1));
 
-            // 그래도 안내는 닫힌다 — 지표이지 관문이 아니다.
+            // 마지막 방을 나오는 프레임에 닫는 줄이 겹치지 않는다.
+            LastShiftPatrolNarration.NotifyInPlaza();
+            Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_10"),
+                "마지막 방의 기능 설명이 닫는 줄에 덮였다");
+            Assert.That(LastShiftPatrolNarration.IsComplete, Is.False);
+
+            LastShiftPatrolNarration.Tick(LastShiftNarrationScript.TypingSeconds);
             LastShiftPatrolNarration.NotifyInPlaza();
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.True);
+            Assert.That(LastShiftPatrolNarration.FixturesReached,
+                Is.EqualTo(LastShiftPatrolNarration.RoomCount), "네 줄이 다 나오지 않았다");
         }
 
         /// <summary>다 들렀으면 <c>4/4</c> 다.</summary>
@@ -225,6 +238,46 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(LastShiftPatrolNarration.FixturesReached,
                 Is.EqualTo(LastShiftPatrolNarration.RoomCount));
+            Assert.That(LastShiftPatrolNarration.FixturesApproached,
+                Is.EqualTo(LastShiftPatrolNarration.RoomCount));
+        }
+
+        /// <summary>
+        /// 조항 <c>N-8</c> — 설비에 안 들르고 <b>다른 방으로 곧장 넘어가도</b> 그 방 기능 줄이
+        /// 나온다. 타이머가 아니라 퇴장이라 그 줄이 <b>그 방의 마지막 한 줄</b>이 된다.
+        /// </summary>
+        [Test]
+        public void LeavingARoomPlaysTheFixtureLineItSkipped()
+        {
+            Open();
+            LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            Assume.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_05"));
+
+            // 배전반에 안 가고 곧장 산소실로 넘어간다.
+            LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.LifeSupportRoom);
+
+            Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_07"));
+            Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(1),
+                "전력실 기능 줄이 퇴장에서 안 나왔다");
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero,
+                "안 걸어갔는데 접근으로 세었다");
+        }
+
+        /// <summary>
+        /// <b>두 지표가 갈린다.</b> N-8 이 들어오면서 "줄이 떴는가" 는 거의 항상 4 가 되므로,
+        /// balance 가 재려던 "빨리 훑고 지나갔는가" 는 접근 수가 따로 들어야 한다.
+        /// </summary>
+        [Test]
+        public void ThePlayedCountAndTheApproachCountAreDifferentThings()
+        {
+            Open();
+            LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.PowerRoom);
+            LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CoolingRoom);
+            LastShiftPatrolNarration.NotifyInPlaza();
+
+            Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(2));
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.EqualTo(1));
         }
 
         /// <summary>여는 두 줄까지 밀어 둔다 — 방 검사들의 공통 준비다.</summary>
