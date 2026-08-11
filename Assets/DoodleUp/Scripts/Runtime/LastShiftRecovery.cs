@@ -263,7 +263,7 @@ namespace DoodleUp.Runtime
         public const float ZonePressureVacuumSnap = 0.005f;
 
         /// <summary>막대 적색 점멸 + 호흡음 증폭 구간. 남은 24초를 시각으로 알린다.</summary>
-        public const float SuitOxygenCriticalThreshold = 0.30f;
+        public const float SuitOxygenCriticalThreshold = 0.35f;
 
         /// <summary>
         /// 첫 산소 경고. <b>아직 판단할 시간이 남은 자리</b>다 — 임계(<see cref="SuitOxygenCriticalThreshold"/>)는

@@ -160,7 +160,7 @@ namespace DoodleUp.Runtime
         /// game-qa 소관이다 — 여기 두는 것은 숫자의 집을 하나로 만들려는 것이고, 예전에는
         /// <c>120</c> 이 주석에만 있어서 값이 바뀌어도 코드가 모르는 상태였다.
         /// </summary>
-        public const float OnboardingLimitSeconds = 70f;
+        public const float OnboardingLimitSeconds = 75f;
 
         /// <summary>
         /// 조작 학습 구간의 상한. 새 매김 <c>3</c>~<c>12</c>(현행 열거형 <c>1</c>~<c>10</c>)가
