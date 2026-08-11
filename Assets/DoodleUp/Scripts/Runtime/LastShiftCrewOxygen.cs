@@ -66,7 +66,8 @@ namespace DoodleUp.Runtime
         /// 경계를 되넘지 않으므로 다시 깜빡일 자리가 없다.
         /// </summary>
         public bool IsWarningEntryFlash => !IsDead && warningAt > float.NegativeInfinity
-            && LastShiftUiTheme.IsWarningPulse(Time.unscaledTime - warningAt, 1);
+            && LastShiftUiTheme.IsWarningPulse(Time.unscaledTime - warningAt, 1,
+                LastShiftUiTheme.WarningEntryPulseSeconds, 0f);
 
         /// <summary>
         /// 첫 경고 구간. <b>임계보다 넓다</b> — <see cref="IsCritical"/> 이 참이면 이쪽도 참이다.

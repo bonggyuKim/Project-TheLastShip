@@ -81,13 +81,19 @@ namespace DoodleUp.Runtime
         /// 같은 박자로 <paramref name="pulses"/> 번만 깜빡인다. 회수는 두 번, 첫 경고 진입은
         /// 한 번이다(game-art 확정) — 박자를 공유해야 둘이 같은 계통의 신호로 읽힌다.
         /// </summary>
-        public static bool IsWarningPulse(float elapsedSeconds, int pulses)
+        public static bool IsWarningPulse(float elapsedSeconds, int pulses,
+            float onSeconds = 0.12f, float offSeconds = 0.08f)
         {
-            const float onSeconds = 0.12f;
-            const float offSeconds = 0.08f;
-            if (elapsedSeconds < 0f || elapsedSeconds >= (onSeconds + offSeconds) * pulses) return false;
-            return elapsedSeconds % (onSeconds + offSeconds) < onSeconds;
+            var period = onSeconds + offSeconds;
+            if (period <= 0f || elapsedSeconds < 0f || elapsedSeconds >= period * pulses) return false;
+            return elapsedSeconds % period < onSeconds;
         }
+
+        /// <summary>
+        /// 첫 경고 진입의 <b>한 번짜리</b> 점멸 길이. 회수의 빠른 두 번과 달리 한 번뿐이라
+        /// 짧으면 안 보고 지나간다 — 규격서가 <c>300ms</c> 로 못박은 이유다.
+        /// </summary>
+        public const float WarningEntryPulseSeconds = 0.3f;
 
         /// <summary>
         /// <see cref="UnityEngine.UI.CanvasScaler"/> 가 <c>ScaleWithScreenSize</c>·
