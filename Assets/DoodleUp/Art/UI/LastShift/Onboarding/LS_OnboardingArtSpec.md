@@ -28,6 +28,6 @@
 | `SuitOxygenCriticalThreshold` 진입 | `산소 {threshold}%. 복귀 외 행동 권장하지 않음.` | 경고 문안이 보이는 2초 동안 crisis 패널과 산소 게이지가 같은 프레임에 위기색으로 전환. 배너가 사라진 뒤에도 게이지는 `IsCritical`이 해제될 때까지 1.5Hz 밝기 pulse를 유지. | `CHIME_ALERT` 1회 |
 | O-7 자동 회수 (`AI_F_W3` / `IsAutoReturnFlash`) | `산소 고갈. 강제 회수됨.` | 위기색을 쓰지 않는다. 주의 주황(`#FF9433`)으로 2회 빠르게 점멸한 뒤 청록 정상 상태로 복귀. 사망 암전·지속 적색·반복 경보 금지. | `CHIME_ALERT` 1회 |
 
-- 임계 숫자는 문자열 상수가 아니라 `LastShiftRecoveryTuning`의 활성 threshold를 `{threshold}`로 표시한다. Warning/Critical은 배타 상태가 아니므로 Critical에서도 Warning 시각 상태를 끄지 않는다.
+- PM 확정 매핑은 Warning `45%` / Critical `35%`다. 임계 숫자는 문자열 상수가 아니라 `LastShiftRecoveryTuning`의 활성 threshold를 `{threshold}`로 표시한다. Warning/Critical은 배타 상태가 아니므로 Critical에서도 Warning 시각 상태를 끄지 않는다.
 - 실제 `IsDead`는 O-7 자동 회수와 다른 상태다. 이 온보딩 자동 회수 규격을 적용하지 않으며, 회색 사망 상태를 유지한다.
 - CHIME·문안 노출·첫 점멸 프레임은 같은 이벤트에서 시작한다. crisis는 `LastShiftUiTheme.PulseCrisis(Time.unscaledTime)`의 1.5Hz 밝기 pulse를 `IsCritical` 지속 동안 사용한다. 반복 금지는 반복 경고음·문안에만 적용하며, 지속 상태를 알리는 게이지 밝기 pulse는 유지한다. 알파 점멸은 사용하지 않는다.
