@@ -35,6 +35,15 @@ namespace DoodleUp.Runtime
         /// <summary>그 줄이 뜬 뒤 시간. 상시 라인에는 재촉이 없어 표시용이다.</summary>
         public static float LineElapsedSeconds => shownFor;
 
+        /// <summary>
+        /// 지금 줄이 쓰는 띠 그림. <b>위기색은 임계 한 줄뿐이다</b>(game-art 규격) — 회수는
+        /// 실패 통보가 아니라 왕복 손실이라 주의색을 쓰고, 첫 경고도 아직 되돌릴 수 있다.
+        /// </summary>
+        public static LastShiftOnboardingPanelTone PanelTone =>
+            HasLine && Current.Id == "AI_F_W2"
+                ? LastShiftOnboardingPanelTone.Crisis
+                : LastShiftOnboardingPanelTone.Warning;
+
         /// <summary>그 줄이 이번 판에 이미 떴는가.</summary>
         public static bool HasSpent(string id) => Spent[IndexOf(id)];
 

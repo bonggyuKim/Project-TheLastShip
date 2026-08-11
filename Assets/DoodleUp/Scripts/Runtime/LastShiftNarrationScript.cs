@@ -275,6 +275,27 @@ namespace DoodleUp.Runtime
         };
 
         /// <summary>
+        /// 한 줄이 다 찍히는 데 걸리는 시간. <b>글자 수와 무관하다</b> — 초당 몇 자로 두면
+        /// 긴 줄이 다음 줄에 잡아먹히는데, 이 대본은 줄마다 길이가 두 배 넘게 차이 난다.
+        /// 박자의 절반이라 어떤 줄이든 다음 박이 오기 한참 전에 다 읽힌다.
+        /// </summary>
+        public static float TypingSeconds => LastShiftWakeSequence.BeatSeconds * 0.5f;
+
+        /// <summary>
+        /// <paramref name="elapsed"/> 시점까지 찍힌 만큼. 다 찍히면 원문 그대로다.
+        /// <b>글자를 세서 자를 뿐 새 문자열 규칙을 만들지 않는다</b> — 서식이 붙으면
+        /// 여기가 아니라 그리는 쪽이 바뀐다.
+        /// </summary>
+        public static string Reveal(string text, float elapsed)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            if (elapsed >= TypingSeconds) return text;
+            if (elapsed <= 0f) return string.Empty;
+            var shown = Mathf.CeilToInt(text.Length * (elapsed / TypingSeconds));
+            return text.Substring(0, Mathf.Clamp(shown, 0, text.Length));
+        }
+
+        /// <summary>
         /// 화면에 낼 문장. <c>{threshold}</c> 자리에 <b>지금 값</b>을 넣는다 — 경고를 띄우는
         /// 조건과 화면에 적히는 숫자가 같은 상수에서 나와야 갈리지 않는다(조항 <c>N-7</c>).
         /// </summary>

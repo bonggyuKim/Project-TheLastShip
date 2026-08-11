@@ -2182,7 +2182,8 @@ namespace DoodleUp.Runtime
             if (LastShiftStandingNarration.HasLine)
             {
                 DrawNarrationBanner(layer, LastShiftStandingNarration.Current,
-                    LastShiftStandingNarration.LineElapsedSeconds, 1f, 1f);
+                    LastShiftStandingNarration.LineElapsedSeconds, 1f, 1f,
+                    LastShiftStandingNarration.PanelTone);
                 return;
             }
 
@@ -2190,7 +2191,8 @@ namespace DoodleUp.Runtime
             {
                 DrawNarrationBanner(layer, LastShiftWakeSequence.Current,
                     LastShiftWakeSequence.LineElapsedSeconds,
-                    LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha);
+                    LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha,
+                    typed: !LastShiftWakeSequence.IsOpeningLine);
                 return;
             }
 
@@ -2254,7 +2256,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static void DrawNarrationBanner(LastShiftUiLayer layer,
             in LastShiftNarrationScript.Line line, float lineElapsed,
-            float panelAlpha, float lineAlpha)
+            float panelAlpha, float lineAlpha,
+            LastShiftOnboardingPanelTone tone = LastShiftOnboardingPanelTone.Normal,
+            bool typed = true)
         {
             var screen = LastShiftUiLayer.ScreenSize;
             var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
@@ -2268,7 +2272,7 @@ namespace DoodleUp.Runtime
                 banner.xMax,
                 Mathf.Lerp((screen.y + banner.height) * 0.5f, banner.yMax, panelAlpha));
 
-            if (panelAlpha > 0f) layer.OnboardingPanel("tutorial", seated, panelAlpha);
+            if (panelAlpha > 0f) layer.OnboardingPanel("tutorial", seated, tone, panelAlpha);
 
             // 화자 이름은 띠와 함께 온다. 검정 위에 두 줄이 뜨면 "로그 한 줄" 이 아니게 된다.
             if (panelAlpha > 0f)
@@ -2277,9 +2281,13 @@ namespace DoodleUp.Runtime
                     new Color(0.32f, 0.82f, 0.82f, panelAlpha), fontStyle: FontStyle.Bold);
 
             // 재촉은 그 줄이 뜬 뒤 시간으로 갈린다(조항 N-1 — 재촉에는 신호음이 없다).
-            var text = line.HasNudge && lineElapsed >= line.NudgeAfterSeconds
-                ? line.Nudge
-                : LastShiftNarrationScript.Format(line);
+            // 재촉으로 갈리면 <b>다시 찍는다</b> — 새 문장이 통째로 나타나면 앞 문장이
+            // 그 자리에서 갈아치워진 것으로 보여 읽던 사람이 흐름을 놓친다.
+            var swapped = line.HasNudge && lineElapsed >= line.NudgeAfterSeconds;
+            var text = swapped ? line.Nudge : LastShiftNarrationScript.Format(line);
+            if (typed)
+                text = LastShiftNarrationScript.Reveal(
+                    text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed);
             var ivory = LastShiftUiTheme.Ivory;
             layer.Label("tutorialGuide", new Rect(seated.x + 42f, seated.y + 60f, seated.width - 84f, 96f),
                 text, 38, new Color(ivory.r, ivory.g, ivory.b, ivory.a * Mathf.Clamp01(lineAlpha)),

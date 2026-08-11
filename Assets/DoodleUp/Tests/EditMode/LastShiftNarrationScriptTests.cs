@@ -121,6 +121,41 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
+        /// 찍히는 속도가 <b>글자 수와 무관</b>한가. 초당 몇 자로 두면 긴 줄이 다음 줄에
+        /// 잡아먹히는데, 이 대본은 줄마다 길이가 두 배 넘게 차이 난다.
+        /// </summary>
+        [Test]
+        public void EveryLineFinishesTypingInTheSameTime()
+        {
+            var shortest = LastShiftNarrationScript.All
+                .OrderBy(line => line.Text.Length).First();
+            var longest = LastShiftNarrationScript.All
+                .OrderByDescending(line => line.Text.Length).First();
+            Assume.That(longest.Text.Length, Is.GreaterThan(shortest.Text.Length));
+
+            var half = LastShiftNarrationScript.TypingSeconds * 0.5f;
+            foreach (var line in new[] { shortest, longest })
+            {
+                Assert.That(LastShiftNarrationScript.Reveal(line.Text, 0f), Is.Empty);
+                Assert.That(LastShiftNarrationScript.Reveal(line.Text, half).Length,
+                    Is.EqualTo(Mathf.CeilToInt(line.Text.Length * 0.5f)),
+                    $"{line.Id} 가 절반 시점에 절반이 아니다");
+                Assert.That(LastShiftNarrationScript.Reveal(
+                        line.Text, LastShiftNarrationScript.TypingSeconds),
+                    Is.EqualTo(line.Text), $"{line.Id} 가 제 시간에 다 안 찍혔다");
+            }
+        }
+
+        /// <summary>다 찍힌 뒤에는 원문 그대로다 — 잘리거나 늘어나지 않는다.</summary>
+        [Test]
+        public void RevealIsStableOnceComplete()
+        {
+            var line = LastShiftNarrationScript.Of("AI_W_01");
+            Assert.That(LastShiftNarrationScript.Reveal(line.Text, 999f), Is.EqualTo(line.Text));
+            Assert.That(LastShiftNarrationScript.Reveal(string.Empty, 0.1f), Is.Empty);
+        }
+
+        /// <summary>
         /// 상시 경고 두 줄이 <b>지금 임계</b>를 말하는가. 정본 표에는 <c>40%</c>·<c>25%</c> 가
         /// 문자열에 박혀 있는데 값은 <c>45</c>/<c>30</c> 으로 옮겨갔다 — 박힌 채로 뒀으면
         /// 경고가 뜨는 조건과 화면 숫자가 갈렸을 자리다.

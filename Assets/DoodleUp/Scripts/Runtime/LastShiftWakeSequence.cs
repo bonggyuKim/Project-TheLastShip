@@ -81,6 +81,13 @@ namespace DoodleUp.Runtime
         public static bool HasLine => IsRunning && fired > 0;
 
         /// <summary>
+        /// 지금 뜬 줄이 <b>도입부의 첫 로그</b>인가. 그 한 줄만 타이핑이 아니라 페이드로
+        /// 들어온다(art 규격) — 검정 위에 떠오르는 시스템 로그의 그림이고, 둘을 겹치면
+        /// "추가 페이드 없음" 이 그 자리에서 깨진다.
+        /// </summary>
+        public static bool IsOpeningLine => IsRunning && fired == 1;
+
+        /// <summary>
         /// 지금 줄의 진하기. 첫 줄만 <see cref="LogHoldSeconds"/> 동안 떠오르고 나머지는 바로
         /// <c>1</c> 이다 — 줄이 바뀔 때마다 페이드하면 대사가 읽히기 전에 다음이 온다.
         /// </summary>
