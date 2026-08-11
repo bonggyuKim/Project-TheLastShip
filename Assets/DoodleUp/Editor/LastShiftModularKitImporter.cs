@@ -22,7 +22,20 @@ namespace DoodleUp.Editor
             "LPK_Floor_Square_2m", "LPK_Floor_Curve_45", "LPK_Ceiling_Straight_4m", "LPK_Support_Pillar", "LPK_Door_Airlock_2m", "LPK_Connector_Neck_2m",
             "LPK_CentralLift_4m", "LPK_Cockpit_ControlConsole", "LPK_LifeSupport_Scrubber", "LPK_Power_Switchgear", "LPK_Cooling_Exchanger", "LPK_Quarters_Bunk"
             ,"LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90", "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m", "LPK_Ceiling_Curve45", "LPK_Floor_Transition_2m", "LPK_Airlock_Exterior_4m", "LPK_DeckHatch_2m", "LPK_OxygenLeakPipe_2m", "LPK_RepairConsole_1m", "LPK_DamagedPipe_2m", "LPK_SalvagePad_4m", "LPK_TetherRack_2m", "LPK_Cockpit_WallMirror_1m"
+            ,"LPK_EVA_ConningTower_3m", "LPK_EVA_TopHatch_1p6m", "LPK_EVA_ConningTower_3m", "LPK_EVA_TopHatch_1p6m"
         };
+
+        [MenuItem("Last Shift/SP-02A/Import EVA Kit Prefabs")]
+        public static void ImportEvaKit()
+        {
+            Directory.CreateDirectory(PrefabFolder);
+            Directory.CreateDirectory(ControllerFolder);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CreatePrefab("LPK_EVA_ConningTower_3m");
+            CreatePrefab("LPK_EVA_TopHatch_1p6m");
+            AssetDatabase.SaveAssets();
+            Debug.Log("[LAST_SHIFT_EVA_KIT] prefabs=2 hatchAnimator=PASS result=PASS");
+        }
 
         [MenuItem("Last Shift/SP-02A/Create Cockpit Mirror and Assemble")]
         public static void CreateCockpitMirrorAndAssemble()
@@ -76,6 +89,8 @@ namespace DoodleUp.Editor
             var modelInstance = (GameObject)PrefabUtility.InstantiatePrefab(model);
             modelInstance.name = "Model";
             modelInstance.transform.SetParent(visual.transform, false);
+            if (name is "LPK_EVA_ConningTower_3m" or "LPK_EVA_TopHatch_1p6m")
+                AlignModelToBottom(modelInstance);
             AddStructuralColliders(modelInstance, name);
             if (TryCreateAnimator(name, root, out var controller))
                 root.AddComponent<Animator>().runtimeAnimatorController = controller;
@@ -83,6 +98,16 @@ namespace DoodleUp.Editor
             UnityEngine.Object.DestroyImmediate(root);
             if (prefab == null) throw new InvalidOperationException($"Could not create prefab for {name}");
             return prefab;
+        }
+
+        private static void AlignModelToBottom(GameObject modelInstance)
+        {
+            var renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
+            var minY = float.PositiveInfinity;
+            foreach (var renderer in renderers)
+                minY = Mathf.Min(minY, renderer.bounds.min.y);
+            if (float.IsFinite(minY))
+                modelInstance.transform.localPosition -= Vector3.up * minY;
         }
 
         /// <summary>
@@ -101,7 +126,10 @@ namespace DoodleUp.Editor
             "LPK_Ceiling_Straight_4m", "LPK_Ceiling_Curve45",
             "LPK_Support_Pillar", "LPK_Connector_Neck_2m", "LPK_CentralLift_4m",
             "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90",
-            "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m"
+            "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m",
+            // 콘닝타워는 밟고 서는 구조물이다. 해치 뚜껑(LPK_EVA_TopHatch_1p6m)은 여기 없다 -
+            // 열려야 하는 것이라 압력문·갑판해치와 같은 규칙을 탄다.
+            "LPK_EVA_ConningTower_3m"
         };
 
         /// <summary>
@@ -219,6 +247,7 @@ namespace DoodleUp.Editor
                 "LPK_Door_Airlock_2m" => (pivot: "DoorLeafPivot", clip: "LP_Door_OpenClose", property: "m_LocalRotation.y", end: 0.7071f, loop: false),
                 "LPK_CentralLift_4m" => (pivot: "LiftPlatformPivot", clip: "LP_CentralLift_UpDown", property: "m_LocalPosition.y", end: 0.8f, loop: true),
                 "LPK_LifeSupport_Scrubber" => (pivot: "ScrubberFanPivot", clip: "LP_LifeSupportFan_Spin", property: "m_LocalRotation.y", end: 1f, loop: true),
+                "LPK_EVA_TopHatch_1p6m" => (pivot: "EVAHatchLidPivot", clip: "LP_EVA_Hatch_OpenClose", property: "m_LocalRotation.y", end: 0.3827f, loop: false),
                 _ => default
             };
             if (string.IsNullOrEmpty(spec.pivot)) return false;
@@ -317,7 +346,12 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
-                else Place(p[rule.assetId], root, rule.id, Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
+                else
+                {
+                    var placed = Place(p[rule.assetId], root, rule.id,
+                        Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
+                    if (rule.id == "evaTopHatch") AttachTopHatch(placed);
+                }
             }
             foreach (var space in map.spaces)
             {
@@ -368,6 +402,26 @@ namespace DoodleUp.Editor
                 // 어긋나 있어 판 경계가 방 외곽과 안 맞고, 마감 띠가 위층 바닥을 뚫고 올라온다.
                 ApplyEdgeTrim(instance, facing.HasValue && y >= 0f);
             }
+        }
+
+        /// <summary>
+        /// 상단 해치에 차단 콜라이더와 연동 컴포넌트를 붙인다.
+        ///
+        /// 뚜껑 자체에는 콜라이더가 없다(구조 메시 목록에 안 넣었다) — 열려야 하는 것이라
+        /// 압력문·갑판해치와 같은 규칙을 탄다. 차단은 <b>뚫린 자리</b>를 메우는 별도 판이
+        /// 맡고, 그 판은 완전히 닫혔을 때만 켜진다.
+        /// </summary>
+        private static void AttachTopHatch(GameObject hatch)
+        {
+            if (hatch == null || hatch.GetComponent<Animator>() == null) return;
+
+            var blockerObject = new GameObject("EvaTopHatch_Blocker");
+            blockerObject.transform.SetParent(hatch.transform, false);
+            blockerObject.transform.localPosition = Vector3.zero;
+            var blocker = blockerObject.AddComponent<BoxCollider>();
+            var opening = LastShiftEvaShaft.HatchOpening;
+            blocker.size = new Vector3(opening, LastShiftCompartments.PanelThickness, opening);
+            hatch.AddComponent<LastShiftEvaTopHatch>().Configure(blocker);
         }
 
         /// <summary>

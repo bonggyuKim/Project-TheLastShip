@@ -230,6 +230,26 @@
       "rotationY": 0
     },
     {
+      "id": "evaTower",
+      "assetId": "LPK_EVA_ConningTower_3m",
+      "position": [
+        0,
+        3.2,
+        0
+      ],
+      "rotationY": 0
+    },
+    {
+      "id": "evaTopHatch",
+      "assetId": "LPK_EVA_TopHatch_1p6m",
+      "position": [
+        0,
+        6.2,
+        0
+      ],
+      "rotationY": 0
+    },
+    {
       "id": "cockpitWindow",
       "assetId": "LPK_Cockpit_ViewWindow_4m",
       "position": [
