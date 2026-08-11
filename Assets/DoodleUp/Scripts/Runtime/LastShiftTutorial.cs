@@ -147,7 +147,27 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static int CrewCount { get; private set; } = 1;
 
-        /// <summary><c>1</c>단계 진입 이후 누적 시간. §6 판정 <c>1</c>(전체 <c>120</c>초)이 읽는 값이다.</summary>
+        /// <summary>
+        /// <c>1</c>단계 진입 이후 누적 시간. §6 판정이 읽는 값이다 —
+        /// <see cref="OnboardingLimitSeconds"/> · <see cref="HandlingLimitSeconds"/> 참조.
+        /// </summary>
+        /// <summary>
+        /// 기상·순회 구간의 상한. <b>말을 듣는 구간</b>이라 조작 학습과 같은 자로 재면 안 된다 —
+        /// 여기서 오래 걸리는 것은 헤맨 것이 아니라 읽고 있는 것이다(game-planning 확정
+        /// 2026-08-11, 옛 단일 <c>120</c>초를 둘로 쪼갠 앞쪽).
+        ///
+        /// <b>이 값을 읽는 코드는 아직 없다.</b> 판정은 조항 <c>T-9</c> 로그로 재고 그 분석은
+        /// game-qa 소관이다 — 여기 두는 것은 숫자의 집을 하나로 만들려는 것이고, 예전에는
+        /// <c>120</c> 이 주석에만 있어서 값이 바뀌어도 코드가 모르는 상태였다.
+        /// </summary>
+        public const float OnboardingLimitSeconds = 70f;
+
+        /// <summary>
+        /// 조작 학습 구간의 상한. 새 매김 <c>3</c>~<c>12</c>(현행 열거형 <c>1</c>~<c>10</c>)가
+        /// 여기 든다 — 나가는 길 · 파밍 · 도면 · 손 떼기 전부다.
+        /// </summary>
+        public const float HandlingLimitSeconds = 145f;
+
         public static float ElapsedSeconds => elapsed;
 
         /// <summary>지금 단계에 들어온 뒤 누적 시간. §6 판정 <c>2</c>·<c>3</c> 이 구간을 자르는 값이다.</summary>
