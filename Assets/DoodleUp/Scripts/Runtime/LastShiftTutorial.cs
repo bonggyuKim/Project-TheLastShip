@@ -166,7 +166,7 @@ namespace DoodleUp.Runtime
         /// 조작 학습 구간의 상한. 새 매김 <c>3</c>~<c>12</c>(현행 열거형 <c>1</c>~<c>10</c>)가
         /// 여기 든다 — 나가는 길 · 파밍 · 도면 · 손 떼기 전부다.
         /// </summary>
-        public const float HandlingLimitSeconds = 145f;
+        public const float HandlingLimitSeconds = 150f;
 
         public static float ElapsedSeconds => elapsed;
 
