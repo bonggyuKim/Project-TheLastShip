@@ -127,7 +127,7 @@ namespace DoodleUp.Editor
             "LPK_Support_Pillar", "LPK_Connector_Neck_2m", "LPK_CentralLift_4m",
             "LPK_Hull_Exterior_Panel_4m", "LPK_Hull_Exterior_Curve45", "LPK_Hull_Exterior_Curve90",
             "LPK_Hull_WindowBay_4m", "LPK_Cockpit_ViewWindow_4m",
-            // 콘닝타워는 밟고 서는 구조물이다. 해치 뚜껑(LPK_EVA_TopHatch_1p6m)은 여기 없다 -
+            // 탑은 밟고 서는 구조물이다. 해치 뚜껑(LPK_EVA_TopHatch_1p6m)은 여기 없다 -
             // 열려야 하는 것이라 압력문·갑판해치와 같은 규칙을 탄다.
             "LPK_EVA_ConningTower_3m"
         };

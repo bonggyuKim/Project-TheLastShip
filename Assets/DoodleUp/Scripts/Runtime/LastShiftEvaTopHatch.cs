@@ -3,7 +3,7 @@ using UnityEngine;
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 콘닝타워 상단 해치. <b>여닫는 주체가 아니라 따라가는 쪽이다</b> — 열림 여부는
+    /// 탑 상단 해치. <b>여닫는 주체가 아니라 따라가는 쪽이다</b> — 열림 여부는
     /// <see cref="LastShiftAirlock"/> 의 위상이 이미 정하고 있고, 여기서는 그것을 뚜껑
     /// 애니메이션과 차단 콜라이더로 옮기기만 한다.
     ///
