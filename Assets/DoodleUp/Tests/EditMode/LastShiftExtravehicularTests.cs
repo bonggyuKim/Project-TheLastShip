@@ -44,7 +44,7 @@ namespace DoodleUp.Tests.EditMode
         /// <summary>바깥 해치까지 연다. 사이클은 시계라 <see cref="LastShiftAirlock.Tick"/> 로 민다.</summary>
         private static void OpenToSpace()
         {
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
             Assert.That(LastShiftAirlock.TryBeginDepressurize(), Is.True);
             LastShiftAirlock.Tick(LastShiftAirlock.CycleSeconds);
             Assert.That(LastShiftAirlock.IsOuterHatchOpen, Is.True);
@@ -61,12 +61,12 @@ namespace DoodleUp.Tests.EditMode
         public void TheAirlockOnlyOpensAtPort()
         {
             Assert.That(LastShiftAirlock.IsAtPort, Is.False, "항해 시작 구간에서 기항으로 잡힌다.");
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.False);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.False);
 
             EnterPort();
             Assert.That(LastShiftAirlock.IsAtPort, Is.True);
             Assert.That(LastShiftMaintenance.IsAtPort, Is.True, "여력 원장 쪽 회차도 올라가 있어야 한다.");
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
 
             // 출항하면 잠긴다. 조회로만 두면 밖에 나간 채로 출항하는 상태가 남는다.
             OpenToSpaceFromInner();
@@ -93,7 +93,7 @@ namespace DoodleUp.Tests.EditMode
         public void NeverBothHatchesAtOnce()
         {
             EnterPort();
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
             Assert.That(LastShiftAirlock.IsOuterHatchOpen, Is.False);
 
             Assert.That(LastShiftAirlock.TryBeginDepressurize(), Is.True);

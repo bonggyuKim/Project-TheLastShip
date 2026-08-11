@@ -180,19 +180,19 @@ namespace DoodleUp.Runtime
 
         /// <summary>
         /// 안쪽 해치를 열 수 있는가. 인터록 셋 중 둘이 여기 있다 — 기항이어야 하고
-        /// (조항 <c>O-4</c>), <paramref name="anyDeckHatchOpen"/> 이면 안 된다.
+        /// (조항 <c>O-4</c>), <paramref name="liftAwayFromDeck"/> 이면 안 된다.
         ///
         /// 갑판 해치 상태를 인자로 받는 이유는 그것이 sandbox 소관이기 때문이다. 여기서
         /// 씬을 조회하면 EditMode 검사가 씬을 세워야 하고, 무엇보다 <b>정적 상태가 씬을
         /// 되묻는 방향</b>이 생겨 클라이언트에서 값이 갈린다.
         /// </summary>
-        public static bool CanOpenInner(bool anyDeckHatchOpen) =>
-            Phase == LastShiftAirlockPhase.Sealed && IsAtPort && !anyDeckHatchOpen;
+        public static bool CanOpenInner(bool liftAwayFromDeck) =>
+            Phase == LastShiftAirlockPhase.Sealed && IsAtPort && !liftAwayFromDeck;
 
         /// <summary>안쪽 해치를 연다. 조건은 <see cref="CanOpenInner"/> 그대로다.</summary>
-        public static bool TryOpenInner(bool anyDeckHatchOpen)
+        public static bool TryOpenInner(bool liftAwayFromDeck)
         {
-            if (!CanOpenInner(anyDeckHatchOpen)) return false;
+            if (!CanOpenInner(liftAwayFromDeck)) return false;
 
             Phase = LastShiftAirlockPhase.InnerOpen;
             Debug.Log("[LAST_SHIFT_AIRLOCK] hatch=inner state=OPEN");
@@ -272,7 +272,7 @@ namespace DoodleUp.Runtime
         /// 이 자리에서 다음에 일어날 일. 프롬프트와 <see cref="TryOperate"/> 가 <b>같은 함수를
         /// 읽는다</b> — 두 벌로 두면 "열기" 라고 적힌 자리에서 눌러도 안 열리는 상태가 생긴다.
         /// </summary>
-        public static LastShiftAirlockAction NextAction(Vector3 position, bool anyDeckHatchOpen)
+        public static LastShiftAirlockAction NextAction(Vector3 position, bool liftAwayFromDeck)
         {
             if (!IsWithinReach(position)) return LastShiftAirlockAction.None;
             if (IsCycling) return LastShiftAirlockAction.None;
@@ -282,7 +282,7 @@ namespace DoodleUp.Runtime
                 if (Phase == LastShiftAirlockPhase.InnerOpen) return LastShiftAirlockAction.CloseInner;
                 if (Phase != LastShiftAirlockPhase.Sealed) return LastShiftAirlockAction.None;
                 if (!IsAtPort) return LastShiftAirlockAction.BlockedBySegment;
-                return anyDeckHatchOpen
+                return liftAwayFromDeck
                     ? LastShiftAirlockAction.BlockedByDeckHatch
                     : LastShiftAirlockAction.OpenInner;
             }
@@ -300,10 +300,10 @@ namespace DoodleUp.Runtime
         /// 갈래(<see cref="LastShiftAirlockAction.BlockedBySegment"/> 등)는 거짓을 돌려준다 —
         /// 왜 막혔는지는 프롬프트가 이미 적고 있다.
         /// </summary>
-        public static bool TryOperate(Vector3 position, bool anyDeckHatchOpen) =>
-            NextAction(position, anyDeckHatchOpen) switch
+        public static bool TryOperate(Vector3 position, bool liftAwayFromDeck) =>
+            NextAction(position, liftAwayFromDeck) switch
             {
-                LastShiftAirlockAction.OpenInner => TryOpenInner(anyDeckHatchOpen),
+                LastShiftAirlockAction.OpenInner => TryOpenInner(liftAwayFromDeck),
                 LastShiftAirlockAction.CloseInner => TryCloseInner(),
                 LastShiftAirlockAction.Depressurize => TryBeginDepressurize(),
                 LastShiftAirlockAction.Repressurize => TryBeginRepressurize(),

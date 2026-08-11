@@ -141,7 +141,7 @@ namespace DoodleUp.Tests.PlayMode
             yield return WaitForHatch(shaft, expectedOpen: false);
             LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
             Assert.That(LastShiftAirlock.IsAtPort, Is.True, "기항이 아니면 안쪽 해치를 못 연다.");
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
             yield return Walk(Vector2.zero, 3f);
 
             Assert.That(player.transform.position.y,

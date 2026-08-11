@@ -151,12 +151,12 @@ namespace DoodleUp.Tests.EditMode
 
             // (가) 갑판 해치가 열려 있으면 에어록 안쪽이 안 열린다.
             setup.sandbox.SetHatchOpen(LastShiftBypassDuct.ForeShaft, true);
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: true), Is.False);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: true), Is.False);
             Assert.That(LastShiftAirlock.IsInnerHatchOpen, Is.False);
 
             // (나) 에어록 안쪽이 열려 있으면 갑판 해치가 안 열린다.
             setup.sandbox.SetHatchOpen(LastShiftBypassDuct.ForeShaft, false);
-            Assert.That(LastShiftAirlock.TryOpenInner(anyDeckHatchOpen: false), Is.True);
+            Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
             Assert.That(setup.hatch.TryOperate(setup.player), Is.False,
                 "에어록이 열린 채로 갑판 구멍이 뚫렸다 — 떨어진 물건이 4.2m 아래로 간다.");
             Assert.That(setup.sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft), Is.False);

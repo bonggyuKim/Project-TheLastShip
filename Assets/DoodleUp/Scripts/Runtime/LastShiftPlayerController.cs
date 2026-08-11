@@ -14,9 +14,6 @@ namespace DoodleUp.Runtime
     {
         public const float MoveSpeed = 4f;
 
-        public const float ThirdPersonBackDistance = 2.5f;
-        public const float ThirdPersonHeightBoost = 0.6f;
-
         /// <summary>
         /// 부피가 큰 부품을 든 동안의 이동 속도. 전역 <see cref="MoveSpeed"/> 를 낮추지 않는
         /// 이유는 그것이 같은 빈 공간을 더 오래 걷게 만드는 일이기 때문이다
@@ -198,7 +195,6 @@ namespace DoodleUp.Runtime
             yaw = transform.eulerAngles.y;
             pitch = targetCamera != null ? -targetCamera.transform.localEulerAngles.x : 0f;
             if (pitch < -180f) pitch += 360f;
-            ApplyStance(IsCrouching);
             if (!ManagesCursor) return;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
@@ -446,7 +442,7 @@ namespace DoodleUp.Runtime
             // 분기한다, §23.5) 승강구 사거리는 1.2m·y 무시라 덕트 안 어디서나 걸린다 —
             // 그래서 승강구를 <b>먼저</b> 본다. 덕트 바닥에 서면 승강구가, 에어록 안으로
             // 내려가면 에어록이 잡히고, 그 경계가 LastShiftAirlock.IsAtInnerSide 다.
-            return LastShiftAirlock.TryOperate(transform.position, AnyDeckHatchOpen);
+            return LastShiftAirlock.TryOperate(transform.position, LiftAwayFromDeck);
         }
 
         /// <summary>
@@ -455,10 +451,7 @@ namespace DoodleUp.Runtime
         /// 닫힘으로 본다: 최소 조립에서 안전한 쪽은 "구멍이 없다" 이고, 그 기본값이
         /// <see cref="LastShiftDeckHatch.IsOpen"/> 과 같아야 두 판정이 안 갈린다.
         /// </summary>
-        private bool AnyDeckHatchOpen =>
-            Sandbox != null &&
-            (Sandbox.IsHatchOpen(LastShiftBypassDuct.ForeShaft) ||
-             Sandbox.IsHatchOpen(LastShiftBypassDuct.AftShaft));
+        private static bool LiftAwayFromDeck => !LastShiftEvaLift.IsAtDeck;
 
         public void ResetPlayer(Vector3 position)
         {
@@ -619,8 +612,7 @@ namespace DoodleUp.Runtime
             characterController.center = new Vector3(0f, height * 0.5f, 0f);
             if (targetCamera != null)
                 targetCamera.transform.localPosition = new Vector3(0f,
-                    (crouch ? LastShiftShipPhysics.CrouchEyeHeight : LastShiftShipPhysics.EyeHeight) + ThirdPersonHeightBoost,
-                    -ThirdPersonBackDistance);
+                    crouch ? LastShiftShipPhysics.CrouchEyeHeight : LastShiftShipPhysics.EyeHeight, 0f);
         }
 
         /// <summary>
@@ -1038,7 +1030,7 @@ namespace DoodleUp.Runtime
             if (LastShiftAirlock.IsCycling && LastShiftAirlock.IsWithinReach(transform.position))
                 return PromptDraw.At($"에어록 사이클 {LastShiftAirlock.CycleProgress:P0}", airlock);
 
-            var action = LastShiftAirlock.NextAction(transform.position, AnyDeckHatchOpen);
+            var action = LastShiftAirlock.NextAction(transform.position, LiftAwayFromDeck);
             if (action == LastShiftAirlockAction.None) return PromptDraw.None;
             if (crew != null && crew.IsDead) return PromptDraw.At("에어록: 조작 불가", airlock);
 

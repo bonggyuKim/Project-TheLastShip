@@ -370,12 +370,19 @@ namespace DoodleUp.Runtime
         /// 승무원 판이다. <b>낙하는 스스로 끝나지 않는다</b>: 저중력이라 천천히 떨어질 뿐
         /// 바닥이 없으면 영원히 내려가고, 그 사이 조작·산소·판정이 전부 무의미해진다.
         ///
-        /// 기준면은 <b>선외 보행면</b>(<see cref="LastShiftAirlock.OutsideWalkY"/>)이다. 배 안의
-        /// 가장 깊은 자리(덕트·에어록 바닥)도 그 위이므로, 이 밑으로 <see cref="CrewFallMargin"/>
-        /// 이상 내려간 좌표는 밟을 것이 있는 자리가 아니다. 여유를 두는 것은 EVA 중 발판
-        /// 모서리에서 한 뼘 미끄러지는 정상 궤적을 회수로 읽지 않기 위해서다.
+        /// 기준면은 <b>정당하게 설 수 있는 가장 깊은 자리</b>다. 그 밑으로
+        /// <see cref="CrewFallMargin"/> 이상 내려간 좌표는 밟을 것이 있는 자리가 아니다.
+        /// 여유를 두는 것은 발판 모서리에서 한 뼘 미끄러지는 정상 궤적을 회수로 읽지 않기
+        /// 위해서다.
+        ///
+        /// <b>예전에는 선외 보행면을 기준으로 삼았다.</b> 그때는 보행면이 배 밑면이라 "배 안의
+        /// 가장 깊은 자리도 그 위" 가 성립했는데, EVA 가 상향으로 뒤집히면서(2026-08-11)
+        /// 보행면이 <c>+6.2</c> 로 올라가 그 전제가 반대가 됐다. 그대로 두면 판정면이
+        /// <c>3.7</c> 이 되어 <b>갑판에 서 있는 승무원이 전부 월드 밖으로 잡힌다</b>.
+        /// PlayMode 의 슬롯 복귀 검사가 "복구를 기다리다 시간 초과" 로 그것을 잡았다.
         /// </summary>
-        public static float CrewFallFloorY => LastShiftAirlock.OutsideWalkY - CrewFallMargin;
+        public static float CrewFallFloorY =>
+            Mathf.Min(LastShiftHullShell.RimBaseY, LastShiftBypassDuct.AirlockFloorY) - CrewFallMargin;
 
         /// <summary>
         /// 떨어진 승무원을 슬롯 자리로 되돌린다. 서버에서만 돈다.
