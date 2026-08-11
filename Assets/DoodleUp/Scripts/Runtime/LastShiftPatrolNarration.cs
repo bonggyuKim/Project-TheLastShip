@@ -53,9 +53,34 @@ namespace DoodleUp.Runtime
 
         private static readonly bool[] Played = new bool[LastShiftNarrationScript.Patrol.Length];
         private static readonly bool[] Approached = new bool[4];
+        private static readonly System.Collections.Generic.Queue<int> pending = new();
         private static int showing = -1;
         private static float lineElapsed;
         private static int occupiedRoom = -1;
+
+        /// <summary>
+        /// <b>순회를 가장 빨리 도는 경로의 길이</b>(game-balance 실측). 아래 최소 표시 시간이
+        /// 이 값에서 나온다 — 재실측하면 그 값도 같이 따라온다.
+        /// </summary>
+        public const float FloorSeconds = 24.4f;
+
+        /// <summary>
+        /// 한 줄이 <b>덮이기 전까지 최소한 떠 있는 시간</b>. 트리거 줄은 다음 트리거가 오면
+        /// 그냥 교체되므로, 문 간격이 좁은 구간에서는 넷을 다 듣고도 넷 다 못 읽는다.
+        ///
+        /// <b>값을 지어내지 않고 제약에서 뽑는다.</b> game-writer 가 준 조건은 하나였다 —
+        /// "열세 줄 총합이 순회를 안 넘어야 한다". 그러면 상한이 곧
+        /// <see cref="FloorSeconds"/> / 줄 수이고, 그 값을 그대로 쓰면 최소 경로에서도
+        /// <b>구조적으로 안 넘친다.</b> balance 가 권한 3.5초는 열세 줄이면 45.5초라 못 쓴다.
+        ///
+        /// 그동안 온 트리거는 <b>버리지 않고 줄 세운다</b>. 늦게 뜨는 대가는 안 읽히는 것보다
+        /// 싸고, 늦는 줄은 대개 "어느 방인지" 인데 플레이어는 이미 그 방에 들어와 있다.
+        /// </summary>
+        public static float MinimumDisplaySeconds =>
+            FloorSeconds / LastShiftNarrationScript.Patrol.Length;
+
+        /// <summary>줄 서 있는 줄 수. 검사와 진단이 읽는다.</summary>
+        public static int PendingCount => pending.Count;
 
         public static bool IsRunning { get; private set; }
 
@@ -67,7 +92,8 @@ namespace DoodleUp.Runtime
         public static float LineElapsedSeconds => lineElapsed;
 
         /// <summary>안내가 닫혔는가 — <c>AI_T_11</c> 까지 나왔다.</summary>
-        public static bool IsComplete => IsRunning && Played[IndexOf("AI_T_11")];
+        public static bool IsComplete =>
+            IsRunning && Played[IndexOf("AI_T_11")] && pending.Count == 0;
 
         /// <summary>
         /// 설비 앞까지 간 방 수. <b>순회 교육 내용의 절반이 이 넷에 있다</b> — 방 이름만 듣고
@@ -128,6 +154,7 @@ namespace DoodleUp.Runtime
             showing = -1;
             lineElapsed = 0f;
             occupiedRoom = -1;
+            pending.Clear();
         }
 
         /// <summary>
@@ -140,9 +167,8 @@ namespace DoodleUp.Runtime
             LeaveRoom();
             if (Play("AI_T_01")) return;
             if (RoomsLeft != 0) return;
-            // 방을 나오며 막 뜬 설비 줄이 <b>다 찍히기 전에는 안 덮는다</b>. 마지막 방에서
-            // 나오는 프레임에 닫는 줄이 겹치면 그 방의 기능 설명이 한 프레임도 안 보인다.
-            if (lineElapsed < LastShiftNarrationScript.TypingSeconds) return;
+            // 마지막 방에서 나오는 프레임에는 퇴장 줄과 이 줄이 겹친다. 줄 세우기가 그것을
+            // 받아 주므로 여기서 따로 기다리지 않는다 — 그 방의 기능 설명이 먼저 다 뜬다.
             if (!Play("AI_T_11")) return;
 
             // 안내가 닫히는 자리에서 <b>한 번만</b> 남긴다. 프레임마다 찍는 계기가 아니라
@@ -204,6 +230,12 @@ namespace DoodleUp.Runtime
             if (!IsRunning || showing < 0) return;
             lineElapsed += deltaTime;
 
+            if (pending.Count > 0)
+            {
+                if (lineElapsed >= MinimumDisplaySeconds) Show(pending.Dequeue());
+                return;
+            }
+
             var next = showing + 1;
             if (next >= Played.Length || Played[next]) return;
             var line = LastShiftNarrationScript.Patrol[next];
@@ -219,6 +251,7 @@ namespace DoodleUp.Runtime
             showing = -1;
             lineElapsed = 0f;
             occupiedRoom = -1;
+            pending.Clear();
         }
 
         /// <summary>
@@ -237,10 +270,24 @@ namespace DoodleUp.Runtime
             var index = IndexOf(id);
             if (Played[index]) return false;
             Played[index] = true;
+
+            // 앞줄이 아직 최소 시간을 못 채웠으면 <b>줄을 세운다</b>. 버리면 그 줄은 영영
+            // 안 뜨고, 바로 덮으면 앞줄이 안 읽힌다.
+            if (showing >= 0 && lineElapsed < MinimumDisplaySeconds)
+            {
+                pending.Enqueue(index);
+                return true;
+            }
+
+            Show(index);
+            return true;
+        }
+
+        private static void Show(int index)
+        {
             showing = index;
             // 줄이 바뀌면 재촉 시계도 여기서 다시 선다 — 앞줄의 재촉이 새 줄 위에 남지 않는다.
             lineElapsed = 0f;
-            return true;
         }
 
         private static int IndexOf(string id)

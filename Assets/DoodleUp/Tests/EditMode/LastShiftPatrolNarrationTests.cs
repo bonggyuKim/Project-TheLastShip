@@ -50,15 +50,19 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_09"),
                 "냉각실부터 들어갔는데 조종석 줄을 기다린다");
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CoolingRoom);
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_10"));
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.LifeSupportRoom);
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_07"));
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_05"));
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CockpitRoom);
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_03"));
 
             Assert.That(LastShiftPatrolNarration.RoomsLeft, Is.Zero);
@@ -76,6 +80,7 @@ namespace DoodleUp.Tests.EditMode
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.PowerRoom);
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_06"));
         }
 
@@ -88,6 +93,7 @@ namespace DoodleUp.Tests.EditMode
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.PowerRoom);
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            Settle();
 
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_06"),
                 "다시 들어갔더니 진입 줄이 또 나왔다");
@@ -108,8 +114,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.False, "광장에 안 돌아왔는데 닫혔다");
 
             LastShiftPatrolNarration.NotifyInPlaza();
-            LastShiftPatrolNarration.Tick(LastShiftNarrationScript.TypingSeconds);
-            LastShiftPatrolNarration.NotifyInPlaza();
+            Settle();
 
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_11"));
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.True);
@@ -136,11 +141,13 @@ namespace DoodleUp.Tests.EditMode
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CoolingRoom);
 
             LastShiftPatrolNarration.NotifyNearCore();
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_02B"),
                 "방을 하나 본 뒤에는 코어 줄이 안 나온다");
 
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
             LastShiftPatrolNarration.NotifyNearCore();
+            Settle();
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_05"),
                 "코어 줄이 두 번 나왔다");
         }
@@ -158,12 +165,14 @@ namespace DoodleUp.Tests.EditMode
 
             // 전력실로 들어가면 그 뒤 줄(AI_T_06)은 시간 형이 아니라 안 따라붙는다.
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            Settle();
             LastShiftPatrolNarration.Tick(600f);
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_05"));
 
             // 조종석 스크린 뒤에는 따라붙는다.
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CockpitRoom);
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CockpitRoom);
+            Settle();
             Assume.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_04"));
             LastShiftPatrolNarration.Tick(LastShiftNarrationScript.Of("AI_T_04B").AutoAfterSeconds);
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_04B"));
@@ -199,7 +208,11 @@ namespace DoodleUp.Tests.EditMode
                          LastShiftPlazaSpace.CockpitRoom, LastShiftPlazaSpace.PowerRoom,
                          LastShiftPlazaSpace.LifeSupportRoom, LastShiftPlazaSpace.CoolingRoom
                      })
+            {
                 LastShiftPatrolNarration.NotifyRoomEntered(space);
+                // 방 사이를 걷는 시간. 이것이 없으면 열세 줄이 한 프레임에 몰려 줄만 선다.
+                Settle();
+            }
 
             Assert.That(LastShiftPatrolNarration.RoomsLeft, Is.Zero);
             Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero,
@@ -208,14 +221,19 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftPatrolNarration.FixturesReached,
                 Is.EqualTo(LastShiftPatrolNarration.RoomCount - 1));
 
-            // 마지막 방을 나오는 프레임에 닫는 줄이 겹치지 않는다.
+            // 마지막 방을 나오는 프레임에 퇴장 줄과 닫는 줄이 겹친다. 줄을 세우므로 둘 다
+            // 나오고, 순서도 그대로다 — 겹쳐서 하나가 지워지지 않는다.
             LastShiftPatrolNarration.NotifyInPlaza();
+            Assert.That(LastShiftPatrolNarration.PendingCount, Is.EqualTo(2));
+            Assert.That(LastShiftPatrolNarration.IsComplete, Is.False,
+                "줄이 아직 안 떴는데 닫힌 것으로 셌다");
+
+            LastShiftPatrolNarration.Tick(LastShiftPatrolNarration.MinimumDisplaySeconds);
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_10"),
                 "마지막 방의 기능 설명이 닫는 줄에 덮였다");
-            Assert.That(LastShiftPatrolNarration.IsComplete, Is.False);
 
-            LastShiftPatrolNarration.Tick(LastShiftNarrationScript.TypingSeconds);
-            LastShiftPatrolNarration.NotifyInPlaza();
+            LastShiftPatrolNarration.Tick(LastShiftPatrolNarration.MinimumDisplaySeconds);
+            Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_11"));
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.True);
             Assert.That(LastShiftPatrolNarration.FixturesReached,
                 Is.EqualTo(LastShiftPatrolNarration.RoomCount), "네 줄이 다 나오지 않았다");
@@ -255,6 +273,7 @@ namespace DoodleUp.Tests.EditMode
 
             // 배전반에 안 가고 곧장 산소실로 넘어간다.
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.LifeSupportRoom);
+            Settle();
 
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_07"));
             Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(1),
@@ -285,6 +304,19 @@ namespace DoodleUp.Tests.EditMode
         {
             LastShiftPatrolNarration.NotifyInPlaza();
             LastShiftPatrolNarration.Tick(LastShiftNarrationScript.Of("AI_T_02").AutoAfterSeconds);
+            Settle();
+        }
+
+        /// <summary>
+        /// 최소 표시 시간을 넘겨 줄 세운 것을 내보낸다. 실제로는 걸어가는 시간이다.
+        /// <b>큐가 빌 때까지만 돈다</b> — 더 돌리면 시간 형 줄까지 깨워서 검사가 재려는 것이
+        /// 아닌 것을 재게 된다.
+        /// </summary>
+        private static void Settle()
+        {
+            var guard = 0;
+            do LastShiftPatrolNarration.Tick(LastShiftPatrolNarration.MinimumDisplaySeconds);
+            while (LastShiftPatrolNarration.PendingCount > 0 && guard++ < 16);
         }
     }
 }
