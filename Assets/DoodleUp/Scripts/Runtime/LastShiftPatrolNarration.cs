@@ -56,6 +56,7 @@ namespace DoodleUp.Runtime
         private static readonly System.Collections.Generic.Queue<int> pending = new();
         private static int showing = -1;
         private static float lineElapsed;
+        private static float blockElapsed;
         private static int occupiedRoom = -1;
 
         /// <summary>
@@ -153,6 +154,7 @@ namespace DoodleUp.Runtime
             for (var i = 0; i < Approached.Length; i++) Approached[i] = false;
             showing = -1;
             lineElapsed = 0f;
+            blockElapsed = 0f;
             occupiedRoom = -1;
             pending.Clear();
         }
@@ -179,8 +181,11 @@ namespace DoodleUp.Runtime
                     missed.Append(missed.Length > 0 ? "," : string.Empty).Append(room.FixtureId);
             // 두 수를 같이 낸다. played 는 조항 N-8 덕에 거의 항상 4 이고, approached 가
             // balance 가 재려던 "빨리 훑고 지나갔는가" 다.
+            // 걸린 시간을 같이 낸다. 최속 경로(24.4초)에 가까운 판은 배 구조를 이미 아는
+            // 사람이라, 그 구분이 있어야 판정이 "QA 가 못 잡는 실패" 를 안 쫓는다.
             Debug.Log($"[LAST_SHIFT_PATROL] action=CLOSE played={FixturesReached}/{RoomCount}" +
                       $" approached={FixturesApproached}/{RoomCount}" +
+                      $" seconds={blockElapsed:F1} floor={FloorSeconds:F1}" +
                       $" missed={(missed.Length > 0 ? missed.ToString() : "none")}");
         }
 
@@ -206,7 +211,14 @@ namespace DoodleUp.Runtime
             }
         }
 
-        /// <summary>그 방 설비 앞이다. <b>그 방에 들어온 뒤에만</b> 받는다.</summary>
+        /// <summary>
+        /// 그 방의 <b>설비 줄이 뜰 조건</b>이 됐다. <b>그 방에 들어온 뒤에만</b> 받는다.
+        ///
+        /// 조건은 방마다 다르다 — 배전반·게이지·냉각통은 들여다보는 물건이라 근접이지만,
+        /// 전면 스크린은 멀리서도 읽히므로 문턱에서 보이면 그 줄이 뜬다(조항 <c>N-11</c>).
+        /// <b>그래서 이 호출은 "방을 건넜다" 를 뜻하지 않는다</b> — 그쪽은
+        /// <see cref="NotifyFixtureApproached"/> 가 따로 든다.
+        /// </summary>
         public static void NotifyAtFixture(LastShiftPlazaSpace space)
         {
             if (!IsRunning) return;
@@ -214,9 +226,27 @@ namespace DoodleUp.Runtime
             {
                 if (Rooms[i].Space != space) continue;
                 if (!Played[IndexOf(Rooms[i].EntryId)]) return;
-                // 실제로 걸어간 것은 여기서만 센다 — 퇴장으로 뜬 줄과 구분해야 지표가 산다.
-                Approached[i] = true;
                 Play(Rooms[i].FixtureId);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// 그 방 설비 <b>앞까지 실제로 걸어갔다</b>. 네 방 모두 근접 하나로 통일해서 잰다 —
+        /// 설비가 방 안쪽 끝벽에 있으므로 거기 닿았다는 것은 <b>방을 건넜다</b>는 뜻이고,
+        /// 그 뜻은 네 방이 같다(조항 <c>N-11</c>).
+        ///
+        /// <b>트리거와 따로 두는 이유가 조종석이다.</b> 전면 스크린은 시야로 걸려서 방에
+        /// 들어서는 순간 줄이 뜰 수 있는데, 그것까지 도달로 세면 <c>4/4</c> 가 "네 방을 다
+        /// 건넜다" 는 한 가지 뜻을 잃는다.
+        /// </summary>
+        public static void NotifyFixtureApproached(LastShiftPlazaSpace space)
+        {
+            if (!IsRunning) return;
+            for (var i = 0; i < Rooms.Length; i++)
+            {
+                if (Rooms[i].Space != space) continue;
+                if (Played[IndexOf(Rooms[i].EntryId)]) Approached[i] = true;
                 return;
             }
         }
@@ -227,7 +257,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static void Tick(float deltaTime)
         {
-            if (!IsRunning || showing < 0) return;
+            if (!IsRunning) return;
+            blockElapsed += deltaTime;
+            if (showing < 0) return;
             lineElapsed += deltaTime;
 
             if (pending.Count > 0)
@@ -250,6 +282,7 @@ namespace DoodleUp.Runtime
             for (var i = 0; i < Approached.Length; i++) Approached[i] = false;
             showing = -1;
             lineElapsed = 0f;
+            blockElapsed = 0f;
             occupiedRoom = -1;
             pending.Clear();
         }

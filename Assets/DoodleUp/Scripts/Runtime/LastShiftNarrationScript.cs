@@ -281,9 +281,12 @@ namespace DoodleUp.Runtime
         /// <summary>
         /// 한 줄이 다 찍히는 데 걸리는 시간. <b>글자 수와 무관하다</b> — 초당 몇 자로 두면
         /// 긴 줄이 다음 줄에 잡아먹히는데, 이 대본은 줄마다 길이가 두 배 넘게 차이 난다.
-        /// 박자의 절반이라 어떤 줄이든 다음 박이 오기 한참 전에 다 읽힌다.
+        /// <b>독립 상수다</b>(조항 §7-22). 전에는 <c>BeatSeconds</c> 의 절반이었는데, 그러면
+        /// 타이핑을 조절하려다 도입부 길이(8초)와 상시 경고 체류(2초)가 같이 움직인다 —
+        /// game-balance 가 "그 손잡이는 건드리지 말고 판정선을 올리자" 로 닫은 자리다.
+        /// 값은 그때와 같으므로 화면은 안 바뀐다.
         /// </summary>
-        public static float TypingSeconds => LastShiftWakeSequence.BeatSeconds * 0.5f;
+        public const float TypingSeconds = 1f;
 
         /// <summary>
         /// <paramref name="elapsed"/> 시점까지 찍힌 만큼. 다 찍히면 원문 그대로다.

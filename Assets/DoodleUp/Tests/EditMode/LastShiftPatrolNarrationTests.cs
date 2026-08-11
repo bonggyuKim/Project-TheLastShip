@@ -251,6 +251,7 @@ namespace DoodleUp.Tests.EditMode
                      })
             {
                 LastShiftPatrolNarration.NotifyRoomEntered(space);
+                LastShiftPatrolNarration.NotifyFixtureApproached(space);
                 LastShiftPatrolNarration.NotifyAtFixture(space);
             }
 
@@ -291,12 +292,49 @@ namespace DoodleUp.Tests.EditMode
         {
             Open();
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.PowerRoom);
+            LastShiftPatrolNarration.NotifyFixtureApproached(LastShiftPlazaSpace.PowerRoom);
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.PowerRoom);
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CoolingRoom);
             LastShiftPatrolNarration.NotifyInPlaza();
 
             Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(2));
             Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.EqualTo(1));
+        }
+
+        /// <summary>
+        /// 조항 <c>N-11</c> — <b>줄이 뜬 조건과 방을 건넌 것은 다르다.</b> 조종석은 전면
+        /// 스크린이 문턱에서도 보여 시야로 줄이 뜨는데, 그것까지 도달로 세면 <c>4/4</c> 가
+        /// "네 방을 다 건넜다" 는 뜻을 잃는다.
+        /// </summary>
+        [Test]
+        public void SeeingTheScreenIsNotCrossingTheRoom()
+        {
+            Open();
+            LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CockpitRoom);
+            Settle();
+
+            // 문턱에서 스크린이 보였다 - 줄은 뜨지만 방은 안 건넜다.
+            LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CockpitRoom);
+            Settle();
+
+            Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_04"));
+            Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(1));
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero,
+                "시야로 뜬 줄을 방을 건넌 것으로 셌다");
+
+            // 스크린 앞까지 걸어가면 그때 세어진다.
+            LastShiftPatrolNarration.NotifyFixtureApproached(LastShiftPlazaSpace.CockpitRoom);
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.EqualTo(1));
+        }
+
+        /// <summary>안 들어간 방은 근접 신호가 와도 도달로 안 센다.</summary>
+        [Test]
+        public void ApproachingARoomNeverEnteredCountsForNothing()
+        {
+            Open();
+            LastShiftPatrolNarration.NotifyFixtureApproached(LastShiftPlazaSpace.PowerRoom);
+
+            Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero);
         }
 
         /// <summary>여는 두 줄까지 밀어 둔다 — 방 검사들의 공통 준비다.</summary>

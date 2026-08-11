@@ -1260,9 +1260,15 @@ namespace DoodleUp.Runtime
             if (signals.InPlaza) LastShiftPatrolNarration.NotifyInPlaza();
             if (signals.NearCore) LastShiftPatrolNarration.NotifyNearCore();
             if (signals.InRoom) LastShiftPatrolNarration.NotifyRoomEntered(signals.Room);
+            // 조종석만 <b>시야</b>로 줄이 뜬다(전면 스크린은 멀리서도 읽힌다). 나머지 셋은
+            // 근접이고, "방을 건넜는가" 는 네 방 모두 근접 하나로 잰다(조항 N-11).
             if (signals.FacingScreen)
                 LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CockpitRoom);
-            if (signals.AnyFixture) LastShiftPatrolNarration.NotifyAtFixture(signals.AtFixture);
+            if (signals.AnyFixture)
+            {
+                LastShiftPatrolNarration.NotifyFixtureApproached(signals.AtFixture);
+                LastShiftPatrolNarration.NotifyAtFixture(signals.AtFixture);
+            }
             LastShiftPatrolNarration.Tick(deltaTime);
             if (LastShiftPatrolNarration.HasLine)
                 LastShiftNarrationAudio.Announce(
