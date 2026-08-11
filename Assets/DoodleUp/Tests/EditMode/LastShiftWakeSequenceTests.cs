@@ -43,18 +43,52 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <c>AI_W_01</c> 은 "씬 로드 직후" 다. 첫 Tick 을 기다리면 아무 말도 없는 검은 화면이
-        /// 한 프레임 지나간다.
+        /// <b>맨 앞은 아무것도 없는 검정이다</b>(art 규격) — 소리도 글자도 아직이다. 그 뒤에
+        /// 첫 줄이 떠오른다.
         /// </summary>
         [Test]
-        public void TheFirstLineIsUpBeforeAnyTick()
+        public void TheOpeningIsEmptyBlackBeforeTheFirstLine()
         {
             LastShiftWakeSequence.Begin();
 
+            Assert.That(LastShiftWakeSequence.HasLine, Is.False, "검정 구간에 벌써 글자가 있다");
+            Assert.That(LastShiftWakeSequence.BlackoutAlpha, Is.EqualTo(1f));
+            Assert.That(LastShiftWakeSequence.PanelAlpha, Is.EqualTo(0f));
+            Assert.That(LastShiftWakeSequence.Gate, Is.EqualTo(LastShiftWakeGate.Locked));
+
+            TickUntil(LastShiftWakeSequence.LogHoldSeconds);
             Assert.That(LastShiftWakeSequence.HasLine, Is.True);
             Assert.That(LastShiftWakeSequence.Current.Id, Is.EqualTo("AI_W_01"));
-            Assert.That(LastShiftWakeSequence.BlackoutAlpha, Is.EqualTo(1f));
-            Assert.That(LastShiftWakeSequence.Gate, Is.EqualTo(LastShiftWakeGate.Locked));
+            Assert.That(LastShiftWakeSequence.LineAlpha, Is.EqualTo(0f).Within(0.02f),
+                "글자가 떠오르지 않고 그냥 켜졌다");
+
+            TickUntil(LastShiftWakeSequence.LogHoldSeconds * 2f);
+            Assert.That(LastShiftWakeSequence.LineAlpha, Is.EqualTo(1f).Within(0.02f));
+            Assert.That(LastShiftWakeSequence.BlackoutAlpha, Is.EqualTo(1f),
+                "글자가 다 뜨기도 전에 월드가 보이기 시작했다");
+        }
+
+        /// <summary>
+        /// 띠는 <b>월드 페이드와 같은 구간</b>에서 떠오른다. 어긋나면 화면이 두 번 페이드한
+        /// 것으로 보인다(art 규격 — 플래시·추가 페이드 없음).
+        /// </summary>
+        [Test]
+        public void ThePanelRisesWithTheWorld()
+        {
+            LastShiftWakeSequence.Begin();
+
+            TickUntil(LastShiftWakeSequence.BlackoutSeconds);
+            Assert.That(LastShiftWakeSequence.PanelAlpha, Is.EqualTo(0f),
+                "월드가 아직 검은데 띠가 먼저 떴다");
+
+            TickUntil(LastShiftWakeSequence.BlackoutSeconds + LastShiftWakeSequence.FadeSeconds * 0.5f);
+            Assert.That(LastShiftWakeSequence.PanelAlpha, Is.EqualTo(0.5f).Within(0.02f));
+            Assert.That(LastShiftWakeSequence.PanelAlpha,
+                Is.EqualTo(1f - LastShiftWakeSequence.BlackoutAlpha).Within(0.02f),
+                "띠와 월드가 다른 속도로 떠오른다");
+
+            TickUntil(LastShiftWakeSequence.LookSeconds);
+            Assert.That(LastShiftWakeSequence.PanelAlpha, Is.EqualTo(1f));
         }
 
         /// <summary>암전은 유지 구간 동안 <c>1</c> 이고, 페이드 구간에서만 내려간다.</summary>
@@ -103,6 +137,7 @@ namespace DoodleUp.Tests.EditMode
             for (var i = 0; i < expected.Length; i++)
             {
                 TickUntil(LastShiftWakeSequence.ScheduledAt(i));
+                Assert.That(LastShiftWakeSequence.HasLine, Is.True);
                 Assert.That(LastShiftWakeSequence.Current.Id, Is.EqualTo(expected[i]),
                     $"{LastShiftWakeSequence.ScheduledAt(i)}초에 뜬 줄이 다르다");
             }
@@ -171,9 +206,11 @@ namespace DoodleUp.Tests.EditMode
         public void TheNudgeClockRestartsOnEveryLine()
         {
             LastShiftWakeSequence.Begin();
+            // 첫 줄은 0 이 아니라 LogHoldSeconds 에 떴으므로, 그만큼 늦게 세기 시작한다.
             TickUntil(LastShiftWakeSequence.BlackoutSeconds * 0.5f);
             Assert.That(LastShiftWakeSequence.LineElapsedSeconds,
-                Is.EqualTo(LastShiftWakeSequence.BlackoutSeconds * 0.5f).Within(0.001f));
+                Is.EqualTo(LastShiftWakeSequence.BlackoutSeconds * 0.5f
+                           - LastShiftWakeSequence.LogHoldSeconds).Within(0.02f));
 
             TickUntil(LastShiftWakeSequence.BlackoutSeconds);
             Assert.That(LastShiftWakeSequence.Current.Id, Is.EqualTo("AI_W_02"));

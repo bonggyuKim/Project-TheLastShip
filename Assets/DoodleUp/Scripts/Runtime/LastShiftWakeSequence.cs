@@ -51,6 +51,13 @@ namespace DoodleUp.Runtime
         /// <summary>이동이 풀리는 시각. <c>AI_W_04</c>(<c>LookSeconds + 1</c>박) 다음 박이다.</summary>
         public static float StandSeconds => LookSeconds + BeatSeconds * 2f;
 
+        /// <summary>
+        /// 첫 줄이 뜨기 전 <b>아무것도 없는 검정</b>. game-art 규격(2026-08-11)이 정한 값이고
+        /// 유도할 데가 없다 — 소리와 글자가 같이 들어오기 전에 화면이 비어 있는 시간이다.
+        /// 글자가 떠오르는 데도 같은 길이를 쓴다: 하나를 옮기면 도입부의 첫 숨이 통째로 갈린다.
+        /// </summary>
+        public const float LogHoldSeconds = 0.35f;
+
         /// <summary>시간이 미는 줄 수. 나머지 셋은 행동이 민다.</summary>
         public const int TimedLineCount = 5;
 
@@ -70,8 +77,25 @@ namespace DoodleUp.Runtime
         /// <summary>마지막 줄까지 다 떴는가.</summary>
         public static bool IsComplete => fired >= LastShiftNarrationScript.Wake.Length;
 
-        /// <summary>화면에 낼 줄이 있는가.</summary>
+        /// <summary>화면에 낼 줄이 있는가. <b>첫 0.35초는 없다</b> — 검정만 있는 구간이다.</summary>
         public static bool HasLine => IsRunning && fired > 0;
+
+        /// <summary>
+        /// 지금 줄의 진하기. 첫 줄만 <see cref="LogHoldSeconds"/> 동안 떠오르고 나머지는 바로
+        /// <c>1</c> 이다 — 줄이 바뀔 때마다 페이드하면 대사가 읽히기 전에 다음이 온다.
+        /// </summary>
+        public static float LineAlpha => fired == 1
+            ? Mathf.Clamp01((elapsed - LogHoldSeconds) / LogHoldSeconds)
+            : 1f;
+
+        /// <summary>
+        /// 띠가 떠오르는 정도. <c>0</c> 이면 아직 검정 위의 글자 하나뿐이고, <c>1</c> 이면
+        /// 평상시 온보딩 띠다. 월드 페이드와 <b>같은 구간</b>에서 움직인다 — 배가 보이기
+        /// 시작하는 것과 계기가 돌아오는 것이 한 동작이어야 두 번 페이드한 것으로 안 보인다.
+        /// </summary>
+        public static float PanelAlpha => !IsRunning || elapsed <= BlackoutSeconds
+            ? 0f
+            : Mathf.Clamp01((elapsed - BlackoutSeconds) / FadeSeconds);
 
         /// <summary>지금 떠 있는 줄. <see cref="HasLine"/> 이 참일 때만 의미가 있다.</summary>
         public static LastShiftNarrationScript.Line Current =>
@@ -113,15 +137,15 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 도입부 시작. <c>AI_W_01</c> 은 "씬 로드 직후" 라 <b>여기서 바로 뜬다</b> — 첫 Tick 을
-        /// 기다리면 암전 첫 프레임에 아무 말도 없는 화면이 한 번 지나간다.
+        /// 도입부 시작. <b>첫 줄은 여기서 안 뜬다</b> — <see cref="LogHoldSeconds"/> 동안
+        /// 아무것도 없는 검정이 먼저 오고, 그 뒤에 소리와 글자가 같이 들어온다(art 규격).
         /// </summary>
         public static void Begin()
         {
             IsRunning = true;
             elapsed = 0f;
             lineElapsed = 0f;
-            fired = 1;
+            fired = 0;
         }
 
         public static void Tick(float deltaTime)
@@ -175,7 +199,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static float ScheduledAt(int index) => index switch
         {
-            0 => 0f,
+            // 첫 줄은 0 이 아니라 0.35 다. 그 앞은 아무것도 없는 검정이어야 한다(art 규격).
+            0 => LogHoldSeconds,
             1 => BlackoutSeconds,
             2 => LookSeconds,
             3 => LookSeconds + BeatSeconds,

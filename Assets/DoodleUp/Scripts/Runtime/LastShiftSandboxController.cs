@@ -2160,14 +2160,14 @@ namespace DoodleUp.Runtime
             {
                 DrawNarrationBanner(layer, LastShiftWakeSequence.Current,
                     LastShiftWakeSequence.LineElapsedSeconds,
-                    framed: LastShiftWakeSequence.BlackoutAlpha <= 0f);
+                    LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha);
                 return;
             }
 
             if (LastShiftNarrationDirector.HasLine)
             {
                 DrawNarrationBanner(layer, LastShiftNarrationDirector.Current,
-                    LastShiftNarrationDirector.LineElapsedSeconds, framed: true);
+                    LastShiftNarrationDirector.LineElapsedSeconds, 1f, 1f);
                 return;
             }
 
@@ -2223,29 +2223,42 @@ namespace DoodleUp.Runtime
         /// 숙소를 나가기 전에는 셋 다 <c>0</c> 이라 읽을 것이 없다.
         /// </summary>
         private static void DrawNarrationBanner(LastShiftUiLayer layer,
-            in LastShiftNarrationScript.Line line, float lineElapsed, bool framed)
+            in LastShiftNarrationScript.Line line, float lineElapsed,
+            float panelAlpha, float lineAlpha)
         {
             var screen = LastShiftUiLayer.ScreenSize;
             var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
 
-            // 암전 구간에는 띠를 안 깐다. 검정 위에 문장만 뜨는 것이 도입부의 그림이고,
-            // 페이드가 걷히면서 띠가 같이 떠오른다.
-            if (framed) layer.OnboardingPanel("tutorial", banner, 1f);
+            // 검정 위에서는 글자 한 줄이 <b>화면 한가운데</b> 있고, 월드가 떠오르는 동안
+            // 계기판 자리로 내려온다. 띠도 같은 구간에 같이 떠오른다 — 배가 보이는 것과
+            // 계기가 돌아오는 것이 한 동작이어야 두 번 페이드한 것으로 안 보인다(art 규격).
+            var seated = Rect.MinMaxRect(
+                banner.xMin,
+                Mathf.Lerp((screen.y - banner.height) * 0.5f, banner.yMin, panelAlpha),
+                banner.xMax,
+                Mathf.Lerp((screen.y + banner.height) * 0.5f, banner.yMax, panelAlpha));
 
-            layer.Label("tutorialSpeaker", new Rect(banner.x + 42f, banner.y + 18f, 420f, 24f),
-                "선내 관리 시스템", 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
+            if (panelAlpha > 0f) layer.OnboardingPanel("tutorial", seated, panelAlpha);
+
+            // 화자 이름은 띠와 함께 온다. 검정 위에 두 줄이 뜨면 "로그 한 줄" 이 아니게 된다.
+            if (panelAlpha > 0f)
+                layer.Label("tutorialSpeaker", new Rect(seated.x + 42f, seated.y + 18f, 420f, 24f),
+                    "선내 관리 시스템", 16,
+                    new Color(0.32f, 0.82f, 0.82f, panelAlpha), fontStyle: FontStyle.Bold);
 
             // 재촉은 그 줄이 뜬 뒤 시간으로 갈린다(조항 N-1 — 재촉에는 신호음이 없다).
             var text = line.HasNudge && lineElapsed >= line.NudgeAfterSeconds
                 ? line.Nudge
                 : LastShiftNarrationScript.Format(line);
-            layer.Label("tutorialGuide", new Rect(banner.x + 42f, banner.y + 60f, banner.width - 84f, 96f),
-                text, 38, LastShiftUiTheme.Ivory, wrap: true);
+            var ivory = LastShiftUiTheme.Ivory;
+            layer.Label("tutorialGuide", new Rect(seated.x + 42f, seated.y + 60f, seated.width - 84f, 96f),
+                text, 38, new Color(ivory.r, ivory.g, ivory.b, ivory.a * Mathf.Clamp01(lineAlpha)),
+                wrap: true, anchor: panelAlpha > 0f ? TextAnchor.UpperLeft : TextAnchor.UpperCenter);
 
             // 조작 프롬프트가 있는 줄은 그 한 줄을 더 단다(조항 T-3 — 실패 사유 대신 조작).
-            if (line.HasPrompt)
+            if (line.HasPrompt && panelAlpha > 0f)
                 layer.Label("tutorialPrompt",
-                    new Rect(banner.x + 42f, banner.y + 150f, banner.width - 84f, 24f),
+                    new Rect(seated.x + 42f, seated.y + 150f, seated.width - 84f, 24f),
                     line.Prompt, LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
         }
 
