@@ -55,12 +55,15 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftTutorialObservation
     {
         public LastShiftTutorialObservation(
-            bool crewLeftCockpit, bool crewBelowDeck, bool crewOutside,
-            int carried, int carryCapacity, int remaining, int balance)
+            bool crewLeftCockpit, bool crewInChamber, bool crewVacuum,
+            int carried, int carryCapacity, int remaining, int balance,
+            bool liftAtDeck = true, bool liftAtHullTop = false)
         {
             CrewLeftCockpit = crewLeftCockpit;
-            CrewBelowDeck = crewBelowDeck;
-            CrewOutside = crewOutside;
+            CrewInChamber = crewInChamber;
+            CrewVacuum = crewVacuum;
+            LiftAtDeck = liftAtDeck;
+            LiftAtHullTop = liftAtHullTop;
             Carried = carried;
             CarryCapacity = Mathf.Max(1, carryCapacity);
             Remaining = remaining;
@@ -79,10 +82,19 @@ namespace DoodleUp.Runtime
         /// 조항 <c>T-9</c> 로그가 <c>step=&lt;n&gt;</c> 로 나가고 §6 판정이 그 번호로 구간을
         /// 자르므로, 번호는 튜토리얼 재설계가 문서와 함께 통째로 갈 때 움직인다.
         /// </summary>
-        public bool CrewBelowDeck { get; }
+        public bool CrewInChamber { get; }
 
-        /// <summary>승무원 하나라도 선외에 있는가. <c>3 → 4</c> 신호이자 "우물을 넘었다" 다.</summary>
-        public bool CrewOutside { get; }
+        /// <summary>승무원 하나라도 <b>진공</b>에 노출됐는가. <c>3 → 4</c> 신호다.</summary>
+        public bool CrewVacuum { get; }
+
+        /// <summary>
+        /// 리프트가 갑판에 서 있는가. <b>하단 게이트 인터록의 셋째 항</b>이다 — 리프트가
+        /// 위에 있는데 게이트가 열리면 빈 샤프트로 떨어진다(PM 확정 2026-08-11).
+        /// </summary>
+        public bool LiftAtDeck { get; }
+
+        /// <summary>리프트가 선체 상단 정지 위치에 있는가. 상단 해치를 여는 쪽의 짝이다.</summary>
+        public bool LiftAtHullTop { get; }
 
         public int Carried { get; }
         public int CarryCapacity { get; }
@@ -255,11 +267,11 @@ namespace DoodleUp.Runtime
             // 달라서 발자국 표가 둘을 가른다.
             LastShiftTutorialStep.SightSalvage => o.CrewLeftCockpit,
 
-            LastShiftTutorialStep.CrossPlaza => o.CrewBelowDeck,
+            LastShiftTutorialStep.CrossPlaza => o.CrewInChamber,
 
             // 바닥 우물을 넘는 것이 곧 선외다. 산소 게이지가 뜨는 조건과 같은 판정을 쓴다 —
             // 따로 재면 화면에 게이지가 뜬 단계와 상태기가 센 단계가 갈린다.
-            LastShiftTutorialStep.AirlockHall => o.CrewOutside,
+            LastShiftTutorialStep.AirlockHall => o.CrewVacuum,
 
             // 손이 찬다. 세 번째가 안 뜯기는 것이 §1-1 이 짚은 오학습 지점이고, 그 순간이
             // 곧 <c>5</c>단계 진입이다.

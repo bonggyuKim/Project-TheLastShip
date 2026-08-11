@@ -1080,8 +1080,8 @@ namespace DoodleUp.Runtime
             // 접는다 — 따로 돌면 "선외인가" 판정이 두 벌이 되고, 그 둘이 갈리는 순간
             // 화면에 산소 게이지가 뜬 단계와 상태기가 센 단계가 어긋난다.
             var crewLeftCockpit = false;
-            var crewBelowDeck = false;
-            var crewOutside = false;
+            var crewInChamber = false;
+            var crewVacuum = false;
 
             foreach (var targetPlayer in players)
             {
@@ -1092,10 +1092,12 @@ namespace DoodleUp.Runtime
                 var position = targetPlayer.transform.position;
                 var resolved = LastShiftPlazaLayout.TryResolveSpace(position.x, position.z, out var space);
                 crewLeftCockpit |= !resolved || space != LastShiftPlazaSpace.CockpitRoom;
-                // 에어록 홀이 폐지돼 중앙 승강구가 하강 경로다. 갑판 아래에 발을 딛는
-                // 순간이 그 신호이고, 진공 판정이 이미 같은 술어를 쓰고 있어 두 벌이 안 된다.
-                crewBelowDeck |= LastShiftBypassDuct.IsUnpressurizedSpace(position);
-                crewOutside |= LastShiftAirlock.IsOutside(position);
+                // EVA 가 상향으로 뒤집히면서(2026-08-11) 신호원이 갑판 아래에서 승강
+                // 샤프트로 옮겨 왔다. 3단계는 "감압 챔버에 들어섰다" 이고 그 챔버가 곧
+                // 광장 중앙 코어다 - 평면 판정은 코어 그대로이고 높이는 배 안이면 된다.
+                crewInChamber |= LastShiftEvaShaft.Contains(position.x, position.z)
+                                 && LastShiftEvaShaft.IsInsideHull(position.y);
+                crewVacuum |= LastShiftAirlock.IsOutside(position);
 
                 if (!IsZoneVacuum(position))
                 {
@@ -1120,7 +1122,7 @@ namespace DoodleUp.Runtime
 
             LastShiftTutorial.Observe(
                 new LastShiftTutorialObservation(
-                    crewLeftCockpit, crewBelowDeck, crewOutside,
+                    crewLeftCockpit, crewInChamber, crewVacuum,
                     LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                     LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
                 deltaTime);
