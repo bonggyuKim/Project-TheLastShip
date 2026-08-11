@@ -262,22 +262,24 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float ZonePressureVacuumSnap = 0.005f;
 
-        /// <summary>막대 적색 점멸 + 호흡음 증폭 구간. 남은 20초를 시각으로 알린다.</summary>
-        public const float SuitOxygenCriticalThreshold = 0.25f;
+        /// <summary>막대 적색 점멸 + 호흡음 증폭 구간. 남은 24초를 시각으로 알린다.</summary>
+        public const float SuitOxygenCriticalThreshold = 0.30f;
 
         /// <summary>
         /// 첫 산소 경고. <b>아직 판단할 시간이 남은 자리</b>다 — 임계(<see cref="SuitOxygenCriticalThreshold"/>)는
         /// 이미 즉시 출발해야 하는 선이라 그 하나로는 "돌아갈까" 를 물을 수 없다.
         ///
-        /// 값은 game-balance 확정(2026-08-11)이다. 근거가 되는 실측은 운반 복귀 편도
-        /// <c>18.45</c>초(보행 <c>10.41</c> + 하강 <c>8.03</c>)이고 예산이 <c>80</c>초라
-        /// 하한이 <c>23.1%</c> 다. <c>40%</c>는 <c>32</c>초라 <c>13.6</c>초가 남는다.
+        /// 값은 game-balance 재확정(2026-08-11, 2단 상승 실측 반영)이다. 근거가 되는 실측은
+        /// 운반 복귀 편도 <c>18.45</c>초(보행 <c>10.41</c> + 하강 <c>8.03</c>)이고 예산이
+        /// <c>80</c>초라 하한이 <c>23.1%</c> 다. <c>45%</c>는 <c>36</c>초라 <c>17.6</c>초가
+        /// 남는다 — 처음 확정했던 <c>40/25</c> 는 임계가 하한 바로 위(<c>25</c> vs <c>23.1</c>,
+        /// 여유 <c>1.5</c>초)라 경고가 판단이 아니라 통보가 됐다.
         ///
         /// <b>이 값을 문안 문자열에 박지 않는다</b>(대본 조항 <c>N-7</c>). 경고를 띄우는 조건과
         /// 화면에 적히는 숫자가 두 벌이 되면, 임계를 옮겼을 때 "40%에서 뜨는데 화면에는 30%"
         /// 가 조용히 생긴다.
         /// </summary>
-        public const float SuitOxygenWarningThreshold = 0.40f;
+        public const float SuitOxygenWarningThreshold = 0.45f;
 
         // ── S-O3 전선 사이렌 (CT-05 N9) ───────────────────────────────────
         /// <summary>
