@@ -894,6 +894,10 @@ namespace DoodleUp.Runtime
             // 선외 산소도 한 프레임도 안 돈다.
             AdvanceExtravehicular(deltaTime);
 
+            // 기상 도입부도 같은 이유로 게이트 위다 — 이 아래로 내리면 판정이 확정되기 전에는
+            // 암전이 안 걷히고, 잠긴 입력이 그대로 남는다. 안 도는 동안은 즉시 반환한다.
+            LastShiftWakeSequence.Tick(deltaTime);
+
             if (!HasAppliedImpact || IsResolved) return;
 
             // 기존 우회의 수명을 먼저 줄여야 이 tick 끝에 막 완성된 우회가 작업 시간까지
@@ -2021,10 +2025,14 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void DrawTutorialBanner()
         {
-            if (!LastShiftTutorial.IsRunning) return;
-
             var layer = LastShiftUiLayer.Instance;
             if (layer == null) return;
+
+            // 암전이 먼저다 — 튜토리얼 검사보다 위에 둔다. 알파가 0 이면 이 호출은 아무것도
+            // 안 빌리므로 평상시 비용이 없다.
+            layer.Fade(LastShiftWakeSequence.BlackoutAlpha);
+            if (DrawWakeBanner(layer)) return;
+            if (!LastShiftTutorial.IsRunning) return;
 
             // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
             // 길어서 계기 셋과 같은 줄에 붙이면 잘린다.
@@ -2064,6 +2072,40 @@ namespace DoodleUp.Runtime
             layer.Label("tutorialLog", new Rect(banner.x + banner.width - 180f, top + 20f, 138f, 20f),
                 $"LOG / {(int)LastShiftTutorial.Step:00}", 14, new Color(0.32f, 0.82f, 0.82f),
                 anchor: TextAnchor.UpperRight);
+        }
+
+        /// <summary>
+        /// 기상 도입부의 대사 한 줄(정본 §4-1). 뜬 동안은 <b>단계 띠를 대신 그린다</b> —
+        /// 도입부는 아직 단계 열거형에 자리가 없어서(§7-<c>5</c> 의 <c>+2</c> 재매김이 아직
+        /// 안 왔다) 그 사이 <c>Step</c> 은 잔해 확인에 가 있고, 그 문안이 같이 뜨면 방에서
+        /// 못 일어난 사람에게 잔해 이야기를 하게 된다.
+        ///
+        /// <b>머리줄과 계기줄을 안 그린다.</b> 번호는 아직 없는 것이고, 자재·잔해 수는
+        /// 숙소를 나가기 전에는 셋 다 <c>0</c> 이라 읽을 것이 없다.
+        /// </summary>
+        private static bool DrawWakeBanner(LastShiftUiLayer layer)
+        {
+            if (!LastShiftWakeSequence.HasLine) return false;
+
+            var line = LastShiftWakeSequence.Current;
+            var screen = LastShiftUiLayer.ScreenSize;
+            var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
+
+            // 암전 구간에는 띠를 안 깐다. 검정 위에 문장만 뜨는 것이 도입부의 그림이고,
+            // 페이드가 걷히면서 띠가 같이 떠오른다.
+            var framed = LastShiftWakeSequence.BlackoutAlpha <= 0f;
+            if (framed) layer.OnboardingPanel("tutorial", banner, 1f);
+
+            layer.Label("tutorialSpeaker", new Rect(banner.x + 42f, banner.y + 18f, 420f, 24f),
+                "선내 관리 시스템", 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
+
+            // 재촉은 그 줄이 뜬 뒤 시간으로 갈린다(조항 N-1 — 재촉에는 신호음이 없다).
+            var text = line.HasNudge && LastShiftWakeSequence.LineElapsedSeconds >= line.NudgeAfterSeconds
+                ? line.Nudge
+                : LastShiftNarrationScript.Format(line);
+            layer.Label("tutorialGuide", new Rect(banner.x + 42f, banner.y + 60f, banner.width - 84f, 96f),
+                text, 38, LastShiftUiTheme.Ivory, wrap: true);
+            return true;
         }
 
         /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>

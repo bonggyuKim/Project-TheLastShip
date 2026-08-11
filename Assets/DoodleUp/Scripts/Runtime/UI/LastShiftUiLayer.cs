@@ -32,6 +32,7 @@ namespace DoodleUp.Runtime
         private Canvas canvas;
         private RectTransform panelRoot;
         private RectTransform gaugeRoot;
+        private RectTransform fadeRoot;
         private RectTransform overlayRoot;
 
         private readonly Dictionary<string, Lease<Image>> panels = new();
@@ -96,6 +97,11 @@ namespace DoodleUp.Runtime
             // 형제 순서가 곧 그리는 순서다. 패널이 가장 먼저, 프롬프트가 가장 나중이다.
             panelRoot = LastShiftUiFactory.CreateRect(canvas.transform, "Panels");
             gaugeRoot = LastShiftUiFactory.CreateRect(canvas.transform, "Gauges");
+            // 암전은 <b>계기 위·글자 아래</b>다. 계기 위여야 검은 화면에 산소 게이지가 안 뜨고,
+            // 글자 아래여야 암전 구간의 대사(AI_W_01)가 그 검정 위에서 읽힌다. 층을 따로 두는
+            // 이유는 형제 순서가 <b>처음 만들어진 순서</b>로 굳기 때문이다 — 프레임마다 다시
+            // 빌리는 구조라 그리는 순서로는 위아래를 못 정한다.
+            fadeRoot = LastShiftUiFactory.CreateRect(canvas.transform, "Fade");
             overlayRoot = LastShiftUiFactory.CreateRect(canvas.transform, "Overlay");
         }
 
@@ -215,6 +221,24 @@ namespace DoodleUp.Runtime
                 LastShiftGaugeView.Create(gaugeRoot, $"Gauge:{id}", icon));
             view.SetLayout(LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
             return view;
+        }
+
+        /// <summary>
+        /// 화면 전체를 덮는 검정. <paramref name="alpha"/> 가 <c>0</c> 이면 <b>안 빌린다</b> —
+        /// 임대를 안 갱신하면 다음 프레임에 저절로 꺼지므로, 다 걷힌 뒤에 투명한 조각이
+        /// 캔버스에 남지 않는다.
+        /// </summary>
+        public Image Fade(float alpha)
+        {
+            if (alpha <= 0f) return null;
+
+            var image = Borrow(panels, "screenFade", () =>
+                LastShiftUiFactory.CreateImage(fadeRoot, "Fade:screen", null));
+            var size = ScreenSize;
+            LastShiftUiFactory.PlacePanel((RectTransform)image.transform,
+                LastShiftUiTheme.ScreenRectToCanvas(new Rect(0f, 0f, size.x, size.y), size));
+            image.color = new Color(0f, 0f, 0f, Mathf.Clamp01(alpha));
+            return image;
         }
 
         /// <summary>프롬프트처럼 자기 계층을 직접 짓는 화면이 쓰는 부모.</summary>

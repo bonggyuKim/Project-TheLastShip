@@ -63,6 +63,38 @@ namespace DoodleUp.Runtime
         private const LastShiftNarrationSfx Quiet = LastShiftNarrationSfx.None;
 
         /// <summary>
+        /// 블록 <c>1</c> — 기상(정본 §4-1). <b>대본에서 입력이 잠기는 구간은 여기 하나다</b>
+        /// (<c>AI_W_01</c>), 그리고 그 잠금이 조항 <c>N-2</c>("긴 신호음 중 이동을 막지 않는다")
+        /// 의 유일한 예외다.
+        ///
+        /// 앞 넷은 <b>플레이어가 아무것도 안 해도 흐른다</b> — 암전·페이드·해금이 시간으로
+        /// 이어지기 때문이고, 그래서 이 블록만 진행을 <see cref="LastShiftWakeSequence"/> 가
+        /// 쥔다. 뒤 셋(<c>W_05</c>~<c>W_07</c>)부터 다시 플레이어 행동이 민다.
+        ///
+        /// 과녁은 <c>AI_W_04</c> 다(정본). 1,000,000년은 놀라움을 만들지만 행동을 안 만들고,
+        /// 행동을 만드는 것은 "고장의 결과" 한 줄이다.
+        /// </summary>
+        public static readonly Line[] Wake =
+        {
+            new("AI_W_01", "씬 로드 직후. 화면 암전 · 입력 잠금", Long,
+                "동면 해제 절차 개시."),
+            new("AI_W_02", "페이드 인 시작", Quiet,
+                "경과 항해 시간 1,000,000년. 오차 미보정."),
+            new("AI_W_03", "페이드 인 완료 · 시점 입력 해금", Short,
+                "주 동력 상실. 동면 유지 회로 정지됨."),
+            new("AI_W_04", "AI_W_03 후 2초", Quiet,
+                "각성은 일정이 아니라 고장의 결과임."),
+            new("AI_W_05", "이동 입력 해금", Short,
+                "기립 가능. 숙소 기압 정상.",
+                "기립할 것. 남은 예비 전력은 안내에 쓰임.", 12f),
+            new("AI_W_06", "첫 이동 입력 감지", Quiet,
+                "선내 상태를 순서대로 안내함."),
+            new("AI_W_07", "숙소 출입문 상호작용 사거리 진입", Short,
+                "문 밖은 중앙 광장. 이 배의 모든 이동은 그곳을 지남.",
+                "숙소 문으로 갈 것.", 16f)
+        };
+
+        /// <summary>
         /// 블록 <c>3</c> — 나가는 길. 전이 조건이 <c>CrewVacuum</c> 이라 이 블록이 끝나는 조건은
         /// "밖에 나갔다" 하나다(정본 §4-3).
         /// </summary>
@@ -186,7 +218,7 @@ namespace DoodleUp.Runtime
         /// 실제로 뜨는 순서. <b>배열 정의 순서가 아니라 이쪽이 정본이다</b> — 조항 <c>N-6</c> 이
         /// 마무리를 도면 뒤로 보내므로, 표 순서를 그대로 읽으면 어긋난다.
         /// </summary>
-        public static readonly Line[] InPlayOrder = Concat(Exit, Farming, Blueprint, HandsOff);
+        public static readonly Line[] InPlayOrder = Concat(Wake, Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>상시 라인을 포함한 전체. 정본 총계 <c>50</c> 중 적재분이다.</summary>
         public static readonly Line[] All = Concat(InPlayOrder, Standing);

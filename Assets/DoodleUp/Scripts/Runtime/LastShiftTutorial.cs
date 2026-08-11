@@ -238,6 +238,10 @@ namespace DoodleUp.Runtime
         public static void ArriveAtPort()
         {
             if (!IsArmed || Step != LastShiftTutorialStep.None) return;
+            // 기상 도입부도 여기서 시작한다(정본 §4-1). 조건이 같기 때문이다 — 무장했고
+            // 첫 기항이다. 무장 검사 뒤에 두는 것이 조건이다: 앞에 두면 둘째 판에서도 암전이
+            // 한 번 지나간다.
+            LastShiftWakeSequence.Begin();
             Enter(LastShiftTutorialStep.SightSalvage);
         }
 
@@ -252,6 +256,9 @@ namespace DoodleUp.Runtime
                 Debug.Log($"[LAST_SHIFT_TUTORIAL] step={(int)Step} action=LEAVE elapsed={elapsed:F1}");
             Step = LastShiftTutorialStep.None;
             armed = false;
+            // 도입부가 아직 돌고 있는 채로 출항하면 잠금이 따라 나간다. 안 도는 상태의
+            // 게이트는 Free 이므로 이 한 줄이 그 경로를 닫는다.
+            LastShiftWakeSequence.Clear();
         }
 
         // ── 전이 ────────────────────────────────────────────────────────────

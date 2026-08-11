@@ -227,6 +227,13 @@ namespace DoodleUp.Runtime
         private void Update()
         {
             ProcessKeyboardInput(Keyboard.current, Time.deltaTime);
+
+            // AI_W_07 — 숙소 출입문 사거리. <b>어느 문인지 따로 안 가린다</b>: 이 줄을 기다리는
+            // 구간은 깨어난 자리에서 방을 나서기 전까지뿐이고, 숙소에는 광장으로 나가는 문
+            // 하나만 붙는다. 사거리 조회는 씬을 뒤지므로 그 구간에만 돈다.
+            if (LastShiftWakeSequence.IsAwaitingQuartersDoor &&
+                LastShiftZoneDoor.FindOperable(transform.position) != null)
+                LastShiftWakeSequence.NotifyQuartersDoorInRange();
         }
 
         /// <summary>
@@ -312,11 +319,20 @@ namespace DoodleUp.Runtime
             // §4.3 표는 R 을 적었으나 R 은 이미 프리셋 리셋이라 T 로 옮겼다.
             UpdateValveSustain(keyboard.tKey.isPressed);
 
-            ApplyLook(look, deltaTime);
+            // 기상 도입부는 시점과 이동을 따로 푼다(정본 §4-1). 상태기가 안 돌면 둘 다 참이라
+            // 평상시에는 없는 것과 같다 — 잠금이 기본값이 되는 경로를 만들지 않는다.
+            var canLook = LastShiftWakeSequence.CanLook;
+            var canMove = LastShiftWakeSequence.CanMove;
+            // AI_W_06 은 "첫 이동 입력" 이다. 실제로 걸었는지가 아니라 <b>키를 눌렀는지</b>이므로
+            // 벽에 붙어 밀고 있어도 뜬다 — 안 그러면 문 쪽이 막힌 자리에서 영영 안 넘어간다.
+            if (canMove && move.sqrMagnitude > 0f) LastShiftWakeSequence.NotifyFirstMove();
+
+            ApplyLook(canLook ? look : Vector2.zero, deltaTime);
             // 붙잡고 있는 동안은 이동이 없다(§4.3 제약). 이 한 줄이 이 동사가 채우려던 문법 축
             // "소비 대상 = 사람" 그 자체다 — 효과만 있고 자리에 안 묶이면 걸어 두는 동사가 되고,
             // 그건 조종석 hold 가 이미 하고 있다.
-            ApplyMovement(sustainingValve ? Vector2.zero : move, jump && !sustainingValve, deltaTime);
+            ApplyMovement(sustainingValve || !canMove ? Vector2.zero : move,
+                jump && !sustainingValve && canMove, deltaTime);
             // 유령은 배를 만질 수 없다(기획 §4.4 N11 구현물 2 — 잡기·수리·문·조종 전면 차단).
             // 서버도 같은 판정을 각 진입점에서 다시 하지만, 요청 자체가 나가지 않는 것이
             // 정상 상태다. 프리셋·리셋(1·2·3·R)은 조작 동사가 아니라 검증 도구이므로 남긴다 —
@@ -1190,6 +1206,10 @@ namespace DoodleUp.Runtime
             // 그때 조준점·상호작용 프롬프트가 로비 위에 남으면 판이 도는 것으로 보인다.
             // 임대를 안 갱신하면 다음 프레임에 저절로 꺼진다 — 지우는 코드가 따로 없다.
             if (LastShiftRoomLobby.IsBlockingGameplay) return;
+
+            // 암전 중에는 조준점도 프롬프트도 없다. 시점이 잠긴 화면에 조준선만 검정 위에
+            // 떠 있으면 "조작은 되는데 화면이 안 나온다" 로 읽힌다.
+            if (!LastShiftWakeSequence.CanLook) return;
 
             // <b>자리 계산은 캔버스 단위로 한다.</b> 아트 키트가 1920×1080 을 자로 잡았고
             // 그래야 4K 에서 프롬프트가 손톱만 해지지 않는다. 계산 함수 자체는 단위를 안

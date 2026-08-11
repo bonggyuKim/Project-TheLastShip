@@ -65,6 +65,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var blocks = new[]
             {
+                LastShiftNarrationScript.Wake,
                 LastShiftNarrationScript.Exit,
                 LastShiftNarrationScript.Farming,
                 LastShiftNarrationScript.Blueprint,
@@ -106,12 +107,16 @@ namespace DoodleUp.Tests.EditMode
         [Test]
         public void TheLoadedBlocksAreAccountedFor()
         {
+            Assert.That(LastShiftNarrationScript.Wake.Length, Is.EqualTo(7));
             Assert.That(LastShiftNarrationScript.Exit.Length, Is.EqualTo(9));
             Assert.That(LastShiftNarrationScript.Farming.Length, Is.EqualTo(8));
             Assert.That(LastShiftNarrationScript.Blueprint.Length, Is.EqualTo(7));
             Assert.That(LastShiftNarrationScript.HandsOff.Length, Is.EqualTo(2));
             Assert.That(LastShiftNarrationScript.Standing.Length, Is.EqualTo(4));
-            Assert.That(LastShiftNarrationScript.Count, Is.EqualTo(26));
+            Assert.That(LastShiftNarrationScript.Count, Is.EqualTo(33));
+            // 정본 총계 50 = 블록 46 + 상시 4. 남은 13 이 순회 블록이고, 그것이 들어오면
+            // 이 수가 46 으로 닫힌다.
+            Assert.That(LastShiftNarrationScript.All.Length, Is.EqualTo(37));
         }
 
         /// <summary>
