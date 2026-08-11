@@ -897,6 +897,11 @@ namespace DoodleUp.Runtime
             // 기상 도입부도 같은 이유로 게이트 위다 — 이 아래로 내리면 판정이 확정되기 전에는
             // 암전이 안 걷히고, 잠긴 입력이 그대로 남는다. 안 도는 동안은 즉시 반환한다.
             LastShiftWakeSequence.Tick(deltaTime);
+            // 신호음은 줄이 바뀌는 프레임에만 운다. 판정은 Announce 안에 있어서 매 프레임
+            // 불러도 되고, 재촉으로 문장이 갈려도 id 가 같아 다시 안 운다(조항 N-1).
+            if (LastShiftWakeSequence.HasLine)
+                LastShiftNarrationAudio.Announce(
+                    LastShiftWakeSequence.Current.Id, LastShiftWakeSequence.Current.Sfx);
 
             if (!HasAppliedImpact || IsResolved) return;
 
