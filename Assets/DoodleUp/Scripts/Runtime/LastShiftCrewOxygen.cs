@@ -40,6 +40,21 @@ namespace DoodleUp.Runtime
 
         public bool IsCritical => !IsDead && SuitOxygen <= LastShiftRecoveryTuning.SuitOxygenCriticalThreshold;
 
+        /// <summary>
+        /// 첫 경고 구간. <b>임계보다 넓다</b> — <see cref="IsCritical"/> 이 참이면 이쪽도 참이다.
+        /// UI 는 둘을 배타로 쓰지 말고 "경고 안에서 임계로 좁혀진다" 로 읽어야 한다.
+        ///
+        /// 진입과 해제가 <b>같은 값</b>이다. 히스테리시스를 안 두는 이유는 산소가 한 상태에서
+        /// 단조롭기 때문이다 — 진공에서는 줄기만 하고 가압에서는 늘기만 한다. 경계를 한 번
+        /// 넘으면 되돌아오지 않으므로 깜빡일 자리가 없다.
+        ///
+        /// <b>예외가 하나 있다.</b> 승무원이 가압·진공 경계에 걸쳐 서 있으면 프레임마다
+        /// 소모와 회복이 번갈아 돌아 값이 임계 근처에서 진동할 수 있다. 그 자리에서 소리와
+        /// 점멸이 떨리면 히스테리시스를 여기 넣는다 — 지금 안 넣는 것은 없는 문제를 미리
+        /// 막지 않으려는 것이고, 넣을 자리는 이 속성 하나다.
+        /// </summary>
+        public bool IsWarning => !IsDead && SuitOxygen <= LastShiftRecoveryTuning.SuitOxygenWarningThreshold;
+
         /// <summary>적색 점멸 위상. 사이렌 칸과 예비 막대가 같은 박자로 뛰어야 같은 사건으로 읽힌다.</summary>
         public static float BlinkPhase => 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f);
 
