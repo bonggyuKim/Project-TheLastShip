@@ -315,11 +315,14 @@ namespace DoodleUp.Runtime
         public static readonly Line[] InPlayOrder = Concat(Wake, Patrol, Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>
-        /// 기상 블록을 뺀 나머지. <see cref="LastShiftNarrationDirector"/> 가 이 순서로 민다 —
-        /// 기상은 시간과 입력 해금이 함께 묶여 있어 자기 상태기(<see cref="LastShiftWakeSequence"/>)
-        /// 가 따로 쥔다.
+        /// 한 줄기로 흐르는 블록들. <see cref="LastShiftNarrationDirector"/> 가 이 순서로 민다.
+        ///
+        /// <b>셋이 빠져 있고 이유가 각각 다르다.</b> 기상은 시간과 입력 해금이 함께 묶여 있고
+        /// (<see cref="LastShiftWakeSequence"/>), 순회는 방 순서가 자유롭고
+        /// (<see cref="LastShiftPatrolNarration"/>), 상시는 진행이 아니라 상태로 뜬다
+        /// (<see cref="LastShiftStandingNarration"/>).
         /// </summary>
-        public static readonly Line[] Directed = Concat(Patrol, Exit, Farming, Blueprint, HandsOff);
+        public static readonly Line[] Directed = Concat(Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>상시 라인을 포함한 전체. 정본 총계 <c>50</c> 중 적재분이다.</summary>
         public static readonly Line[] All = Concat(InPlayOrder, Standing);

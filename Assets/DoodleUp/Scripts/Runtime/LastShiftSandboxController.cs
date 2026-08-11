@@ -1104,6 +1104,8 @@ namespace DoodleUp.Runtime
             var crewWarningOutside = false;
             var crewCriticalOutside = false;
             var crewAtSalvage = false;
+            var crewRoom = LastShiftPlazaSpace.Plaza;
+            var crewInRoom = false;
             // 순회 블록이 읽는 것들. 방 판정은 이 루프가 이미 하고 있어서 여기서 접는다 —
             // 따로 돌면 "어느 방인가" 가 두 벌이 되고 그 둘이 갈리는 순간을 못 찾는다.
             var crewInPlaza = false;
@@ -1137,6 +1139,11 @@ namespace DoodleUp.Runtime
                 {
                     LastShiftPatrol.Observe(space);
                     crewInPlaza |= space == LastShiftPlazaSpace.Plaza;
+                    if (space != LastShiftPlazaSpace.Plaza)
+                    {
+                        crewRoom = space;
+                        crewInRoom = true;
+                    }
                     if (space != LastShiftPlazaSpace.Plaza
                         && LastShiftPatrol.IsAtFixture(space, position))
                     {
@@ -1179,7 +1186,8 @@ namespace DoodleUp.Runtime
             AdvanceNarration(
                 new NarrationSignals(crewNearCore, crewInChamber, crewVacuum,
                     crewInPlaza, crewFacingScreen, crewAtFixture, crewAtAnyFixture,
-                    crewWarningOutside, crewCriticalOutside, crewAtSalvage),
+                    crewWarningOutside, crewCriticalOutside, crewAtSalvage,
+                    crewRoom, crewInRoom),
                 deltaTime);
             AdvanceDepositBadge(deltaTime);
         }
@@ -1201,8 +1209,11 @@ namespace DoodleUp.Runtime
         {
             public NarrationSignals(bool nearCore, bool inChamber, bool vacuum,
                 bool inPlaza, bool facingScreen, LastShiftPlazaSpace atFixture, bool anyFixture,
-                bool warningOutside, bool criticalOutside, bool atSalvage)
+                bool warningOutside, bool criticalOutside, bool atSalvage,
+                LastShiftPlazaSpace room, bool inRoom)
             {
+                Room = room;
+                InRoom = inRoom;
                 WarningOutside = warningOutside;
                 CriticalOutside = criticalOutside;
                 AtSalvage = atSalvage;
@@ -1225,6 +1236,8 @@ namespace DoodleUp.Runtime
             public bool WarningOutside { get; }
             public bool CriticalOutside { get; }
             public bool AtSalvage { get; }
+            public LastShiftPlazaSpace Room { get; }
+            public bool InRoom { get; }
 
             public bool At(LastShiftPlazaSpace space) => AnyFixture && AtFixture == space;
         }
@@ -1241,28 +1254,23 @@ namespace DoodleUp.Runtime
 
             if (!LastShiftNarrationDirector.IsRunning) return;
 
-            // 순회 - 광장에서 시작해 둘레를 한 바퀴 돌고 광장으로 돌아온다. 방마다 두 줄이고,
-            // 뒤쪽 줄의 과녁이 방 안쪽 끝벽 설비다.
-            LastShiftNarrationDirector.Notify("AI_T_01", signals.InPlaza);
-            LastShiftNarrationDirector.Notify("AI_T_02B", signals.NearCore);
-            LastShiftNarrationDirector.Notify("AI_T_03",
-                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.CockpitRoom));
-            LastShiftNarrationDirector.Notify("AI_T_04", signals.FacingScreen);
-            LastShiftNarrationDirector.Notify("AI_T_05",
-                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.PowerRoom));
-            LastShiftNarrationDirector.Notify("AI_T_06", signals.At(LastShiftPlazaSpace.PowerRoom));
-            LastShiftNarrationDirector.Notify("AI_T_07",
-                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.LifeSupportRoom));
-            LastShiftNarrationDirector.Notify("AI_T_08", signals.At(LastShiftPlazaSpace.LifeSupportRoom));
-            LastShiftNarrationDirector.Notify("AI_T_09",
-                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.CoolingRoom));
-            LastShiftNarrationDirector.Notify("AI_T_10", signals.At(LastShiftPlazaSpace.CoolingRoom));
-            // 마지막 방을 나와 광장으로 돌아온 그 프레임. 방문 판정은 순서를 안 본다(N-3).
-            LastShiftNarrationDirector.Notify("AI_T_11",
-                LastShiftPatrol.AllVisited && signals.InPlaza);
+            // 순회는 <b>순서가 없다</b>(조항 N-3) — 어느 문으로 들어가든 그 방 줄이 그 자리에서
+            // 나온다. 그래서 디렉터가 아니라 자기 상태기가 민다. 어느 방에 있는지는 이미
+            // 재고 있으므로 여기서는 그대로 넘기기만 한다.
+            if (signals.InPlaza) LastShiftPatrolNarration.NotifyInPlaza();
+            if (signals.NearCore) LastShiftPatrolNarration.NotifyNearCore();
+            if (signals.InRoom) LastShiftPatrolNarration.NotifyRoomEntered(signals.Room);
+            if (signals.FacingScreen)
+                LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CockpitRoom);
+            if (signals.AnyFixture) LastShiftPatrolNarration.NotifyAtFixture(signals.AtFixture);
+            LastShiftPatrolNarration.Tick(deltaTime);
+            if (LastShiftPatrolNarration.HasLine)
+                LastShiftNarrationAudio.Announce(
+                    LastShiftPatrolNarration.Current.Id, LastShiftPatrolNarration.Current.Sfx);
 
             // 코어 접근 -> 승강기 도착 -> 탑승. 셋이 거리로 갈린다.
-            LastShiftNarrationDirector.Notify("AI_B_01", signals.NearCore);
+            LastShiftNarrationDirector.Notify("AI_B_01",
+                signals.NearCore && LastShiftPatrolNarration.IsComplete);
             LastShiftNarrationDirector.Notify("AI_F_01",
                 signals.InChamber && LastShiftEvaLift.IsAtDeck);
             LastShiftNarrationDirector.Notify("AI_F_01B", signals.InChamber);
@@ -2216,6 +2224,13 @@ namespace DoodleUp.Runtime
                     LastShiftWakeSequence.LineElapsedSeconds,
                     LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha,
                     typed: !LastShiftWakeSequence.IsOpeningLine);
+                return;
+            }
+
+            if (LastShiftPatrolNarration.HasLine && !LastShiftNarrationDirector.HasLine)
+            {
+                DrawNarrationBanner(layer, LastShiftPatrolNarration.Current,
+                    LastShiftPatrolNarration.LineElapsedSeconds, 1f, 1f);
                 return;
             }
 
