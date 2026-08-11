@@ -70,8 +70,9 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// O-7 자동 복귀 전용: warning 프레임을 빠르게 두 번만 켠다.
-        /// 위기색·사망 암전·반복 경보와 분리해, 회수는 실패 통보가 아니라 왕복 손실로 읽힌다.
+        /// O-7 <c>AI_F_W3</c>/<c>IsAutoReturnFlash</c> 전용: warning 프레임을 빠르게 두 번만 켠다.
+        /// 실제 <c>IsDead</c>에는 쓰지 않는다. 위기색·사망 암전·반복 경보와 분리해,
+        /// 회수는 실패 통보가 아니라 왕복 손실로 읽힌다.
         /// </summary>
         public static bool IsAutoReturnWarningPulse(float elapsedSeconds)
         {
