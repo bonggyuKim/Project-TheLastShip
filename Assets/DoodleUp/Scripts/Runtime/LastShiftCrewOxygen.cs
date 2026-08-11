@@ -23,6 +23,7 @@ namespace DoodleUp.Runtime
         private LastShiftPlayerController playerController;
         private AudioSource breathAudio;
         private bool wasDraining;
+        private float autoReturnAt = float.NegativeInfinity;
 
         /// <summary>남은 개인 예비 산소. 1.00 에서 시작해 진공 구역에서만 줄어든다.</summary>
         public float SuitOxygen { get; private set; } = LastShiftRecoveryTuning.SuitOxygenInitial;
@@ -39,6 +40,24 @@ namespace DoodleUp.Runtime
         public bool ShowsSuitGauge => IsDead || SuitOxygen < LastShiftRecoveryTuning.SuitOxygenInitial;
 
         public bool IsCritical => !IsDead && SuitOxygen <= LastShiftRecoveryTuning.SuitOxygenCriticalThreshold;
+
+        /// <summary>
+        /// 조항 <c>O-7</c> 자동 복귀가 난 뒤 지난 시간. 한 번도 안 났으면 무한이다.
+        ///
+        /// <b>사망과 다른 상태다.</b> 회수는 <see cref="IsDead"/> 를 안 세우고, 세워지기
+        /// <b>전에</b> 끊는 것이 그 조항의 전부다 — 그래서 이 둘을 같은 연출에 묶으면
+        /// "왕복을 잃었다" 와 "끝났다" 가 한 색이 된다.
+        /// </summary>
+        public float AutoReturnElapsedSeconds =>
+            autoReturnAt <= float.NegativeInfinity ? float.PositiveInfinity : Time.unscaledTime - autoReturnAt;
+
+        /// <summary>
+        /// 지금 자동 복귀 펄스가 켜져 있는가. <b>위기색이 아니라 warning 색</b>을 쓰는 자리이며
+        /// (game-art 확정 2026-08-11), 두 번 깜빡이고 정상으로 돌아온다. 창이 끝나면 그냥
+        /// 거짓이라 "복귀" 를 따로 안 그린다.
+        /// </summary>
+        public bool IsAutoReturnFlash =>
+            !IsDead && LastShiftUiTheme.IsAutoReturnWarningPulse(AutoReturnElapsedSeconds);
 
         /// <summary>
         /// 첫 경고 구간. <b>임계보다 넓다</b> — <see cref="IsCritical"/> 이 참이면 이쪽도 참이다.
@@ -79,11 +98,16 @@ namespace DoodleUp.Runtime
 
             // 사망은 회색이다. 위기색으로 두면 "아직 손쓸 수 있다" 로 읽히는데 이 줄은
             // 이미 끝난 상태를 적는다. 위기 점멸은 사이렌 칸과 같은 박자를 쓴다.
+            // 자동 복귀 펄스는 <b>위기색 앞</b>에 온다. 회수 직후에는 예비가 다시 차 있어
+            // IsCritical 이 이미 거짓이지만, 순서를 남겨 둬야 나중에 회수 임계가 바뀌어도
+            // 회수가 위기로 안 읽힌다(game-art 확정 — 회수는 실패 통보가 아니다).
             gauge.SetTone(crew.IsDead
                 ? new Color(0.45f, 0.45f, 0.45f)
-                : crew.IsCritical
-                    ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), LastShiftUiTheme.Crisis, BlinkPhase)
-                    : LastShiftUiTheme.Nominal);
+                : crew.IsAutoReturnFlash
+                    ? LastShiftUiTheme.Fault
+                    : crew.IsCritical
+                        ? Color.Lerp(new Color(0.35f, 0.05f, 0.05f), LastShiftUiTheme.Crisis, BlinkPhase)
+                        : LastShiftUiTheme.Nominal);
             gauge.SetThresholds();
         }
 
@@ -163,6 +187,9 @@ namespace DoodleUp.Runtime
             if (IsDead) return;
             SuitOxygen = LastShiftRecoveryTuning.SuitOxygenInitial;
             IsDraining = false;
+            // 회수가 난 시각. UI 가 이 한 값에서 펄스 창을 계산하므로 회수 쪽에 상태를
+            // 따로 안 들고, 창이 지나면 저절로 꺼진다.
+            autoReturnAt = Time.unscaledTime;
             StopBreathAudio();
         }
 
