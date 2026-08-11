@@ -2236,7 +2236,8 @@ namespace DoodleUp.Runtime
             if (LastShiftPatrolNarration.HasLine && !LastShiftNarrationDirector.HasLine)
             {
                 DrawNarrationBanner(layer, LastShiftPatrolNarration.Current,
-                    LastShiftPatrolNarration.LineElapsedSeconds, 1f, 1f);
+                    LastShiftPatrolNarration.LineElapsedSeconds, 1f, 1f,
+                    typingSeconds: LastShiftPatrolNarration.TypingSeconds);
                 return;
             }
 
@@ -2302,7 +2303,7 @@ namespace DoodleUp.Runtime
             in LastShiftNarrationScript.Line line, float lineElapsed,
             float panelAlpha, float lineAlpha,
             LastShiftOnboardingPanelTone tone = LastShiftOnboardingPanelTone.Normal,
-            bool typed = true)
+            bool typed = true, float typingSeconds = 0f)
         {
             var screen = LastShiftUiLayer.ScreenSize;
             var banner = LastShiftHudLayout.OnboardingNarrationRect(screen.x, screen.y);
@@ -2331,7 +2332,8 @@ namespace DoodleUp.Runtime
             var text = swapped ? line.Nudge : LastShiftNarrationScript.Format(line);
             if (typed)
                 text = LastShiftNarrationScript.Reveal(
-                    text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed);
+                    text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed,
+                    typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds);
             var ivory = LastShiftUiTheme.Ivory;
             layer.Label("tutorialGuide", new Rect(seated.x + 42f, seated.y + 60f, seated.width - 84f, 96f),
                 text, 38, new Color(ivory.r, ivory.g, ivory.b, ivory.a * Mathf.Clamp01(lineAlpha)),

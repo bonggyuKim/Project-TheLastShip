@@ -293,12 +293,19 @@ namespace DoodleUp.Runtime
         /// <b>글자를 세서 자를 뿐 새 문자열 규칙을 만들지 않는다</b> — 서식이 붙으면
         /// 여기가 아니라 그리는 쪽이 바뀐다.
         /// </summary>
-        public static string Reveal(string text, float elapsed)
+        public static string Reveal(string text, float elapsed) =>
+            Reveal(text, elapsed, TypingSeconds);
+
+        /// <summary>
+        /// 찍히는 시간을 부르는 쪽이 정한다. <b>순회만 짧게 쓴다</b> — 그 블록은 다음 줄이
+        /// 걸어가는 동안 바로 따라오므로, 찍는 데 오래 걸리면 읽을 시간이 안 남는다.
+        /// </summary>
+        public static string Reveal(string text, float elapsed, float duration)
         {
-            if (string.IsNullOrEmpty(text)) return text;
-            if (elapsed >= TypingSeconds) return text;
+            if (string.IsNullOrEmpty(text) || duration <= 0f) return text;
+            if (elapsed >= duration) return text;
             if (elapsed <= 0f) return string.Empty;
-            var shown = Mathf.CeilToInt(text.Length * (elapsed / TypingSeconds));
+            var shown = Mathf.CeilToInt(text.Length * (elapsed / duration));
             return text.Substring(0, Mathf.Clamp(shown, 0, text.Length));
         }
 

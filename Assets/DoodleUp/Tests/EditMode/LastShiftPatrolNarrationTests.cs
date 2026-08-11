@@ -337,6 +337,39 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(LastShiftPatrolNarration.FixturesApproached, Is.Zero);
         }
 
+        /// <summary>
+        /// 조항 §7-22 — <b>읽을 시간이 찍는 시간보다 길어야 한다.</b> 순회는 다음 줄이 걸어가는
+        /// 동안 바로 따라오므로, 기본 타이핑(<c>1.0</c>초)을 그대로 쓰면 자리 안에 읽을 시간이
+        /// 절반도 안 남는다. 도입부 박자는 안 건드린다(조항 <c>N-10</c>).
+        /// </summary>
+        [Test]
+        public void ReadingTimeOutlastsTypingTime()
+        {
+            var typing = LastShiftPatrolNarration.TypingSeconds;
+            var slot = LastShiftPatrolNarration.MinimumDisplaySeconds;
+
+            Assert.That(typing, Is.LessThan(LastShiftNarrationScript.TypingSeconds),
+                "순회가 기본 타이핑을 그대로 쓴다");
+            Assert.That(slot - typing, Is.GreaterThan(typing * 2f),
+                $"읽을 시간이 찍는 시간의 세 배가 안 된다 (읽기 {slot - typing:F2} / 타이핑 {typing:F2})");
+
+            // 도입부 박자는 그대로여야 한다 - balance 와 문안 양쪽이 같은 값을 지킨다.
+            Assert.That(LastShiftWakeSequence.BeatSeconds, Is.EqualTo(2f));
+            Assert.That(LastShiftStandingNarration.DwellSeconds, Is.EqualTo(2f));
+        }
+
+        /// <summary>가장 긴 순회 줄도 자리 안에 다 찍힌다.</summary>
+        [Test]
+        public void EveryTourLineFinishesInsideItsSlot()
+        {
+            foreach (var line in LastShiftNarrationScript.Patrol)
+                Assert.That(
+                    LastShiftNarrationScript.Reveal(
+                        line.Text, LastShiftPatrolNarration.TypingSeconds,
+                        LastShiftPatrolNarration.TypingSeconds),
+                    Is.EqualTo(line.Text), $"{line.Id} 가 제 시간에 다 안 찍혔다");
+        }
+
         /// <summary>여는 두 줄까지 밀어 둔다 — 방 검사들의 공통 준비다.</summary>
         private static void Open()
         {

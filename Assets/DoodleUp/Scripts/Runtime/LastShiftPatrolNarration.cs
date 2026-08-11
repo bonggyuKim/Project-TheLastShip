@@ -80,6 +80,21 @@ namespace DoodleUp.Runtime
         public static float MinimumDisplaySeconds =>
             FloorSeconds / LastShiftNarrationScript.Patrol.Length;
 
+        /// <summary>
+        /// 순회 줄이 찍히는 시간. <b>기본값(<c>1.0</c>초)보다 짧다</b> — 이 블록은 다음 줄이
+        /// 걸어가는 동안 바로 따라와서, 찍는 데 <c>1</c>초를 쓰면 자리(<c>1.88</c>초) 안에
+        /// 읽을 시간이 <c>0.9</c>초밖에 안 남는다. 스무 자가 안 읽히는 선이다.
+        ///
+        /// <b>자리의 <c>1/4</c> 로 잡는다</b> — 뜨는 데 쓰는 시간보다 읽는 시간이 세 배는
+        /// 길어야 한다는 것이 규칙이고, 자리가 바뀌면 이 값도 같이 따라온다. 지금 값은
+        /// <c>0.47</c>초이고 읽기 <c>1.41</c>초다(game-writer 가 제시한 <c>0.5</c>/<c>1.5</c> 와
+        /// 같은 자리다).
+        ///
+        /// <b>도입부는 안 건드린다.</b> 기상 네 문장의 <c>2</c>초 간격은 조항 <c>N-10</c> 이고,
+        /// 그 값은 <c>DwellSeconds</c> 와 함께 balance 가 닫아 둔 자리다.
+        /// </summary>
+        public static float TypingSeconds => MinimumDisplaySeconds * 0.25f;
+
         /// <summary>줄 서 있는 줄 수. 검사와 진단이 읽는다.</summary>
         public static int PendingCount => pending.Count;
 
