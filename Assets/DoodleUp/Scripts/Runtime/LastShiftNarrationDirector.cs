@@ -56,8 +56,21 @@ namespace DoodleUp.Runtime
         public static bool Notify(string id)
         {
             if (!IsRunning || IsComplete) return false;
-            if (!string.Equals(id, NextId, System.StringComparison.Ordinal)) return false;
-            Advance();
+
+            // 선택 줄만 뛰어넘는다. 뼈대 줄에서 막히면 그건 배선이 빠진 것이지 건너뛸 일이
+            // 아니므로, 여기서 멀리 내다보면 안 걸린 신호가 안내를 통째로 앞질러 끝낸다.
+            var at = fired;
+            var lines = LastShiftNarrationScript.Directed;
+            while (at < lines.Length
+                   && !string.Equals(id, lines[at].Id, System.StringComparison.Ordinal))
+            {
+                if (!lines[at].IsOptional) return false;
+                at++;
+            }
+
+            if (at >= lines.Length) return false;
+            fired = at + 1;
+            lineElapsed = 0f;
             return true;
         }
 

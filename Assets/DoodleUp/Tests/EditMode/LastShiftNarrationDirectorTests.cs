@@ -31,10 +31,10 @@ namespace DoodleUp.Tests.EditMode
             LastShiftNarrationDirector.Begin();
 
             Assert.That(LastShiftNarrationDirector.HasLine, Is.False, "아직 아무 사건도 안 났다");
-            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_B_01"));
+            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_T_01"));
 
-            Assert.That(LastShiftNarrationDirector.Notify("AI_B_01"), Is.True);
-            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_B_01"));
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_01"), Is.True);
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_01"));
         }
 
         /// <summary>
@@ -50,10 +50,10 @@ namespace DoodleUp.Tests.EditMode
                 "한참 뒤 줄이 먼저 떴다");
             Assert.That(LastShiftNarrationDirector.HasLine, Is.False);
 
-            LastShiftNarrationDirector.Notify("AI_B_01");
-            Assert.That(LastShiftNarrationDirector.Notify("AI_B_01"), Is.False,
+            LastShiftNarrationDirector.Notify("AI_T_01");
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_01"), Is.False,
                 "같은 신호가 두 번 먹었다");
-            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_B_01"));
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_01"));
         }
 
         /// <summary>조건 형 호출은 거짓이면 아무 일도 안 한다.</summary>
@@ -62,9 +62,9 @@ namespace DoodleUp.Tests.EditMode
         {
             LastShiftNarrationDirector.Begin();
 
-            Assert.That(LastShiftNarrationDirector.Notify("AI_B_01", false), Is.False);
-            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_B_01"));
-            Assert.That(LastShiftNarrationDirector.Notify("AI_B_01", true), Is.True);
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_01", false), Is.False);
+            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_T_01"));
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_01", true), Is.True);
         }
 
         /// <summary>
@@ -75,17 +75,17 @@ namespace DoodleUp.Tests.EditMode
         public void AutomaticLinesArriveOnTheirOwn()
         {
             LastShiftNarrationDirector.Begin();
-            LastShiftNarrationDirector.Notify("AI_B_01");
+            LastShiftNarrationDirector.Notify("AI_T_01");
 
-            var wait = LastShiftNarrationScript.Of("AI_B_02").AutoAfterSeconds;
-            Assert.That(wait, Is.GreaterThan(0f), "AI_B_02 가 시간 형으로 안 잡혀 있다");
+            var wait = LastShiftNarrationScript.Of("AI_T_02").AutoAfterSeconds;
+            Assert.That(wait, Is.GreaterThan(0f), "AI_T_02 가 시간 형으로 안 잡혀 있다");
 
             LastShiftNarrationDirector.Tick(wait * 0.5f);
-            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_B_01"),
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_01"),
                 "예정 시각 전에 넘어갔다");
 
             LastShiftNarrationDirector.Tick(wait);
-            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_B_02"));
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_02"));
         }
 
         /// <summary>
@@ -96,13 +96,14 @@ namespace DoodleUp.Tests.EditMode
         public void ManualLinesWaitForever()
         {
             LastShiftNarrationDirector.Begin();
-            LastShiftNarrationDirector.Notify("AI_B_01");
-            LastShiftNarrationDirector.Tick(LastShiftNarrationScript.Of("AI_B_02").AutoAfterSeconds);
+            LastShiftNarrationDirector.Notify("AI_T_01");
+            LastShiftNarrationDirector.Tick(LastShiftNarrationScript.Of("AI_T_02").AutoAfterSeconds);
 
             LastShiftNarrationDirector.Tick(600f);
 
-            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_B_02"));
-            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_F_01"));
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_02"));
+            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_T_02B"),
+                "선택 줄이라도 시간으로 넘어가지는 않는다");
         }
 
         /// <summary>
@@ -113,6 +114,7 @@ namespace DoodleUp.Tests.EditMode
         public void TheExitBlockRunsEndToEnd()
         {
             LastShiftNarrationDirector.Begin();
+            RunBlock(LastShiftNarrationScript.Patrol);
 
             foreach (var line in LastShiftNarrationScript.Exit)
             {
@@ -123,9 +125,65 @@ namespace DoodleUp.Tests.EditMode
             }
 
             Assert.That(LastShiftNarrationDirector.FiredCount,
-                Is.EqualTo(LastShiftNarrationScript.Exit.Length));
+                Is.EqualTo(LastShiftNarrationScript.Patrol.Length
+                           + LastShiftNarrationScript.Exit.Length));
             Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_F_07"),
                 "나가는 길 다음이 파밍 첫 줄이 아니다");
+        }
+
+        /// <summary>
+        /// <b>선택 줄은 건너뛴다.</b> <c>AI_T_02B</c>(코어)는 순서 무관이라 아예 안 다가설 수
+        /// 있고, 그때 다음 줄이 막히면 순회가 통째로 선다.
+        /// </summary>
+        [Test]
+        public void OptionalLinesCanBeSkipped()
+        {
+            LastShiftNarrationDirector.Begin();
+            LastShiftNarrationDirector.Notify("AI_T_01");
+            LastShiftNarrationDirector.Tick(LastShiftNarrationScript.Of("AI_T_02").AutoAfterSeconds);
+            Assume.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_T_02B"));
+
+            // 코어에 안 들르고 곧장 조종석으로 갔다.
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_03"), Is.True, "선택 줄에서 막혔다");
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_03"));
+        }
+
+        /// <summary>
+        /// <b>뼈대 줄은 안 건너뛴다.</b> 여기서까지 멀리 내다보면, 배선이 빠진 신호 하나가
+        /// 안내를 통째로 앞질러 끝낸다.
+        /// </summary>
+        [Test]
+        public void RequiredLinesAreNeverSkipped()
+        {
+            LastShiftNarrationDirector.Begin();
+            LastShiftNarrationDirector.Notify("AI_T_01");
+            LastShiftNarrationDirector.Tick(LastShiftNarrationScript.Of("AI_T_02").AutoAfterSeconds);
+
+            Assert.That(LastShiftNarrationDirector.Notify("AI_T_05"), Is.False,
+                "조종석 둘을 건너뛰고 전력실로 갔다");
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_02"));
+        }
+
+        /// <summary>순회 열셋을 실제 순서대로 밟는다.</summary>
+        [Test]
+        public void ThePatrolBlockRunsEndToEnd()
+        {
+            LastShiftNarrationDirector.Begin();
+            RunBlock(LastShiftNarrationScript.Patrol);
+
+            Assert.That(LastShiftNarrationDirector.Current.Id, Is.EqualTo("AI_T_11"));
+            Assert.That(LastShiftNarrationDirector.NextId, Is.EqualTo("AI_B_01"),
+                "순회 다음이 나가는 길 첫 줄이 아니다");
+        }
+
+        private static void RunBlock(LastShiftNarrationScript.Line[] block)
+        {
+            foreach (var line in block)
+            {
+                if (line.IsAutomatic) LastShiftNarrationDirector.Tick(line.AutoAfterSeconds);
+                else Assert.That(LastShiftNarrationDirector.Notify(line.Id), Is.True,
+                    $"{line.Id} 에서 막혔다");
+            }
         }
 
         /// <summary>
@@ -137,7 +195,7 @@ namespace DoodleUp.Tests.EditMode
         {
             var ids = LastShiftNarrationScript.Directed.Select(line => line.Id).ToList();
 
-            Assert.That(ids.First(), Is.EqualTo("AI_B_01"));
+            Assert.That(ids.First(), Is.EqualTo("AI_T_01"));
             Assert.That(ids.Last(), Is.EqualTo("AI_F_16"));
             Assert.That(ids.IndexOf("AI_F_15"), Is.GreaterThan(ids.IndexOf("AI_B_17")));
             Assert.That(ids.Count, Is.EqualTo(LastShiftNarrationScript.Count

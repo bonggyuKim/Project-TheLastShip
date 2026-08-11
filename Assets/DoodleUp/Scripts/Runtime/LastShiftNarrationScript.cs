@@ -26,7 +26,7 @@ namespace DoodleUp.Runtime
         {
             public Line(string id, string trigger, LastShiftNarrationSfx sfx, string text,
                 string nudge = "", float nudgeAfterSeconds = 0f, string prompt = "",
-                float autoAfterSeconds = 0f)
+                float autoAfterSeconds = 0f, bool optional = false)
             {
                 Id = id;
                 Trigger = trigger;
@@ -36,6 +36,7 @@ namespace DoodleUp.Runtime
                 NudgeAfterSeconds = nudgeAfterSeconds;
                 Prompt = prompt;
                 AutoAfterSeconds = autoAfterSeconds;
+                IsOptional = optional;
             }
 
             public string Id { get; }
@@ -64,6 +65,16 @@ namespace DoodleUp.Runtime
             /// 줄을 도면 블록 뒤로 보내므로, 실제로 재는 앞줄은 <c>AI_B_17</c> 이다.
             /// </summary>
             public float AutoAfterSeconds { get; }
+
+            /// <summary>
+            /// <b>안 뜨고 지나갈 수 있는 줄</b>인가. 진행의 뼈대가 아니라 곁가지라, 조건이
+            /// 안 맞으면 다음 줄이 이 줄을 뛰어넘는다.
+            ///
+            /// 둘뿐이다 — <c>AI_T_02B</c>(코어는 순서 무관이라 아예 안 다가설 수 있다)와
+            /// <c>AI_F_13</c>("잔해에 아직 남음" 은 한 번에 다 뜯으면 거짓말이 된다).
+            /// 이 표시가 없으면 그 둘에서 안내가 영영 막힌다.
+            /// </summary>
+            public bool IsOptional { get; }
 
             public bool HasNudge => !string.IsNullOrEmpty(Nudge);
             public bool HasPrompt => !string.IsNullOrEmpty(Prompt);
@@ -105,6 +116,53 @@ namespace DoodleUp.Runtime
             new("AI_W_07", "숙소 출입문 상호작용 사거리 진입", Short,
                 "문 밖은 중앙 광장. 이 배의 모든 이동은 그곳을 지남.",
                 "숙소 문으로 갈 것.", 16f)
+        };
+
+        /// <summary>
+        /// 블록 <c>2</c> — 방 순회(정본 §4-2). <b>방마다 두 줄이다</b> — 들어온 방이 무엇인지,
+        /// 무엇을 하는 방인지. 뒤쪽 줄의 과녁은 전부 방 안쪽 끝벽에 붙은 설비이고, 그 자리는
+        /// 게이지를 문틀에서 방 안으로 옮긴 <c>SIMUL_ZONES</c> 장치와 같은 좌표다.
+        ///
+        /// 순서는 <b>광장 둘레를 도는 순서</b>다 — 조종석 → 전력실 → 산소실 → 냉각실.
+        /// v1.14 가 옛 순서(조종석 → 산소실 → 전력실 → 냉각실)를 고쳤다: 그쪽은 서 → 동 →
+        /// 남 → 북이라 <b>광장 코어를 두 번 가로지른다</b>. 문서가 스스로 "둘레를 도는 순서"
+        /// 라고 적어 놓고 정작 둘레를 안 돌고 있었고, 보행이 <c>53.5 → 41.5m</c> 로 줄었다.
+        /// <b>문안은 한 줄도 안 바뀌었고 두 쌍의 내용만 맞바꿨다.</b>
+        /// </summary>
+        public static readonly Line[] Patrol =
+        {
+            new("AI_T_01", "광장 최초 진입", Long,
+                "중앙 광장. 고정 구획 다섯이 전부 이 방에 붙어 있음."),
+            new("AI_T_02", "AI_T_01 후 3초", Quiet,
+                "둘레의 문을 순서대로 안내함. 선수 쪽부터임.",
+                "선수 쪽 개구부로 갈 것.", 14f, autoAfterSeconds: 3f),
+            // 코어는 지나가다 볼 수도, 안 볼 수도 있다 — 그래서 유일하게 건너뛸 수 있는 줄이다.
+            new("AI_T_02B", "광장 코어 사거리 진입 (순서 무관 · 1회)", Quiet,
+                "가운데 구조물은 코어. 지금은 막혀 있음.", optional: true),
+            new("AI_T_03", "조종석 진입", Short,
+                "조종석. 문이 없는 개구부로 광장과 이어짐."),
+            new("AI_T_04", "전면 스크린 시야 진입", Quiet,
+                "항로와 다음 기항을 여기서 봄. 도킹도 여기서 확정함.",
+                "전면 스크린 앞으로 갈 것.", 12f),
+            new("AI_T_04B", "AI_T_04 후 2초", Quiet,
+                "창밖에 잔해가 떠 있음. 곧 그리로 나감.", autoAfterSeconds: 2f),
+            new("AI_T_05", "전력실 압력문 통과", Short,
+                "전력실. 배전반이 여기 있음."),
+            new("AI_T_06", "배전반 근접", Quiet,
+                "각성의 원인이 이 방에 있음. 현재 출력은 최소 유지선임.",
+                "배전반 앞으로 갈 것.", 12f),
+            new("AI_T_07", "산소실 압력문 통과", Short,
+                "산소실. 선내 산소를 만드는 곳임."),
+            new("AI_T_08", "산소실 게이지 근접", Quiet,
+                "이 방이 멈추면 전 구역의 시계가 같이 감. 복구 우선순위 1위임.",
+                "게이지 앞으로 갈 것.", 12f),
+            new("AI_T_09", "냉각실 압력문 통과", Short,
+                "냉각실. 열을 버리는 곳임."),
+            new("AI_T_10", "냉각통 근접", Quiet,
+                "냉각이 끊기면 전력실이 먼저 내려감. 두 방은 같이 봄.",
+                "냉각통 앞으로 갈 것.", 12f),
+            new("AI_T_11", "마지막 미방문 방 퇴장 후 광장 재진입", Quiet,
+                "구획 안내 종료. 문의 위치를 기억할 것.")
         };
 
         /// <summary>
@@ -153,8 +211,9 @@ namespace DoodleUp.Runtime
                 "들고 있던 것이 하치대로 들어감."),
             new("AI_F_12", "AI_F_11 후 2초", Quiet,
                 "경계는 문이 아니라 기압임. 따로 할 것 없음.", autoAfterSeconds: 2f),
+            // 한 번에 다 뜯으면 "아직 남음" 이 거짓말이 된다 — 그때는 건너뛴다.
             new("AI_F_13", "잔해 잔량이 0 보다 큰 상태에서 AI_F_12 종료", Quiet,
-                "잔해에 아직 남음. 왕복이 세는 단위임.", "한 번 더 나갈 것.", 45f),
+                "잔해에 아직 남음. 왕복이 세는 단위임.", "한 번 더 나갈 것.", 45f, optional: true),
             new("AI_F_14", "잔해 필드 소진", Short,
                 "필드 소진. 자재 4.")
         };
@@ -232,14 +291,14 @@ namespace DoodleUp.Runtime
         /// 실제로 뜨는 순서. <b>배열 정의 순서가 아니라 이쪽이 정본이다</b> — 조항 <c>N-6</c> 이
         /// 마무리를 도면 뒤로 보내므로, 표 순서를 그대로 읽으면 어긋난다.
         /// </summary>
-        public static readonly Line[] InPlayOrder = Concat(Wake, Exit, Farming, Blueprint, HandsOff);
+        public static readonly Line[] InPlayOrder = Concat(Wake, Patrol, Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>
         /// 기상 블록을 뺀 나머지. <see cref="LastShiftNarrationDirector"/> 가 이 순서로 민다 —
         /// 기상은 시간과 입력 해금이 함께 묶여 있어 자기 상태기(<see cref="LastShiftWakeSequence"/>)
         /// 가 따로 쥔다.
         /// </summary>
-        public static readonly Line[] Directed = Concat(Exit, Farming, Blueprint, HandsOff);
+        public static readonly Line[] Directed = Concat(Patrol, Exit, Farming, Blueprint, HandsOff);
 
         /// <summary>상시 라인을 포함한 전체. 정본 총계 <c>50</c> 중 적재분이다.</summary>
         public static readonly Line[] All = Concat(InPlayOrder, Standing);

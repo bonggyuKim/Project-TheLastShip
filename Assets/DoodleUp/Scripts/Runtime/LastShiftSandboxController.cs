@@ -1100,6 +1100,12 @@ namespace DoodleUp.Runtime
             // 다른 줄이기 때문이다. 문 사거리를 그대로 빌려 쓰는 것은 새 숫자를 안 만들려는
             // 것이고, 실제로 코어에 붙는 조작이 문 개폐와 같은 키다.
             var crewNearCore = false;
+            // 순회 블록이 읽는 것들. 방 판정은 이 루프가 이미 하고 있어서 여기서 접는다 —
+            // 따로 돌면 "어느 방인가" 가 두 벌이 되고 그 둘이 갈리는 순간을 못 찾는다.
+            var crewInPlaza = false;
+            var crewFacingScreen = false;
+            var crewAtFixture = LastShiftPlazaSpace.Plaza;
+            var crewAtAnyFixture = false;
 
             foreach (var targetPlayer in players)
             {
@@ -1118,6 +1124,21 @@ namespace DoodleUp.Runtime
                 crewVacuum |= LastShiftAirlock.IsOutside(position);
                 crewNearCore |= LastShiftEvaShaft.Contains(
                     position.x, position.z, LastShiftZoneDoor.ReachDistance);
+
+                if (resolved)
+                {
+                    LastShiftPatrol.Observe(space);
+                    crewInPlaza |= space == LastShiftPlazaSpace.Plaza;
+                    if (space != LastShiftPlazaSpace.Plaza
+                        && LastShiftPatrol.IsAtFixture(space, position))
+                    {
+                        crewAtFixture = space;
+                        crewAtAnyFixture = true;
+                    }
+                    crewFacingScreen |= space == LastShiftPlazaSpace.CockpitRoom
+                                        && LastShiftPatrol.IsFacingCockpitScreen(
+                                            position, targetPlayer.AimDirection);
+                }
 
                 if (!IsZoneVacuum(position))
                 {
@@ -1146,7 +1167,10 @@ namespace DoodleUp.Runtime
                     LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                     LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
                 deltaTime);
-            AdvanceNarration(crewNearCore, crewInChamber, crewVacuum, deltaTime);
+            AdvanceNarration(
+                new NarrationSignals(crewNearCore, crewInChamber, crewVacuum,
+                    crewInPlaza, crewFacingScreen, crewAtFixture, crewAtAnyFixture),
+                deltaTime);
             AdvanceDepositBadge(deltaTime);
         }
 
@@ -1162,16 +1186,61 @@ namespace DoodleUp.Runtime
         /// (<c>AI_B_11</c>~<c>17</c>)의 신호는 각각 잔해와 배치 화면 쪽에 있어서 여기서 안
         /// 보인다. 그 둘이 걸릴 때까지 디렉터는 <c>AI_F_06</c> 에서 선다.
         /// </summary>
-        private static void AdvanceNarration(
-            bool crewNearCore, bool crewInChamber, bool crewVacuum, float deltaTime)
+        /// <summary>내레이션이 읽는 신호 한 벌. 인자를 일곱 개 늘어놓지 않으려고 묶는다.</summary>
+        private readonly struct NarrationSignals
+        {
+            public NarrationSignals(bool nearCore, bool inChamber, bool vacuum,
+                bool inPlaza, bool facingScreen, LastShiftPlazaSpace atFixture, bool anyFixture)
+            {
+                NearCore = nearCore;
+                InChamber = inChamber;
+                Vacuum = vacuum;
+                InPlaza = inPlaza;
+                FacingScreen = facingScreen;
+                AtFixture = atFixture;
+                AnyFixture = anyFixture;
+            }
+
+            public bool NearCore { get; }
+            public bool InChamber { get; }
+            public bool Vacuum { get; }
+            public bool InPlaza { get; }
+            public bool FacingScreen { get; }
+            public LastShiftPlazaSpace AtFixture { get; }
+            public bool AnyFixture { get; }
+
+            public bool At(LastShiftPlazaSpace space) => AnyFixture && AtFixture == space;
+        }
+
+        private static void AdvanceNarration(in NarrationSignals signals, float deltaTime)
         {
             if (!LastShiftNarrationDirector.IsRunning) return;
 
+            // 순회 - 광장에서 시작해 둘레를 한 바퀴 돌고 광장으로 돌아온다. 방마다 두 줄이고,
+            // 뒤쪽 줄의 과녁이 방 안쪽 끝벽 설비다.
+            LastShiftNarrationDirector.Notify("AI_T_01", signals.InPlaza);
+            LastShiftNarrationDirector.Notify("AI_T_02B", signals.NearCore);
+            LastShiftNarrationDirector.Notify("AI_T_03",
+                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.CockpitRoom));
+            LastShiftNarrationDirector.Notify("AI_T_04", signals.FacingScreen);
+            LastShiftNarrationDirector.Notify("AI_T_05",
+                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.PowerRoom));
+            LastShiftNarrationDirector.Notify("AI_T_06", signals.At(LastShiftPlazaSpace.PowerRoom));
+            LastShiftNarrationDirector.Notify("AI_T_07",
+                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.LifeSupportRoom));
+            LastShiftNarrationDirector.Notify("AI_T_08", signals.At(LastShiftPlazaSpace.LifeSupportRoom));
+            LastShiftNarrationDirector.Notify("AI_T_09",
+                LastShiftPatrol.HasVisited(LastShiftPlazaSpace.CoolingRoom));
+            LastShiftNarrationDirector.Notify("AI_T_10", signals.At(LastShiftPlazaSpace.CoolingRoom));
+            // 마지막 방을 나와 광장으로 돌아온 그 프레임. 방문 판정은 순서를 안 본다(N-3).
+            LastShiftNarrationDirector.Notify("AI_T_11",
+                LastShiftPatrol.AllVisited && signals.InPlaza);
+
             // 코어 접근 -> 승강기 도착 -> 탑승. 셋이 거리로 갈린다.
-            LastShiftNarrationDirector.Notify("AI_B_01", crewNearCore);
+            LastShiftNarrationDirector.Notify("AI_B_01", signals.NearCore);
             LastShiftNarrationDirector.Notify("AI_F_01",
-                crewInChamber && LastShiftEvaLift.IsAtDeck);
-            LastShiftNarrationDirector.Notify("AI_F_01B", crewInChamber);
+                signals.InChamber && LastShiftEvaLift.IsAtDeck);
+            LastShiftNarrationDirector.Notify("AI_F_01B", signals.InChamber);
 
             // 승강과 감압이 겹쳐 돌므로 네 줄이 그 겹침의 네 국면이다.
             LastShiftNarrationDirector.Notify("AI_F_02", LastShiftEvaLift.IsMoving);
@@ -1181,7 +1250,7 @@ namespace DoodleUp.Runtime
                 LastShiftAirlock.IsOuterHatchOpen && LastShiftEvaLift.IsMoving);
             LastShiftNarrationDirector.Notify("AI_F_05",
                 LastShiftEvaLift.IsAtHullTop && LastShiftAirlock.IsOuterHatchOpen);
-            LastShiftNarrationDirector.Notify("AI_F_06", crewVacuum);
+            LastShiftNarrationDirector.Notify("AI_F_06", signals.Vacuum);
 
             // "앞줄 후 N초" 형은 여기서 흐른다. 사건을 먼저 받고 시간을 미는 순서인 것은,
             // 같은 프레임에 사건이 들어온 줄의 시계가 0 에서 시작해야 하기 때문이다.

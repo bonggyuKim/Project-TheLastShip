@@ -203,6 +203,28 @@ namespace DoodleUp.Runtime
 
         public static LastShiftPlazaFootprint Of(LastShiftPlazaSpace space) => Footprints[(int)space];
 
+        /// <summary>
+        /// 그 방에서 <b>광장에서 가장 먼 벽의 한가운데</b>. 기능실 셋의 게이지가 정확히 이
+        /// 자리이고(§4.1 — 문틀에서 방 안쪽 끝벽으로 옮긴 그 장치), 조종석은 같은 자리에
+        /// 전면 스크린이 있다.
+        ///
+        /// <b>네 좌표를 적어 두지 않고 유도한다.</b> 정본에 <c>(0,-14)</c>·<c>(16,0)</c>·
+        /// <c>(0,14)</c> 로 적혀 있지만, 그 값들은 방 깊이가 바뀔 때마다 움직인다 — 실제로
+        /// 전력실이 <c>5→8m</c> 로 깊어지면서 게이지가 <c>(0,-11) → (0,-14)</c> 로 밀렸다.
+        /// 발자국에서 뽑으면 그 이동이 저절로 따라온다.
+        /// </summary>
+        public static Vector2 FarWallCenter(LastShiftPlazaSpace space)
+        {
+            var f = Of(space);
+            var centerX = (f.MinX + f.MaxX) * 0.5f;
+            var centerZ = (f.MinZ + f.MaxZ) * 0.5f;
+            // 광장은 원점을 감싸므로, 방의 중심이 원점에서 어느 축으로 밀려 있는지가 곧
+            // 그 방이 붙은 변이다. 먼 벽은 그 축의 바깥쪽 끝이다.
+            return Mathf.Abs(centerX) >= Mathf.Abs(centerZ)
+                ? new Vector2(centerX >= 0f ? f.MaxX : f.MinX, centerZ)
+                : new Vector2(centerX, centerZ >= 0f ? f.MaxZ : f.MinZ);
+        }
+
         // ── 문 여섯. 전부 광장 변 위에 있다(§2.3) ────────────────────────────
 
         /// <summary>

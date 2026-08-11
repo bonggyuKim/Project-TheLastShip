@@ -245,6 +245,7 @@ namespace DoodleUp.Runtime
             // 기상 뒤 블록들도 같이 연다. 디렉터는 자기 신호가 올 때만 움직이므로
             // (첫 줄이 광장 코어 접근이다) 숙소에서 깨는 동안 앞질러 뜰 수 없다.
             LastShiftNarrationDirector.Begin();
+            LastShiftPatrol.Clear();
             Enter(LastShiftTutorialStep.SightSalvage);
         }
 
@@ -264,6 +265,7 @@ namespace DoodleUp.Runtime
             LastShiftWakeSequence.Clear();
             LastShiftNarrationDirector.Clear();
             LastShiftNarrationAudio.Clear();
+            LastShiftPatrol.Clear();
         }
 
         // ── 전이 ────────────────────────────────────────────────────────────
