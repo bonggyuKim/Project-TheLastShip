@@ -313,9 +313,9 @@ namespace DoodleUp.Tests.EditMode
             LastShiftPatrolNarration.NotifyRoomEntered(LastShiftPlazaSpace.CockpitRoom);
             Settle();
 
-            // 문턱에서 스크린이 보였다 - 줄은 뜨지만 방은 안 건넜다.
+            // 문턱에서 스크린이 보였다 - 줄은 뜨지만 방은 안 건넜다. 앞줄이 이미 자리를
+            // 채웠으므로 바로 뜬다(여기서 더 밀면 AI_T_04B 가 시간으로 따라붙는다).
             LastShiftPatrolNarration.NotifyAtFixture(LastShiftPlazaSpace.CockpitRoom);
-            Settle();
 
             Assert.That(LastShiftPatrolNarration.Current.Id, Is.EqualTo("AI_T_04"));
             Assert.That(LastShiftPatrolNarration.FixturesReached, Is.EqualTo(1));
@@ -356,6 +356,24 @@ namespace DoodleUp.Tests.EditMode
             // 도입부 박자는 그대로여야 한다 - balance 와 문안 양쪽이 같은 값을 지킨다.
             Assert.That(LastShiftWakeSequence.BeatSeconds, Is.EqualTo(2f));
             Assert.That(LastShiftStandingNarration.DwellSeconds, Is.EqualTo(2f));
+        }
+
+        /// <summary>
+        /// 조항 <c>N-12</c> — <b>자리의 분모는 대본대로 도는 경로다.</b> 최속 경로로 나누면
+        /// 읽기를 포기한 사람 때문에 대본대로 도는 사람이 손해를 같이 뒤집어쓴다. 열세 줄이
+        /// 그 경로에 <b>정확히</b> 들어가는 것이 이 값의 정의다.
+        /// </summary>
+        [Test]
+        public void TheSlotDividesTheScriptedPathNotTheFastestOne()
+        {
+            Assert.That(LastShiftPatrolNarration.ScriptPathSeconds,
+                Is.GreaterThan(LastShiftPatrolNarration.FloorSeconds),
+                "대본 경로가 최속 경로보다 짧다");
+            Assert.That(
+                LastShiftPatrolNarration.MinimumDisplaySeconds
+                * LastShiftNarrationScript.Patrol.Length,
+                Is.EqualTo(LastShiftPatrolNarration.ScriptPathSeconds).Within(0.01f),
+                "열세 줄 총합이 대본 경로와 안 맞는다");
         }
 
         /// <summary>가장 긴 순회 줄도 자리 안에 다 찍힌다.</summary>

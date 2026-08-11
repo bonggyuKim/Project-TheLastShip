@@ -60,10 +60,21 @@ namespace DoodleUp.Runtime
         private static int occupiedRoom = -1;
 
         /// <summary>
-        /// <b>순회를 가장 빨리 도는 경로의 길이</b>(game-balance 실측). 아래 최소 표시 시간이
-        /// 이 값에서 나온다 — 재실측하면 그 값도 같이 따라온다.
+        /// <b>순회를 가장 빨리 도는 경로</b>(game-balance 실측). 설비에 하나도 안 들르고
+        /// 문 넷을 스치듯 지나갈 때의 값이라, <b>읽기를 스스로 포기한 경로</b>다.
+        /// 로그가 걸린 시간을 이 값과 나란히 낸다 — 판정선이 아니라 원인을 가르는 참고값이다.
         /// </summary>
-        public const float FloorSeconds = 24.4f;
+        public const float FloorSeconds = 12.4f;
+
+        /// <summary>
+        /// <b>대본대로 도는 경로</b>의 길이(game-balance 실측). 설비 넷을 다 들르고 재촉을
+        /// 따라가는, 첫 플레이어가 실제로 타는 경로다.
+        ///
+        /// <b>표시 시간의 분모가 이쪽인 것이 조건이다.</b> 처음에는 최속 경로로 나눴는데,
+        /// 그러면 <b>아무도 안 쓰는 경로에 맞춰 모두의 표시 시간을 깎는다</b> — 읽기를 포기한
+        /// 사람 때문에 대본대로 도는 사람이 손해를 같이 뒤집어쓴다(game-writer 정정, 조항 N-12).
+        /// </summary>
+        public const float ScriptPathSeconds = 43.4f;
 
         /// <summary>
         /// 한 줄이 <b>덮이기 전까지 최소한 떠 있는 시간</b>. 트리거 줄은 다음 트리거가 오면
@@ -71,24 +82,22 @@ namespace DoodleUp.Runtime
         ///
         /// <b>값을 지어내지 않고 제약에서 뽑는다.</b> game-writer 가 준 조건은 하나였다 —
         /// "열세 줄 총합이 순회를 안 넘어야 한다". 그러면 상한이 곧
-        /// <see cref="FloorSeconds"/> / 줄 수이고, 그 값을 그대로 쓰면 최소 경로에서도
-        /// <b>구조적으로 안 넘친다.</b> balance 가 권한 3.5초는 열세 줄이면 45.5초라 못 쓴다.
+        /// <see cref="ScriptPathSeconds"/> / 줄 수이고, <c>3.34 × 13 = 43.4</c> 로 정확히
+        /// 맞는다. 대본대로 도는 경로의 최소 간격이 <c>4.1</c>초라 <c>0.8</c>초 여유로 들어간다.
         ///
         /// 그동안 온 트리거는 <b>버리지 않고 줄 세운다</b>. 늦게 뜨는 대가는 안 읽히는 것보다
         /// 싸고, 늦는 줄은 대개 "어느 방인지" 인데 플레이어는 이미 그 방에 들어와 있다.
         /// </summary>
         public static float MinimumDisplaySeconds =>
-            FloorSeconds / LastShiftNarrationScript.Patrol.Length;
+            ScriptPathSeconds / LastShiftNarrationScript.Patrol.Length;
 
         /// <summary>
         /// 순회 줄이 찍히는 시간. <b>기본값(<c>1.0</c>초)보다 짧다</b> — 이 블록은 다음 줄이
-        /// 걸어가는 동안 바로 따라와서, 찍는 데 <c>1</c>초를 쓰면 자리(<c>1.88</c>초) 안에
-        /// 읽을 시간이 <c>0.9</c>초밖에 안 남는다. 스무 자가 안 읽히는 선이다.
+        /// 걸어가는 동안 바로 따라와서, 찍는 데 <c>1</c>초를 쓰면 읽을 시간이 그만큼 준다.
         ///
         /// <b>자리의 <c>1/4</c> 로 잡는다</b> — 뜨는 데 쓰는 시간보다 읽는 시간이 세 배는
         /// 길어야 한다는 것이 규칙이고, 자리가 바뀌면 이 값도 같이 따라온다. 지금 값은
-        /// <c>0.47</c>초이고 읽기 <c>1.41</c>초다(game-writer 가 제시한 <c>0.5</c>/<c>1.5</c> 와
-        /// 같은 자리다).
+        /// <c>0.83</c>초이고 읽기 <c>2.50</c>초다.
         ///
         /// <b>도입부는 안 건드린다.</b> 기상 네 문장의 <c>2</c>초 간격은 조항 <c>N-10</c> 이고,
         /// 그 값은 <c>DwellSeconds</c> 와 함께 balance 가 닫아 둔 자리다.
@@ -287,7 +296,12 @@ namespace DoodleUp.Runtime
             if (next >= Played.Length || Played[next]) return;
             var line = LastShiftNarrationScript.Patrol[next];
             if (!line.IsAutomatic || lineElapsed < line.AutoAfterSeconds) return;
-            Play(line.Id);
+
+            // 시간 형 줄은 <b>최소 표시를 안 받는다</b>. 그 줄의 간격(AI_T_02 3초)이 이미
+            // 앞줄을 얼마나 띄울지 정한 값이라, 자리(3.34초)로 한 번 더 재면 대본이 정한
+            // 박자가 밀린다. 큐가 빈 상태에서만 오므로 순서도 안 어긋난다.
+            Played[next] = true;
+            Show(next);
         }
 
         public static void Clear()
