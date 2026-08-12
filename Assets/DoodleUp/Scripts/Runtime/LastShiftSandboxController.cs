@@ -1996,7 +1996,11 @@ namespace DoodleUp.Runtime
             // 정위치가 곧 파공이라, 파공을 피격 방으로 옮기면 그 방을 막을 수단이 없어져
             // RG-3(영구 잠금 금지)이 깨진다. 그래서 맞은 방은 압력을 잃되, 막을 수 있는
             // 구멍은 원래 자리에 남는다.
-            zonePressures[delta.Zone] = Mathf.Clamp01(zonePressures[delta.Zone] + delta.ZonePressure);
+            // <b>바닥은 여기서 댄다.</b> 자극 기여분에만 걸어야 한다 — 기존 누출·평준화까지
+            // 같은 바닥을 쓰면 자극이 도는 20초 동안 그 방의 사고가 통째로 멈춘다.
+            zonePressures[delta.Zone] = Mathf.Clamp01(
+                LastShiftExternalStimulus.ApplyStimulusPressure(
+                    zonePressures[delta.Zone], delta.ZonePressure));
 
             // (B) 방 고유 계통. 전부 증분이라 기존 감쇠와 같은 자리에서 합쳐진다.
             currentState.BusPower = Mathf.Clamp01(currentState.BusPower + delta.BusPower);

@@ -126,15 +126,32 @@ namespace DoodleUp.Runtime
         public const float BreachPressureLoss = 0.30f;
 
         /// <summary>
-        /// 파공으로 한 번에 뺄 수 있는 압력의 <b>구조적 상한</b>. 밸런스 값이 아니라 조항이다
-        /// (PM 확정 2026-08-12).
+        /// <b>자극이 압력을 이 밑으로 못 민다.</b> 밸런스 값이 아니라 조항이다(PM 확정
+        /// 2026-08-12). 자극이 방 압력을 너무 낮추면 그 방에 들어가는 것 자체가 불가능해지고,
+        /// 그러면 그 방에서만 할 수 있는 복구가 통째로 막힌다 — <c>RG-3</c>(영구 잠금 금지)이
+        /// 정확히 그것을 금지한다.
         ///
-        /// <b>이 선을 넘으면 자극이 그 방을 못 들어가게 만든다.</b> 압력이 한 번에 너무 많이
-        /// 빠지면 그 방에 들어가는 것 자체가 불가능해지고, 그러면 그 방에서만 할 수 있는
-        /// 복구가 통째로 막힌다 — <c>RG-3</c>(영구 잠금 금지)이 정확히 그것을 금지한다.
-        /// <see cref="BreachPressureLoss"/> 를 올릴 때 이 값을 같이 올리지 않는다.
+        /// <b>리터럴을 안 쓴다.</b> 값은 구역 저압 판정선을 그대로 따라간다 — 임계가 나중에
+        /// 움직여도 이 보장이 조용히 안 깨지게 하는 것이 참조로 두는 이유다.
+        ///
+        /// <b>손실량을 자르는 것이 아니라 바닥을 대는 것이다.</b> 처음에는 손실 합계를
+        /// <c>0.35</c> 에서 잘랐는데, 그러면 시작 압력이 이미 낮을 때 보호가 안 된다 —
+        /// <c>0.40</c> 에서 맞으면 <c>0.05</c> 까지 그대로 뚫려서 조항이 막으려던 상황이
+        /// 안 막힌다. 자르는 자리는 압력을 적분하는 <b>소비처</b>이고, 식은
+        /// <c>Max(current + delta, Min(current, Floor))</c> 다. 안쪽 <c>Min</c> 이 있어서
+        /// 이미 바닥 밑인 방은 자극 때문에 더 안 내려가되 <b>올라가지도 않는다</b>.
         /// </summary>
-        public const float MaxBreachPressureLoss = 0.35f;
+        public static float StimulusPressureFloor => LastShiftSituationTable.ZoneLowPressureTrigger;
+
+        /// <summary>
+        /// 자극 기여분만 바닥에 대어 적용한 새 압력. <b>순수 함수다</b> — 소비처가 이 한 줄만
+        /// 쓰면 되고, 검사도 씬 없이 이 함수만 잰다.
+        ///
+        /// <b>기존 사고 진행에는 안 건다.</b> 산소 누출·구역 평준화 같은 기존 경로가 이 바닥을
+        /// 같이 쓰면, 자극이 도는 20초 동안 그 방의 사고가 통째로 멈춘다.
+        /// </summary>
+        public static float ApplyStimulusPressure(float current, float stimulusDelta) =>
+            Mathf.Max(current + stimulusDelta, Mathf.Min(current, StimulusPressureFloor));
 
         /// <summary>
         /// 항해 <b>한 번</b> 동안 자극이 가져갈 수 있는 연료의 총합(PM 확정 2026-08-12).
@@ -363,13 +380,6 @@ namespace DoodleUp.Runtime
             var scale = severity * portion;
             var breach = -BreachPressureLoss * scale;
 
-            // 산소실은 (A)와 (B)가 같은 축이라 둘을 더하면 0.30 + 0.20 = 0.50 이 되어 조항
-            // 상한을 넘는다. <b>조항이 이긴다</b> — 그 상한은 "그 방에 들어갈 수 있는가" 를
-            // 지키는 구조적 선이고(RG-3), 넘기면 산소실 복구가 통째로 막힌다. 그래서 두 값을
-            // 더한 뒤 상한에서 자른다. 이 자름이 걸리면 산소실의 실효 (B)가 줄어드는 것이라,
-            // 0.20 을 온전히 쓰려면 상한을 올리거나 파공을 낮춰야 한다.
-            float Capped(float loss) =>
-                -Mathf.Min(-loss, MaxBreachPressureLoss * severity * portion);
 
             return room switch
             {
@@ -384,7 +394,7 @@ namespace DoodleUp.Runtime
                     LastShiftZone.Cooling, breach, 0f, CoolingHeatGain * scale, 0f, 0f),
 
                 LastShiftStimulusRoom.LifeSupport => new LastShiftStimulusDelta(
-                    LastShiftZone.LifeSupport, Capped(breach - LifeSupportOxygenLoss * scale),
+                    LastShiftZone.LifeSupport, breach - LifeSupportOxygenLoss * scale,
                     0f, 0f, 0f, 0f),
 
                 // 숙소는 (A) 파공만이다. 억지로 다섯 번째 계통을 만들면 그것이 곧 13번째

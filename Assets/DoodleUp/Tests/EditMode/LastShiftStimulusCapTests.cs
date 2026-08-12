@@ -22,27 +22,54 @@ namespace DoodleUp.Tests.EditMode
         public void TearDown() => LastShiftExternalStimulus.Clear();
 
         /// <summary>
-        /// <b>파공은 조항 상한을 안 넘는다.</b> 압력이 한 번에 너무 많이 빠지면 그 방에 들어가는
-        /// 것 자체가 불가능해지고, 그 방에서만 할 수 있는 복구가 통째로 막힌다.
+        /// <b>자극은 방 압력을 바닥 밑으로 못 민다 — balance 지정 3케이스.</b>
+        ///
+        /// 바닥을 <b>손실량</b>이 아니라 <b>결과 압력</b>에 대는 것이 요점이다. 손실 합계를
+        /// 자르면 시작 압력이 이미 낮을 때 보호가 안 된다 — <c>0.40</c> 에서 맞으면
+        /// <c>0.05</c> 까지 그대로 뚫려서 조항이 막으려던 상황이 안 막힌다.
         /// </summary>
         [Test]
-        public void TheBreachNeverExceedsItsStructuralCeiling()
+        public void TheStimulusCannotPushPressureBelowTheFloor()
         {
-            Assert.That(LastShiftExternalStimulus.BreachPressureLoss,
-                Is.LessThanOrEqualTo(LastShiftExternalStimulus.MaxBreachPressureLoss),
-                "파공 총량이 조항 상한을 넘었다 — 자극이 그 방 접근을 막는다");
-            Assert.That(LastShiftExternalStimulus.MaxBreachPressureLoss,
-                Is.EqualTo(0.35f).Within(0.001f));
+            Assert.That(LastShiftExternalStimulus.StimulusPressureFloor,
+                Is.EqualTo(LastShiftSituationTable.ZoneLowPressureTrigger).Within(0.0001f),
+                "바닥이 저압 판정선에서 안 나온다 — 임계가 움직이면 보장이 조용히 깨진다");
 
-            // 가장 센 강도로 다섯 방을 전부 밀어 봐도 한 방에 이 이상 안 빠진다.
-            foreach (LastShiftStimulusRoom room in System.Enum.GetValues(typeof(LastShiftStimulusRoom)))
-            {
-                var delta = LastShiftExternalStimulus.DeltaFor(
-                    room, LastShiftExternalStimulus.MaxSeverity, 1f);
-                Assert.That(-delta.ZonePressure,
-                    Is.LessThanOrEqualTo(LastShiftExternalStimulus.MaxBreachPressureLoss + 0.001f),
-                    $"{room} 피격의 압력 손실이 조항 상한을 넘는다");
-            }
+            Assert.That(LastShiftExternalStimulus.ApplyStimulusPressure(1.000f, -0.015f),
+                Is.EqualTo(0.985f).Within(0.0001f), "높은 압력에서 바닥이 잘못 걸렸다");
+            Assert.That(LastShiftExternalStimulus.ApplyStimulusPressure(0.360f, -0.015f),
+                Is.EqualTo(0.350f).Within(0.0001f), "바닥에 안 닿고 지나갔다");
+            Assert.That(LastShiftExternalStimulus.ApplyStimulusPressure(0.300f, -0.015f),
+                Is.EqualTo(0.300f).Within(0.0001f),
+                "이미 바닥 밑인 방이 자극으로 더 내려갔거나 올라갔다");
+        }
+
+        /// <summary>
+        /// <b>바닥이 압력을 올리지는 않는다.</b> 이미 바닥 밑인 방을 자극이 끌어올리면
+        /// 맞은 것이 이득이 된다 — 안쪽 <c>Min</c> 이 그것을 막는다.
+        /// </summary>
+        [Test]
+        public void TheFloorNeverLiftsARoomThatIsAlreadyBelowIt()
+        {
+            foreach (var start in new[] { 0.34f, 0.20f, 0.00f })
+                Assert.That(LastShiftExternalStimulus.ApplyStimulusPressure(start, -0.05f),
+                    Is.EqualTo(start).Within(0.0001f), $"{start} 에서 압력이 움직였다");
+        }
+
+        /// <summary>
+        /// <b><see cref="LastShiftExternalStimulus.DeltaFor"/> 는 순수 증분만 준다.</b> 바닥을
+        /// 여기서 대면 소비처가 현재 압력을 모르는 채로 잘린 값을 받게 되고, 그러면 시작
+        /// 압력에 따라 보호가 달라지는 것 자체가 표현되지 않는다.
+        /// </summary>
+        [Test]
+        public void TheDeltaStaysAPlainIncrement()
+        {
+            var oxygen = LastShiftExternalStimulus.DeltaFor(LastShiftStimulusRoom.LifeSupport, 1f, 1f);
+            var expected = -(LastShiftExternalStimulus.BreachPressureLoss
+                             + LastShiftExternalStimulus.LifeSupportOxygenLoss);
+
+            Assert.That(oxygen.ZonePressure, Is.EqualTo(expected).Within(0.0001f),
+                "산소실 증분이 이미 잘려서 나온다 — 바닥이 소비처가 아니라 여기 걸렸다");
         }
 
         /// <summary>
