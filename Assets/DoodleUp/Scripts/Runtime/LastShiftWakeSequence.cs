@@ -157,7 +157,7 @@ namespace DoodleUp.Runtime
 
         public static void Tick(float deltaTime)
         {
-            if (!IsRunning || IsComplete) return;
+            if (!IsRunning) return;
             elapsed += deltaTime;
             lineElapsed += deltaTime;
 
@@ -166,6 +166,15 @@ namespace DoodleUp.Runtime
                 fired++;
                 lineElapsed = 0f;
             }
+
+            // <b>마지막 줄도 제 시간을 받고 끝난다.</b> 예전에는 IsComplete 가 되는 순간 이
+            // 함수가 첫 줄에서 반환해서 lineElapsed 가 그대로 멈췄다 — 타이핑이 줄 시계로
+            // 글자 수를 정하므로 <c>AI_W_07</c> 이 <b>0 글자인 채로 화면에 영구히 남았다</b>.
+            // 패널은 떠 있고 말만 없는 상태라 "기상 문구가 계속 나온다" 로 보인다(사용자 재현).
+            //
+            // 그 줄이 다 찍히고 한 박자가 지나면 도입부를 닫는다. 안 닫으면 HasLine 이 참으로
+            // 남아 배너 순서에서 이 블록이 계속 맨 위를 차지하고, 그 아래 안내가 영영 못 뜬다.
+            if (IsComplete && lineElapsed >= BeatSeconds) IsRunning = false;
         }
 
         /// <summary>

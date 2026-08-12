@@ -3,6 +3,7 @@ using System.Text;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
@@ -25,9 +26,22 @@ namespace DoodleUp.Tests.PlayMode
         private const float SimulatedSeconds = 240f;
         private const float GapAlarmSeconds = 2f;
 
+        private Keyboard testKeyboard;
+        private InputSettings.UpdateMode previousUpdateMode;
+
+        [SetUp]
+        public void SetUpInput()
+        {
+            testKeyboard = InputSystem.AddDevice<Keyboard>();
+            previousUpdateMode = InputSystem.settings.updateMode;
+            InputSystem.settings.updateMode = InputSettings.UpdateMode.ProcessEventsManually;
+        }
+
         [TearDown]
         public void Cleanup()
         {
+            InputSystem.settings.updateMode = previousUpdateMode;
+            if (testKeyboard != null && testKeyboard.added) InputSystem.RemoveDevice(testKeyboard);
             Time.timeScale = 1f;
             LastShiftWakeSequence.Clear();
             LastShiftTutorial.Clear();
@@ -56,6 +70,10 @@ namespace DoodleUp.Tests.PlayMode
             $" director={LastShiftNarrationDirector.HasLine}" +
             $" standing={LastShiftStandingNarration.HasLine}" +
             $" wake={LastShiftWakeSequence.IsRunning}" +
+            $" wakeLine={(LastShiftWakeSequence.HasLine ? LastShiftWakeSequence.Current.Id : "-")}" +
+            $" gate={LastShiftWakeSequence.Gate}" +
+            $" awaitDoor={LastShiftWakeSequence.IsAwaitingQuartersDoor}" +
+            $" canMove={LastShiftWakeSequence.CanMove}" +
             $" voyage={LastShiftVoyage.IsRunning} resolved={LastShiftVoyage.IsSegmentSettled}";
 
         /// <summary>
@@ -128,6 +146,26 @@ namespace DoodleUp.Tests.PlayMode
 
                 // 경로를 차례로 밟는다. 도입부가 도는 동안은 제자리에 둔다 - 그때는 조작이
                 // 잠긴 구간이고, 문 사거리 신호만 있으면 알아서 진행한다.
+                // <b>텔레포트는 이동 입력이 아니다.</b> 도입부는 첫 이동 입력
+                // (LastShiftWakeSequence.NotifyFirstMove)을 기다리는데, 자리를 옮기는 것만으로는
+                // 그 신호가 안 온다 - 그래서 도입부가 안 끝나고 기상 문구가 계속 떠 있었다.
+                if (LastShiftWakeSequence.IsRunning && LastShiftWakeSequence.CanMove)
+                {
+                    InputSystem.QueueStateEvent(testKeyboard,
+                        new UnityEngine.InputSystem.LowLevel.KeyboardState(Key.W));
+                    InputSystem.Update();
+                }
+                else
+                {
+                    InputSystem.QueueStateEvent(testKeyboard,
+                        new UnityEngine.InputSystem.LowLevel.KeyboardState());
+                    InputSystem.Update();
+                }
+
+                // 마지막 도입부 줄은 <b>숙소 문 사거리</b>를 기다린다. 키만 눌러서는 안 오므로
+                // 문 앞으로 붙여 그 신호를 채운다 - 사람이 실제로 걸어가는 그 자리다.
+                if (LastShiftWakeSequence.IsAwaitingQuartersDoor) Move(player, route[0]);
+
                 if (!LastShiftWakeSequence.IsRunning && leg < route.Count)
                 {
                     legSeconds += step;

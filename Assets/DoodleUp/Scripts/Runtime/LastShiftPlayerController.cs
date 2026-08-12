@@ -232,8 +232,12 @@ namespace DoodleUp.Runtime
             // AI_W_07 — 숙소 출입문 사거리. <b>어느 문인지 따로 안 가린다</b>: 이 줄을 기다리는
             // 구간은 깨어난 자리에서 방을 나서기 전까지뿐이고, 숙소에는 광장으로 나가는 문
             // 하나만 붙는다. 사거리 조회는 씬을 뒤지므로 그 구간에만 돈다.
-            if (LastShiftWakeSequence.IsAwaitingQuartersDoor &&
-                LastShiftZoneDoor.FindOperable(transform.position) != null)
+            // <b>문 오브젝트를 찾지 않는다.</b> 숙소 출입구는 kind=PlainDoor 라 씬에
+            // LastShiftZoneDoor 가 안 선다 — 문 오브젝트가 붙는 것은 압력문 셋뿐이다.
+            // 그래서 FindOperable 로 기다리면 영영 못 찾고, 도입부 마지막 줄이 안 끝나
+            // <b>기상 문구가 화면에 영구히 남는다</b>(사용자 재현). 찾을 것은 문짝이 아니라
+            // <b>출입구 자리</b>이고, 그 좌표는 발자국표에 문 종류와 무관하게 들어 있다.
+            if (LastShiftWakeSequence.IsAwaitingQuartersDoor && IsAtQuartersDoorway())
                 LastShiftWakeSequence.NotifyQuartersDoorInRange();
         }
 
@@ -374,6 +378,26 @@ namespace DoodleUp.Runtime
             // 네트워크 샌드박스가 스폰되면 통째로 꺼진다.
             else if (meteor) networkPlayer.RequestMeteorImpact();
         }
+
+        /// <summary>
+        /// 숙소 출입구 사거리에 있는가. <b>문짝이 아니라 자리로 잰다</b> — 그 출입구에는
+        /// 여닫는 문이 없고, 그래도 "방을 나선다" 는 사건은 성립한다.
+        /// </summary>
+        private bool IsAtQuartersDoorway()
+        {
+            foreach (var door in LastShiftPlazaLayout.Doors)
+            {
+                if (door.Space != LastShiftPlazaSpace.Quarters) continue;
+                var here = transform.position;
+                var gap = new Vector2(here.x, here.z) - door.Waypoint;
+                return gap.magnitude <= QuartersDoorwayReach;
+            }
+
+            return false;
+        }
+
+        /// <summary>출입구로 "다가섰다" 고 볼 거리. 문 통과폭과 같은 눈금을 쓴다.</summary>
+        private const float QuartersDoorwayReach = 2f;
 
         public bool TryGrabForProbe(LastShiftGrabbable item)
         {
