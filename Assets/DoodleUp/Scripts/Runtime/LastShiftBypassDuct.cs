@@ -96,10 +96,15 @@ namespace DoodleUp.Runtime
         /// 옮길 여지가 거의 없고, 옮기면 씬에 이미 놓인 Tether 아이템까지 따라와야 한다.
         /// 승강구는 프리팹 안에서 끝나고 §5 가 z 에 건 조건은 "RunZ 와 다를 것" 하나뿐이다.
         /// </summary>
-        public static float ForeShaftZ =>
-            LastShiftShipDimensions.TetherRackPosition.z
-            - (LastShiftShipDimensions.TetherRackScale.z + Section) * 0.5f
-            - DeckPropClearance;
+        /// <b>받침대에서 떼어 냈다</b>(2026-08-12). 이 값이 <c>TetherRackPosition.z</c> 에서
+        /// 파생되던 동안에는, 받침대를 <b>보기 좋으라고</b> 옮기는 순간 승강구가 같이 끌려갔다.
+        /// 장식의 자리와 조작물의 자리는 지켜야 하는 조건이 다르다 — 승강구 z 는 덕트 런과
+        /// 드레싱 경계까지 물고 있어서, 자유롭게 움직일 수 있는 값이 아니다(옮겨 봤더니
+        /// 검사 일곱이 깨졌다). 그래서 <b>파생을 끊고 원래 값에 못박는다.</b>
+        ///
+        /// 받침대는 대신 <b>반대쪽(+z)으로</b> 옮겼다 — 조종석 개구부를 비키면서 이 승강구
+        /// 위로도 안 올라오는 방향이 그쪽 하나였다.
+        public static float ForeShaftZ => -2.35f;
 
         /// <summary>
         /// 선수 쪽 진입점 x. §5 가 정한 대로 <b>조종석 방 안</b>(개구부 0 근처)이고,
