@@ -136,8 +136,11 @@ namespace DoodleUp.Tests.PlayMode
 
                 Assert.That(LastShiftPlazaLayout.TryResolveSpace(now.x, now.z, out var space), Is.True,
                     $"slot{slot} 이 고정 발자국 밖이다 — ({now.x:0.##},{now.z:0.##}).\n{report}");
-                Assert.That(space, Is.EqualTo(LastShiftPlazaSpace.CockpitRoom),
-                    $"slot{slot} 이 조종석 방 밖에서 시작한다 — {space}.\n{report}");
+                // <b>깨어나는 방이 숙소로 옮겨왔다</b>(fb71c1b). 온보딩 1단계가 "기상(숙소)"
+                // 인데 스폰이 조종석이었다 — 재려던 것(넷이 겹치지 않고 갑판 위에 선다)은
+                // 그대로이고 서는 방만 바뀌었다.
+                Assert.That(space, Is.EqualTo(LastShiftPlazaSpace.Quarters),
+                    $"slot{slot} 이 숙소 밖에서 시작한다 — {space}.\n{report}");
             }
 
             for (var a = 0; a < Crew; a++)
