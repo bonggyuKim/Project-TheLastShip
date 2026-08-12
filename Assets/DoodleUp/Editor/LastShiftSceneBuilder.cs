@@ -1376,22 +1376,23 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 실내 조명. 천장을 닫으면 Directional Light 가 차단되므로 예전 설정 그대로 두면
-        /// 실내가 거의 검게 된다. 그래서 밝은 야외용 ambient/directional 을 낮추고 구역마다
-        /// 천장 등을 둔다. 구역별 색을 달리해 어디 있는지 조명만으로도 구분되게 한다.
+        /// 실내 조명. 구역등의 색 구분은 유지하면서 공용 환경광을 따뜻하게 들어 올려,
+        /// 네 명의 동료와 소품 실루엣이 방 반대편에서도 읽히게 한다. 위기 색은 개별 설비와
+        /// 경고등이 담당하므로 평상시 함선 전체를 청회색 공포 톤으로 물들이지 않는다.
         /// </summary>
         public static void CreateLighting()
         {
             ConfigureSpaceSky();
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            // 우주 실내라 하늘광이 없다. 형태를 잃지 않을 최소값만 남긴다.
-            RenderSettings.ambientLight = new Color(0.10f, 0.11f, 0.14f);
+            // 크림빛 fill: 검은 모서리를 걷어내되 구역등의 색과 경고등 대비는 남긴다.
+            RenderSettings.ambientLight = new Color(0.22f, 0.20f, 0.17f);
             var lightObject = new GameObject("Directional Light");
             var light = lightObject.AddComponent<Light>();
             light.type = LightType.Directional;
-            // 천장에 막히므로 형태 보조용으로만 남긴다.
-            light.intensity = 0.25f;
-            light.color = new Color(0.72f, 0.78f, 0.95f);
+            // 창과 개구부에서 들어오는 부드러운 피치색 rim. 차가운 달빛 대신 승무원과
+            // 소품의 윤곽을 살려 협동 플레이의 밝고 친근한 인상을 만든다.
+            light.intensity = 0.45f;
+            light.color = new Color(1.00f, 0.82f, 0.64f);
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
 
             // 천장 등은 여기서 만들지 않는다. 등기구 프리팹(LSDress_Lamp_*)이 Light 를 들고
