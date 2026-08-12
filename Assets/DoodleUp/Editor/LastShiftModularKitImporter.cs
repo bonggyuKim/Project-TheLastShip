@@ -151,7 +151,15 @@ namespace DoodleUp.Editor
         /// </summary>
         private static readonly HashSet<string> SolidPropNames = new()
         {
-            "LPK_Cockpit_ControlConsole"
+            "LPK_Cockpit_ControlConsole",
+            // 냉각 교환기. 회색상자 더미(CoolingStack)를 걷으면서 <b>그 상자가 들고 있던
+            // 충돌이 같이 사라졌다</b> — 교환기 자체에는 콜라이더가 없어서 그대로 두면
+            // 방 한가운데 설비를 몸으로 통과한다. 걷어낸 쪽이 만든 구멍이라 같이 막는다.
+            //
+            // 나머지 셋(전력 배전반·산소 스크러버·숙소 침상)은 <b>아직 안 넣는다</b>: 그쪽은
+            // 회색상자가 아직 살아 있어 충돌을 들고 있고, 지금 넣으면 한 방에 충돌이 둘이 된다.
+            // 그 상자들을 걷는 날 같이 들어와야 한다.
+            "LPK_Cooling_Exchanger"
         };
 
         /// <summary>
