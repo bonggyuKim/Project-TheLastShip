@@ -155,6 +155,12 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static void OpenFirstPort()
         {
+            // <b>정박 상태를 실제로 세운다.</b> 바로 위 EnterSegment 가 판정을 Pending 으로
+            // 되돌리는데, LastShiftAirlock.IsAtPort 가 그 판정에서 나온다 — 그래서 새 항해는
+            // "출항 중" 으로 열리고, 그 값이 거짓이면 sandbox 의 관측 루프가 통째로 조기
+            // 반환해서 <b>순회·내레이션 신호가 하나도 안 걸린다</b>. 도입부가 끝난 뒤 화면에
+            // 아무것도 안 뜨던 원인이 이것이다(배속 재현에서 atPort=False 로 잡혔다).
+            LastTransition = LastShiftSegmentTransition.ToPort;
             LastShiftTutorial.ArriveAtPort();
             LastShiftSalvage.ArriveAtPort(CurrentPreset);
         }

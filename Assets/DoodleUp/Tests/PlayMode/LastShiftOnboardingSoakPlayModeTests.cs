@@ -74,6 +74,8 @@ namespace DoodleUp.Tests.PlayMode
             $" gate={LastShiftWakeSequence.Gate}" +
             $" awaitDoor={LastShiftWakeSequence.IsAwaitingQuartersDoor}" +
             $" canMove={LastShiftWakeSequence.CanMove}" +
+            $" atPort={LastShiftAirlock.IsAtPort}" +
+            $" patrolRunning={LastShiftPatrolNarration.IsRunning}" +
             $" voyage={LastShiftVoyage.IsRunning} resolved={LastShiftVoyage.IsSegmentSettled}";
 
         /// <summary>
@@ -136,7 +138,7 @@ namespace DoodleUp.Tests.PlayMode
 
             var leg = 0;
             var legSeconds = 0f;
-            const float LegHold = 8f;
+            const float LegHold = 14f;
 
             while (elapsed < SimulatedSeconds)
             {
