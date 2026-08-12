@@ -249,7 +249,7 @@ namespace DoodleUp.Tests.PlayMode
             var power = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.PowerRoom).Waypoint;     // (0, -6)
             var cooling = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.CoolingRoom).Waypoint; // (0, +6)
             var life = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.LifeSupportRoom).Waypoint; // (+6, 0)
-            var hall = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.AirlockHall).Waypoint;    // (-4.5, -6)
+            var quarters = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.Quarters).Waypoint;   // (4.8, 6)
 
             // 개구부를 <b>빠져나온 자리</b>. 넷이 여기서 처음 흩어진다. 코어(±2) 밖이다.
             var plazaSide = new Vector2(-4.8f, 0f);
@@ -275,9 +275,10 @@ namespace DoodleUp.Tests.PlayMode
                     life, Center(LastShiftPlazaSpace.LifeSupportRoom)
                 }),
 
-                // 에어록 홀. 좌현 아래 생활문.
-                new(3, "에어록 홀", new List<Vector2>
-                    { opening, plazaSide, new(-4.5f, -4.5f), hall, Center(LastShiftPlazaSpace.AirlockHall) })
+                // 숙소. 에어록 홀 폐지(2026-08-10) 이후 유일하게 남은 생활문(비압력) 목적지다.
+                // 코어를 우현 위로 크게 돌아 문 앞에서 정렬한다.
+                new(3, "숙소", new List<Vector2>
+                    { opening, plazaSide, new(-4.5f, 4.5f), new(4.5f, 4.5f), quarters, Center(LastShiftPlazaSpace.Quarters) })
             };
         }
 
