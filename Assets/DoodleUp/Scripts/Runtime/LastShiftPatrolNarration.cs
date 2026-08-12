@@ -292,6 +292,22 @@ namespace DoodleUp.Runtime
                 return;
             }
 
+            // <b>마지막 줄은 자리를 놓아야 한다.</b> 놓지 않으면 showing 이 그 인덱스에 고정돼
+            // HasLine 이 영원히 참으로 남고, 배너 분기에서 이 블록이 맨 위를 계속 차지한다.
+            // 그 줄의 표시·페이드가 끝나면 배너는 투명해지는데 분기는 여전히 여기서 멈추므로,
+            // 화면이 <b>완전히 빈 채로 영구 고정</b>된다 — 사용자가 순회 안내 뒤 아무것도 안
+            // 뜬다고 지적한 것이 그 상태다. 아래 진행 논리는 다음 줄이 있을 때만 도는지라
+            // 마지막 줄에서는 매번 그냥 반환했고, 그래서 놓을 자리가 없었다.
+            //
+            // <see cref="IsRunning"/> 은 안 끈다 — 코어 유도 대사(AI_B_01)가
+            // <see cref="IsComplete"/> 를 조건으로 기다리고 있고 그 조건이 이 플래그를 탄다.
+            // 놓는 것은 <b>화면 자리</b>뿐이고 블록은 열린 채로 남는다.
+            if (IsComplete && lineElapsed >= MinimumDisplaySeconds)
+            {
+                showing = -1;
+                return;
+            }
+
             var next = showing + 1;
             if (next >= Played.Length || Played[next]) return;
             var line = LastShiftNarrationScript.Patrol[next];
