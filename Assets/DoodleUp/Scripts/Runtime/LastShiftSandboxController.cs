@@ -2302,7 +2302,11 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void ReportIfScreenIsActuallyEmpty()
         {
-            if (!LastShiftTutorial.IsArmed) return;
+            // <b>무장을 전제로 두지 않는다.</b> 앞서 붙인 계기 다섯이 전부 IsArmed 를 조건으로
+            // 걸려 있었는데, armed 가 풀리면 화면에 안내가 통째로 사라지는 그 상태에서 계기도
+            // 같이 침묵한다. "armed 풀림은 배제됐다" 고 적었던 근거가 그 계기들이 안 울린
+            // 것이었으니, 그 배제는 순환이었다. 이제 항해가 도는 동안은 무장과 무관하게 본다.
+            if (!LastShiftVoyage.IsRunning) return;
 
             var guided = false;
             foreach (var label in FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
@@ -2331,6 +2335,7 @@ namespace DoodleUp.Runtime
                            $"wake={LastShiftWakeSequence.IsRunning} " +
                            $"tutorialRunning={LastShiftTutorial.IsRunning} " +
                            $"step={LastShiftTutorial.Step} resolved={IsResolved} " +
+                           $"armed={LastShiftTutorial.IsArmed} " +
                            $"patrolComplete={LastShiftPatrolNarration.IsComplete} " +
                            "detail=안내 줄이 화면에 없다");
         }
