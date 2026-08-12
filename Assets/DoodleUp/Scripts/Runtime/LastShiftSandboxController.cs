@@ -2255,6 +2255,10 @@ namespace DoodleUp.Runtime
             }
             else
             {
+                // 상시 HUD 는 이제 프리팹 인스턴스 하나를 계속 들고 산다 — 임대가 아니라서
+                // 안 그리는 것만으로는 안 꺼진다. 판정 화면이 뜨면 명시적으로 물러난다(아트 §8).
+                var resolvedHud = LastShiftUiLayer.Instance != null ? LastShiftUiLayer.Instance.Hud : null;
+                if (resolvedHud != null) resolvedHud.SetVisible(false);
                 LastShiftResultScreen.Draw(runSummary, NextPreset, SecondsSinceVerdict);
             }
 
@@ -2429,25 +2433,20 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void DrawStatusIcons(LastShiftUiLayer layer)
         {
-            if (layer == null) return;
-            var width = LastShiftUiLayer.ScreenSize.x;
+            // <b>자리 계산이 여기 없다.</b> 아이콘 위치·크기·간격은 프리팹
+            // (Resources/LastShiftHud)의 RectTransform 이 정본이고, 여기서는 값과 색만 민다.
+            // 예전에는 이 자리에서 매 프레임 Rect 를 계산해 얹었는데, 그러면 아이콘을 조금
+            // 옮기는 일이 코드 수정과 재컴파일이 되어 에디터에서 끌 수가 없었다.
+            var hud = layer != null ? layer.Hud : null;
+            if (hud == null) return;
 
-            DrawStatusIcon(layer, "hudOxygen", LastShiftUiIcon.Oxygen, 0,
-                currentState.OxygenPressure, higherIsBetter: true);
-            DrawStatusIcon(layer, "hudPower", LastShiftUiIcon.Power, 1,
-                currentState.BusPower, higherIsBetter: true);
-            DrawStatusIcon(layer, "hudHeat", LastShiftUiIcon.Heat, 2,
-                currentState.EngineHeat, higherIsBetter: false);
-
-            void DrawStatusIcon(LastShiftUiLayer target, string id, LastShiftUiIcon icon,
-                int slot, float value, bool higherIsBetter)
-            {
-                var view = target.Gauge(id, icon, LastShiftHudLayout.HudIconRect(width, slot));
-                view.SetIconOnlyLayout(LastShiftUiTheme.ScreenRectToCanvas(
-                    LastShiftHudLayout.HudIconRect(width, slot), LastShiftUiLayer.ScreenSize));
-                view.SetValue(Mathf.Clamp01(value));
-                view.SetTone(StatusTone(value, higherIsBetter, icon));
-            }
+            hud.SetVisible(true);
+            hud.Set(LastShiftUiIcon.Oxygen, currentState.OxygenPressure,
+                StatusTone(currentState.OxygenPressure, true, LastShiftUiIcon.Oxygen));
+            hud.Set(LastShiftUiIcon.Power, currentState.BusPower,
+                StatusTone(currentState.BusPower, true, LastShiftUiIcon.Power));
+            hud.Set(LastShiftUiIcon.Heat, currentState.EngineHeat,
+                StatusTone(currentState.EngineHeat, false, LastShiftUiIcon.Heat));
         }
 
         /// <summary>상태색 경계(아트 규격). <b>산소 내레이션 임계 45/35 와 다른 값이다.</b></summary>

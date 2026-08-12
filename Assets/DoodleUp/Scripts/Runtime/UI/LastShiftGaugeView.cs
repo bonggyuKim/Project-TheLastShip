@@ -35,12 +35,17 @@ namespace DoodleUp.Runtime
         /// <summary>아이콘과 이름 사이 여백.</summary>
         private const float IconGap = 8f;
 
-        private RectTransform root;
-        private Image iconImage;
-        private Image fillImage;
-        private Image movingMarker;
-        private Text valueLabel;
-        private Text nameLabel;
+        // <b>직렬화해야 프리팹에 실린다.</b> 이 뷰는 원래 런타임에 Create() 로만 세워졌고,
+        // 그때는 이 참조들이 메모리에만 있으면 됐다. 상시 HUD 를 프리팹으로 구우면서 사정이
+        // 바뀌었다 — 직렬화가 안 되면 프리팹에는 오브젝트만 남고 참조가 전부 비어서,
+        // 인스턴스화한 HUD 가 값을 받아도 <b>아무것도 안 그린다</b>. 화면에는 빈 자리만 남고
+        // 예외도 안 나므로 원인을 못 가린다.
+        [SerializeField] private RectTransform root;
+        [SerializeField] private Image iconImage;
+        [SerializeField] private Image fillImage;
+        [SerializeField] private Image movingMarker;
+        [SerializeField] private Text valueLabel;
+        [SerializeField] private Text nameLabel;
         private readonly List<Image> thresholdMarks = new();
 
         /// <summary>아이콘이 차지하는 캔버스 사각형. 눈금이 이 높이를 기준으로 자리를 잡는다.</summary>
@@ -134,13 +139,38 @@ namespace DoodleUp.Runtime
             iconRect = new Rect(0f, 0f, canvasRect.width, canvasRect.height);
             LastShiftUiFactory.Place((RectTransform)iconImage.transform, iconRect);
             LastShiftUiFactory.Place((RectTransform)fillImage.transform, iconRect);
+            MakeIconOnly();
+        }
 
-            // 규격이 "숫자·%·이름·임계 눈금·이동선 없음" 이라 만들지 않는 대신 끈다 —
-            // 임대 구조라 조각은 이미 있고, 여기서 지우면 다음 프레임에 다시 만든다.
+        /// <summary>
+        /// 아이콘 전용 <b>모양</b>만 잡는다 — <b>자리는 안 건드린다</b>.
+        ///
+        /// 프리팹으로 구운 HUD 가 이쪽을 쓴다. 위치까지 잡는
+        /// <see cref="SetIconOnlyLayout"/> 을 쓰면 프리팹에서 끌어 옮긴 자리가 첫 프레임에
+        /// 덮여서, 에디터 수정이 "저장은 되는데 게임에서는 안 보이는" 상태가 된다.
+        ///
+        /// 규격이 "숫자·%·이름·임계 눈금·이동선 없음" 이라 만들지 않는 대신 끈다 — 임대
+        /// 구조에서는 조각이 이미 있고, 여기서 지우면 다음 프레임에 다시 만든다.
+        /// </summary>
+        public void MakeIconOnly()
+        {
+            // 아이콘과 채움은 부모를 가득 채운다. 부모 크기는 프리팹(또는 호출자)이 정한다.
+            Stretch((RectTransform)iconImage.transform);
+            Stretch((RectTransform)fillImage.transform);
+
             if (nameLabel != null) nameLabel.gameObject.SetActive(false);
             if (valueLabel != null) valueLabel.gameObject.SetActive(false);
             SetThresholds();
             SetMovingMarker(-1f);
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            if (rect == null) return;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         /// <summary>이름 줄. 아이콘 오른쪽이라 채움과 겹치지 않는다.</summary>

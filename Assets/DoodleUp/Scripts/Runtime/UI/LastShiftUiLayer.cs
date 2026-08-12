@@ -244,6 +244,38 @@ namespace DoodleUp.Runtime
         /// <summary>프롬프트처럼 자기 계층을 직접 짓는 화면이 쓰는 부모.</summary>
         public RectTransform OverlayRoot => overlayRoot;
 
+        private LastShiftHudView hud;
+
+        /// <summary>
+        /// 상시 HUD 한 장. <b>프리팹에서 온다</b> — 자리를 코드가 안 정한다.
+        ///
+        /// <b>임대가 아니다.</b> 나머지 조각은 프레임마다 빌려 쓰고 안 갱신하면 저절로 꺼지는데,
+        /// HUD 는 프리팹 인스턴스 하나를 계속 들고 산다. 매 프레임 다시 세우면 프리팹이 정한
+        /// 자리를 다시 계산해야 하고, 그러면 좌표가 코드로 되돌아온다.
+        ///
+        /// 프리팹이 없으면 <c>null</c> 을 준다 — 여기서 코드로 대신 세우면 "프리팹이 빠졌는데
+        /// 화면은 멀쩡한" 상태가 되어, 빠졌다는 사실이 영영 안 보인다.
+        /// </summary>
+        public LastShiftHudView Hud
+        {
+            get
+            {
+                if (hud != null) return hud;
+                var prefab = Resources.Load<LastShiftHudView>(LastShiftHudView.ResourcePath);
+                if (prefab == null)
+                {
+                    Debug.LogError(
+                        $"[LAST_SHIFT_HUD] resource={LastShiftHudView.ResourcePath} result=MISSING " +
+                        "detail=HUD 프리팹이 없다 — Last Shift/UI/Build HUD Prefab 으로 한 번 굽는다");
+                    return null;
+                }
+
+                hud = Instantiate(prefab, gaugeRoot);
+                hud.name = prefab.name;
+                return hud;
+            }
+        }
+
         private T Borrow<T>(Dictionary<string, Lease<T>> table, string id, System.Func<T> create)
             where T : Component
         {
