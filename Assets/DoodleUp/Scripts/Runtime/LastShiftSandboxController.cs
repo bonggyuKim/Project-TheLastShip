@@ -2310,6 +2310,9 @@ namespace DoodleUp.Runtime
         /// <summary>어느 빌드가 도는지 한 번만 적었는가.</summary>
         private static bool buildMarkerLogged;
 
+        /// <summary>글자가 빈 채로 그려진 마지막 줄. 같은 줄을 두 번 안 찍는다.</summary>
+        private static string lastEmptyNarrationLine;
+
         private void DrawTutorialBanner()
         {
             var layer = LastShiftUiLayer.Instance;
@@ -2480,6 +2483,24 @@ namespace DoodleUp.Runtime
                 text = LastShiftNarrationScript.Reveal(
                     text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed,
                     typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds);
+            // <b>패널은 그려지는데 글자가 빈 경우를 잡는다.</b> 계기 셋(lobby/no-layer/blank)이
+            // 전부 안 찍히는데 사용자는 빈 화면을 보는 상태라, 남은 설명이 이것뿐이다 —
+            // 타이핑 연출은 줄 시계로 글자 수를 정하므로, 그 시계가 안 흐르면 0 글자가 되어
+            // 패널만 뜨고 말이 영영 안 나온다. 화자 이름은 따로 그려지므로 "완전히 빈 화면"
+            // 으로도 안 보이고, 그래서 지금까지 어느 계기에도 안 걸렸다.
+            if (string.IsNullOrEmpty(text) && panelAlpha > 0f && lastEmptyNarrationLine != line.Id)
+            {
+                lastEmptyNarrationLine = line.Id;
+                Debug.LogError($"[LAST_SHIFT_BANNER] result=EMPTY_TEXT line={line.Id} " +
+                               $"elapsed={lineElapsed:F2} swapped={swapped} typed={typed} " +
+                               $"typingSeconds={(typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds):F2} " +
+                               "detail=패널은 떴는데 글자가 0 이다 — 줄 시계가 안 흐른다");
+            }
+            else if (!string.IsNullOrEmpty(text))
+            {
+                lastEmptyNarrationLine = null;
+            }
+
             var ivory = LastShiftUiTheme.Ivory;
             layer.Label("tutorialGuide", new Rect(seated.x + 42f, seated.y + 60f, seated.width - 84f, 96f),
                 text, 38, new Color(ivory.r, ivory.g, ivory.b, ivory.a * Mathf.Clamp01(lineAlpha)),
