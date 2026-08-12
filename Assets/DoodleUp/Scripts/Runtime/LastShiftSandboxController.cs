@@ -808,7 +808,9 @@ namespace DoodleUp.Runtime
                 else if (keyboard.digit2Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.PowerOverloadLooseBattery);
                 else if (keyboard.digit3Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.BadAttitudeHighOxygen);
                 else if (keyboard.rKey.wasPressedThisFrame) EnterSegmentForDebug(currentPreset);
-                else if (keyboard.mKey.wasPressedThisFrame) ApplyMeteorImpact();
+                // 운석은 K 다. M 은 도면(LastShiftMapView)이 가져갔다 — 검증 도구 하나와
+                // 상시 화면 하나가 같은 키를 쓰고 있었고, 플레이 중에 쓰는 쪽이 M 이다.
+                else if (keyboard.kKey.wasPressedThisFrame) ApplyMeteorImpact();
                 else if (keyboard.fKey.wasPressedThisFrame) TrySecureHeldItem();
                 // 부품을 제자리에 놓는 것(F)과 계통에 연결하는 것(C·V·G)은 다른 행동이다.
                 // 놓기만 해서는 악화가 멈추지 않는다. E 는 이미 잡기/놓기라 쓰지 않는다.

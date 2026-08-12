@@ -112,6 +112,7 @@ namespace DoodleUp.Runtime
         private bool presetThreePressed;
         private bool resetPressed;
         private bool meteorPressed;
+        private bool mapPressed;
         private bool managesCursor = true;
         private string serverRejectionReason;
         private float serverRejectionExpiry;
@@ -313,7 +314,13 @@ namespace DoodleUp.Runtime
             var presetTwo = ConsumePress(keyboard.digit2Key.isPressed, ref presetTwoPressed);
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
             var reset = ConsumePress(keyboard.rKey.isPressed, ref resetPressed);
-            var meteor = ConsumePress(keyboard.mKey.isPressed, ref meteorPressed);
+            // 운석은 K 다(M 은 도면이 가져갔다). 키만 옮겼고 나머지 경로는 그대로다.
+            var meteor = ConsumePress(keyboard.kKey.isPressed, ref meteorPressed);
+            // 도면(M). <b>여기서 읽는다</b> — LastShiftSandboxController 의 키 블록은
+            // 클라이언트에서 통째로 꺼져 있어서(LastShiftNetworkSandbox 가 enabled = IsServer),
+            // 거기 두면 host 에서만 열린다. 도면은 화면일 뿐이라 피어마다 따로이고 RPC 가 없다.
+            if (ConsumePress(keyboard.mKey.isPressed, ref mapPressed)) LastShiftMapView.Toggle();
+            LastShiftMapView.Tick();
             // 냉각실 밸브 유지(T). <b>ConsumePress 를 안 쓴다</b> — 나머지 전부가 순간 동사라
             // "눌린 프레임" 을 세지만, 이 동사는 "눌려 있는 동안" 자체가 효과다(§4.3 시간 형태).
             // §4.3 표는 R 을 적었으나 R 은 이미 프리셋 리셋이라 T 로 옮겼다.
@@ -361,8 +368,8 @@ namespace DoodleUp.Runtime
             else if (presetTwo) networkPlayer.RequestPresetReset(LastShiftPreset.PowerOverloadLooseBattery);
             else if (presetThree) networkPlayer.RequestPresetReset(LastShiftPreset.BadAttitudeHighOxygen);
             else if (reset) networkPlayer.RequestCurrentPresetReset();
-            // 운석(M). 프리셋·리셋과 같은 검증 도구 계열이라 유령 차단 밖에 둔다.
-            // 이 줄이 없어서 host 로 뜬 씬에서 M 이 아무 데서도 안 먹었다 — 서버 RPC 는
+            // 운석(K). 프리셋·리셋과 같은 검증 도구 계열이라 유령 차단 밖에 둔다.
+            // 이 줄이 없어서 host 로 뜬 씬에서 그 키가 아무 데서도 안 먹었다 — 서버 RPC 는
             // 있었지만 부르는 곳이 없었고, LastShiftSandboxController 의 키 처리 블록은
             // 네트워크 샌드박스가 스폰되면 통째로 꺼진다.
             else if (meteor) networkPlayer.RequestMeteorImpact();
@@ -1217,6 +1224,17 @@ namespace DoodleUp.Runtime
             var screen = LastShiftUiLayer.ScreenSize;
             var canvas = LastShiftUiTheme.CanvasSize(screen);
 
+            // 도면이 떠 있으면 <b>조준점도 상호작용 프롬프트도 안 그린다</b>. 보기 전용
+            // 화면인데 조준선이 남아 있으면 "지금 조작이 되는가" 가 흐려지고, 프롬프트는
+            // 도면 뒤의 대상을 가리켜서 두 화면이 겹쳐 읽힌다.
+            if (LastShiftMapView.IsOpen)
+            {
+                DrawMap(layer, screen, canvas);
+                if (promptView != null && promptView.gameObject.activeSelf)
+                    promptView.gameObject.SetActive(false);
+                return;
+            }
+
             // 조준점은 프롬프트와 무관하게 항상 그린다.
             layer.LabelCanvas("crosshair", ResolveCrosshairRect(canvas.x, canvas.y),
                 "+", CrosshairFontSize, TextAnchor.MiddleCenter, Color.white);
@@ -1249,6 +1267,104 @@ namespace DoodleUp.Runtime
             layer.PanelCanvas("inputBar", barRect, 0.72f);
             layer.LabelCanvas("inputLabel", barRect, InputLabel,
                 InputLabelFontSize, TextAnchor.MiddleCenter, identityColor);
+        }
+
+        /// <summary>테두리 네 조각을 담는 자리. 프레임마다 새 배열을 안 만든다.</summary>
+        private static readonly Rect[] MapOutlineScratch = new Rect[4];
+
+        /// <summary>
+        /// 도면(<c>M</c>) 한 장. <b>배 배치 + 지금 누가 어디 있는가</b>가 전부이고 조작은 없다.
+        ///
+        /// <b>투영은 <see cref="LastShiftHullSchematic"/> 것을 그대로 쓴다</b> — 배치 화면과 같은
+        /// 자라, 청사진에서 본 좌표와 도면에서 본 좌표가 어긋나지 않는다.
+        /// </summary>
+        private void DrawMap(LastShiftUiLayer layer, Vector2 screen, Vector2 canvas)
+        {
+            var plan = LastShiftMapView.Schematic(screen);
+
+            Tint(layer.Panel("map:backdrop", new Rect(0f, 0f, screen.x, screen.y)),
+                LastShiftUiTheme.PanelNavy, LastShiftMapView.BackdropAlpha);
+
+            // 방은 <b>테두리만</b> 그린다. 속을 칠하면 그 위의 표식이 배경에 묻힌다.
+            var index = 0;
+            foreach (var footprint in LastShiftPlazaLayout.Footprints)
+            {
+                DrawMapOutline(layer, "map:room" + index,
+                    plan.ToScreenRect(footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ),
+                    LastShiftUiTheme.BodyText, 0.55f);
+                index++;
+            }
+
+            // 코어는 지나갈 수 없는 자리라 다른 색이다 — 광장이 통짜 방으로 보이면
+            // 도면을 보고 정한 동선이 실제로는 막힌다.
+            DrawMapOutline(layer, "map:core", plan.ToScreenRect(
+                    -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent,
+                    -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent),
+                LastShiftUiTheme.Unstable, 0.75f);
+
+            // 문은 벽에 난 구멍이라 <b>선 하나</b>로 눕힌다. 방 테두리 위에 겹쳐 그려서
+            // 어느 변에 붙었는지가 보인다.
+            index = 0;
+            foreach (var door in LastShiftPlazaLayout.Doors)
+            {
+                const float lip = 0.25f;
+                var rect = door.PlaneIsX
+                    ? plan.ToScreenRect(door.Plane - lip, door.Plane + lip, door.MinSpan, door.MaxSpan)
+                    : plan.ToScreenRect(door.MinSpan, door.MaxSpan, door.Plane - lip, door.Plane + lip);
+                Tint(layer.Panel("map:door" + index, rect), LastShiftUiTheme.Nominal, 0.9f);
+                index++;
+            }
+
+            DrawMapCrew(layer, plan);
+
+            var hint = new Rect(0f, canvas.y - InputBarMargin - InputBarHeight, canvas.x, InputBarHeight);
+            layer.LabelCanvas("map:hint", hint, "도면 — M 으로 닫기",
+                InputLabelFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
+        }
+
+        /// <summary>
+        /// 사람 표식. <b>씬 조회가 여기 있다</b> — 도면이 떠 있는 동안에만 돌고, 최대 넷이라
+        /// 프레임마다 한 번을 받아들인다. 상시 HUD 경로에는 이 조회가 없다.
+        /// </summary>
+        private void DrawMapCrew(LastShiftUiLayer layer, in LastShiftHullSchematic plan)
+        {
+            var crew = FindObjectsByType<LastShiftPlayerController>(FindObjectsSortMode.None);
+            var index = 0;
+            foreach (var member in crew)
+            {
+                if (member == null) continue;
+                var mine = member == this;
+                var point = plan.ToScreen(member.transform.position);
+                var size = mine ? LastShiftMapView.SelfMarkerSize : LastShiftMapView.CrewMarkerSize;
+                var color = mine ? LastShiftUiTheme.Nominal : LastShiftUiTheme.Ivory;
+
+                Tint(layer.Panel("map:crew" + index, LastShiftMapView.MarkerRect(point, size)), color, 1f);
+
+                // 보는 쪽에 코를 하나 더 찍는다. 내 것만 그린다 — 남의 시선까지 그리면
+                // 표식 넷이 겹칠 때 어느 코가 누구 것인지 안 갈린다.
+                if (mine)
+                    Tint(layer.Panel("map:nose",
+                            LastShiftMapView.MarkerRect(
+                                LastShiftMapView.NosePoint(plan, member.transform.position,
+                                    member.transform.forward),
+                                LastShiftMapView.CrewMarkerSize * 0.5f)),
+                        color, 0.9f);
+                index++;
+            }
+        }
+
+        private static void DrawMapOutline(LastShiftUiLayer layer, string id, Rect rect,
+            Color color, float alpha)
+        {
+            LastShiftMapView.OutlineBands(rect, LastShiftMapView.RoomOutline, MapOutlineScratch);
+            for (var side = 0; side < MapOutlineScratch.Length; side++)
+                Tint(layer.Panel(id + ":" + side, MapOutlineScratch[side]), color, alpha);
+        }
+
+        /// <summary>임대해 온 조각에 색을 입힌다. <see cref="LastShiftUiLayer.Panel"/> 은 진하기만 받는다.</summary>
+        private static void Tint(UnityEngine.UI.Image image, Color color, float alpha)
+        {
+            if (image != null) image.color = new Color(color.r, color.g, color.b, alpha);
         }
 
         /// <summary>조준점 글자 크기. 십자 사각형 안에 들어가는 최대치다.</summary>
