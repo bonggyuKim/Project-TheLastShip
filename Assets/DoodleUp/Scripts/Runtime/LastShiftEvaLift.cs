@@ -3,6 +3,37 @@ using UnityEngine;
 namespace DoodleUp.Runtime
 {
     /// <summary>
+    /// 코어 앞에서 조작 키를 눌렀을 때 다음에 일어날 일. <b>프롬프트와
+    /// <see cref="LastShiftEvaLift.TryOperate"/> 가 같은 함수를 읽는다</b> — 두 벌로 두면
+    /// "열기" 라고 적힌 자리에서 눌러도 안 열리는 상태가 생긴다.
+    /// </summary>
+    public enum LastShiftLiftAction
+    {
+        None,
+
+        /// <summary>사이클이 도는 중. 누를 것이 없고 진행률만 보여 준다.</summary>
+        Cycling,
+
+        /// <summary>조종석 방향 게이트를 연다.</summary>
+        OpenGate,
+
+        /// <summary>게이트를 닫는다 — 광장에 선 사람의 동사다.</summary>
+        CloseGate,
+
+        /// <summary>발판에 올라선 사람의 동사. 올라가며 감압이 같이 돈다.</summary>
+        Ascend,
+
+        /// <summary>탑 정상 발판에 선 사람의 동사. 내려오며 재가압이 같이 돈다.</summary>
+        Descend,
+
+        /// <summary>조항 <c>O-4</c> — 구간 중에는 봉인이다.</summary>
+        BlockedBySegment,
+
+        /// <summary>발판이 위에 있어 게이트를 열 수 없다.</summary>
+        BlockedByLiftAway
+    }
+
+    /// <summary>
     /// 승강 플랫폼. 광장 갑판과 탑 정상 사이를 오간다.
     ///
     /// <b>감압을 승강 중에 겹쳐 돈다.</b> game-balance 최종 검증에서 순차 실행은 첫 EVA 왕복이
@@ -90,6 +121,56 @@ namespace DoodleUp.Runtime
             // 자리이지 서 있는 자리가 아니다.
             if (LastShiftAirlock.IsOuterHatchOpen) TargetY = LastShiftEvaShaft.TopHatchY;
             else if (LastShiftAirlock.IsInnerHatchOpen) TargetY = LastShiftEvaShaft.DeckY;
+        }
+
+        /// <summary>
+        /// 이 자리에서 조작 키를 누르면 일어날 일.
+        ///
+        /// <b>게이트 개폐와 승강이 같은 키에 붙는다</b>(§23.6 — 수직 진입에 새 조작 동사를 안
+        /// 만든다). 갈리는 자리는 딱 하나, <b>발자국 안인가</b> 다: 발판에 올라선 사람은
+        /// 올라가려는 것이고 광장에 선 사람은 게이트를 닫으려는 것이다.
+        ///
+        /// 해석은 <see cref="LastShiftAirlock.NextAction"/> 이 이미 다 하고 있고 여기서는 그
+        /// 결과를 승강 동사로 옮기기만 한다 — 위상 판단을 두 곳에 두지 않는다. 인터록 인자도
+        /// 여기서 채운다(<see cref="IsAtDeck"/>): 발판이 위에 있는데 게이트가 열리면 코어 바닥이
+        /// 뚫린 채로 열리는 것이다.
+        /// </summary>
+        public static LastShiftLiftAction NextAction(Vector3 position)
+        {
+            if (!LastShiftAirlock.IsWithinReach(position)) return LastShiftLiftAction.None;
+            if (LastShiftAirlock.IsCycling) return LastShiftLiftAction.Cycling;
+
+            var inShaft = LastShiftEvaShaft.Contains(position.x, position.z);
+            return LastShiftAirlock.NextAction(position, !IsAtDeck) switch
+            {
+                LastShiftAirlockAction.OpenInner => LastShiftLiftAction.OpenGate,
+                LastShiftAirlockAction.CloseInner => inShaft && IsAtDeck
+                    ? LastShiftLiftAction.Ascend
+                    : LastShiftLiftAction.CloseGate,
+                // <b>발자국 안일 때만 내려간다.</b> 선체 위를 걷다가 눌러서 발판만 내려가면
+                // 불러올 수단이 없어 밖에 갇힌다 — 조항 RG-3 이 금지하는 영구 잠금이다.
+                LastShiftAirlockAction.Repressurize => inShaft && IsAtHullTop
+                    ? LastShiftLiftAction.Descend
+                    : LastShiftLiftAction.None,
+                LastShiftAirlockAction.BlockedBySegment => LastShiftLiftAction.BlockedBySegment,
+                LastShiftAirlockAction.BlockedByDeckHatch => LastShiftLiftAction.BlockedByLiftAway,
+                _ => LastShiftLiftAction.None
+            };
+        }
+
+        /// <summary>
+        /// 조작 한 번. 갈래는 <see cref="NextAction"/> 이 정하므로 여기서 조건을 다시 안 본다.
+        /// </summary>
+        public static bool TryOperate(Vector3 position)
+        {
+            return NextAction(position) switch
+            {
+                LastShiftLiftAction.OpenGate => LastShiftAirlock.TryOpenInner(!IsAtDeck),
+                LastShiftLiftAction.CloseGate => LastShiftAirlock.TryCloseInner(),
+                LastShiftLiftAction.Ascend => TryAscend(),
+                LastShiftLiftAction.Descend => TryDescend(),
+                _ => false
+            };
         }
 
         /// <summary>씬 전환·검사 격리용. 정적 상태라 안 지우면 다음 판으로 새어 나간다.</summary>

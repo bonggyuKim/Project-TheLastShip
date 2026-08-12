@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using System.Text.RegularExpressions;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEngine;
@@ -77,6 +78,11 @@ namespace DoodleUp.Tests.PlayMode
         public IEnumerator TheSandboxDrivesTheLiftAndTheCycleTogether()
         {
             EnterPort();
+            // 온보딩을 안 돌리는 검사라 안내 줄이 비어 있는 것이 정상이다. 화면 공백 감시가
+            // 1.5초 뒤 Error 로 한 번 짖는데(latch 라 딱 한 번), 이 검사는 승강에 6초 넘게
+            // 기다리므로 반드시 걸린다 — 승강이 아니라 그 로그로 빨개지고 있었다.
+            LogAssert.Expect(LogType.Error, new Regex("LAST_SHIFT_BANNER.*NO_GUIDANCE"));
+
             Assert.That(LastShiftAirlock.TryOpenInner(liftAwayFromDeck: false), Is.True);
             Assert.That(LastShiftEvaLift.TryAscend(), Is.True);
             Assert.That(LastShiftAirlock.IsCycling, Is.True, "출발과 동시에 사이클이 돌아야 한다");
@@ -94,6 +100,85 @@ namespace DoodleUp.Tests.PlayMode
                 $"리프트가 안 올라갔다 — sandbox 가 Tick 을 안 부른다. y={LastShiftEvaLift.Y:F2}");
             Assert.That(LastShiftAirlock.IsOuterHatchOpen, Is.True,
                 "도착했는데 감압이 안 끝났다 — 겹침이 실제로는 안 돈다.");
+        }
+
+        /// <summary>
+        /// <b>게임 안에서 코어로 들어갈 수 있는가.</b> 위의 검사가 <c>TryOpenInner</c> 를 직접
+        /// 부르기 때문에 초록이었지만, 사용자 플레이에서는 게이트가 영영 안 열렸다 —
+        /// 조작 사거리가 삭제된 갑판 아래 에어록 자리에 남아 있어서 광장 어디에 서도 안 닿았다.
+        /// 그래서 여기서는 <b>플레이어의 조작 키</b>로만 진행한다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheCrewOpensTheCoreGateAndRidesTheLiftWithTheSameKey()
+        {
+            EnterPort();
+
+            // 조종석 방향에서 게이트에 다가선다. 발자국 밖 + 사거리 안이다.
+            var approach = new Vector3(-(LastShiftEvaShaft.HalfExtent + 1f), 1.0f, 0f);
+            player.ResetPlayer(approach);
+            for (var frame = 0; frame < 3; frame++) yield return null;
+
+            var eye = new Vector3(approach.x, LastShiftZoneDoor.OpeningHeight * 0.5f, 0f);
+            Assert.That(Physics.Raycast(eye, Vector3.right, 1.2f), Is.True,
+                "닫힌 게이트가 안 막는다 — SIMUL_ZONES 가드레일이 뚫려 있다.");
+
+            Assert.That(LastShiftEvaLift.NextAction(player.transform.position),
+                Is.EqualTo(LastShiftLiftAction.OpenGate),
+                "광장에서 게이트를 열 수단이 없다 — 조작 사거리가 코어에 안 붙어 있다.");
+            Assert.That(player.TryOperateNearestDoor(), Is.True, "같은 키로 게이트가 안 열린다.");
+            Assert.That(LastShiftAirlock.IsInnerHatchOpen, Is.True);
+            yield return null;
+
+            Assert.That(Physics.Raycast(eye, Vector3.right, 1.2f), Is.False,
+                "게이트를 열었는데도 코어로 들어가는 길이 막혀 있다.");
+
+            // 발판에 올라선다. 같은 키가 여기서는 상승이다.
+            player.ResetPlayer(new Vector3(0f, 1.0f, 0f));
+            yield return null;
+            Assert.That(LastShiftEvaLift.NextAction(player.transform.position),
+                Is.EqualTo(LastShiftLiftAction.Ascend), "발판에서 올라갈 수단이 없다.");
+            Assert.That(player.TryOperateNearestDoor(), Is.True, "발판에서 상승이 안 걸린다.");
+            Assert.That(LastShiftAirlock.IsCycling, Is.True, "출발과 동시에 사이클이 돌아야 한다.");
+        }
+
+        /// <summary>
+        /// <b>판이 승무원을 데리고 올라가는가.</b> <c>CharacterController</c> 는 움직이는 콜라이더에
+        /// 얹혀 따라가지 않는 것이 기본이라, 판만 올라가고 캡슐은 갑판에 남을 수 있다 —
+        /// 그러면 상승·감압 시계는 전부 초록인데 화면에서는 아무도 안 올라간다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ThePlatformCarriesTheCrewUpTheShaft()
+        {
+            EnterPort();
+            LogAssert.Expect(LogType.Error, new Regex("LAST_SHIFT_BANNER.*NO_GUIDANCE"));
+
+            // 저중력이라 착지가 느리다. 30프레임은 아직 떨어지는 중이고, 그 좌표를 기준값으로
+            // 잡으면 "안 올라갔다" 와 "아직 착지 안 했다" 가 안 갈린다.
+            player.ResetPlayer(new Vector3(0f, 1.0f, 0f));
+            for (var frame = 0; frame < 120; frame++) yield return null;
+            var startY = player.transform.position.y;
+            var visual = Object.FindAnyObjectByType<LastShiftEvaLiftVisual>();
+            Assert.That(visual, Is.Not.Null, "승강 판 시각 컴포넌트가 씬에 없다.");
+            var geometry = $"startY={startY:F2} platformTop={visual.PlatformTopY:F2} liftY={LastShiftEvaLift.Y:F2}";
+
+            Assert.That(player.TryOperateNearestDoor(), Is.True, "코어 안에서 게이트가 안 열린다.");
+            yield return null;
+            Assert.That(player.TryOperateNearestDoor(), Is.True, "발판에서 상승이 안 걸린다.");
+
+            var waited = 0f;
+            while (waited < LastShiftEvaShaft.AscentSeconds * 3f + 2f)
+            {
+                if (LastShiftEvaLift.IsAtHullTop) break;
+                waited += Time.deltaTime;
+                yield return null;
+            }
+            for (var frame = 0; frame < 10; frame++) yield return null;
+
+            Assert.That(LastShiftEvaLift.IsAtHullTop, Is.True, "판이 정상까지 안 올라갔다.");
+            Assert.That(player.transform.position.y, Is.GreaterThan(startY + 1f),
+                "판만 올라가고 승무원은 남았다 — 승강 중 캡슐이 안 따라간다. " +
+                $"y={player.transform.position.y:F2} {geometry} nowTop={visual.PlatformTopY:F2} " +
+                $"pivotY={visual.PlatformY:F2} liftY={LastShiftEvaLift.Y:F2} enabled={visual.enabled}");
         }
 
         /// <summary>

@@ -485,20 +485,11 @@ namespace DoodleUp.Runtime
             var hatch = LastShiftDeckHatch.FindOperable(transform.position);
             if (hatch != null) return hatch.TryOperate(this);
 
-            // 에어록도 같은 키다. 승강구와 x·z 가 같지만(에어록이 선수 승강구 아래 모서리에서
-            // 분기한다, §23.5) 승강구 사거리는 1.2m·y 무시라 덕트 안 어디서나 걸린다 —
-            // 그래서 승강구를 <b>먼저</b> 본다. 덕트 바닥에 서면 승강구가, 에어록 안으로
-            // 내려가면 에어록이 잡히고, 그 경계가 LastShiftAirlock.IsAtInnerSide 다.
-            return LastShiftAirlock.TryOperate(transform.position, LiftAwayFromDeck);
+            // 코어 게이트·승강도 같은 키다(§23.6 — 수직 진입에 새 조작 동사를 안 만든다).
+            // 사거리가 문·승강구와 겹치지 않으므로 순서가 결과를 바꾸지 않는다: 광장 문은
+            // 구획 경계(x·z 가 ±6 부터)에 있고 코어는 발자국 ±2 + 사거리 1.8 이다.
+            return LastShiftEvaLift.TryOperate(transform.position);
         }
-
-        /// <summary>
-        /// 갑판 승강구 해치가 하나라도 열려 있는가 — 에어록 인터록의 셋째 조건이 읽는 값이다.
-        /// sandbox 가 정본이고(<see cref="LastShiftSandboxController.IsHatchOpen"/>), 없으면
-        /// 닫힘으로 본다: 최소 조립에서 안전한 쪽은 "구멍이 없다" 이고, 그 기본값이
-        /// <see cref="LastShiftDeckHatch.IsOpen"/> 과 같아야 두 판정이 안 갈린다.
-        /// </summary>
-        private static bool LiftAwayFromDeck => !LastShiftEvaLift.IsAtDeck;
 
         public void ResetPlayer(Vector3 position)
         {
@@ -575,6 +566,8 @@ namespace DoodleUp.Runtime
                 return;
             }
 
+            CarryWithLift();
+
             var worldMove = transform.right * move.x + transform.forward * move.y;
             // 선내 저중력은 LastShiftShipPhysics 정본을 쓴다. 전역 Physics.gravity 를 읽으면
             // ProjectSettings 를 바꿔야 하고, 그러면 지구 중력을 전제한 DU02/DU03BC 검증이 깨진다.
@@ -590,6 +583,49 @@ namespace DoodleUp.Runtime
 
             characterController.Move((worldMove * CurrentMoveSpeed + Vector3.up * verticalSpeed) * deltaTime);
         }
+
+        /// <summary>판 위에 실려 있다고 보는 아래쪽 여유. 스킨 두께와 한 프레임 정착분만 먹는다.</summary>
+        private const float LiftRideSlack = 0.6f;
+
+        /// <summary>
+        /// 승강 판 위의 승무원을 판과 같이 올린다.
+        ///
+        /// <b><see cref="CharacterController"/> 는 움직이는 콜라이더에 얹혀 따라가지 않는다.</b>
+        /// 판을 트랜스폼으로 올리기만 하면 판은 정상(<c>6.20</c>)까지 가고 승무원은 갑판
+        /// (<c>0.20</c>)에 그대로 남는다 — 상승·감압 시계는 전부 초록인데 화면에서는 아무도
+        /// 안 올라간다. PlayMode 검사가 이 수치 그대로 잡았다.
+        ///
+        /// <b>차분을 더하는 방식으로는 안 된다.</b> 한 프레임 이동분(<c>1cm</c>)보다 접지 정착
+        /// 속도가 커서 더한 만큼이 그 프레임에 다시 깎인다 — 실제로 <c>y</c> 가 <c>0.20</c> 에서
+        /// 1mm 도 안 움직였다. 그래서 <b>디딤면에 맞추는</b> 쪽으로 푼다: 발밑이 판 위쪽면보다
+        /// 낮으면 그 차이만큼 올린다. 밑으로 내려가는 일은 여기서 안 한다 — 하강은 판이 발밑에서
+        /// 빠지고 중력이 따라가면 그림이 맞다.
+        ///
+        /// 발 높이는 캡슐 경계에서 받는다. 트랜스폼 원점이 발인지 가운데인지에 이 계산이 걸리면
+        /// 프리팹을 손볼 때마다 조용히 어긋난다.
+        /// </summary>
+        private void CarryWithLift()
+        {
+            var position = transform.position;
+            if (!LastShiftEvaShaft.Contains(position.x, position.z)) return;
+
+            var top = LiftVisual != null ? LiftVisual.PlatformTopY : float.NaN;
+            if (float.IsNaN(top)) return;
+
+            var feet = characterController.bounds.min.y;
+            if (feet > top || feet < top - LiftRideSlack) return;
+
+            characterController.Move(Vector3.up * (top - feet));
+        }
+
+        /// <summary>
+        /// 씬의 승강 판. sandbox 와 같은 이유로 지연 조회한다 — Awake 순서가 보장되지 않고,
+        /// 그때 캐시가 <c>null</c> 로 굳으면 승무원이 영영 안 실린다.
+        /// </summary>
+        private LastShiftEvaLiftVisual LiftVisual =>
+            cachedLiftVisual != null ? cachedLiftVisual : cachedLiftVisual = FindFirstObjectByType<LastShiftEvaLiftVisual>();
+
+        private LastShiftEvaLiftVisual cachedLiftVisual;
 
         /// <summary>
         /// 유령 이동(기획 §4.4 — "이동 제약만 잃는다"). 벽·문·닫힌 격리를 통과해야 하므로
@@ -1064,32 +1100,39 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 에어록 앞 안내. 사거리 밖이면 <c>null</c> 이라 아이템 프롬프트가 그대로 나온다.
+        /// 코어 게이트·승강 안내. 사거리 밖이면 <c>null</c> 이라 아이템 프롬프트가 그대로 나온다.
         ///
         /// <b>막힌 사유를 문장으로 적는 것이 여기 있는 이유의 절반이다.</b> 조항 <c>O-4</c>
-        /// (구간 중 봉인)와 인터록(갑판 구멍과 동시 개방 금지)은 둘 다 눌러도 아무 일이
+        /// (구간 중 봉인)와 인터록(발판이 위에 있으면 못 연다)은 둘 다 눌러도 아무 일이
         /// 안 일어나는 형태로 나타나는데, 배 안 어디에도 그 규칙을 적어 둔 자리가 없다.
         /// </summary>
         private PromptDraw BuildAirlockPrompt(LastShiftCrewOxygen crew)
         {
-            // 에어록은 정적 좌표만 있고 컴포넌트를 안 거친다. 바닥 한가운데라 눈높이로 올린다.
-            var airlock = AnchorAbove(LastShiftAirlock.ReturnPoint);
-            if (LastShiftAirlock.IsCycling && LastShiftAirlock.IsWithinReach(transform.position))
-                return PromptDraw.At($"에어록 사이클 {LastShiftAirlock.CycleProgress:P0}", airlock);
+            var action = LastShiftEvaLift.NextAction(transform.position);
+            if (action == LastShiftLiftAction.None) return PromptDraw.None;
 
-            var action = LastShiftAirlock.NextAction(transform.position, LiftAwayFromDeck);
-            if (action == LastShiftAirlockAction.None) return PromptDraw.None;
-            if (crew != null && crew.IsDead) return PromptDraw.At("에어록: 조작 불가", airlock);
+            // 안쪽(광장)에서는 게이트 앞에, 정상에서는 해치 자리에 띄운다. 위상마다 보고 있는
+            // 구멍이 다르므로 앵커도 같이 갈려야 한다 — 광장에서 6.2m 위에 뜨면 안내가 코어
+            // 천장 뒤로 숨는다.
+            var anchor = AnchorAbove(LastShiftAirlock.IsAtInnerSide(transform.position)
+                ? new Vector3(-LastShiftEvaShaft.HalfExtent, LastShiftZoneDoor.OpeningHeight * 0.5f, 0f)
+                : LastShiftAirlock.ReturnPoint);
+
+            if (action == LastShiftLiftAction.Cycling)
+                return PromptDraw.At(
+                    $"{(LastShiftAirlock.CycleTarget == LastShiftAirlockPhase.OuterOpen ? "감압" : "재가압")}" +
+                    $" {LastShiftAirlock.CycleProgress:P0}", anchor);
+            if (crew != null && crew.IsDead) return PromptDraw.At("코어: 조작 불가", anchor);
 
             return PromptDraw.At(action switch
             {
-                LastShiftAirlockAction.OpenInner => "[Q] 에어록 안쪽 해치 열기",
-                LastShiftAirlockAction.CloseInner => "[Q] 에어록 안쪽 해치 닫기",
-                LastShiftAirlockAction.Depressurize => "[Q] 감압 — 바깥 해치를 연다 (선외는 진공)",
-                LastShiftAirlockAction.Repressurize => "[Q] 재가압 — 배로 돌아간다",
-                LastShiftAirlockAction.BlockedBySegment => "에어록: 구간 중에는 봉인 (기항에서만 열린다)",
-                _ => "에어록: 갑판 승강구 해치를 먼저 닫으세요"
-            }, airlock);
+                LastShiftLiftAction.OpenGate => "[Q] 코어 게이트 열기",
+                LastShiftLiftAction.CloseGate => "[Q] 코어 게이트 닫기",
+                LastShiftLiftAction.Ascend => "[Q] 상승 — 선외로 (올라가며 감압)",
+                LastShiftLiftAction.Descend => "[Q] 하강 — 배로 돌아간다 (내려가며 재가압)",
+                LastShiftLiftAction.BlockedBySegment => "코어: 구간 중에는 봉인 (기항에서만 열린다)",
+                _ => "코어: 발판이 위에 있다 (내려올 때까지 못 연다)"
+            }, anchor);
         }
 
         /// <summary>

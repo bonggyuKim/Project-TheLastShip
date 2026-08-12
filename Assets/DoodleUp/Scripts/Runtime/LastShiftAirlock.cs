@@ -237,36 +237,43 @@ namespace DoodleUp.Runtime
         // ── 조작 ────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 조작 사거리(<c>xz</c>). 에어록 한 변이 <c>3m</c> 라 중심에서 벽까지가 <c>1.5m</c> 이고,
-        /// <b>그 값을 그대로 쓴다</b> — 안에 서 있으면 어디서든 닿고 밖에서는 해치 바로 앞에서만
-        /// 닿는다. 승강구(<c>1.2</c>)보다 넉넉한 것은 여기가 방 안이 아니라 챔버라서 스폰 지점·
-        /// 부품 자리와 겹칠 일이 없기 때문이다.
+        /// 조작 사거리(<c>xz</c>). <b>코어 발자국 바깥으로</b> 이만큼이고, 문 사거리를 그대로
+        /// 빌려 쓴다 — 새 숫자를 안 만드는 이유는 코어에 붙는 조작이 문 개폐와 같은 키이고,
+        /// sandbox 의 코어 접근 판정(<c>AI_F_01</c>)이 이미 같은 값을 쓰고 있어서다. 두 벌로
+        /// 두면 "안내는 떴는데 눌러도 안 된다" 가 된다.
+        ///
+        /// <b>옛 값은 갑판 아래 에어록 한 변의 절반(<c>1.5</c>)이었다.</b> 그 챔버는 삭제
+        /// 확정인데(<c>central-lift-eva-ascent-v1.md</c> §5) 사거리만 그 자리에 남아 있어서
+        /// 광장에서는 어디에 서도 안 닿았다 — 게이트를 열 수단이 게임 안에 없었고, 그래서
+        /// 코어 안으로 들어갈 수가 없었다.
         /// </summary>
-        public const float ReachDistance = LastShiftBypassDuct.AirlockSize * 0.5f;
+        public const float ReachDistance = LastShiftZoneDoor.ReachDistance;
 
         /// <summary>
-        /// 안쪽과 바깥쪽을 가르는 높이. 챔버 한가운데다 — 두 해치가 같은 <c>xz</c> 에 위아래로
-        /// 있으므로(§23.5) 어느 쪽을 조작하려는지는 <b>서 있는 높이</b>로만 갈린다.
+        /// 안쪽과 바깥쪽을 가르는 높이. 샤프트 한가운데다 — 두 해치가 같은 <c>xz</c> 에 위아래로
+        /// 있으므로 어느 쪽을 조작하려는지는 <b>서 있는 높이</b>로만 갈린다.
         /// </summary>
-        public static float MidY =>
-            (LastShiftBypassDuct.AirlockFloorY + LastShiftBypassDuct.AirlockCeilingY) * 0.5f;
+        public static float MidY => (LastShiftEvaShaft.DeckY + LastShiftEvaShaft.TopHatchY) * 0.5f;
 
         /// <summary>
-        /// 에어록을 조작할 수 있는 자리인가. <c>xz</c> 는 챔버 반경, <c>y</c> 는 덕트 바닥 위
-        /// 웅크림 높이부터 선외 보행면까지다 — 위로는 덕트에서 안쪽 해치를 열 수 있어야 하고,
-        /// 아래로는 밖에서 바깥 해치를 열 수 있어야 한다.
+        /// 에어록을 조작할 수 있는 자리인가. <c>xz</c> 는 코어 발자국 + 사거리, <c>y</c> 는 광장
+        /// 갑판부터 탑 정상 위까지다 — 아래로는 광장에서 게이트를 열 수 있어야 하고, 위로는
+        /// 탑 정상에서 되돌아 내려올 수 있어야 한다(<c>RG-3</c> 영구 잠금 금지).
         /// </summary>
         public static bool IsWithinReach(Vector3 position)
         {
-            if (Mathf.Abs(position.x - LastShiftBypassDuct.AirlockCenterX) > ReachDistance) return false;
-            if (Mathf.Abs(position.z - LastShiftBypassDuct.AirlockCenterZ) > ReachDistance) return false;
+            if (!LastShiftEvaShaft.Contains(position.x, position.z, ReachDistance)) return false;
 
-            return position.y >= LastShiftBypassDuct.AirlockFloorY - ReachDistance &&
-                   position.y <= LastShiftBypassDuct.CeilingY;
+            return position.y >= LastShiftEvaShaft.DeckY - ReachDistance &&
+                   position.y <= LastShiftEvaShaft.TopHatchY + LastShiftCompartments.InteriorHeight;
         }
 
-        /// <summary>이 자리에서 조작하려는 것이 안쪽 해치인가. 챔버 한가운데를 경계로 가른다.</summary>
-        public static bool IsAtInnerSide(Vector3 position) => position.y >= MidY;
+        /// <summary>
+        /// 이 자리에서 조작하려는 것이 안쪽(가압측) 해치인가. <b>부등호가 EVA 상향 반전으로
+        /// 뒤집혔다</b> — 옛 모델은 에어록이 배 밑이라 안쪽이 위였고, 지금은 안쪽이 광장 갑판이라
+        /// 아래다. 뒤집지 않으면 광장에 선 승무원이 "바깥 해치를 조작하려는 사람" 으로 잡힌다.
+        /// </summary>
+        public static bool IsAtInnerSide(Vector3 position) => position.y <= MidY;
 
         /// <summary>
         /// 이 자리에서 다음에 일어날 일. 프롬프트와 <see cref="TryOperate"/> 가 <b>같은 함수를
