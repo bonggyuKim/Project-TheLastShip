@@ -498,11 +498,15 @@ namespace DoodleUp.Editor
                 {
                     if (!ViolatesFeatureKeepOut(feature.box, box, DressingKeepOut, deckY, DressingFloorReach))
                         continue;
-                    // <b>오류가 아니라 경고다.</b> 오류로 내면 씬을 다시 굽는 검사 셋이
-                    // "처리 안 된 오류" 로 같이 붉어진다 — 소품 좌표는 아트·TA 몫이라, 그쪽이
-                    // 옮기기 전까지 무관한 검사를 막게 된다. 규칙 자체는 EditMode 가 잠근다.
-                    // 현재 위반이 정리되면 오류로 올려 하드 게이트로 만들 수 있다.
-                    Debug.LogWarning(
+                    // <b>오류다 — 어긴 배는 통과시키지 않는다.</b> 규칙을 넣던 날에는 전력실
+                    // 소품이 아직 설비 안에 있어서 경고로 뒀다. 오류로 두면 씬을 다시 굽는
+                    // 검사 셋이 "처리 안 된 오류" 로 같이 붉어져서, 옮길 사람이 손대기 전에
+                    // 무관한 검사를 막기 때문이다. TA 가 PartsPallet 을 측벽으로 옮겨
+                    // clashes=0 이 된 것을 확인하고 올렸다(game-art 지시).
+                    //
+                    // 다시 내리지 않는다. 여기가 붉으면 배가 실제로 어긴 것이고, 고칠 자리는
+                    // 이 줄이 아니라 소품 좌표다.
+                    Debug.LogError(
                         $"[LAST_SHIFT_DRESSING_FEATURE] prop={prop.name} feature={feature.name} " +
                         $"propCenter={box.center:F2} featureCenter={feature.box.center:F2} " +
                         $"detail=설비 body bounds +{DressingKeepOut:0.##}m 안에 바닥 소품이 있다 — 측벽 쪽으로 옮긴다");

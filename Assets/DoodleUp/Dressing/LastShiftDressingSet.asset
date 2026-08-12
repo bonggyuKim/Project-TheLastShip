@@ -945,7 +945,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 1.12, y: 0.4, z: 0.92}
     anchorMode: 0
-    anchor: {x: -0.266, y: -0.8871}
+    anchor: {x: 0.75, y: -0.8871}
     bottomY: 0.12
     clearance: 0.1
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1164,9 +1164,9 @@ MonoBehaviour:
       zone: 2
       compartment: 0
       passage: 0
-    size: {x: 1, y: 1.55, z: 0.8}
+    size: {x: 0.72, y: 0.52, z: 0.86}
     anchorMode: 0
-    anchor: {x: -0.0515, y: 0.9843}
+    anchor: {x: 0.85, y: 0.25}
     bottomY: 0.12
     clearance: 0.1
     eulerAngles: {x: 0, y: 0, z: 0}
