@@ -174,8 +174,11 @@ namespace DoodleUp.Runtime
             {
                 new LastShiftStateCueSpec("Frost_Deck", LastShiftZone.Cooling, LastShiftStateCue.Frost,
                     -1.9f, 0.02f, -2.0f, new Vector3(2.0f, 0.04f, 1.2f)),
+                // 중심 높이가 0.55 이던 시절에는 밑면이 정확히 y=0 이라 <b>바닥에 세워 둔 판</b>
+                // 이었다. 벽에 낀 서리는 벽 중단에 있어야 하고 바닥 몫은 Frost_Deck 이 맡는다
+                // (game-art 확정 2026-08-12). 1.02 는 밑면 0.47 이 되는 값이다.
                 new LastShiftStateCueSpec("Frost_StarboardWall", LastShiftZone.Cooling, LastShiftStateCue.Frost,
-                    -1.9f, 0.55f, outerWall, new Vector3(2.0f, 1.1f, 0.06f)),
+                    -1.9f, 1.02f, outerWall, new Vector3(2.0f, 1.1f, 0.06f)),
                 new LastShiftStateCueSpec("Frost_Conduit", LastShiftZone.Cooling, LastShiftStateCue.Frost,
                     -1.6f, 1.90f, -1.6f, new Vector3(1.6f, 0.14f, 0.14f)),
 
