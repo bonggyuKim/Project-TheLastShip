@@ -450,15 +450,22 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 스폰 시선. 조종석에서 중앙광장(<c>ModularKitAssembly</c> 원점)을 바라본다.
-        /// 외피 모듈 교체 후에도 첫 프레임에 레벨 내부가 보이도록, 방 너머의 냉각 아이템이
-        /// 아니라 실제 조립 기준 원점을 프레이밍한다.
+        /// 스폰 시선 — <b>숙소 문</b>을 본다. 스폰이 조종석에서 숙소로 옮겨오면서
+        /// (온보딩 1단계가 "기상(숙소)" 이다) 겨눌 것도 같이 바뀌었다: 예전에는 광장 원점을
+        /// 프레이밍했는데, 숙소에서 그러면 <b>벽을 비스듬히 본다.</b>
+        ///
+        /// 눈을 뜨면 <b>나갈 곳이 정면</b>이어야 <c>AI_W_02</c>~<c>07</c> 이 가리키는 곳과
+        /// 화면이 맞는다. 문 좌표는 발자국에서 뽑으므로 방이 움직여도 따라온다.
         /// </summary>
         public static Quaternion RotationForSlot(int slot)
         {
             var position = SpawnForSlot(slot);
-            var target = new Vector3(0f, position.y, 0f);
-            return Quaternion.LookRotation((target - position).normalized, Vector3.up);
+            var quarters = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Quarters);
+            var target = new Vector3(
+                quarters.MinX + LastShiftShipDimensions.QuartersDoorInset, position.y, quarters.MinZ);
+            var toDoor = target - position;
+            if (toDoor.sqrMagnitude <= Mathf.Epsilon) return Quaternion.identity;
+            return Quaternion.LookRotation(toDoor.normalized, Vector3.up);
         }
 
         private void ConfigureTransport()

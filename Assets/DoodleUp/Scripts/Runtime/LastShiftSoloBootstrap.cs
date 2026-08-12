@@ -83,6 +83,8 @@ namespace DoodleUp.Runtime
             var body = crew.GetComponent<CharacterController>();
             if (body != null) body.enabled = false;
             crew.transform.position = LastShiftShipDimensions.SpawnPoint;
+            // 눈을 뜨면 문이 정면이어야 한다 — 스폰이 숙소로 옮겨오면서 같이 붙는 짝이다.
+            crew.transform.rotation = LastShiftNetworkSession.RotationForSlot(0);
             if (body != null) body.enabled = true;
 
             // 1인칭 표현. 내 카메라에 내 몸이 보이면 안 된다 — 규칙은

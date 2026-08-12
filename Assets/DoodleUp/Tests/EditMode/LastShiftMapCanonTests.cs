@@ -37,16 +37,24 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void MapSpawnStandsInsideTheCockpitFootprint()
+        public void MapSpawnStandsInsideTheQuartersFootprint()
         {
             // 값이 같기만 하고 방 밖이면 소용없다. 두 정본을 맞출 때 어느 쪽으로 맞출지
             // 판단이 필요한데, 그 판단의 하한이 이것이다.
-            var footprint = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.CockpitRoom);
+            // <b>깨어나는 방은 숙소다.</b> 온보딩 1단계가 "기상(숙소)" 인데 스폰이 조종석에
+            // 있었다 — 암전이 걷히면 이미 조종석에 서 있었다(사용자 지적 2026-08-12).
+            var footprint = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Quarters);
             var spawn = LastShiftShipDimensions.SpawnPoint;
             Assert.That(spawn.x, Is.GreaterThan(footprint.MinX).And.LessThan(footprint.MaxX),
-                "스폰이 조종석 발자국 밖이다");
+                "스폰이 숙소 발자국 밖이다");
             Assert.That(spawn.z, Is.GreaterThan(footprint.MinZ).And.LessThan(footprint.MaxZ),
-                "스폰이 조종석 발자국 밖이다");
+                "스폰이 숙소 발자국 밖이다");
+
+            // 문까지 걸을 거리가 남아야 첫 이동(AI_W_06)과 문 사거리(AI_W_07)가 생긴다.
+            var door = new Vector3(footprint.MinX + LastShiftShipDimensions.QuartersDoorInset,
+                spawn.y, footprint.MinZ);
+            Assert.That(Vector3.Distance(spawn, door), Is.GreaterThan(2f),
+                "문 바로 앞에서 깨면 걸어갈 거리가 없다");
         }
 
         /// <summary>

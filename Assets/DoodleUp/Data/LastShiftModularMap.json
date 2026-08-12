@@ -4,14 +4,14 @@
   "sourceOfTruth": "DoodleUp.Runtime.LastShiftPlazaLayout",
   "cockpitCamera": {
     "spawn": [
-      -8.6,
+      4.8,
       0.1,
-      0
+      9.5
     ],
     "lookAt": [
-      0,
+      4.8,
       1.65,
-      0
+      6
     ]
   },
   "plaza": {

@@ -125,6 +125,88 @@ namespace DoodleUp.Tests.PlayMode
         }
 
         /// <summary>
+        /// <b>연출이 실제로 화면에 나왔는가</b>를 프레임 단위로 적는다. 컴포넌트가 붙어 있는지가
+        /// 아니라 <b>그 프레임에 화면이 검었는지 · 문장이 떴는지 · 소리가 났는지</b>를 본다 —
+        /// 배선 검사만으로는 "돌긴 도는데 아무것도 안 보인다" 를 못 잡는다(PM 요청 2026-08-12).
+        ///
+        /// 증거는 <c>[WAKE_EVIDENCE]</c> 로 로그에 남는다. 사람이 읽는 것이 목적이라
+        /// 단정보다 기록이 먼저다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheOpeningActuallyShowsOnScreen()
+        {
+            ArriveAtFirstPort();
+            LastShiftNarrationAudio.Clear();
+
+            var shown = new System.Collections.Generic.Dictionary<string, string>();
+            var order = new System.Collections.Generic.List<string>();
+            var firstSeen = new System.Collections.Generic.Dictionary<string, float>();
+            var sounds = new System.Collections.Generic.Dictionary<string, string>();
+            var blackFrames = 0;
+            var litFrames = 0;
+            var maxAlpha = 0f;
+
+            var waited = 0f;
+            while (waited < LastShiftWakeSequence.StandSeconds + 1.5f)
+            {
+                // <b>그려진 뒤에 읽는다.</b> 코루틴은 그 프레임 Update 앞에서 깨므로 여기서
+                // 바로 읽으면 라벨이 앞 프레임 내용이다 — 처음에 그렇게 재서 문장이 한 줄씩
+                // 밀려 보였다.
+                yield return new WaitForEndOfFrame();
+
+                var alpha = LastShiftWakeSequence.BlackoutAlpha;
+                maxAlpha = Mathf.Max(maxAlpha, alpha);
+                if (alpha > 0.99f) blackFrames++;
+                if (alpha <= 0f) litFrames++;
+
+                if (LastShiftWakeSequence.HasLine)
+                {
+                    var id = LastShiftWakeSequence.Current.Id;
+                    if (!order.Contains(id))
+                    {
+                        order.Add(id);
+                        firstSeen[id] = waited;
+                    }
+                    // <b>매 프레임 모은다.</b> 줄이 바뀐 그 순간만 읽으면 타이핑이 아직 0글자라
+                    // 빈 문자열이 잡힌다 — 그것도 처음에 그렇게 재서 <없음> 이 줄줄이 나왔다.
+                    var text = ScreenText();
+                    if (!string.IsNullOrEmpty(text)) shown[id] = text;
+                    if (LastShiftNarrationAudio.LastPlayedId == id && !sounds.ContainsKey(id))
+                        sounds[id] = LastShiftNarrationAudio.LastPlayedSfx.ToString();
+                }
+
+                waited += Time.deltaTime;
+            }
+
+            var log = new System.Text.StringBuilder("[WAKE_EVIDENCE] ");
+            foreach (var id in order)
+                log.Append(id).Append('@').Append(firstSeen[id].ToString("F2")).Append("s 화면=")
+                   .Append(shown.TryGetValue(id, out var seen) ? seen : "<안뜸>")
+                   .Append(" 소리=").Append(sounds.TryGetValue(id, out var sfx) ? sfx : "-")
+                   .Append("  |  ");
+            log.Append("검정프레임=").Append(blackFrames).Append(" 밝은프레임=").Append(litFrames)
+               .Append(" 최대알파=").Append(maxAlpha.ToString("F2"));
+            Debug.Log(log.ToString());
+
+            Assert.That(maxAlpha, Is.EqualTo(1f).Within(0.01f), "화면이 한 번도 완전히 안 검었다");
+            Assert.That(blackFrames, Is.GreaterThan(0), "암전 프레임이 하나도 없다");
+            Assert.That(litFrames, Is.GreaterThan(0), "암전이 끝내 안 걷혔다");
+            Assert.That(order, Does.Contain("AI_W_01").And.Contains("AI_W_05"), "도입부 줄이 안 떴다");
+            foreach (var id in order)
+                Assert.That(shown.ContainsKey(id), Is.True, $"{id} 이 화면에 한 번도 안 그려졌다");
+            Assert.That(sounds.Keys, Does.Contain("AI_W_01"), "첫 줄에 신호음이 안 났다");
+        }
+
+        /// <summary>지금 온보딩 띠에 그려진 글자. UI 레이어가 빌려 쓰는 조각을 이름으로 찾는다.</summary>
+        private static string ScreenText()
+        {
+            foreach (var text in Object.FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
+                if (text.name == "Label:tutorialGuide" && text.enabled
+                    && !string.IsNullOrEmpty(text.text)) return text.text;
+            return null;
+        }
+
+        /// <summary>
         /// 출항하면 도입부가 닫힌다. 안 닫으면 <b>잠금이 항해까지 따라 나간다.</b>
         /// </summary>
         [UnityTest]

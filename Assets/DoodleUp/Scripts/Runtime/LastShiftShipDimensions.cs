@@ -116,11 +116,35 @@ namespace DoodleUp.Runtime
         // 중심이라 여전히 방 밖이다 — 그래서 계속 방 중심을 쓴다.
 
         /// <summary>
-        /// 승무원 시작 위치. 조종석 <b>방</b> 중심에서 선미 쪽으로 <c>2.4m</c> = <c>x -7.6</c> 이다.
-        /// 시작하자마자 끝벽을 보고 서 있지 않으면서 도킹 트리거 밖이고, 광장 개구부
-        /// (<c>x -6</c>)까지 <c>1.6m</c> 남는다 — 옛 배치의 "통로 A 입구까지 1.6m" 와 같은 여유다.
+        /// 승무원 시작 위치 — <b>숙소</b>다. 온보딩 1단계가 "기상(숙소)" 인데 스폰이 조종석에
+        /// 있었다(<c>x -8.6</c>). 깨어나는 방과 깨어나는 자리가 달라서, 암전이 걷히면 이미
+        /// 조종석에 서 있었다(사용자 지적 2026-08-12).
+        ///
+        /// <b>문과 x 를 맞춘다.</b> 숙소 문은 방 왼쪽 벽에서 <c>0.8m</c> 자리(<c>x 4.8</c>)이고,
+        /// 거기 맞춰 서면 일어나서 <b>똑바로 걸어가면 문</b>이다 — 첫 이동이 대각선이 아니다.
+        /// 문에서 <c>3.5m</c> 떨어져 있어 <c>AI_W_07</c>(문 사거리 진입)까지 걸을 거리가 남는다.
         /// </summary>
-        public static Vector3 SpawnPoint => new(CockpitCenterX + 2.4f, 0.1f, 0f);
+        public static Vector3 SpawnPoint
+        {
+            get
+            {
+                var quarters = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Quarters);
+                return new Vector3(quarters.MinX + QuartersDoorInset, 0.1f,
+                    quarters.MinZ + SpawnDoorStandoff);
+            }
+        }
+
+        /// <summary>숙소 문 중심이 방 왼쪽 벽에서 떨어진 거리(정본 지도 <c>x 4.8</c>).</summary>
+        public const float QuartersDoorInset = 0.8f;
+
+        /// <summary>스폰이 문에서 떨어진 거리. 걸어갈 거리가 남아야 첫 이동이 생긴다.</summary>
+        public const float SpawnDoorStandoff = 3.5f;
+
+        /// <summary>
+        /// 깨어나서 바라보는 방향. 문이 <c>-z</c> 쪽이므로 그쪽을 본다 — 눈을 뜨면
+        /// <b>나갈 곳이 정면</b>이어야 <c>AI_W_02</c>~<c>07</c> 이 가리키는 곳과 화면이 맞는다.
+        /// </summary>
+        public const float SpawnLookYaw = 180f;
 
         /// <summary>에어락/도킹 지점. 조종석 콘솔 앞이다.</summary>
         public static Vector3 DockingPoint => new(CockpitCenterX - 0.75f, 0.9f, 0f);
