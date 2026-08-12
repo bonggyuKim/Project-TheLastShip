@@ -1081,20 +1081,24 @@ namespace DoodleUp.Editor
         /// 프리팹을 준 소품은 프리팹의 스케일을 그대로 둔다. <c>size</c> 는 경계 검사용
         /// 치수이지 스케일이 아니다 — 프리팹에 곱하면 art 가 넣은 에셋이 찌그러진다.
         /// </summary>
+        /// <summary>드레싱 공간이 붙은 구역. 상태 단서가 어느 구역을 볼지 정하는 값이다.</summary>
+        private static LastShiftZone ZoneOfSpace(LastShiftDressingSpace space)
+        {
+            foreach (LastShiftZone zone in System.Enum.GetValues(typeof(LastShiftZone)))
+                if (SameSpace(LastShiftDressingSpace.Of(zone), space)) return zone;
+            return LastShiftZone.Cockpit;
+        }
+
         private static void CreateDressingProps(Transform parent, LastShiftDressingSpace space)
         {
             foreach (var prop in DressingSet.Props)
             {
                 if (prop == null || !SameSpace(prop.space, space)) continue;
 
-                // <b>상태 단서는 안 세운다</b>(game-art 확정 2026-08-12). 서리·그을음은 냉각이
-                // 얼거나 전력이 타야 보여야 하는데, 그것을 켜고 끄는 코드가 어디에도 없어서
-                // <b>상시 바닥에 깔린 판</b>으로 보였다 — 사용자가 지적한 것이 그 상태다.
-                //
-                // 데이터는 지우지 않는다. 이 항목들이 곧 그 이펙트가 붙을 자리의 정본이고
-                // (semantics = StateResponsive · "상태 연동 이펙트가 붙을 자리"), 검사도 그
-                // 좌표가 문 쐐기를 안 문다는 것을 계속 잰다. 세우는 것만 멈춘다.
-                if ((prop.semantics & LastShiftDressingSemantics.StateResponsive) != 0) continue;
+                // 상태 단서는 세우되 <b>꺼진 채로</b> 시작한다. 한동안 아예 안 세우고 있었는데,
+                // 그것은 조건이 없어 상시 보이던 것을 막는 임시 조치였다 — 이제 조건이
+                // 생겼으므로(LastShiftStateCueView) 다시 세운다.
+                var stateResponsive = (prop.semantics & LastShiftDressingSemantics.StateResponsive) != 0;
 
                 var center = LastShiftDressingSpaces.WorldCenter(prop);
                 var local = parent.InverseTransformPoint(center);
@@ -1116,6 +1120,11 @@ namespace DoodleUp.Editor
 
                 instance.name = prop.id;
                 instance.transform.localEulerAngles = prop.eulerAngles;
+
+                // 상태 단서에는 조건을 붙인다. 구역이 위기 등급일 때만 뜨고, 켜질 때 0.8초 ·
+                // 걷힐 때 1.2초로 이어서 움직인다(game-art 확정 2026-08-12).
+                if (stateResponsive)
+                    instance.AddComponent<LastShiftStateCueView>().Configure(ZoneOfSpace(prop.space));
             }
         }
 
