@@ -24,6 +24,32 @@ namespace DoodleUp.Runtime
         /// <summary>잔액 배지. 본문과 머리 사이 한 칸이라 튀지 않고도 눈에 든다.</summary>
         public const int BadgeFontSize = 16;
 
+        /// <summary>
+        /// 상시 HUD 아이콘 한 변. 아트 규격 <c>last-shift-hud-icon-only-v1.md</c> 값이다.
+        /// </summary>
+        public const float HudIconSize = 56f;
+
+        /// <summary>아이콘 사이 세로 간격.</summary>
+        public const float HudIconGap = 12f;
+
+        /// <summary>화면 오른쪽 끝에서 아이콘까지. 기준 <c>1920</c> 에서 <c>x 1816</c> 이 되는 값이다.</summary>
+        public const float HudIconRightMargin = 48f;
+
+        /// <summary>화면 위에서 첫 아이콘까지.</summary>
+        public const float HudIconTop = 28f;
+
+        /// <summary>상시 HUD 아이콘 수 — 산소 · 전력 · 열.</summary>
+        public const int HudIconCount = 3;
+
+        /// <summary>
+        /// 상시 HUD 아이콘 자리. <b>우측 상단에 세로로 셋</b>이고 그 밖에는 아무것도 없다
+        /// (아트 규격). 화면 폭에서 오른쪽 여백을 빼므로 해상도가 달라도 오른쪽에 붙는다.
+        /// </summary>
+        public static Rect HudIconRect(float screenWidth, int slot) =>
+            new(screenWidth - HudIconRightMargin - HudIconSize,
+                HudIconTop + slot * (HudIconSize + HudIconGap),
+                HudIconSize, HudIconSize);
+
         public const float PanelX = 16f;
         public const float PanelY = 16f;
         public const float PanelWidth = 720f;

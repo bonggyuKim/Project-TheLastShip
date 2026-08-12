@@ -2168,16 +2168,13 @@ namespace DoodleUp.Runtime
             // F3 디버그 층은 QA 도구라 그대로 둔다.
             if (!IsResolved)
             {
-                var layer = LastShiftUiLayer.Instance;
-                layer?.Panel("hud", LastShiftHudLayout.PanelRect, 0.92f);
-                DrawObjectiveLine(layer);
-                UpdateSystemGauges(layer);
-                UpdateResourceGauges(layer);
-                DrawZonePressureCells(LastShiftHudLayout.ContentX, LastShiftHudLayout.ZoneCellsTop);
-                DrawDominantProblemLine(layer);
-                DrawBatteryState(layer);
-                DrawLocalDiagnosis(layer);
-                DrawSuitOxygenGauges(layer);
+                // <b>상시 HUD 는 우측 상단 아이콘 셋뿐이다</b>(아트 규격
+                // last-shift-hud-icon-only-v1.md). 좌상단 패널·목표·자원·구역압력·진단은
+                // 여기서 안 그린다 — 화면을 가리는 쪽이었고, 아이콘 채움이 같은 것을 말한다.
+                //
+                // 내레이션과 상호작용 프롬프트는 <b>상시 HUD 가 아니라 상황 안내</b>라 각자
+                // 자기 경로로 그대로 뜬다.
+                DrawStatusIcons(LastShiftUiLayer.Instance);
             }
             else
             {
@@ -2344,6 +2341,50 @@ namespace DoodleUp.Runtime
                 layer.Label("tutorialPrompt",
                     new Rect(seated.x + 42f, seated.y + 150f, seated.width - 84f, 24f),
                     line.Prompt, LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
+        }
+
+        /// <summary>
+        /// 상시 HUD — <b>우측 상단 아이콘 셋</b>. 숫자도 이름도 눈금도 없고, 아이콘이 아래에서
+        /// 위로 차오르는 것이 상태의 전부다(아트 규격).
+        ///
+        /// <b>산소·전력은 잔량, 열은 축적</b>이다 — 앞의 둘은 비면 나쁘고 열은 차면 나쁘다.
+        /// 셋을 <b>같은 프레임에</b> 읽는다.
+        /// </summary>
+        private void DrawStatusIcons(LastShiftUiLayer layer)
+        {
+            if (layer == null) return;
+            var width = LastShiftUiLayer.ScreenSize.x;
+
+            DrawStatusIcon(layer, "hudOxygen", LastShiftUiIcon.Oxygen, 0,
+                currentState.OxygenPressure, higherIsBetter: true);
+            DrawStatusIcon(layer, "hudPower", LastShiftUiIcon.Power, 1,
+                currentState.BusPower, higherIsBetter: true);
+            DrawStatusIcon(layer, "hudHeat", LastShiftUiIcon.Heat, 2,
+                currentState.EngineHeat, higherIsBetter: false);
+
+            void DrawStatusIcon(LastShiftUiLayer target, string id, LastShiftUiIcon icon,
+                int slot, float value, bool higherIsBetter)
+            {
+                var view = target.Gauge(id, icon, LastShiftHudLayout.HudIconRect(width, slot));
+                view.SetIconOnlyLayout(LastShiftUiTheme.ScreenRectToCanvas(
+                    LastShiftHudLayout.HudIconRect(width, slot), LastShiftUiLayer.ScreenSize));
+                view.SetValue(Mathf.Clamp01(value));
+                view.SetTone(StatusTone(value, higherIsBetter, icon));
+            }
+        }
+
+        /// <summary>
+        /// 아이콘 색. <b>정상은 청록이고 나빠질수록 주황 → 적색</b>이다. 산소가 임계면
+        /// 기존 위기 펄스를 그대로 쓴다 — 다른 계기와 같은 박자여야 같은 사건으로 읽힌다.
+        /// </summary>
+        private static Color StatusTone(float value, bool higherIsBetter, LastShiftUiIcon icon)
+        {
+            var bad = higherIsBetter ? 1f - Mathf.Clamp01(value) : Mathf.Clamp01(value);
+            if (bad < 0.35f) return LastShiftUiTheme.Nominal;
+            if (bad < 0.6f) return LastShiftUiTheme.Fault;
+            return icon == LastShiftUiIcon.Oxygen
+                ? LastShiftUiTheme.PulseCrisis(Time.unscaledTime)
+                : LastShiftUiTheme.Crisis;
         }
 
         /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>

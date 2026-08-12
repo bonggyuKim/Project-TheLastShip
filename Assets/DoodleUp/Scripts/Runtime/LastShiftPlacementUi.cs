@@ -812,15 +812,10 @@ namespace DoodleUp.Runtime
 
             EnsureStyles();
 
-            if (!open)
-            {
-                // 도면이 닫혀 있는 동안은 이 한 줄이 화면의 전부다. UGUI 로 두면 도면을
-                // 안 여는 대부분의 시간 동안 IMGUI 가 아예 안 돈다.
-                LastShiftUiLayer.Instance?.Label("placementHint",
-                    new Rect(16f, LastShiftUiLayer.ScreenSize.y - 28f, 420f, 22f),
-                    $"선체 도면 — {toggleKey}", 14, LastShiftUiTheme.BodyText);
-                return;
-            }
+            // <b>닫혀 있으면 아무것도 안 그린다.</b> 예전에는 하단에 "선체 도면 — B" 한 줄을
+            // 상시로 띄웠는데, 상시 HUD 는 우측 상단 아이콘 셋뿐이라는 규격이 정해지면서
+            // (last-shift-hud-icon-only-v1.md) 그 줄이 화면을 가리는 쪽이 됐다.
+            if (!open) return;
 
             var panel = new Rect(16f, 16f, Screen.width - 32f, Screen.height - 32f);
             var header = new Rect(panel.x, panel.y, panel.width, 34f);

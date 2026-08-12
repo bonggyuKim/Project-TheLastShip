@@ -227,9 +227,12 @@ namespace DoodleUp.Tests.EditMode
         // ── 6. 스폰 ──────────────────────────────────────────────────────────
 
         [Test]
-        public void FourSpawnSlotsDoNotOverlapAndAllLandInsideTheCockpitRoom()
+        public void FourSpawnSlotsDoNotOverlapAndAllLandInsideTheQuarters()
         {
-            var room = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.CockpitRoom);
+            // <b>깨어나는 방은 숙소다</b>(사용자 지시 2026-08-12). 이 검사가 머지돼 올 때는
+            // 스폰이 조종석이었고, 같은 날 온보딩 1단계("기상(숙소)")에 맞춰 옮겼다.
+            // 재려던 것 — 넷이 겹치지 않고 벽을 안 파고든다 — 은 그대로다.
+            var room = LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Quarters);
             var half = CrewLane * 0.5f;
             var previous = float.MinValue;
 
@@ -238,7 +241,7 @@ namespace DoodleUp.Tests.EditMode
                 var position = LastShiftNetworkSession.SpawnForSlot(slot);
 
                 Assert.That(room.Contains(position.x, position.z), Is.True,
-                    $"슬롯 {slot} 스폰 ({position.x:0.##}, {position.z:0.##}) 이 조종석 방 밖이다.");
+                    $"슬롯 {slot} 스폰 ({position.x:0.##}, {position.z:0.##}) 이 숙소 밖이다.");
 
                 Assert.That(position.x - half, Is.GreaterThanOrEqualTo(room.MinX - Tolerance));
                 Assert.That(position.x + half, Is.LessThanOrEqualTo(room.MaxX + Tolerance));

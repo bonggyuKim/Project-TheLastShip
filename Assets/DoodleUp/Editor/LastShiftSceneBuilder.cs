@@ -201,9 +201,9 @@ namespace DoodleUp.Editor
             // <b>이름표가 붙는 벽이 방마다 다르다.</b> 일자 스파인에서는 넷 다 우현 긴 벽
             // 하나에 걸렸는데, 방사형에서는 전력실·냉각실이 z 로 갈라져 그 벽 자체가 없다.
             // 그래서 각 방의 <b>광장 반대편 끝벽</b>에 건다 — 문으로 들어오면 정면이다.
-            foreach (var zoneId in MainZones)
-                CreateZoneLabel(ship.transform, LastShiftZoneAtlas.ShortLabelOf(zoneId),
-                    RoomLabelPosition(zoneId), MaterialOf(zoneId).color);
+            // <b>방 이름표를 안 세운다</b>(사용자 지시 2026-08-12). 끝벽에 상시로 박힌 텍스트가
+            // 다섯 개 있었고, 문으로 들어가면 정면이라 항상 읽혔다. 어느 방인지는 방 안의
+            // 설비와 내레이션이 말한다 — 벽에 글자로 적어 두면 그 둘이 할 일이 없어진다.
             return ship;
         }
 
@@ -970,10 +970,9 @@ namespace DoodleUp.Editor
             // x·y 는 여기서 안 정한다. 이 벽은 문이 뚫리는 벽이기도 해서 "방 중심" 이 곧
             // "문 한가운데" 인 구획이 다섯이고(아트 정본 §7-5), 그걸 피하는 규칙은 좌표
             // 문제라 Runtime 이 갖는다 — 여기 두면 EditMode 에서 확인이 안 된다.
-            CreateZoneLabel(root.parent, LastShiftCompartmentLabels.TextOf(spec.Compartment),
-                new Vector3(LastShiftCompartmentLabels.ResolveX(spec),
-                    LastShiftCompartmentLabels.ResolveY(spec), spec.MinZ + 0.12f),
-                LastShiftDressing.TintOf(spec.Compartment));
+            // 구획 이름표도 안 세운다 — 방 이름표와 같은 성격(상시 텍스트)이라 같이 걷는다.
+            // 좌표 계산(LastShiftCompartmentLabels)은 남겨 둔다: 지우면 나중에 라벨을 다시
+            // 붙일 때 문틀을 피하는 규칙을 처음부터 다시 세워야 한다.
         }
 
         /// <summary>

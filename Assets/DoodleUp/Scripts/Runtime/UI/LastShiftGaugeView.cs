@@ -119,6 +119,30 @@ namespace DoodleUp.Runtime
             RefreshMarkerPositions();
         }
 
+        /// <summary>
+        /// <b>아이콘만 쓰는 배치</b>(아트 규격 <c>last-shift-hud-icon-only-v1.md</c>). 외곽선과
+        /// 채움이 <b>사각형 전체</b>를 쓰고 글자·눈금·이동선은 전부 끈다.
+        ///
+        /// 같은 컴포넌트를 모드로 나눈 이유는 <b>채움 규약이 이미 맞기 때문</b>이다 —
+        /// <c>Filled · Vertical · Bottom</c> 은 이 뷰가 처음부터 쓰던 값이고, 규격이 요구하는
+        /// 것도 그것이다. 새 뷰를 세우면 그 세 줄만 복사된다.
+        /// </summary>
+        public void SetIconOnlyLayout(Rect canvasRect)
+        {
+            LastShiftUiFactory.Place(root, canvasRect);
+
+            iconRect = new Rect(0f, 0f, canvasRect.width, canvasRect.height);
+            LastShiftUiFactory.Place((RectTransform)iconImage.transform, iconRect);
+            LastShiftUiFactory.Place((RectTransform)fillImage.transform, iconRect);
+
+            // 규격이 "숫자·%·이름·임계 눈금·이동선 없음" 이라 만들지 않는 대신 끈다 —
+            // 임대 구조라 조각은 이미 있고, 여기서 지우면 다음 프레임에 다시 만든다.
+            if (nameLabel != null) nameLabel.gameObject.SetActive(false);
+            if (valueLabel != null) valueLabel.gameObject.SetActive(false);
+            SetThresholds();
+            SetMovingMarker(-1f);
+        }
+
         /// <summary>이름 줄. 아이콘 오른쪽이라 채움과 겹치지 않는다.</summary>
         public void SetName(string text)
         {
