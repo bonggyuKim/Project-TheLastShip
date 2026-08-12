@@ -410,7 +410,7 @@ namespace DoodleUp.Editor
                 // 통과된다" 로 지적한 그 자리다. AI_T_03 의 문안도 "문이 없는 개구부" 다.
                 if (IsOpening(space.door))
                 {
-                    Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
+                    PlaceFeature(p[space.feature], root, space.id + "Feature", space);
                     continue;
                 }
 
@@ -419,7 +419,7 @@ namespace DoodleUp.Editor
                 // 건드려 닫힌 자세로 남고, 통행은 되므로 닫힌 문을 그대로 통과하게 된다.
                 if (!HasPressureDoor(space.id) && door != null && door.GetComponent<Animator>() != null)
                     door.AddComponent<LastShiftPassageDoor>();
-                Place(p[space.feature], root, space.id + "Feature", BoundsCenter(space.bounds));
+                PlaceFeature(p[space.feature], root, space.id + "Feature", space);
             }
             if (map.lights != null)
                 foreach (var light in map.lights) PlaceLight(root, light);
@@ -824,6 +824,72 @@ namespace DoodleUp.Editor
             Mathf.Min(aMax, bMax) - Mathf.Max(aMin, bMin) >= (aMax - aMin) - 0.05f;
 
         private static Vector3 BoundsCenter(float[] bounds) => new((bounds[0] + bounds[1]) * 0.5f, 0f, (bounds[2] + bounds[3]) * 0.5f);
+
+        /// <summary>
+        /// 대형 설비를 끝벽에서 띄우는 간격(m). <b>0 이 아니다</b> — 벽 메시와 설비 메시가
+        /// 정확히 같은 평면에 있으면 z-fighting 이 나고, 벽 안쪽 마감 띠가 있는 조각에서는
+        /// 설비가 그 띠를 뚫고 들어간 것처럼 보인다(game-art 확정 2026-08-12).
+        /// </summary>
+        public const float FeatureWallInset = 0.05f;
+
+        /// <summary>
+        /// 방 설비를 <b>문 맞은편 끝벽</b>에 붙이기 위해 방 중앙에서 밀어야 할 거리.
+        ///
+        /// <b>왜 중앙에 두면 안 되는가.</b> 설비는 콜라이더를 가진 덩어리라, 방 한가운데
+        /// 있으면 그 방의 통행이 설비를 도는 고리가 된다 — 냉각실에서 승무원이 방 중앙에서
+        /// 막혔고(4인 통행 검사), 그 방에 볼일이 있는 사람이 목표 지점에 못 갔다.
+        ///
+        /// <b>문 맞은편을 고르는 이유.</b> 끝벽 넷 중 아무 데나 붙이면 어떤 방에서는 설비가
+        /// 문 바로 옆에 서서 개구부·접근면을 먹는다. 문이 붙은 변을 찾아 그 반대편에 두면
+        /// 문에서 가장 먼 벽이 되므로 개구부·접근면·통행폭 셋 다 원리적으로 안 건드린다.
+        ///
+        /// 문 좌표가 없으면 밀지 않는다 — 개구부만 있고 문짝이 없는 방도 문 좌표는 들고 있다.
+        /// </summary>
+        public static Vector3 EndWallShift(float[] bounds, float[] doorPosition, Bounds feature, float inset)
+        {
+            if (bounds == null || bounds.Length < 4 || doorPosition == null || doorPosition.Length < 3)
+                return Vector3.zero;
+
+            float minX = bounds[0], maxX = bounds[1], minZ = bounds[2], maxZ = bounds[3];
+
+            // 문이 붙은 변 — 네 변 중 문 좌표가 가장 가까운 것.
+            var gap = new[]
+            {
+                Mathf.Abs(doorPosition[0] - minX), Mathf.Abs(doorPosition[0] - maxX),
+                Mathf.Abs(doorPosition[2] - minZ), Mathf.Abs(doorPosition[2] - maxZ),
+            };
+            var side = 0;
+            for (var i = 1; i < gap.Length; i++) if (gap[i] < gap[side]) side = i;
+
+            return side switch
+            {
+                0 => new Vector3(maxX - inset - feature.max.x, 0f, 0f),
+                1 => new Vector3(minX + inset - feature.min.x, 0f, 0f),
+                2 => new Vector3(0f, 0f, maxZ - inset - feature.max.z),
+                _ => new Vector3(0f, 0f, minZ + inset - feature.min.z),
+            };
+        }
+
+        /// <summary>
+        /// 방 설비 하나를 놓는다. 중앙에 한 번 놓고 <b>실제 렌더러 크기를 재서</b> 끝벽으로
+        /// 민다 — 설비 치수는 아트 에셋 몫이라 코드가 미리 알 수 없다.
+        /// </summary>
+        private static void PlaceFeature(GameObject prefab, Transform root, string name, MapSpace space)
+        {
+            var placed = Place(prefab, root, name, BoundsCenter(space.bounds));
+            if (placed == null || space.door == null) return;
+
+            var measured = false;
+            var box = new Bounds();
+            foreach (var renderer in placed.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (measured) box.Encapsulate(renderer.bounds);
+                else { box = renderer.bounds; measured = true; }
+            }
+
+            if (!measured) return;
+            placed.transform.position += EndWallShift(space.bounds, space.door.position, box, FeatureWallInset);
+        }
         private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
         private static Vector3 VectorOrOne(float[] values) => values == null || values.Length == 0 ? Vector3.one : Vector(values);
 
