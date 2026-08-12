@@ -905,6 +905,12 @@ namespace DoodleUp.Runtime
                 LastShiftNarrationAudio.Announce(
                     LastShiftWakeSequence.Current.Id, LastShiftWakeSequence.Current.Sfx);
 
+            // 외부 자극 시계. <b>충격 전에도 돈다</b> — 아래 줄이 충격 전 tick 을 통째로
+            // 막으므로, 여기서 안 돌리면 자극이 영영 안 뜨고 디버그 키로만 존재하던 예전
+            // 상태가 그대로 남는다. 도입부 연출 중에는 안 돌린다: 조작이 잠긴 동안 사고가
+            // 나면 대응할 방법이 없는 시간이 생긴다(미결 3에 대한 판단).
+            AdvanceExternalStimulus(deltaTime);
+
             if (!HasAppliedImpact || IsResolved) return;
 
             // 기존 우회의 수명을 먼저 줄여야 이 tick 끝에 막 완성된 우회가 작업 시간까지
@@ -1942,12 +1948,77 @@ namespace DoodleUp.Runtime
             controlHold.Reset(currentState.ThrustDemand, currentState.ShipAttitudeDegrees);
             // 승무원 재배치가 끝난 뒤의 실제 위치로 진입 엣지 기준을 잡는다.
             wasCrewAtDockingTrigger = IsCrewAtDockingTrigger();
-            Debug.Log($"[LAST_SHIFT_RESET] generation={ResetGeneration} preset={preset} phase=pre-impact");
+            // 새 구간이 열리면 이번 구간의 자극을 미리 굴려 둔다. 씨앗을 세대와 구간에서
+            // 뽑으므로 같은 판을 다시 돌리면 같은 사고가 난다 — 재현이 안 되면 "왜 졌는지"
+            // 를 못 가리고, 그것이 랜덤화를 미뤄 온 원래 이유였다.
+            LastShiftExternalStimulus.BeginSegment(ResetGeneration * 397 + LastShiftVoyage.SegmentIndex);
+            Debug.Log($"[LAST_SHIFT_RESET] generation={ResetGeneration} preset={preset} phase=pre-impact " +
+                      $"stimulus={LastShiftExternalStimulus.Room}@{LastShiftExternalStimulus.FireAtSeconds:F1}s " +
+                      $"severity={LastShiftExternalStimulus.Severity:F3}");
         }
 
         public bool ApplyMeteorImpact()
         {
             return ApplyMeteorImpact(Meteor);
+        }
+
+        /// <summary>
+        /// 외부 랜덤 자극의 시계를 돌리고, 터지면 그 방·그 강도로 충격을 넣는다.
+        ///
+        /// <b>충격 자체는 기존 경로를 그대로 쓴다.</b> 새 손상 타입을 안 만들고
+        /// <see cref="ApplyMeteorImpact(LastShiftMeteorStimulus)"/> 로 들어가므로, 강도가
+        /// <c>0.7~0.99</c> 인 한 <c>RG-4</c> 가 훑은 범위(상한 <c>0.9924</c>) 안에 있다.
+        /// 방마다 다른 부분(§2.1-1 의 (B))만 뒤이어 <see cref="DamageSeconds"/> 동안 서서히
+        /// 들어가고, 그쪽이 <c>RG-4</c> 가 못 본 새 조합이라 즉발로 안 넣는다.
+        /// </summary>
+        private void AdvanceExternalStimulus(float deltaTime)
+        {
+            // 도입부가 도는 동안은 시계를 멈춘다. 암전·입력 잠금 중에 사고가 나면
+            // "대응할 수 없는 시간" 이 생겨 RG-3 이 막으려는 상태와 같아진다.
+            if (LastShiftWakeSequence.IsRunning || IsResolved) return;
+
+            var wasFired = LastShiftExternalStimulus.HasFired;
+            var delta = LastShiftExternalStimulus.Tick(deltaTime);
+
+            if (!wasFired && LastShiftExternalStimulus.HasFired)
+            {
+                var room = LastShiftExternalStimulus.Room;
+                var severity = LastShiftExternalStimulus.Severity;
+                Debug.Log($"[LAST_SHIFT_STIMULUS] action=FIRE room={room} severity={severity:F3} " +
+                          $"at={LastShiftExternalStimulus.FireAtSeconds:F1}s zone=" +
+                          $"{LastShiftExternalStimulus.BreachZoneOf(room)}");
+                ApplyMeteorImpact(ScaleMeteorTo(Meteor, severity));
+            }
+
+            if (delta.IsEmpty) return;
+
+            // (A) 맞은 방의 압력. <b>봉합 지점(BreachZone)은 안 옮긴다</b> — 봉합 부품의
+            // 정위치가 곧 파공이라, 파공을 피격 방으로 옮기면 그 방을 막을 수단이 없어져
+            // RG-3(영구 잠금 금지)이 깨진다. 그래서 맞은 방은 압력을 잃되, 막을 수 있는
+            // 구멍은 원래 자리에 남는다.
+            zonePressures[delta.Zone] = Mathf.Clamp01(zonePressures[delta.Zone] + delta.ZonePressure);
+
+            // (B) 방 고유 계통. 전부 증분이라 기존 감쇠와 같은 자리에서 합쳐진다.
+            currentState.BusPower = Mathf.Clamp01(currentState.BusPower + delta.BusPower);
+            currentState.EngineHeat = Mathf.Clamp01(currentState.EngineHeat + delta.EngineHeat);
+            currentState.FuelReserve = Mathf.Clamp01(currentState.FuelReserve + delta.FuelReserve);
+            currentState.ShipAttitudeDegrees =
+                Mathf.Clamp(currentState.ShipAttitudeDegrees + delta.AttitudeDegrees, -90f, 90f);
+        }
+
+        /// <summary>
+        /// 같은 운석을 원하는 심각도로 다시 만든다. <b>속도만 바꾼다</b> — 질량과 방향을
+        /// 건드리면 <see cref="LastShiftMeteorApplication.CalculateSeverity"/> 의 입사각 항까지
+        /// 같이 움직여서 원하는 값이 안 나온다. 에너지가 속도의 제곱이라 비율의 제곱근을 쓴다.
+        /// </summary>
+        public static LastShiftMeteorStimulus ScaleMeteorTo(
+            LastShiftMeteorStimulus source, float targetSeverity)
+        {
+            var current = LastShiftMeteorApplication.CalculateSeverity(source);
+            if (current <= 0.0001f) return source;
+            var scaled = source;
+            scaled.Speed = source.Speed * Mathf.Sqrt(Mathf.Max(0f, targetSeverity / current));
+            return scaled;
         }
 
         public bool ApplyMeteorImpact(LastShiftMeteorStimulus meteor)
