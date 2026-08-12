@@ -125,6 +125,27 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float BreachPressureLoss = 0.18f;
 
+        /// <summary>방의 개수. 다섯이고, 균등이면 각 <c>20%</c> 다(PM 확정).</summary>
+        public const int RoomCount = 5;
+
+        /// <summary>
+        /// 기항 하나가 지날 때마다 그 방의 가중치에 붙는 양. <c>w = 1 + 0.4k</c> 의 <c>0.4</c> 다.
+        ///
+        /// <b>확률을 균등에서 떼어내는 이유는 자재 결핍이다.</b> 완전 균등이면 한 계열이
+        /// 연달아 안 나오는 구간이 생기고, 그 계열 자재가 필요한 확장이 그 동안 통째로 막힌다.
+        /// </summary>
+        public const float PityWeightPerPort = 0.4f;
+
+        /// <summary>
+        /// 이 기항 수만큼 안 맞은 방은 <b>확정으로</b> 맞는다.
+        ///
+        /// <b><c>8</c> 이 하한이다</b>(game-balance 확정). <c>6</c> 이하로 조이면 순서가 눈에
+        /// 보여서 "다음은 저 방" 을 외우게 되고, 그러면 랜덤화가 만들려던 것이 사라진다.
+        /// </summary>
+        public const int HardCapPorts = 8;
+
+        private static readonly int[] PortsSinceHit = new int[RoomCount];
+
         private static System.Random random;
         private static bool armed;
         private static bool fired;
@@ -178,12 +199,51 @@ namespace DoodleUp.Runtime
             fired = false;
             elapsed = 0f;
             damageElapsed = 0f;
-            Room = (LastShiftStimulusRoom)random.Next(0, 5);
+            Room = RollRoom(random);
+            for (var i = 0; i < RoomCount; i++)
+                PortsSinceHit[i] = i == (int)Room ? 0 : PortsSinceHit[i] + 1;
             Severity = Mathf.Lerp(MinSeverity, MaxSeverity, (float)random.NextDouble());
             FireAtSeconds = Mathf.Lerp(
                 SegmentSeconds * EarliestFraction,
                 SegmentSeconds * LatestFraction,
                 (float)random.NextDouble());
+        }
+
+        /// <summary>
+        /// 그 방이 마지막으로 맞은 뒤 몇 기항이 지났는가. <c>w = 1 + 0.4k</c> 의 <c>k</c> 다.
+        /// </summary>
+        public static int PortsSince(LastShiftStimulusRoom room) => PortsSinceHit[(int)room];
+
+        /// <summary>지금 그 방의 추첨 가중치.</summary>
+        public static float WeightOf(LastShiftStimulusRoom room) =>
+            1f + PityWeightPerPort * PortsSince(room);
+
+        /// <summary>
+        /// 이번에 뽑을 방. <b>하드캡이 먼저다</b> — <see cref="HardCapPorts"/> 기항을 안 맞은
+        /// 방이 있으면 가중치를 안 보고 그 방으로 간다. 둘 이상이면 가장 오래 안 맞은 쪽이다.
+        /// </summary>
+        private static LastShiftStimulusRoom RollRoom(System.Random rng)
+        {
+            var starved = -1;
+            for (var i = 0; i < RoomCount; i++)
+            {
+                if (PortsSinceHit[i] < HardCapPorts) continue;
+                if (starved < 0 || PortsSinceHit[i] > PortsSinceHit[starved]) starved = i;
+            }
+
+            if (starved >= 0) return (LastShiftStimulusRoom)starved;
+
+            var total = 0f;
+            for (var i = 0; i < RoomCount; i++) total += WeightOf((LastShiftStimulusRoom)i);
+
+            var pick = (float)rng.NextDouble() * total;
+            for (var i = 0; i < RoomCount; i++)
+            {
+                pick -= WeightOf((LastShiftStimulusRoom)i);
+                if (pick <= 0f) return (LastShiftStimulusRoom)i;
+            }
+
+            return (LastShiftStimulusRoom)(RoomCount - 1);
         }
 
         /// <summary>
@@ -206,6 +266,8 @@ namespace DoodleUp.Runtime
             Room = LastShiftStimulusRoom.Cockpit;
             Severity = 0f;
             FireAtSeconds = 0f;
+            // 결핍 기록도 같이 지운다. 남겨 두면 새 항해가 지난 항해의 빚을 지고 시작한다.
+            for (var i = 0; i < RoomCount; i++) PortsSinceHit[i] = 0;
         }
 
         /// <summary>

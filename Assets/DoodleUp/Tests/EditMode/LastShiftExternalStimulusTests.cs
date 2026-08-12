@@ -119,17 +119,22 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>같은 씨앗은 같은 구간이다.</b> 재현이 안 되면 "왜 졌는지" 를 못 가리고,
-        /// 그것이 랜덤화를 여태 미뤄 온 원래 이유였다(§5).
+        /// <b>같은 씨앗 + 같은 결핍 기록이면 같은 구간이다.</b> 재현이 안 되면 "왜 졌는지" 를
+        /// 못 가리고, 그것이 랜덤화를 여태 미뤄 온 원래 이유였다(§5).
+        ///
+        /// <b>씨앗만으로는 안 된다</b> — 방 추첨이 "그 방이 몇 기항 굶었는가" 를 같이 보기
+        /// 때문이다(소프트 핏). 그래서 재현하려면 결핍 기록도 같은 자리에서 시작해야 한다.
         /// </summary>
         [Test]
         public void TheSameSeedRepeatsTheSameSegment()
         {
+            LastShiftExternalStimulus.Clear();
             LastShiftExternalStimulus.BeginSegment(1234);
             var room = LastShiftExternalStimulus.Room;
             var severity = LastShiftExternalStimulus.Severity;
             var at = LastShiftExternalStimulus.FireAtSeconds;
 
+            LastShiftExternalStimulus.Clear();
             LastShiftExternalStimulus.BeginSegment(1234);
 
             Assert.That(LastShiftExternalStimulus.Room, Is.EqualTo(room));
