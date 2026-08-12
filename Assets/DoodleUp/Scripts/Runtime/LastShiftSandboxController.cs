@@ -2373,19 +2373,43 @@ namespace DoodleUp.Runtime
             }
         }
 
+        /// <summary>상태색 경계(아트 규격). <b>산소 내레이션 임계 45/35 와 다른 값이다.</b></summary>
+        private const float StatusToneLow = 0.35f;
+
+        /// <summary>같은 규격의 위쪽 경계.</summary>
+        private const float StatusToneHigh = 0.60f;
+
         /// <summary>
-        /// 아이콘 색. <b>정상은 청록이고 나빠질수록 주황 → 적색</b>이다. 산소가 임계면
-        /// 기존 위기 펄스를 그대로 쓴다 — 다른 계기와 같은 박자여야 같은 사건으로 읽힌다.
+        /// 아이콘 색(아트 규격 <c>last-shift-hud-icon-only-v1.md</c>).
+        ///
+        ///   잔량형(산소·전력)  <c>&gt;0.60</c> 청록 · <c>0.35~0.60</c> 주황 · <c>&lt;0.35</c> 적색
+        ///   축적형(열)         <c>&lt;0.35</c> 청록 · <c>0.35~0.60</c> 주황 · <c>&gt;0.60</c> 적색
+        ///
+        /// <b>값을 뒤집지 않고 비교를 뒤집는다.</b> 처음에는 "나쁜 정도" 로 정규화해서
+        /// <c>1-value</c> 에 같은 경계를 댔는데, 그러면 잔량형에서 경계가 <c>0.40/0.65</c> 로
+        /// 밀린다 — 실제로 <c>0.61~0.65</c> 가 청록이어야 하는데 주황이었고 <c>0.36</c> 은
+        /// 주황이어야 하는데 적색이었다(game-art 지적).
         /// </summary>
         private static Color StatusTone(float value, bool higherIsBetter, LastShiftUiIcon icon)
         {
-            var bad = higherIsBetter ? 1f - Mathf.Clamp01(value) : Mathf.Clamp01(value);
-            if (bad < 0.35f) return LastShiftUiTheme.Nominal;
-            if (bad < 0.6f) return LastShiftUiTheme.Fault;
+            var v = Mathf.Clamp01(value);
+            var nominal = higherIsBetter ? v > StatusToneHigh : v < StatusToneLow;
+            if (nominal) return LastShiftUiTheme.Nominal;
+
+            var fault = higherIsBetter
+                ? v >= StatusToneLow
+                : v <= StatusToneHigh;
+            if (fault) return LastShiftUiTheme.Fault;
+
+            // 산소만 위기에서 밝기 펄스를 쓴다 — 다른 계기와 같은 박자여야 같은 사건으로 읽힌다.
             return icon == LastShiftUiIcon.Oxygen
                 ? LastShiftUiTheme.PulseCrisis(Time.unscaledTime)
                 : LastShiftUiTheme.Crisis;
         }
+
+        /// <summary>검사가 색 구간을 직접 재는 자리. 규격이 바뀌면 여기서 먼저 걸린다.</summary>
+        public static Color StatusToneForProbe(float value, bool higherIsBetter, LastShiftUiIcon icon)
+            => StatusTone(value, higherIsBetter, icon);
 
         /// <summary>잔액 배지 팝 색. 정상 초록보다 밝아 한 프레임 안에 눈에 든다.</summary>
         private static readonly Color DepositBadgeColor = new(0.6f, 1f, 0.7f);
