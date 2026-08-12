@@ -63,7 +63,7 @@
 
 | 데이터 ID | 공간 | 용도 | 현재 상태 |
 |---|---|---|---|
-| `Frost_Deck`, `Frost_StarboardWall`, `Frost_Conduit` | cooling | 냉각 실패 VFX 앵커 | 좌표 데이터만 유지; 정적 씬 인스턴스 금지 |
+| `Frost_Deck`, `Frost_StarboardWall`, `Frost_Conduit` | cooling | 냉각 실패 VFX 앵커 | 좌표 데이터만 유지; 정적 씬 인스턴스 금지. `Frost_StarboardWall`은 냉각실 끝벽 패치 정본 `offset=(-1.90, 3.97)`, `bottomY=0.47`(실제 범위 y=0.48~1.57) |
 | `Scorch_Deck`, `Scorch_PortWall`, `Scorch_Conduit` | power | 전력 실패 VFX 앵커 | 좌표 데이터만 유지; 정적 씬 인스턴스 금지 |
 
 ## 제거 기준
