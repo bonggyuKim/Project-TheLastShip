@@ -2292,27 +2292,28 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// <b>가정 없이 "화면이 비었다" 를 직접 잰다.</b> 지금까지 계기를 넷 붙였는데
-        /// (lobby / no-layer / blank / empty-text) 전부 0 건인데도 사용자는 계속 빈 화면을
-        /// 본다. 그러면 남은 것은 내가 지목한 경로가 애초에 아니라는 뜻이라, 경로를 안 보고
-        /// <b>결과</b>를 본다 — 캔버스에 글자가 하나도 없으면 그것이 곧 빈 화면이다.
+        /// <b>안내 문구가 떠 있는가</b>를 직접 잰다. 앞 계기는 캔버스의 <b>모든</b> 글자를
+        /// 셌는데, 하단 입력 띠가 매 프레임 항상 그려지므로 그 수가 <c>0</c> 이 될 수가 없었다 —
+        /// 울릴 수 없는 계기였다.
         ///
-        /// 조준점은 빼고 센다. 그것만 남은 화면이 사용자가 말한 상태이기 때문이다.
-        /// 한 프레임 비는 것은 정상이므로(줄 전환 사이) 시간으로 가른다.
+        /// 그래서 안내 한 줄만 본다. 배너 세 갈래(순회·디렉터·튜토리얼)가 전부 이 이름
+        /// 하나에 글자를 싣는다. 튜토리얼이 무장한 동안 이 줄이 오래 비어 있으면, 그것이
+        /// 사용자가 말한 "아무것도 안 뜬다" 다.
         /// </summary>
         private void ReportIfScreenIsActuallyEmpty()
         {
             if (!LastShiftTutorial.IsArmed) return;
 
-            var visible = 0;
+            var guided = false;
             foreach (var label in FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
             {
+                if (label.name != "Label:tutorialGuide") continue;
                 if (!label.isActiveAndEnabled || string.IsNullOrEmpty(label.text)) continue;
-                if (label.name == "Label:crosshair") continue;
-                visible++;
+                guided = true;
+                break;
             }
 
-            if (visible > 0)
+            if (guided)
             {
                 emptyScreenSeconds = 0f;
                 emptyScreenReported = false;
@@ -2323,14 +2324,15 @@ namespace DoodleUp.Runtime
             if (emptyScreenSeconds < EmptyTextAlarmSeconds || emptyScreenReported) return;
 
             emptyScreenReported = true;
-            Debug.LogError($"[LAST_SHIFT_BANNER] result=EMPTY_SCREEN emptyFor={emptyScreenSeconds:F1}s " +
+            Debug.LogError($"[LAST_SHIFT_BANNER] result=NO_GUIDANCE emptyFor={emptyScreenSeconds:F1}s " +
                            $"patrol={LastShiftPatrolNarration.HasLine} " +
                            $"director={LastShiftNarrationDirector.HasLine} " +
                            $"standing={LastShiftStandingNarration.HasLine} " +
                            $"wake={LastShiftWakeSequence.IsRunning} " +
                            $"tutorialRunning={LastShiftTutorial.IsRunning} " +
                            $"step={LastShiftTutorial.Step} resolved={IsResolved} " +
-                           "detail=캔버스에 글자가 하나도 없다");
+                           $"patrolComplete={LastShiftPatrolNarration.IsComplete} " +
+                           "detail=안내 줄이 화면에 없다");
         }
 
         /// <summary>
