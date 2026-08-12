@@ -26,7 +26,7 @@
 | 조종실 | `LPK_Cockpit_WallMirror_1m` | 실내 시각 확장·반사 | 유지 |
 | 생명유지실 | `LPK_LifeSupport_Scrubber` | 산소 설비 | 유지 |
 | 전력실 | `LPK_Power_Switchgear` | 전력 설비 | 유지 |
-| 냉각실 | `LPK_Cooling_Exchanger` | 냉각 설비 | 유지 |
+| 냉각실 | `LPK_Cooling_Exchanger` | 냉각 설비·기존 CoolingStack 대체 | 유지; importer body-bounds BoxCollider |
 | 숙소 | `LPK_Quarters_Bunk` | 휴식·개인 공간 정체성 | 유지 |
 
 ## 목표물과 상호작용 표식
@@ -37,7 +37,7 @@
 | `LPK_OxygenLeakPipe_2m` | lifeSupport | 산소 누출 목표물 | 유지 |
 | `LPK_RepairConsole_1m` | lifeSupport | 수리 목표물 | 유지 |
 | `LPK_DamagedPipe_2m` | lifeSupport | 손상 상태 목표물 | 유지 |
-| `CoolingValve` | cooling | C-3 누르고 유지하는 조작 동사 | 유지; 실프롭 교체 가능 |
+| `CoolingValve` | cooling 안쪽 벽 | C-3 누르고 유지하는 조작 동사 | 유지; 교환기와 별개이며 네트워크 snapshot 참조 보존 |
 
 ## 느슨한 상호작용 아이템
 
@@ -80,3 +80,4 @@
 1. 동적 상태 효과는 정적 메시로 미리 세우지 않는다.
 2. 구조·문·목표물·충돌면을 없앨 때는 대체 에셋과 게임플레이 참조를 먼저 확인한다.
 3. 새 드레싱은 `lastshift-dressing-asset-catalog.md`에 먼저 등록하고, 실제 renderer bounds와 문 여유를 검증한다.
+4. room feature graybox를 제거할 때는 대체 `LPK_*` feature에 body-bounds collider를 같은 변경으로 추가한다.
