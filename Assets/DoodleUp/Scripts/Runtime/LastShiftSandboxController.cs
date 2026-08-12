@@ -2282,6 +2282,9 @@ namespace DoodleUp.Runtime
         /// (<c>LastShiftNetworkSandbox</c> 의 <c>sandbox.enabled = IsServer</c>), 잔해·자재 자체가
         /// 아직 복제 경로를 안 탄다 — 선외 파밍을 서버 권위로 옮기는 카드와 같이 붙는다.
         /// </summary>
+        /// <summary>배너가 빈 채로 빠져나간 마지막 상태. 같은 상태를 두 번 안 찍는다.</summary>
+        private string lastBlankBannerState;
+
         private void DrawTutorialBanner()
         {
             var layer = LastShiftUiLayer.Instance;
@@ -2326,7 +2329,34 @@ namespace DoodleUp.Runtime
                 return;
             }
 
-            if (!LastShiftTutorial.IsRunning) return;
+            if (!LastShiftTutorial.IsRunning)
+            {
+                // <b>여기가 화면이 비는 유일한 출구다.</b> 위 세 분기가 전부 안 걸리고 이 조건도
+                // 거짓이면 이 함수는 아무것도 안 그린다. 자동 재현으로는 이 자리에 못 갔는데
+                // 사용자는 계속 재현하므로, 실제로 여기 닿는 순간의 값을 스스로 남긴다.
+                //
+                // <b>상태가 바뀔 때만 찍는다.</b> 프레임마다 찍으면 로그가 초당 60줄로 불어나
+                // 정작 그 순간을 못 찾는다. 온보딩이 끝난 평시에도 여기로 오므로(무장이 풀린
+                // 뒤) 무장 중일 때만 본다 — 그때가 "안내가 있어야 하는데 없는" 구간이다.
+                if (LastShiftTutorial.IsArmed)
+                {
+                    var blank = $"patrol={LastShiftPatrolNarration.HasLine}" +
+                                $" director={LastShiftNarrationDirector.HasLine}" +
+                                $" standing={LastShiftStandingNarration.HasLine}" +
+                                $" wake={LastShiftWakeSequence.IsRunning}" +
+                                $" step={LastShiftTutorial.Step}" +
+                                $" patrolComplete={LastShiftPatrolNarration.IsComplete}";
+                    if (blank != lastBlankBannerState)
+                    {
+                        lastBlankBannerState = blank;
+                        Debug.LogWarning($"[LAST_SHIFT_BANNER] result=BLANK {blank}");
+                    }
+                }
+
+                return;
+            }
+
+            lastBlankBannerState = null;
 
             // 머리줄 · 안내줄 · 계기줄 셋이라 자리를 한 줄 더 잡는다. 안내줄이 머리줄보다
             // 길어서 계기 셋과 같은 줄에 붙이면 잘린다.
