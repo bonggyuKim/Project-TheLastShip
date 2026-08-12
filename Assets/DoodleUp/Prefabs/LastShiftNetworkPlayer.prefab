@@ -200,7 +200,7 @@ MonoBehaviour:
   SynchronizeTransform: 1
   m_InScenePlaced: 0
   ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
+  SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
@@ -281,7 +281,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8bc39a2ba8de024782fc247e8626d5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DoodleUp.Runtime::DoodleUp.Runtime.LastShiftMapSpawnPose
-  spawn: {x: -7.6, y: 0.1, z: 0}
+  spawn: {x: -8.6, y: 0.1, z: 0}
   lookAt: {x: 0, y: 1.65, z: 0}
 --- !u!114 &344316672681465982
 MonoBehaviour:

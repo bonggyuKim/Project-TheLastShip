@@ -12,6 +12,8 @@ namespace DoodleUp.Editor
     {
         private const string ModelFolder = "Assets/DoodleUp/Art/Props/LastShiftReal";
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/Dressing/RealProps";
+        private const float DeckSurfaceY = 0.12f;
+        private const float MinimumPlanarClearance = 0.10f;
 
         /// <summary>
         /// <b>우리가 Blender 에서 만든 것만 쓴다.</b> 여기 있던 <c>LSReal_*</c> 여섯 개는
@@ -44,6 +46,7 @@ namespace DoodleUp.Editor
             var prefabs = BuildPrefabs();
             LinkDressing(prefabs);
             EnsureServiceSlots(prefabs);
+            ReanchorGroundedDressing();
             LastShiftSceneBuilder.ForgetDressingSet();
             LastShiftNetworkSceneBuilder.RebuildSandboxForAutomation();
             AssetDatabase.SaveAssets();
@@ -131,6 +134,30 @@ namespace DoodleUp.Editor
                 new Vector2(0f, -3.75f), 2.65f, Vector3.zero, prefabs["LP_EmergencyBeacon"]);
             set.ReplaceAll(props);
             EditorUtility.SetDirty(set);
+        }
+
+        private static void ReanchorGroundedDressing()
+        {
+            var set = AssetDatabase.LoadAssetAtPath<LastShiftDressingSet>(LastShiftDressingSet.AssetPath);
+            var grounded = 0;
+            foreach (var prop in set.Props)
+            {
+                if (prop == null) continue;
+
+                // The deck's visible mesh and walking collider both resolve at y=0.12.
+                // Wall/ceiling-mounted props keep their authored vertical offset.
+                if (prop.bottomY < DeckSurfaceY)
+                {
+                    prop.bottomY = DeckSurfaceY;
+                    grounded++;
+                }
+
+                if (prop.anchorMode == LastShiftDressingAnchorMode.UnitOfSpace)
+                    prop.clearance = Mathf.Max(prop.clearance, MinimumPlanarClearance);
+            }
+            EditorUtility.SetDirty(set);
+            Debug.Log($"[LAST_SHIFT_REAL_PROPS] grounded={grounded} deckY={DeckSurfaceY:0.00} " +
+                      $"clearance={MinimumPlanarClearance:0.00}");
         }
 
         private static void AddServiceSlot(List<LastShiftDressingProp> props, string id, LastShiftZone zone,
