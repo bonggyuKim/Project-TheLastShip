@@ -808,7 +808,7 @@ namespace DoodleUp.Runtime
                 else if (keyboard.digit2Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.PowerOverloadLooseBattery);
                 else if (keyboard.digit3Key.wasPressedThisFrame) EnterSegmentForDebug(LastShiftPreset.BadAttitudeHighOxygen);
                 else if (keyboard.rKey.wasPressedThisFrame) EnterSegmentForDebug(currentPreset);
-                // 운석은 K 다. M 은 도면(LastShiftMapView)이 가져갔다 — 검증 도구 하나와
+                // 운석은 K 다. M 은 지도(LastShiftMapView)가 가져갔다 — 검증 도구 하나와
                 // 상시 화면 하나가 같은 키를 쓰고 있었고, 플레이 중에 쓰는 쪽이 M 이다.
                 else if (keyboard.kKey.wasPressedThisFrame) ApplyMeteorImpact();
                 else if (keyboard.fKey.wasPressedThisFrame) TrySecureHeldItem();
@@ -3027,7 +3027,10 @@ namespace DoodleUp.Runtime
                 $"first_dominant={(HasAppliedImpact ? FirstResult.Problem.ToString() : "pending meteor")}  " +
                 $"current_dominant={(HasAppliedImpact ? LastResult.Problem.ToString() : "-")}\n" +
                 $"cause_chain: {(HasAppliedImpact ? LastResult.CauseChain : "-")}\n" +
-                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | M 운석 | 화살표 조종(8초) | " +
+                // 운석은 K 다. 이 줄만 옛 배정(M)을 그대로 들고 있어서, 지도를 열려고 M 을 누른
+                // 사람에게 디버그 줄이 "운석" 이라고 답하고 있었다 — 키 안내가 둘로 갈리면
+                // 조작을 화면에서 배우는 경로가 그 자리에서 끊긴다.
+                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | K 운석 | M 지도 | 화살표 조종(8초) | " +
                 "판정 후 Space 다음 판 | F3 디버그",
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText, wrap: true);
         }

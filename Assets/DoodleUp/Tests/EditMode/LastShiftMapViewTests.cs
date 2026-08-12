@@ -5,7 +5,7 @@ using UnityEngine;
 namespace DoodleUp.Tests.EditMode
 {
     /// <summary>
-    /// 항해 도면(<c>M</c>). 재는 것은 셋이다 — <b>못 열 때 안 열리는가</b>, <b>배가 도면 안에
+    /// 항해 지도(<c>M</c>). 재는 것은 셋이다 — <b>못 열 때 안 열리는가</b>, <b>배가 지도 안에
     /// 다 들어가는가</b>, <b>표식이 실제로 보는 쪽을 가리키는가</b>.
     ///
     /// <b>투영 자체는 여기서 다시 안 잰다</b> — <see cref="LastShiftHullSchematic"/> 의 왕복
@@ -32,7 +32,7 @@ namespace DoodleUp.Tests.EditMode
 
         /// <summary>
         /// <b>도입부 중에는 안 열린다.</b> 기상 연출은 화면을 암전으로 덮고 조작을 잠근
-        /// 상태라, 그 위에 도면이 뜨면 잠긴 채로 지도만 보게 된다.
+        /// 상태라, 그 위에 지도가 뜨면 잠긴 채로 지도만 보게 된다.
         /// </summary>
         [Test]
         public void TheMapStaysShutDuringTheOpening()
@@ -42,12 +42,12 @@ namespace DoodleUp.Tests.EditMode
 
             LastShiftMapView.Toggle();
 
-            Assert.That(LastShiftMapView.IsOpen, Is.False, "도입부 중에 도면이 열렸다");
+            Assert.That(LastShiftMapView.IsOpen, Is.False, "도입부 중에 지도가 열렸다");
         }
 
         /// <summary>
-        /// 열어 둔 도면은 <b>도입부가 나중에 시작해도</b> 닫힌다. 여는 순간만 보면 다음
-        /// 기항에서 도면을 켜 둔 채로 연출이 시작하는 경우를 놓친다.
+        /// 열어 둔 지도는 <b>도입부가 나중에 시작해도</b> 닫힌다. 여는 순간만 보면 다음
+        /// 기항에서 지도를 켜 둔 채로 연출이 시작하는 경우를 놓친다.
         /// </summary>
         [Test]
         public void AnOpenMapClosesWhenTheOpeningStarts()
@@ -58,7 +58,7 @@ namespace DoodleUp.Tests.EditMode
             LastShiftWakeSequence.Begin();
             LastShiftMapView.Tick();
 
-            Assert.That(LastShiftMapView.IsOpen, Is.False, "연출이 시작했는데 도면이 남아 있다");
+            Assert.That(LastShiftMapView.IsOpen, Is.False, "연출이 시작했는데 지도가 남아 있다");
         }
 
         /// <summary>같은 키가 열고 닫는다.</summary>
@@ -72,7 +72,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>도면 자리는 정사각형이다.</b> 화면 비율에 맞춰 늘리면 배가 넓은 화면에서만
+        /// <b>지도 자리는 정사각형이다.</b> 화면 비율에 맞춰 늘리면 배가 넓은 화면에서만
         /// 납작해 보이고, 그러면 눈으로 잰 거리가 화면마다 달라진다.
         /// </summary>
         [Test]
@@ -80,16 +80,16 @@ namespace DoodleUp.Tests.EditMode
         {
             var rect = LastShiftMapView.PlanRect(Screen);
 
-            Assert.That(rect.width, Is.EqualTo(rect.height).Within(0.01f), "도면 자리가 안 정사각이다");
+            Assert.That(rect.width, Is.EqualTo(rect.height).Within(0.01f), "지도 자리가 안 정사각이다");
             Assert.That(rect.center.x, Is.EqualTo(Screen.x * 0.5f).Within(0.01f));
             Assert.That(rect.center.y, Is.EqualTo(Screen.y * 0.5f).Within(0.01f));
             Assert.That(rect.height, Is.LessThanOrEqualTo(Screen.y),
-                "도면이 화면 짧은 변보다 크다 — 위아래가 잘린다");
+                "지도가 화면 짧은 변보다 크다 — 위아래가 잘린다");
         }
 
         /// <summary>
-        /// <b>배가 도면 밖으로 안 나간다.</b> 방 여섯이 전부 도면 사각형 안에 들어와야
-        /// "도면을 보고 길을 정한다" 가 성립한다 — 하나라도 잘리면 그 방이 없는 것처럼 읽힌다.
+        /// <b>배가 지도 밖으로 안 나간다.</b> 방 여섯이 전부 지도 사각형 안에 들어와야
+        /// "지도를 보고 길을 정한다" 가 성립한다 — 하나라도 잘리면 그 방이 없는 것처럼 읽힌다.
         /// </summary>
         [Test]
         public void EveryRoomLandsInsideThePlan()
@@ -103,9 +103,9 @@ namespace DoodleUp.Tests.EditMode
                     footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ);
 
                 Assert.That(plan.Contains(new Vector2(rect.xMin, rect.yMin)), Is.True,
-                    $"{footprint.Space} 의 한 귀퉁이가 도면 밖이다 — {rect}");
+                    $"{footprint.Space} 의 한 귀퉁이가 지도 밖이다 — {rect}");
                 Assert.That(plan.Contains(new Vector2(rect.xMax, rect.yMax)), Is.True,
-                    $"{footprint.Space} 의 반대 귀퉁이가 도면 밖이다 — {rect}");
+                    $"{footprint.Space} 의 반대 귀퉁이가 지도 밖이다 — {rect}");
             }
         }
 
@@ -122,11 +122,11 @@ namespace DoodleUp.Tests.EditMode
             var here = schematic.ToScreen(stand);
 
             var forward = LastShiftMapView.NosePoint(schematic, stand, Vector3.forward);
-            Assert.That(forward.y, Is.LessThan(here.y), "선수(+z)를 보는데 코가 도면 아래로 갔다");
+            Assert.That(forward.y, Is.LessThan(here.y), "선수(+z)를 보는데 코가 지도 아래로 갔다");
             Assert.That(forward.x, Is.EqualTo(here.x).Within(0.01f));
 
             var back = LastShiftMapView.NosePoint(schematic, stand, Vector3.back);
-            Assert.That(back.y, Is.GreaterThan(here.y), "-z 를 보는데 코가 도면 위로 갔다");
+            Assert.That(back.y, Is.GreaterThan(here.y), "-z 를 보는데 코가 지도 위로 갔다");
 
             var right = LastShiftMapView.NosePoint(schematic, stand, Vector3.right);
             Assert.That(right.x, Is.GreaterThan(here.x), "+x 를 보는데 코가 왼쪽으로 갔다");
@@ -187,7 +187,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>스폰 자리가 도면에서도 숙소 안이다.</b> 좌표를 옮긴 것(기상=숙소)이 도면에도
+        /// <b>스폰 자리가 지도에서도 숙소 안이다.</b> 좌표를 옮긴 것(기상=숙소)이 지도에도
         /// 같이 반영됐는지는 여기서만 보인다 — 둘이 각자 좌표를 들면 조용히 갈라진다.
         /// </summary>
         [Test]
@@ -201,7 +201,7 @@ namespace DoodleUp.Tests.EditMode
             var marker = schematic.ToScreen(LastShiftShipDimensions.SpawnPoint);
 
             Assert.That(room.Contains(marker), Is.True,
-                $"도면에서 스폰 표식이 숙소 밖이다 — 표식 {marker}, 숙소 {room}");
+                $"지도에서 스폰 표식이 숙소 밖이다 — 표식 {marker}, 숙소 {room}");
         }
 
         private sealed class Vector2Comparer : System.Collections.Generic.IEqualityComparer<Vector2>
