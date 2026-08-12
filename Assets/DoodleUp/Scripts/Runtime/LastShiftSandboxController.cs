@@ -2288,7 +2288,20 @@ namespace DoodleUp.Runtime
         private void DrawTutorialBanner()
         {
             var layer = LastShiftUiLayer.Instance;
-            if (layer == null) return;
+            if (layer == null)
+            {
+                // <b>여기가 더 나쁜 출구다.</b> 층이 없으면 이 함수뿐 아니라 화면 전체가 비는데,
+                // 아래 진단보다 위에 있어서 그 경우 아무 로그도 안 남았다 — 진단을 붙이고도
+                // 0 건이 나온 이유가 이 자리일 수 있다.
+                if (LastShiftTutorial.IsArmed && lastBlankBannerState != "no-layer")
+                {
+                    lastBlankBannerState = "no-layer";
+                    Debug.LogError("[LAST_SHIFT_BANNER] result=NO_UI_LAYER " +
+                                   "detail=UI 층이 없다 — 화면이 통째로 빈다");
+                }
+
+                return;
+            }
 
             // 암전이 먼저다 — 튜토리얼 검사보다 위에 둔다. 알파가 0 이면 이 호출은 아무것도
             // 안 빌리므로 평상시 비용이 없다.
