@@ -905,6 +905,15 @@ namespace DoodleUp.Runtime
                 LastShiftNarrationAudio.Announce(
                     LastShiftWakeSequence.Current.Id, LastShiftWakeSequence.Current.Sfx);
 
+            // 어느 빌드가 도는지 한 번만 적는다. 진단을 붙였는데 로그가 0 건이면 "그 상태가
+            // 아니었다" 와 "그 코드가 아니었다" 가 안 갈리는데, 이 줄이 그 둘을 가른다.
+            if (!buildMarkerLogged)
+            {
+                buildMarkerLogged = true;
+                Debug.Log("[LAST_SHIFT_BUILD] banner-diagnostics=3 " +
+                          "detail=lobby/no-layer/blank 세 출구에 계기가 붙은 빌드다");
+            }
+
             // 외부 자극 시계. <b>충격 전에도 돈다</b> — 아래 줄이 충격 전 tick 을 통째로
             // 막으므로, 여기서 안 돌리면 자극이 영영 안 뜨고 디버그 키로만 존재하던 예전
             // 상태가 그대로 남는다. 도입부 연출 중에는 안 돌린다: 조작이 잠긴 동안 사고가
@@ -2238,7 +2247,20 @@ namespace DoodleUp.Runtime
             // 방 코드 로비가 떠 있는 동안은 한 줄도 그리지 않는다. 이 컴포넌트는 씬에 있어
             // 세션이 서기 전부터 돌기 때문에, 막지 않으면 로비 위로 목표 줄·계기 막대가
             // 겹쳐 나온다 — 아직 아무도 스폰되지 않아 값도 전부 초기값이다.
-            if (LastShiftRoomLobby.IsBlockingGameplay) return;
+            if (LastShiftRoomLobby.IsBlockingGameplay)
+            {
+                // <b>가장 바깥 출구다.</b> 여기서 빠지면 상시 HUD 도 배너도 한 줄도 안 그려진다.
+                // 앞서 붙인 진단 둘이 모두 이 아래에 있어서, 이 자리로 빠지는 판은 로그가
+                // 하나도 안 남았다 — 재현 뒤에도 0 건이던 이유가 여기일 수 있다.
+                if (LastShiftTutorial.IsArmed && lastBlankBannerState != "lobby")
+                {
+                    lastBlankBannerState = "lobby";
+                    Debug.LogError("[LAST_SHIFT_BANNER] result=LOBBY_BLOCKING " +
+                                   "detail=로비가 화면을 잡고 있어 게임 UI 를 한 줄도 안 그린다");
+                }
+
+                return;
+            }
 
             // 판정이 나면 상시 패널을 숨긴다(아트 §8). 시뮬레이션이 멎어 있어서 막대가
             // 살아 있는 값처럼 오독되고, 결과 화면과 같은 무게로 읽히면 위계가 무너진다.
@@ -2284,6 +2306,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         /// <summary>배너가 빈 채로 빠져나간 마지막 상태. 같은 상태를 두 번 안 찍는다.</summary>
         private string lastBlankBannerState;
+
+        /// <summary>어느 빌드가 도는지 한 번만 적었는가.</summary>
+        private static bool buildMarkerLogged;
 
         private void DrawTutorialBanner()
         {
