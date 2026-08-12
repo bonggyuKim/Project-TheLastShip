@@ -63,7 +63,7 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(PlayableLane, Is.EqualTo(1.1f).Within(Tolerance));
         }
 
-        // ── 2. 문 구멍 여섯 ──────────────────────────────────────────────────
+        // ── 2. 문 구멍 다섯 ──────────────────────────────────────────────────
 
         [Test]
         public void EveryPlazaDoorTakesTwoCrewAbreastPhysicallyButOnlyOneAtPlayableWidth()
@@ -80,9 +80,13 @@ namespace DoodleUp.Tests.EditMode
                 $"{2f * PlayableLane:0.##}m). <b>이 값이 4인 검증의 결론이다</b> — 문은 물리로만 " +
                 "2인 교행이고 실제로는 단선이라, 같은 문을 마주 보고 쓰는 둘은 서로를 기다린다.");
 
-            // 여섯이 전부 같은 규격이어야 이 결론이 배 전체에 걸린다. 하나만 다른 폭이면
+            // 다섯이 전부 같은 규격이어야 이 결론이 배 전체에 걸린다. 하나만 다른 폭이면
             // "어느 문은 되고 어느 문은 안 된다" 가 되어 동선 설계가 문마다 갈린다.
-            Assert.That(LastShiftPlazaLayout.Doors.Length, Is.EqualTo(6));
+            //
+            // <b>여섯이 아니라 다섯이다.</b> 이 파일은 에어록 홀이 살아 있던 좌표에서 쓰였고,
+            // 좌표 정본 개편(94793f3)이 그 방을 폐지하면서 문도 같이 없어졌다. 광장에 붙은
+            // 방이 다섯이므로 문도 다섯이다.
+            Assert.That(LastShiftPlazaLayout.Doors.Length, Is.EqualTo(5));
             foreach (var door in LastShiftPlazaLayout.Doors)
                 Assert.That(door.MaxSpan - door.MinSpan, Is.EqualTo(width).Within(Tolerance),
                     $"{door.Space} 문만 폭이 다르다.");
@@ -113,7 +117,10 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(narrowestSpace, Is.EqualTo(LastShiftPlazaSpace.Quarters),
                 "가장 좁은 변을 가진 공간이 숙소가 아니다 — 발자국표가 움직였다.");
-            Assert.That(narrowest, Is.EqualTo(4f).Within(Tolerance));
+            // 개편 전 숙소는 6x4 라 짧은 변이 4m 였다. 기능실 확장(94793f3)이 숙소를 8x6 으로
+            // 키우면서 6m 가 됐다 — 래칫을 넓어진 값에 다시 건다. 이 숫자가 다시 내려가면
+            // 4인이 방 안에서 못 비켜나는 쪽으로 되돌아간 것이다.
+            Assert.That(narrowest, Is.EqualTo(6f).Within(Tolerance));
         }
 
         [Test]
@@ -145,8 +152,10 @@ namespace DoodleUp.Tests.EditMode
             }
 
             Assert.That(tightestSpace, Is.EqualTo(LastShiftPlazaSpace.Quarters));
-            Assert.That(tightest, Is.EqualTo(6f).Within(Tolerance),
-                "숙소의 1인당 바닥이 6.0m² 가 아니다 — 가장 얇은 값이므로 래칫으로 고정한다.");
+            // 숙소 8x6 = 48m² 를 넷이 나눠 12.0m². 개편 전 6x4 기준 6.0m² 에서 두 배가 됐고,
+            // 이 방이 4인 스폰을 받는 자리라(스폰 확정 2026-08-12) 여기가 가장 얇은 값이다.
+            Assert.That(tightest, Is.EqualTo(12f).Within(Tolerance),
+                "숙소의 1인당 바닥이 12.0m² 가 아니다 — 가장 얇은 값이므로 래칫으로 고정한다.");
         }
 
         // ── 4. 광장 고리 ─────────────────────────────────────────────────────
