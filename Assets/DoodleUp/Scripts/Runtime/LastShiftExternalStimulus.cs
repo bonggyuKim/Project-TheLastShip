@@ -104,26 +104,47 @@ namespace DoodleUp.Runtime
         // 안 정해서(미결 2) 여기서 초안을 잡았다. 고칠 때 이 파일만 보면 된다.
 
         /// <summary>조종석 피격 — 추진 계통. 연료가 새고 자세가 틀어진다.</summary>
-        public const float CockpitFuelLoss = 0.12f;
+        public const float CockpitFuelLoss = 0.06f;
 
-        public const float CockpitAttitudeDrift = 6f;
+        public const float CockpitAttitudeDrift = 15f;
 
         /// <summary>전력실 피격 — 버스 전압 급락. 다섯 중 가장 큰 단일 계통 타격이다.</summary>
-        public const float PowerBusLoss = 0.30f;
+        public const float PowerBusLoss = 0.45f;
 
         /// <summary>냉각실 피격 — 열을 못 버린다. 값을 점프시키지 않고 올려 보낸다.</summary>
-        public const float CoolingHeatGain = 0.25f;
+        public const float CoolingHeatGain = 0.30f;
 
         /// <summary>
         /// 산소실 피격 — 파공(A)에 더해 생성·저장이 직접 준다. 이 방만 (A)와 (B)가 같은
         /// 축에서 겹치므로 압력이 두 번 깎인다(§2.1-1 표의 "이중").
         /// </summary>
-        public const float LifeSupportOxygenLoss = 0.10f;
+        public const float LifeSupportOxygenLoss = 0.20f;
 
         /// <summary>
         /// 모든 방에 공통으로 들어가는 파공(A). 맞은 자리가 뚫리는 것은 방을 안 가린다.
         /// </summary>
-        public const float BreachPressureLoss = 0.18f;
+        public const float BreachPressureLoss = 0.30f;
+
+        /// <summary>
+        /// 파공으로 한 번에 뺄 수 있는 압력의 <b>구조적 상한</b>. 밸런스 값이 아니라 조항이다
+        /// (PM 확정 2026-08-12).
+        ///
+        /// <b>이 선을 넘으면 자극이 그 방을 못 들어가게 만든다.</b> 압력이 한 번에 너무 많이
+        /// 빠지면 그 방에 들어가는 것 자체가 불가능해지고, 그러면 그 방에서만 할 수 있는
+        /// 복구가 통째로 막힌다 — <c>RG-3</c>(영구 잠금 금지)이 정확히 그것을 금지한다.
+        /// <see cref="BreachPressureLoss"/> 를 올릴 때 이 값을 같이 올리지 않는다.
+        /// </summary>
+        public const float MaxBreachPressureLoss = 0.35f;
+
+        /// <summary>
+        /// 항해 <b>한 번</b> 동안 자극이 가져갈 수 있는 연료의 총합(PM 확정 2026-08-12).
+        ///
+        /// <b>구간마다가 아니라 항해마다다.</b> 연료는 보급 지점이 0개인 1회 예산이라
+        /// (<c>LastShiftShipState.FuelReserve</c> 주석), 구간별 상한만 두면 조종석을 세 번
+        /// 맞은 항해가 도킹에 필요한 추력적분을 못 채우는 판이 된다. 그 판은 복구 행동이
+        /// 있어도 못 이기므로 <c>RG-3</c> 이 막으려는 상태와 같아진다.
+        /// </summary>
+        public const float VoyageFuelLossCap = 0.18f;
 
         /// <summary>방의 개수. 다섯이고, 균등이면 각 <c>20%</c> 다(PM 확정).</summary>
         public const int RoomCount = 5;
@@ -151,6 +172,9 @@ namespace DoodleUp.Runtime
         private static bool fired;
         private static float elapsed;
         private static float damageElapsed;
+
+        /// <summary>이번 항해가 자극으로 잃은 연료 누적. 항해가 바뀔 때만 지워진다.</summary>
+        private static float voyageFuelLost;
 
         /// <summary>이번 구간에 자극이 예약돼 있는가.</summary>
         public static bool IsArmed => armed;
@@ -268,6 +292,8 @@ namespace DoodleUp.Runtime
             FireAtSeconds = 0f;
             // 결핍 기록도 같이 지운다. 남겨 두면 새 항해가 지난 항해의 빚을 지고 시작한다.
             for (var i = 0; i < RoomCount; i++) PortsSinceHit[i] = 0;
+            // 연료 상한도 항해 단위라 여기서 함께 풀린다.
+            voyageFuelLost = 0f;
         }
 
         /// <summary>
@@ -300,7 +326,29 @@ namespace DoodleUp.Runtime
 
             var step = Mathf.Min(deltaTime, DamageSeconds - damageElapsed);
             damageElapsed += step;
-            return DeltaFor(Room, Severity, step / DamageSeconds);
+            return CapFuel(DeltaFor(Room, Severity, step / DamageSeconds));
+        }
+
+        /// <summary>
+        /// 이번 항해가 이미 잃은 연료. <see cref="VoyageFuelLossCap"/> 이 이 값을 상대로 걸린다.
+        /// </summary>
+        public static float VoyageFuelLost => voyageFuelLost;
+
+        /// <summary>
+        /// 연료 손실을 항해 상한 안으로 자른다. <b>구간이 아니라 항해를 넘어 누적한다</b> —
+        /// 조종석을 여러 번 맞은 항해가 도킹을 못 채우는 판이 되지 않게 하는 것이 목적이다.
+        /// </summary>
+        private static LastShiftStimulusDelta CapFuel(LastShiftStimulusDelta delta)
+        {
+            if (delta.FuelReserve >= 0f) return delta;
+
+            var room = Mathf.Max(0f, VoyageFuelLossCap - voyageFuelLost);
+            var take = Mathf.Min(-delta.FuelReserve, room);
+            voyageFuelLost += take;
+
+            if (Mathf.Approximately(take, -delta.FuelReserve)) return delta;
+            return new LastShiftStimulusDelta(delta.Zone, delta.ZonePressure, delta.BusPower,
+                delta.EngineHeat, -take, delta.AttitudeDegrees);
         }
 
         /// <summary>
@@ -315,6 +363,14 @@ namespace DoodleUp.Runtime
             var scale = severity * portion;
             var breach = -BreachPressureLoss * scale;
 
+            // 산소실은 (A)와 (B)가 같은 축이라 둘을 더하면 0.30 + 0.20 = 0.50 이 되어 조항
+            // 상한을 넘는다. <b>조항이 이긴다</b> — 그 상한은 "그 방에 들어갈 수 있는가" 를
+            // 지키는 구조적 선이고(RG-3), 넘기면 산소실 복구가 통째로 막힌다. 그래서 두 값을
+            // 더한 뒤 상한에서 자른다. 이 자름이 걸리면 산소실의 실효 (B)가 줄어드는 것이라,
+            // 0.20 을 온전히 쓰려면 상한을 올리거나 파공을 낮춰야 한다.
+            float Capped(float loss) =>
+                -Mathf.Min(-loss, MaxBreachPressureLoss * severity * portion);
+
             return room switch
             {
                 LastShiftStimulusRoom.Cockpit => new LastShiftStimulusDelta(
@@ -328,7 +384,7 @@ namespace DoodleUp.Runtime
                     LastShiftZone.Cooling, breach, 0f, CoolingHeatGain * scale, 0f, 0f),
 
                 LastShiftStimulusRoom.LifeSupport => new LastShiftStimulusDelta(
-                    LastShiftZone.LifeSupport, breach - LifeSupportOxygenLoss * scale,
+                    LastShiftZone.LifeSupport, Capped(breach - LifeSupportOxygenLoss * scale),
                     0f, 0f, 0f, 0f),
 
                 // 숙소는 (A) 파공만이다. 억지로 다섯 번째 계통을 만들면 그것이 곧 13번째
