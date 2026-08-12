@@ -22,6 +22,17 @@
 | `heat` | `icon_gauge_heat_{base,fill}.png` | 열 축적량. 아래→위. 차오를수록 나쁨 | 저열은 teal | 고열은 orange→red |
 
 - fill은 기존 UGUI `Image.Type.Filled`, Vertical, Bottom origin을 사용한다.
+- **fill mask 정본**은 별도 신규 파일이 아니라 아래 기존 PNG의 알파 실루엣이다. 세 파일은
+  `128×128 RGBA`, 투명 모서리(alpha=0)이며, `Image.fillAmount`가 아이콘 형태를 유지한 채
+  아래에서 위로 잘라 낸다.
+
+| HUD ID | base 외곽선 | fill mask (Filled Image Source Image) |
+|---|---|---|
+| `oxygen` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_oxygen_base.png` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_oxygen_fill.png` |
+| `power` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_power_base.png` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_power_fill.png` |
+| `heat` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_heat_base.png` | `Assets/DoodleUp/Art/UI/LastShift/icon_gauge_heat_fill.png` |
+
+- Import: `Sprite (2D and UI)`, `Single`, `Full Rect`, `100 PPU`, mipmap off, `Clamp`.
 - 아이콘은 상태를 읽는 유일한 상시 정보이므로 0일 때도 외곽선은 남긴다.
 - 위기 pulse는 알파가 아니라 밝기만 바꾼다.
 - 숫자, `%`, `SetName`, `SetValueLabel`, `SetThresholds`, `SetMovingMarker`는 이 HUD 경로에서 호출하지 않는다.
