@@ -2313,6 +2313,12 @@ namespace DoodleUp.Runtime
         /// <summary>글자가 빈 채로 그려진 마지막 줄. 같은 줄을 두 번 안 찍는다.</summary>
         private static string lastEmptyNarrationLine;
 
+        /// <summary>지금 줄이 글자 없이 떠 있은 시간. 첫 프레임의 정상적인 빔과 가른다.</summary>
+        private static float emptyTextSeconds;
+
+        /// <summary>이만큼 비어 있으면 정상 타이핑이 아니다.</summary>
+        private const float EmptyTextAlarmSeconds = 1.5f;
+
         private void DrawTutorialBanner()
         {
             var layer = LastShiftUiLayer.Instance;
@@ -2483,21 +2489,25 @@ namespace DoodleUp.Runtime
                 text = LastShiftNarrationScript.Reveal(
                     text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed,
                     typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds);
-            // <b>패널은 그려지는데 글자가 빈 경우를 잡는다.</b> 계기 셋(lobby/no-layer/blank)이
-            // 전부 안 찍히는데 사용자는 빈 화면을 보는 상태라, 남은 설명이 이것뿐이다 —
-            // 타이핑 연출은 줄 시계로 글자 수를 정하므로, 그 시계가 안 흐르면 0 글자가 되어
-            // 패널만 뜨고 말이 영영 안 나온다. 화자 이름은 따로 그려지므로 "완전히 빈 화면"
-            // 으로도 안 보이고, 그래서 지금까지 어느 계기에도 안 걸렸다.
-            if (string.IsNullOrEmpty(text) && panelAlpha > 0f && lastEmptyNarrationLine != line.Id)
+            // <b>패널은 떴는데 글자가 계속 비는 경우를 잡는다.</b> 줄이 처음 뜬 프레임에는
+            // 타이핑이 0 글자라 잠깐 비는 것이 정상이다 — 그래서 <b>얼마나 오래</b> 비었는지로
+            // 가른다. 처음에는 줄이 바뀔 때만 찍었더니 그 정상적인 첫 프레임만 잡혀서
+            // (AI_W_02~06 이 elapsed=0.00 으로 줄줄이 찍혔다) 정작 멈춘 자리를 못 봤다.
+            if (string.IsNullOrEmpty(text) && panelAlpha > 0f)
             {
-                lastEmptyNarrationLine = line.Id;
-                Debug.LogError($"[LAST_SHIFT_BANNER] result=EMPTY_TEXT line={line.Id} " +
-                               $"elapsed={lineElapsed:F2} swapped={swapped} typed={typed} " +
-                               $"typingSeconds={(typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds):F2} " +
-                               "detail=패널은 떴는데 글자가 0 이다 — 줄 시계가 안 흐른다");
+                emptyTextSeconds += Time.unscaledDeltaTime;
+                if (emptyTextSeconds >= EmptyTextAlarmSeconds && lastEmptyNarrationLine != line.Id)
+                {
+                    lastEmptyNarrationLine = line.Id;
+                    Debug.LogError($"[LAST_SHIFT_BANNER] result=EMPTY_TEXT line={line.Id} " +
+                                   $"emptyFor={emptyTextSeconds:F1}s elapsed={lineElapsed:F2} " +
+                                   $"swapped={swapped} typed={typed} " +
+                                   "detail=패널은 떴는데 글자가 계속 0 이다 — 줄 시계가 안 흐른다");
+                }
             }
-            else if (!string.IsNullOrEmpty(text))
+            else
             {
+                emptyTextSeconds = 0f;
                 lastEmptyNarrationLine = null;
             }
 
