@@ -134,9 +134,19 @@ namespace DoodleUp.Runtime
         /// </summary>
         public bool IsGhost { get; private set; }
 
+        /// <summary>
+        /// 화면 아래 조작줄. <b><c>M</c> 이 여기 없던 것이 온보딩 사고의 절반이었다</b>
+        /// (2026-08-13 플레이테스트 — "어느 방이 어딘지 모름"). 방 이름이 뜨는 유일한 화면이
+        /// 지도인데 그 키가 어디에도 안 적혀 있어서, 지도를 아는 사람만 배 배치를 알 수 있었다.
+        ///
+        /// 괄호로 <b>무엇이 보이는지</b>를 붙인다. "M 지도" 만으로는 그것이 지금 필요한 화면인지
+        /// 알 수 없고, 처음 하는 사람이 찾는 말은 "지도" 이 아니라 "방 이름" 이다.
+        /// 유령 줄에도 같이 있다 — 지도는 유령도 열 수 있는 보기 전용 화면이다.
+        /// </summary>
         public string InputLabel => IsGhost
-            ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 — 유령: 잡기·수리·문 조작 불가"
-            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / 1·2·3 프리셋 / R 리셋";
+            ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 / M 지도(방 이름) — 유령: 잡기·수리·문 조작 불가"
+            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / " +
+              "M 지도(방 이름) / 1·2·3 프리셋 / R 리셋";
         /// <summary>
         /// 화면 중앙 프롬프트. <b>지금 이 자리에서 누를 것이 있을 때만 문자열이 있고, 없으면
         /// 빈 문자열이다.</b> 예전에는 아무것도 없는 자리에서도 `+   E 잡기: 대상을 조준하세요`
@@ -314,11 +324,11 @@ namespace DoodleUp.Runtime
             var presetTwo = ConsumePress(keyboard.digit2Key.isPressed, ref presetTwoPressed);
             var presetThree = ConsumePress(keyboard.digit3Key.isPressed, ref presetThreePressed);
             var reset = ConsumePress(keyboard.rKey.isPressed, ref resetPressed);
-            // 운석은 K 다(M 은 도면이 가져갔다). 키만 옮겼고 나머지 경로는 그대로다.
+            // 운석은 K 다(M 은 지도가 가져갔다). 키만 옮겼고 나머지 경로는 그대로다.
             var meteor = ConsumePress(keyboard.kKey.isPressed, ref meteorPressed);
-            // 도면(M). <b>여기서 읽는다</b> — LastShiftSandboxController 의 키 블록은
+            // 지도(M). <b>여기서 읽는다</b> — LastShiftSandboxController 의 키 블록은
             // 클라이언트에서 통째로 꺼져 있어서(LastShiftNetworkSandbox 가 enabled = IsServer),
-            // 거기 두면 host 에서만 열린다. 도면은 화면일 뿐이라 피어마다 따로이고 RPC 가 없다.
+            // 거기 두면 host 에서만 열린다. 지도는 화면일 뿐이라 피어마다 따로이고 RPC 가 없다.
             if (ConsumePress(keyboard.mKey.isPressed, ref mapPressed)) LastShiftMapView.Toggle();
             LastShiftMapView.Tick();
             // 냉각실 밸브 유지(T). <b>ConsumePress 를 안 쓴다</b> — 나머지 전부가 순간 동사라
@@ -1224,9 +1234,9 @@ namespace DoodleUp.Runtime
             var screen = LastShiftUiLayer.ScreenSize;
             var canvas = LastShiftUiTheme.CanvasSize(screen);
 
-            // 도면이 떠 있으면 <b>조준점도 상호작용 프롬프트도 안 그린다</b>. 보기 전용
+            // 지도가 떠 있으면 <b>조준점도 상호작용 프롬프트도 안 그린다</b>. 보기 전용
             // 화면인데 조준선이 남아 있으면 "지금 조작이 되는가" 가 흐려지고, 프롬프트는
-            // 도면 뒤의 대상을 가리켜서 두 화면이 겹쳐 읽힌다.
+            // 지도 뒤의 대상을 가리켜서 두 화면이 겹쳐 읽힌다.
             if (LastShiftMapView.IsOpen)
             {
                 DrawMap(layer, screen, canvas);
@@ -1273,10 +1283,10 @@ namespace DoodleUp.Runtime
         private static readonly Rect[] MapOutlineScratch = new Rect[4];
 
         /// <summary>
-        /// 도면(<c>M</c>) 한 장. <b>배 배치 + 지금 누가 어디 있는가</b>가 전부이고 조작은 없다.
+        /// 지도(<c>M</c>) 한 장. <b>배 배치 + 지금 누가 어디 있는가</b>가 전부이고 조작은 없다.
         ///
         /// <b>투영은 <see cref="LastShiftHullSchematic"/> 것을 그대로 쓴다</b> — 배치 화면과 같은
-        /// 자라, 청사진에서 본 좌표와 도면에서 본 좌표가 어긋나지 않는다.
+        /// 자라, 청사진에서 본 좌표와 지도에서 본 좌표가 어긋나지 않는다.
         /// </summary>
         private void DrawMap(LastShiftUiLayer layer, Vector2 screen, Vector2 canvas)
         {
@@ -1286,21 +1296,33 @@ namespace DoodleUp.Runtime
                 LastShiftUiTheme.PanelNavy, LastShiftMapView.BackdropAlpha);
 
             // 방은 <b>테두리만</b> 그린다. 속을 칠하면 그 위의 표식이 배경에 묻힌다.
+            //
+            // <b>이름은 테두리와 같은 회에 붙인다</b>(2026-08-13 플레이테스트 — "어느 방이
+            // 어딘지 모름"). 테두리만 있는 지도는 배 모양을 알려 주지만 어느 사각형이 무엇인지는
+            // 말하지 않아서, 광장에 서서 문 다섯을 하나씩 열어 보는 것 말고는 배를 배울 길이
+            // 없었다. 이름이 뜨는 자리를 한 화면으로 모은 것이 그 카드의 결론이고 여기가 그 정본이다.
             var index = 0;
             foreach (var footprint in LastShiftPlazaLayout.Footprints)
             {
-                DrawMapOutline(layer, "map:room" + index,
-                    plan.ToScreenRect(footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ),
-                    LastShiftUiTheme.BodyText, 0.55f);
+                var room = plan.ToScreenRect(
+                    footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ);
+                DrawMapOutline(layer, "map:room" + index, room, LastShiftUiTheme.BodyText, 0.55f);
+                DrawMapRoomName(layer, index, room, footprint.Space);
                 index++;
             }
 
             // 코어는 지나갈 수 없는 자리라 다른 색이다 — 광장이 통짜 방으로 보이면
-            // 도면을 보고 정한 동선이 실제로는 막힌다.
-            DrawMapOutline(layer, "map:core", plan.ToScreenRect(
-                    -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent,
-                    -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent),
-                LastShiftUiTheme.Unstable, 0.75f);
+            // 지도를 보고 정한 동선이 실제로는 막힌다.
+            var core = plan.ToScreenRect(
+                -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent,
+                -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent);
+            DrawMapOutline(layer, "map:core", core, LastShiftUiTheme.Unstable, 0.75f);
+
+            // 코어에는 이름이 반드시 붙는다. 튜토리얼이 사람을 보내는 곳이 여기인데(선외로 나가는
+            // 유일한 길) 이름이 없으면 광장 한복판의 못 지나가는 기둥으로만 읽힌다.
+            layer.Label("map:shaftName", LastShiftMapView.ShaftNameRect(core),
+                LastShiftRoomLabels.ShaftName, LastShiftMapView.RoomNameFontSize,
+                LastShiftUiTheme.Unstable, TextAnchor.MiddleCenter);
 
             // 문은 벽에 난 구멍이라 <b>선 하나</b>로 눕힌다. 방 테두리 위에 겹쳐 그려서
             // 어느 변에 붙었는지가 보인다.
@@ -1318,12 +1340,12 @@ namespace DoodleUp.Runtime
             DrawMapCrew(layer, plan);
 
             var hint = new Rect(0f, canvas.y - InputBarMargin - InputBarHeight, canvas.x, InputBarHeight);
-            layer.LabelCanvas("map:hint", hint, "도면 — M 으로 닫기",
+            layer.LabelCanvas("map:hint", hint, "지도 — M 으로 닫기",
                 InputLabelFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
         }
 
         /// <summary>
-        /// 사람 표식. <b>씬 조회가 여기 있다</b> — 도면이 떠 있는 동안에만 돌고, 최대 넷이라
+        /// 사람 표식. <b>씬 조회가 여기 있다</b> — 지도가 떠 있는 동안에만 돌고, 최대 넷이라
         /// 프레임마다 한 번을 받아들인다. 상시 HUD 경로에는 이 조회가 없다.
         /// </summary>
         private void DrawMapCrew(LastShiftUiLayer layer, in LastShiftHullSchematic plan)
@@ -1351,6 +1373,31 @@ namespace DoodleUp.Runtime
                         color, 0.9f);
                 index++;
             }
+        }
+
+        /// <summary>
+        /// 방 하나의 이름표 — 이름 한 줄, 자리가 되면 부제 한 줄. 문구는
+        /// <see cref="LastShiftRoomLabels"/> 하나에서 나온다(HUD 구역 칸과 같은 이름을 쓴다).
+        ///
+        /// <b>부제는 방이 좁으면 생략한다.</b> 두 줄을 억지로 넣으면 아래 줄이 이웃 방 위로
+        /// 넘어가서 그 부제가 어느 방 것인지 모르게 된다 — 판정은
+        /// <see cref="LastShiftMapView.FitsPurpose"/> 가 좌표로 내린다.
+        /// </summary>
+        private static void DrawMapRoomName(LastShiftUiLayer layer, int index, Rect room,
+            LastShiftPlazaSpace space)
+        {
+            layer.Label("map:name" + index, LastShiftMapView.RoomNameRect(room),
+                LastShiftRoomLabels.NameOf(space), LastShiftMapView.RoomNameFontSize,
+                LastShiftUiTheme.Ivory, TextAnchor.MiddleCenter);
+
+            // 조각을 안 쓰는 프레임에도 이름은 남으므로, 좁은 방에서는 부제 자리를 빈 문자열로
+            // 덮는다. 안 덮으면 화면 크기가 바뀌어 방이 줄었을 때 지난 프레임의 부제가 남는다.
+            layer.Label("map:purpose" + index, LastShiftMapView.RoomPurposeRect(room),
+                LastShiftMapView.FitsPurpose(room) ? LastShiftRoomLabels.PurposeOf(space) : string.Empty,
+                LastShiftMapView.RoomPurposeFontSize,
+                new Color(LastShiftUiTheme.BodyText.r, LastShiftUiTheme.BodyText.g,
+                    LastShiftUiTheme.BodyText.b, 0.7f),
+                TextAnchor.MiddleCenter);
         }
 
         private static void DrawMapOutline(LastShiftUiLayer layer, string id, Rect rect,

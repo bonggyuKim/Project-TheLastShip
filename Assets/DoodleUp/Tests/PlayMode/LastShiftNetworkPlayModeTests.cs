@@ -286,7 +286,7 @@ namespace DoodleUp.Tests.PlayMode
             // 네트워크 샌드박스가 스폰되면 통째로 꺼진다. 사용자 플레이에서 잡혔다.
             // 여기서만 검사되므로 이 assertion 이 유일한 방벽이다.
             //
-            // <b>M 이었다가 K 로 옮겼다</b> — M 은 도면(LastShiftMapView)이 가져갔다.
+            // <b>M 이었다가 K 로 옮겼다</b> — M 은 지도(LastShiftMapView)이 가져갔다.
             Assert.That(sandbox.HasAppliedImpact, Is.False, "리셋 직후에는 사건 전이어야 한다.");
             yield return PressAndRelease(Key.K);
             yield return WaitFor(() => sandbox.HasAppliedImpact, "meteor-k",
@@ -294,17 +294,17 @@ namespace DoodleUp.Tests.PlayMode
                                    $"ghost={controller.IsGhost} spawned={networkSandbox.IsSpawned}");
             Assert.That(sandbox.ImpactApplicationCount, Is.EqualTo(1));
 
-            // M(도면). <b>운석과 같은 함정을 그대로 밟을 자리다</b> — 도면 키를 sandbox 쪽
+            // M(지도). <b>운석과 같은 함정을 그대로 밟을 자리다</b> — 지도 키를 sandbox 쪽
             // 블록에 뒀으면 클라이언트에서 통째로 안 먹었을 것이고, EditMode 는 Toggle 을
             // 직접 불러서 전부 초록이었을 것이다. 여기서 재는 것은 <b>스폰된 승무원이 실제로
             // M 을 읽는가</b> 하나다.
-            Assert.That(LastShiftMapView.IsOpen, Is.False, "도면이 처음부터 떠 있다.");
+            Assert.That(LastShiftMapView.IsOpen, Is.False, "지도가 처음부터 떠 있다.");
             yield return PressAndRelease(Key.M);
             yield return WaitFor(() => LastShiftMapView.IsOpen, "map-open",
                 diagnostics: () => $"open={LastShiftMapView.IsOpen} canOpen={LastShiftMapView.CanOpen} " +
                                    $"wake={LastShiftWakeSequence.IsRunning} ghost={controller.IsGhost}");
 
-            // 같은 키가 닫는다. 안 닫히면 항해 중에 화면이 도면에 묶인다.
+            // 같은 키가 닫는다. 안 닫히면 항해 중에 화면이 지도에 묶인다.
             yield return PressAndRelease(Key.M);
             yield return WaitFor(() => !LastShiftMapView.IsOpen, "map-close");
 
