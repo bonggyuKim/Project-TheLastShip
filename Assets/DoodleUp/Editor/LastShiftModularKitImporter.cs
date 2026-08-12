@@ -428,6 +428,104 @@ namespace DoodleUp.Editor
             // outer edge because of a non-rectangular union split.
             RemoveInteriorWallsCoveredByShell(root);
             BuildDeckCollision(map, spaces, p, root);
+            ReportDressingInsideFeatures(root, PanelTopY(p["LPK_Floor_Square_2m"]));
+        }
+
+        /// <summary>
+        /// 설비가 붙은 끝벽에 바닥 소품을 두지 않는다. 설비 <c>body bounds</c> 를 이만큼 부풀린
+        /// 상자 안에 바닥 소품이 들어오면 어긋난 것이다(game-art 확정 2026-08-12).
+        /// </summary>
+        public const float DressingKeepOut = 0.10f;
+
+        /// <summary>
+        /// 바닥 소품으로 볼 높이. 갑판에서 이 높이 안에 밑면이 있으면 <b>바닥에 놓인 것</b>이다 —
+        /// 벽에 거는 소품은 끝벽에 붙어도 설비와 다투지 않으므로 이 규칙 밖이다.
+        /// </summary>
+        public const float DressingFloorReach = 0.30f;
+
+        /// <summary>
+        /// 소품이 설비 자리를 침범하는가. <b>순수 함수다</b> — 씬 없이 규칙만 잰다.
+        /// </summary>
+        public static bool ViolatesFeatureKeepOut(Bounds feature, Bounds prop, float margin, float deckY, float floorReach)
+        {
+            if (prop.min.y > deckY + floorReach) return false;
+            var grown = feature;
+            grown.Expand(margin * 2f);
+            return grown.Intersects(prop);
+        }
+
+        /// <summary>
+        /// 조립이 끝난 배에서 그 규칙을 어긴 소품을 <b>소리 내어 적는다</b>.
+        ///
+        /// <b>고치지는 않는다.</b> 드레싱 좌표는 아트 몫이라 임포터가 말없이 옮기면 아트가
+        /// 놓은 자리와 화면에 보이는 자리가 갈린다. 대신 어느 소품이 어느 설비에 박혔는지를
+        /// 좌표까지 적어서, 옮기는 쪽이 바로 손댈 수 있게 한다.
+        ///
+        /// 설비 치수는 임포트 시점에만 알 수 있어서(아트 에셋 몫) 이 검사가 여기 있다 —
+        /// <c>LastShiftDressingRules</c> 쪽 런타임 검사는 그 숫자를 못 본다.
+        /// </summary>
+        private static void ReportDressingInsideFeatures(Transform root, float deckY)
+        {
+            if (float.IsNaN(deckY)) return;
+
+            var features = new List<(string name, Bounds box)>();
+            foreach (var child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (!child.name.EndsWith("Feature")) continue;
+                if (TryMeasure(child, out var box)) features.Add((child.name, box));
+            }
+
+            // <b>드레싱은 <paramref name="root"/> 밑에 없다.</b> 여기 root 는 킷 조립 노드이고
+            // ZoneDressing 은 그 형제다 — 처음에 root 에서 찾다가 null 이 나와 검사가 통째로
+            // 조용히 빠졌고, 로그가 한 줄도 안 찍혀서 그 사실조차 안 보였다. 배 루트에서 찾는다.
+            var ship = root;
+            while (ship.parent != null) ship = ship.parent;
+            var dressing = ship.Find("ZoneDressing");
+
+            if (dressing == null || features.Count == 0)
+            {
+                // 못 찾은 것도 적는다. 말없이 통과하면 "검사가 돌았고 깨끗했다" 와 구분이 안 된다.
+                Debug.LogWarning($"[LAST_SHIFT_DRESSING_FEATURE] features={features.Count} " +
+                                 $"dressing={(dressing == null ? "<없음>" : dressing.name)} result=SKIPPED");
+                return;
+            }
+
+            var clashes = 0;
+            foreach (var prop in dressing.GetComponentsInChildren<Transform>(true))
+            {
+                if (prop.GetComponent<Collider>() == null || !TryMeasure(prop, out var box)) continue;
+                foreach (var feature in features)
+                {
+                    if (!ViolatesFeatureKeepOut(feature.box, box, DressingKeepOut, deckY, DressingFloorReach))
+                        continue;
+                    // <b>오류가 아니라 경고다.</b> 오류로 내면 씬을 다시 굽는 검사 셋이
+                    // "처리 안 된 오류" 로 같이 붉어진다 — 소품 좌표는 아트·TA 몫이라, 그쪽이
+                    // 옮기기 전까지 무관한 검사를 막게 된다. 규칙 자체는 EditMode 가 잠근다.
+                    // 현재 위반이 정리되면 오류로 올려 하드 게이트로 만들 수 있다.
+                    Debug.LogWarning(
+                        $"[LAST_SHIFT_DRESSING_FEATURE] prop={prop.name} feature={feature.name} " +
+                        $"propCenter={box.center:F2} featureCenter={feature.box.center:F2} " +
+                        $"detail=설비 body bounds +{DressingKeepOut:0.##}m 안에 바닥 소품이 있다 — 측벽 쪽으로 옮긴다");
+                    clashes++;
+                    break;
+                }
+            }
+
+            Debug.Log($"[LAST_SHIFT_DRESSING_FEATURE] features={features.Count} clashes={clashes}");
+        }
+
+        /// <summary>렌더러를 합친 세계 상자. 그릴 것이 없으면 거짓.</summary>
+        private static bool TryMeasure(Transform target, out Bounds box)
+        {
+            var measured = false;
+            box = new Bounds();
+            foreach (var renderer in target.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (measured) box.Encapsulate(renderer.bounds);
+                else { box = renderer.bounds; measured = true; }
+            }
+
+            return measured;
         }
 
         private static void TileBounds(GameObject prefab, Transform root, string name, MapSpace space, float[] tile, float y, MapRule rule = null)
@@ -879,15 +977,7 @@ namespace DoodleUp.Editor
             var placed = Place(prefab, root, name, BoundsCenter(space.bounds));
             if (placed == null || space.door == null) return;
 
-            var measured = false;
-            var box = new Bounds();
-            foreach (var renderer in placed.GetComponentsInChildren<MeshRenderer>(true))
-            {
-                if (measured) box.Encapsulate(renderer.bounds);
-                else { box = renderer.bounds; measured = true; }
-            }
-
-            if (!measured) return;
+            if (!TryMeasure(placed.transform, out var box)) return;
             placed.transform.position += EndWallShift(space.bounds, space.door.position, box, FeatureWallInset);
         }
         private static Vector3 Vector(float[] values) => new(values[0], values[1], values[2]);
