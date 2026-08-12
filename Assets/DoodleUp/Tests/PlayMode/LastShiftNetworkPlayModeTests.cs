@@ -145,7 +145,9 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(resetItem.IsClaimed, Is.False);
             Assert.That(resetItem.NetworkObject.OwnerClientId, Is.EqualTo(NetworkManager.ServerClientId));
             var resetOffset = player.transform.position - LastShiftNetworkSession.SpawnForSlot(0);
-            Assert.That(Vector2.Distance(new Vector2(resetOffset.x, resetOffset.z), Vector2.zero), Is.LessThan(0.001f));
+            Assert.That(Vector2.Distance(new Vector2(resetOffset.x, resetOffset.z), Vector2.zero), Is.LessThan(0.001f),
+                $"리셋이 슬롯 자리로 안 돌려놨다 — 실제={player.transform.position.ToString("F3")} " +
+                $"기대={LastShiftNetworkSession.SpawnForSlot(0).ToString("F3")} 차이={resetOffset.ToString("F3")}");
             Assert.That(Mathf.Abs(resetOffset.y), Is.LessThan(0.05f));
             Assert.That(networkSandbox.Snapshot.Preset, Is.EqualTo(LastShiftPreset.BadAttitudeHighOxygen));
             Assert.That(networkSandbox.Snapshot.ResetGeneration, Is.EqualTo(generationBeforeReset + 1));

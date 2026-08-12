@@ -321,7 +321,7 @@ namespace DoodleUp.Runtime
             if (player == null || !slotAllocator.TryGet(player.OwnerClientId, out var slot)) return;
             var controller = player.GetComponent<LastShiftPlayerController>();
             var pose = player.GetComponent<LastShiftMapSpawnPose>();
-            var position = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+            var position = SettleOnDeck(slot, pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot));
             var rotation = pose != null ? pose.RotationFor(position) : RotationForSlot(slot);
             // <b>CharacterController 를 켠 채 transform 만 옮기지 않는다.</b> PhysX 컨트롤러는
             // 옮기기 전 자세를 자기 안에 들고 있어서, 물리 동기화 전에 그 프레임의 첫 Move 가
@@ -331,31 +331,44 @@ namespace DoodleUp.Runtime
             if (controller != null) controller.ResetPlayer(position, rotation);
             else player.transform.SetPositionAndRotation(position, rotation);
             UnityEngine.Physics.SyncTransforms();
-            WarnWhenSpawnHasNoDeck(slot, position);
             sandbox?.RegisterPlayer(controller);
             if (HasArgument("-lastShiftLifecycleProbe"))
                 Debug.Log($"[LAST_SHIFT_SLOT] client={player.OwnerClientId} slot={slot} phase=assigned active={slotAllocator.Count}");
         }
 
         /// <summary>
-        /// 스폰 자리 밑에 실제로 밟을 것이 있는지 본다. 좌표는 <see cref="LastShiftShipDimensions.SpawnPoint"/>
-        /// 하나에서 나오지만 그 좌표를 덮는 갑판은 씬(배 프리팹) 몫이라, 배가 다시 구워지면서
-        /// 조종석 방 갑판이 갈리면 좌표만 맞고 밑은 비어 있는 상태가 조용히 성립한다.
-        /// 그때 화면에 보이는 것은 "방을 열자마자 승무원이 떨어진다" 뿐이라 원인을 못 가린다.
+        /// 스폰 좌표를 <b>실제 갑판 윗면에 맞춰 돌려준다</b>. 밟을 것이 없으면 좌표를 그대로
+        /// 두고 소리친다.
+        ///
+        /// <b>왜 맞춰야 하는가.</b> <see cref="LastShiftShipDimensions.SpawnPoint"/> 의 <c>y</c> 는
+        /// 코드가 든 값이지만 갑판 윗면은 <b>아트 판에서 임포트 때 뽑는다</b>
+        /// (<c>LastShiftModularKitImporter.PanelTopY</c>). 둘이 어긋나면 승무원이 갑판에 몇 cm
+        /// 박힌 채로 서고, PhysX 가 그 겹침을 밀어내면서 <b>옆으로도 밀린다</b> — 판 이음매
+        /// 위라면 더 크게 밀린다. 스폰을 숙소로 옮겼을 때 실제로 <c>0.49m</c> 가 밀렸고,
+        /// 화면에서는 "가끔 딴 데서 깨어난다" 로만 보인다.
+        ///
+        /// 그래서 <b>리터럴을 고치지 않는다</b>. 아트가 판 두께를 바꾸면 이 자리가 같이
+        /// 따라와야지, 코드 상수를 다시 재는 일이 반복되면 안 된다.
+        ///
+        /// 밑이 비어 있는 경우는 여전히 오류다 — 배가 다시 구워지면서 그 방 갑판이 갈리면
+        /// 좌표만 맞고 밑은 비어 있는 상태가 조용히 성립하고, 그때 화면에 보이는 것은
+        /// "방을 열자마자 승무원이 떨어진다" 뿐이라 원인을 못 가린다.
         /// </summary>
-        private static void WarnWhenSpawnHasNoDeck(int slot, Vector3 position)
+        private static Vector3 SettleOnDeck(int slot, Vector3 position)
         {
             var origin = position + Vector3.up * DeckProbeRise;
             if (UnityEngine.Physics.Raycast(origin, Vector3.down, out var hit, DeckProbeRise + DeckProbeDrop))
             {
                 if (HasArgument("-lastShiftLifecycleProbe"))
-                    Debug.Log($"[LAST_SHIFT_SPAWN_DECK] slot={slot} deck={hit.collider.name} y={hit.point.y:F2} result=OK");
-                return;
+                    Debug.Log($"[LAST_SHIFT_SPAWN_DECK] slot={slot} deck={hit.collider.name} " +
+                              $"y={hit.point.y:F3} was={position.y:F3} result=OK");
+                return new Vector3(position.x, hit.point.y, position.z);
             }
 
             Debug.LogError(
                 $"[LAST_SHIFT_SPAWN_DECK] slot={slot} spawn={position} result=NO_DECK " +
                 $"detail=스폰 좌표 아래 {DeckProbeRise + DeckProbeDrop:F1}m 안에 콜라이더가 없다");
+            return position;
         }
 
         public void UnregisterPlayer(LastShiftNetworkPlayer player)
@@ -403,7 +416,8 @@ namespace DoodleUp.Runtime
                 if (player == null) continue;
 
                 var pose = player.GetComponent<LastShiftMapSpawnPose>();
-                var position = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+                var position = SettleOnDeck(slot,
+                    pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot));
                 var rotation = pose != null ? pose.RotationFor(position) : RotationForSlot(slot);
                 player.ResetServerAimCache(position, rotation);
                 player.ResetToSlotRpc(position, rotation);
@@ -434,7 +448,8 @@ namespace DoodleUp.Runtime
                 var player = client.Value.PlayerObject.GetComponent<LastShiftNetworkPlayer>();
                 if (player == null) continue;
                 var pose = player.GetComponent<LastShiftMapSpawnPose>();
-                var slotPosition = pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot);
+                var slotPosition = SettleOnDeck(slot,
+                    pose != null ? pose.SpawnForSlot(slot) : SpawnForSlot(slot));
                 var slotRotation = pose != null ? pose.RotationFor(slotPosition) : RotationForSlot(slot);
                 // 실제 이동은 소유 클라이언트가 수행한다. 서버는 조준 캐시만 리셋 자세로 맞춰
                 // owner 보고가 도착하기 전 stale 조준으로 grab 이 판정되는 것을 막는다.
