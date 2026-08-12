@@ -127,6 +127,36 @@ namespace DoodleUp.Runtime
             // LastShiftTutorial.LeavePort() 를 부르므로, 앞에 두면 그 자리에서 도로 꺼진다.
             // 이미 끝낸 세이브면 무장 자체가 안 선다(조항 T-6).
             LastShiftTutorial.BeginVoyage();
+            OpenFirstPort();
+        }
+
+        /// <summary>
+        /// 새 항해는 <b>정박한 채로</b> 시작한다 — 아직 출항 전이다.
+        ///
+        /// <b>이 줄이 없어서 프롤로그가 안 떴다.</b> 기상 도입부를 여는 유일한 문이
+        /// <see cref="LastShiftTutorial.ArriveAtPort"/> 이고, 그것을 부르는 자리가
+        /// <see cref="SettleSegment"/> 하나뿐이었다. 그런데 새 항해는 바로 위
+        /// <see cref="EnterSegment"/> 로 <b>이미 출항한 상태</b>가 되므로, 실제로는 첫 구간을
+        /// 몇 분간 날아 도킹에 성공해야만 프롤로그가 뜬다 — 방을 만들자마자 시작한 판에서
+        /// 아무 연출도 안 나오던 것이 그 상태다. 지금까지의 온보딩 검사가 이 간극을 못 잡은
+        /// 이유는 전부 <c>BeginVoyage</c> 직후 <c>SettleSegment</c> 를 손으로 강제했기 때문이다.
+        ///
+        /// <b>기항을 별도 상태로 새로 만들지 않았다.</b> 이 구조에서 기항은 이미 "구간 N 위에
+        /// 얹힌 상태" 이고(<see cref="SettleSegment"/> 도 회차를 안 올리고 기항을 연다), 여기에
+        /// 네 번째 상태를 더하면 곧 갈아치울 시스템(도킹 제거 마이그레이션)에 부채만 남는다.
+        ///
+        /// <b>여력 수입은 안 넣는다.</b> <see cref="LastShiftMaintenance.ArriveAtPort"/> 는 구간
+        /// 하나를 날아낸 대가라, 아직 아무것도 안 난 항해에 주면 공짜 수입이 된다. 항해 시작의
+        /// 여력은 <see cref="LastShiftMaintenance.BeginVoyage"/> 가 이미 <c>0</c> 으로 잡았다.
+        ///
+        /// 순서가 뒤집히면 안 된다 — 잔해 총량이 조항 <c>T-5</c> 의 인원 배수를 타므로
+        /// (<see cref="LastShiftSalvage.FieldChunks"/>) 튜토리얼 1단계가 이미 열려 있어야
+        /// 그 배수가 걸린다. <see cref="SettleSegment"/> 안의 순서와 같은 이유다.
+        /// </summary>
+        private static void OpenFirstPort()
+        {
+            LastShiftTutorial.ArriveAtPort();
+            LastShiftSalvage.ArriveAtPort(CurrentPreset);
         }
 
         /// <summary>

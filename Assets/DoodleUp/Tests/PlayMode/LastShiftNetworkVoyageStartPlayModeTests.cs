@@ -101,11 +101,12 @@ namespace DoodleUp.Tests.PlayMode
 
             Assume.That(LastShiftTutorial.IsArmed, Is.True, "무장 자체가 안 됐다");
 
-            // 첫 기항 도착. 비네트워크 경로가 쓰는 것과 같은 문이다.
-            LastShiftVoyage.SettleSegment(LastShiftVerdict.SuccessNominalDocking, 2);
-
+            // <b>SettleSegment 를 손으로 안 부른다.</b> 예전 검사는 여기서 구간 판정을 강제해
+            // 프롤로그를 열었는데, 그 강제가 정확히 게임에는 없는 단계라 "검사는 초록인데
+            // 방을 만들면 아무 연출도 안 나오는" 상태를 못 잡았다. 방을 만든 그 순간에
+            // 이미 돌고 있어야 한다.
             Assert.That(LastShiftWakeSequence.IsRunning, Is.True,
-                "무장은 됐는데 기항 도착이 프롤로그를 안 열었다");
+                "호스트로 방을 만들었는데 프롤로그가 안 돈다 — 새 항해가 이미 출항한 상태로 열렸다");
             Assert.That(LastShiftTutorial.Step, Is.Not.EqualTo(LastShiftTutorialStep.None),
                 "튜토리얼 단계가 안 열렸다");
         }
