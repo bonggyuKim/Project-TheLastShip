@@ -43,7 +43,24 @@ namespace DoodleUp.Runtime
             if (sandbox != null) sandbox.enabled = IsServer;
             if (IsServer)
             {
-                if (sandbox.ResetGeneration == 0) sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
+                if (sandbox.ResetGeneration == 0)
+                {
+                    // <b>항해를 여기서 연다.</b> 비네트워크 <c>Start()</c> 는
+                    // <c>BeginVoyage(); ResetPreset(CurrentPreset)</c> 순서로 부르는데, 그
+                    // <c>Start()</c> 는 NetworkObject 가 붙어 있으면 첫 줄에서 반환하므로
+                    // 네트워크 경로에는 <c>BeginVoyage</c> 를 부르는 자리가 아예 없었다.
+                    //
+                    // 그 한 줄이 빠지면 <c>LastShiftTutorial.armed</c> 가 안 서고, armed 가
+                    // 거짓이면 <c>LastShiftTutorial.ArriveAtPort</c> 가 매번 조기 반환한다 —
+                    // 그 안에 기상 도입부·내레이션 디렉터·순회·상시 라인이 전부 들어 있어서,
+                    // <b>호스트로 시작한 판은 프롤로그부터 튜토리얼 전체가 통째로 죽어 있었다</b>.
+                    // 사용자가 방을 만들어 재현한 그 상태다.
+                    //
+                    // 프리셋도 리터럴 대신 항해에서 받는다. 두 경로가 서로 다른 구간으로
+                    // 시작하면 같은 판을 두 벌로 설명하게 된다.
+                    LastShiftVoyage.BeginVoyage();
+                    sandbox.ResetPreset(LastShiftVoyage.CurrentPreset);
+                }
                 PublishSnapshot();
             }
             else if (sandbox != null) sandbox.ApplyNetworkSnapshot(snapshot.Value);
