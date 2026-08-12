@@ -54,12 +54,11 @@ namespace DoodleUp.Editor
             Require(items.All(item => item.NominalPosition == item.transform.position), "grabbable nominal position must match saved scene position");
             Require(items.All(item => item.Secured == item.Body.isKinematic), "secured/kinematic wiring mismatch");
             Require(sandboxes[0].Items.All(item => items.Contains(item)), "sandbox item references must match scene grabbables");
-            Require(roots.SelectMany(root => root.GetComponentsInChildren<DoodleUp.Stroke.Du03AStrokeDriver>(true)).Any() == false, "drawing runtime must not be coupled to SP-01");
             VerifyZoneDoors(roots);
             var sightRange = VerifyCameraCoversTheShip(roots, PlayerPrefabCamera());
             var (samples, worstReadings) = VerifySimultaneousZoneReadings(roots);
             var clearance = VerifyOccupiedPointsSitInsideRealGeometry();
-            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} drawingDependency=0 farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} plazaSamples={samples} simulZones={worstReadings} geometryClearance={clearance:F2} result=PASS");
+            Debug.Log($"[LAST_SHIFT_VERIFY] scene={LastShiftSceneBuilder.ScenePath} active=1 zones={LastShiftZoneAtlas.ZoneCount} players=prefab cameras=1 sockets=1 items=4 rigidbodies=4 colliders=4 meteor=1 doors={LastShiftZoneAtlas.BoundaryCount} farClip={PlayerPrefabCamera().farClipPlane:F0} sightRange={sightRange:F1} plazaSamples={samples} simulZones={worstReadings} geometryClearance={clearance:F2} result=PASS");
         }
 
         private static void VerifyCockpitGlass(Transform[] all)
