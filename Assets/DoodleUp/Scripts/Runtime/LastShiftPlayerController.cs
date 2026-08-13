@@ -908,9 +908,16 @@ namespace DoodleUp.Runtime
         private static Vector3 AnchorTopOf(Component target, Vector3 fallback)
         {
             if (target == null) return fallback;
-            var renderer = target.GetComponentInChildren<Renderer>();
-            if (renderer != null)
-                return new Vector3(renderer.bounds.center.x, renderer.bounds.max.y, renderer.bounds.center.z);
+            // <b>렌더러 하나가 아니라 전부를 감싼다.</b> 실물 모델로 갈아 낀 부품은 몸통·손잡이·
+            // 가드가 각각 렌더러라, 첫 렌더러만 보면 몸통 윗면(냉각통 기준 실제 높이의 약 3/4)에
+            // 안내가 떠 물건을 덮는다.
+            var renderers = target.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                var bounds = renderers[0].bounds;
+                for (var i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                return new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            }
             var collider = target.GetComponentInChildren<Collider>();
             if (collider != null)
                 return new Vector3(collider.bounds.center.x, collider.bounds.max.y, collider.bounds.center.z);

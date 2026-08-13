@@ -1184,13 +1184,15 @@ namespace DoodleUp.Editor
         /// </summary>
         private readonly struct ItemSpec
         {
-            public ItemSpec(string name, LastShiftItemRole role, Vector3 position, Vector3 scale, Color color)
+            public ItemSpec(string name, LastShiftItemRole role, Vector3 position, Vector3 scale, Color color,
+                string visualModelPath = null)
             {
                 Name = name;
                 Role = role;
                 Position = position;
                 Scale = scale;
                 Color = color;
+                VisualModelPath = visualModelPath;
             }
 
             public string Name { get; }
@@ -1198,18 +1200,31 @@ namespace DoodleUp.Editor
             public Vector3 Position { get; }
             public Vector3 Scale { get; }
             public Color Color { get; }
+
+            /// <summary>
+            /// 실물 모델 경로. 비어 있으면 프리미티브 상자 그대로 굽는다 — 아직 모델이 없는
+            /// 부품이 있어서, "모델이 생기면 여기 한 줄" 이 교체의 전부가 되게 둔다.
+            /// </summary>
+            public string VisualModelPath { get; }
         }
 
         private static ItemSpec[] ItemSpecs => new[]
         {
             new ItemSpec("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f)),
-            new ItemSpec("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f)),
+            new ItemSpec("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f),
+                CoolingCanisterModelPath),
             new ItemSpec("PatchPlate", LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal, new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f)),
             new ItemSpec("Tether", LastShiftItemRole.Tether, TetherSpawnPosition, new Vector3(0.25f, 0.25f, 1.2f), new Color(0.95f, 0.30f, 0.22f))
         };
 
         public static string ItemPrefabPath(LastShiftItemRole role) =>
             $"Assets/DoodleUp/Prefabs/LastShiftItem_{role}.prefab";
+
+        /// <summary>
+        /// 냉각통 실물. 아트가 구운 재사용 프리팹을 그대로 인스턴스화한다(FBX 를 직접 물지 않는다) —
+        /// 실물의 소유는 아트 쪽에 두고, 여기서는 게임플레이 컴포넌트만 얹는다.
+        /// </summary>
+        public const string CoolingCanisterModelPath = "Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_CoolingCanister.prefab";
 
         /// <summary>
         /// 부품 정위치의 정본. <see cref="CreateItems"/> 가 새로 놓을 때 쓰는 값과 <b>같은 출처</b>이며,
@@ -1323,7 +1338,10 @@ namespace DoodleUp.Editor
             item.name = name;
             item.transform.position = Vector3.zero;
             item.transform.localScale = spec.Scale;
-            item.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial($"LS_{name}", spec.Color);
+            if (string.IsNullOrEmpty(spec.VisualModelPath))
+                item.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial($"LS_{name}", spec.Color);
+            else
+                AttachProductionVisual(item, spec);
             var body = item.AddComponent<Rigidbody>();
             body.mass = role == LastShiftItemRole.Battery ? 8f : 3f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -1340,6 +1358,75 @@ namespace DoodleUp.Editor
             item.AddComponent<LastShiftOwnerNetworkTransform>();
             item.AddComponent<LastShiftNetworkGrabbable>();
             return item;
+        }
+
+        /// <summary>
+        /// 프리미티브 상자를 실물 모델로 갈아 끼운다. <b>루트는 건드리지 않는다</b> —
+        /// 판정 상자(<c>BoxCollider</c> 1m 정육면체 × 루트 스케일)와 무게 판정
+        /// (<see cref="LastShiftPlayerController.IsBulky"/> 이 <c>transform.localScale</c> 을 읽는다)이
+        /// 둘 다 루트 스케일에 걸려 있어서, 여기서 루트를 1 로 펴면 냉각통이 조용히
+        /// "부피 큰 물건" 에서 빠지고 이동 속도 규칙이 바뀐다. 그래서 보이는 것만 바꾸고
+        /// 비균일 스케일은 자식에서 되돌린다.
+        /// </summary>
+        private static void AttachProductionVisual(GameObject item, ItemSpec spec)
+        {
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(spec.VisualModelPath);
+            if (model == null)
+                throw new System.InvalidOperationException($"{spec.Name} 실물 모델이 없다: {spec.VisualModelPath}");
+
+            Object.DestroyImmediate(item.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(item.GetComponent<MeshFilter>());
+
+            var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            visual.name = ItemVisualName;
+            visual.transform.SetParent(item.transform, false);
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;
+            // <b>실물 프리팹 루트만 되돌린다.</b> 그 안의 모델 루트는 임포터가 준 축·단위 변환
+            // (Blender Z-up 을 세우는 -90° X 와 100 배)을 그대로 들고 있어야 한다 — 그것을 1 로
+            // 펴면 통이 1/100 크기로 누워 들어온다. 대각 스케일 둘이 이웃해 곱해지므로
+            // 루트 × 역수 = 항등이고, 아래 회전에 전단이 생기지 않는다.
+            visual.transform.localScale = new Vector3(1f / spec.Scale.x, 1f / spec.Scale.y, 1f / spec.Scale.z);
+            // 실물 프리팹이 들고 온 판정 형상은 버린다. 부품의 잡기·충돌 판정은 루트
+            // BoxCollider 하나이고, 자식 콜라이더가 남으면 같은 Rigidbody 의 복합 형상에
+            // 끼어들어 판정이 둘로 갈린다.
+            foreach (var nested in visual.GetComponentsInChildren<Collider>(true))
+                Object.DestroyImmediate(nested);
+
+            var bounds = CombinedRendererBounds(visual);
+            // 판정 상자 바닥에 실물 바닥을 맞춘다. 루트 피벗은 상자 중심이므로 바닥은 -높이/2 다.
+            // 월드 보정량을 부모 스케일로 나눠 로컬로 되돌린다.
+            var worldOffset = new Vector3(-bounds.center.x, -spec.Scale.y * 0.5f - bounds.min.y, -bounds.center.z);
+            visual.transform.localPosition = new Vector3(
+                worldOffset.x / spec.Scale.x, worldOffset.y / spec.Scale.y, worldOffset.z / spec.Scale.z);
+
+            var measured = CombinedRendererBounds(visual);
+            Debug.Log($"[LAST_SHIFT_ITEM_VISUAL] role={spec.Role} model={System.IO.Path.GetFileName(spec.VisualModelPath)} " +
+                      $"size={measured.size:F3} center={measured.center:F3} box={spec.Scale:F2}");
+            // 실물이 판정 상자보다 크면 눈에 보이는 물건이 벽을 통과한다. 조용히 굽지 말고
+            // 굽는 자리에서 실측으로 막는다 — 실물 자산이 바뀌었을 때 여기서 먼저 걸린다.
+            if (measured.size.x > spec.Scale.x + 0.02f || measured.size.y > spec.Scale.y + 0.02f ||
+                measured.size.z > spec.Scale.z + 0.02f || measured.size.y < spec.Scale.y * 0.5f)
+                throw new System.InvalidOperationException(
+                    $"{spec.Name} 실물이 판정 상자에 안 맞는다 — 실측 {measured.size:F3}, 상자 {spec.Scale:F2}. " +
+                    $"{spec.VisualModelPath} 의 축·단위 변환을 확인해야 한다.");
+        }
+
+        /// <summary>부품 실물이 들어가는 자식 이름. 테스트와 빌더가 같은 문자열을 본다.</summary>
+        public const string ItemVisualName = "Visual";
+
+        /// <summary>
+        /// 자식 렌더러 전부를 감싸는 월드 AABB. 실물은 부품이 여럿이라 첫 렌더러만 보면
+        /// 몸통 하나의 크기를 물건 전체 크기로 착각한다.
+        /// </summary>
+        public static Bounds CombinedRendererBounds(GameObject root)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+                throw new System.InvalidOperationException($"{root.name} 에 렌더러가 없다 — 실물 모델 임포트가 비었다.");
+            var bounds = renderers[0].bounds;
+            for (var i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            return bounds;
         }
 
         private static GameObject CreateCube(string name, Transform parent, Vector3 localPosition, Vector3 scale, Material material)
