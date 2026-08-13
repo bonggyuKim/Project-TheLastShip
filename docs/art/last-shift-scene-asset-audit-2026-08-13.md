@@ -5,13 +5,13 @@
 ## 집계
 
 - 씬: 2개
-- 재귀 참조 에셋/프리팹: 65개
-- 중첩 프리팹 고유 오브젝트 이름(최하위 포함): 312개
+- 재귀 참조 에셋/프리팹: 66개
+- 중첩 프리팹 고유 오브젝트 이름(최하위 포함): 313개
 - Ship prefab 직렬화 GameObject: 100개
 - 드레싱 슬롯: 106개
-- map 사용 modular asset ID: 18개
+- map 사용 modular asset ID: 19개
 - 폴더 내 modular prefab: 35개
-- map 미사용 modular prefab: 17개 (프로젝트 라이브러리 보관, 씬 배치 없음)
+- map 미사용 modular prefab: 16개 (프로젝트 라이브러리 보관, 씬 배치 없음)
 - 금지/레거시 씬 오브젝트 발견: 0개
 - gameplay blocker 문 루트: 3개 (ZoneDoor_B1, ZoneDoor_B2, ZoneDoor_B0)
 - map 문 슬롯 / 정상 문 visual 인스턴스: 5개 / 5개
@@ -31,6 +31,7 @@
 | `LPK_EVA_ConningTower_3m` | 사용 |
 | `LPK_EVA_TopHatch_1p6m` | 사용 |
 | `LPK_Floor_Square_2m` | 사용 |
+| `LPK_Hull_Exterior_Curve90` | 사용 |
 | `LPK_Hull_Exterior_Panel_4m` | 사용 |
 | `LPK_LifeSupport_Scrubber` | 사용 |
 | `LPK_OxygenLeakPipe_2m` | 사용 |
@@ -52,7 +53,6 @@
 - `LPK_Floor_Curve_45` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Floor_Transition_2m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Hull_Exterior_Curve45` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
-- `LPK_Hull_Exterior_Curve90` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Hull_WindowBay_4m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_SalvagePad_4m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Support_Pillar` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존

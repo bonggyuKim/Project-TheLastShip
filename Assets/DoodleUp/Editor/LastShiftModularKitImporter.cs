@@ -394,6 +394,7 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
+                else if (rule.operation == "assembleNoseCap") AssembleNoseCap(p[rule.assetId], root, rule);
                 else
                 {
                     var placed = Place(p[rule.assetId], root, rule.id,
@@ -429,6 +430,21 @@ namespace DoodleUp.Editor
             RemoveInteriorWallsCoveredByShell(root);
             BuildDeckCollision(map, spaces, p, root);
             ReportDressingInsideFeatures(root, PanelTopY(p["LPK_Floor_Square_2m"]));
+        }
+
+        /// <summary>
+        /// 조종석 끝의 평평한 외피를 두 개의 90도 숄더로 감싸 선수 실루엣을 닫는다.
+        /// 한 덩어리를 늘이지 않고 좌우 부재를 거울 배치해 곡률과 패널 밀도를 보존한다.
+        /// 중앙 이음은 기존 선수 외피가 맡고, 캡은 창이 있는 z-측면까지 돌아가지 않는다.
+        /// </summary>
+        private static void AssembleNoseCap(GameObject prefab, Transform root, MapRule rule)
+        {
+            var center = Vector(rule.position);
+            const float shoulderOffset = 2f;
+            Place(prefab, root, rule.id + "_Port", center + Vector3.back * shoulderOffset,
+                rule.rotationY, VectorOrOne(rule.scale));
+            Place(prefab, root, rule.id + "_Starboard", center + Vector3.forward * shoulderOffset,
+                rule.rotationY + 180f, VectorOrOne(rule.scale));
         }
 
         /// <summary>

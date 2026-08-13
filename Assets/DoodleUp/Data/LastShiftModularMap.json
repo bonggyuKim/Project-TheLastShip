@@ -253,9 +253,9 @@
       "id": "cockpitWindow",
       "assetId": "LPK_Cockpit_ViewWindow_4m",
       "position": [
-        -13,
+        -11,
         0,
-        -3.8
+        -4.2
       ],
       "rotationY": 0
     },
@@ -263,11 +263,27 @@
       "id": "cockpitMirror",
       "assetId": "LPK_Cockpit_WallMirror_1m",
       "position": [
-        -15.93,
+        -6.07,
         1.0,
+        2.55
+      ],
+      "rotationY": -90
+    },
+    {
+      "id": "noseCap",
+      "assetId": "LPK_Hull_Exterior_Curve90",
+      "operation": "assembleNoseCap",
+      "position": [
+        -16.2,
+        0,
         0
       ],
-      "rotationY": 90
+      "rotationY": 90,
+      "scale": [
+        1,
+        1,
+        1
+      ]
     },
     {
       "id": "outerShell",
