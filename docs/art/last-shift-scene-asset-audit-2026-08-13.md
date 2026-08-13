@@ -14,7 +14,7 @@
 - map 미사용 modular prefab: 17개 (프로젝트 라이브러리 보관, 씬 배치 없음)
 - 금지/레거시 씬 오브젝트 발견: 0개
 - gameplay blocker 문 루트: 3개 (ZoneDoor_B1, ZoneDoor_B2, ZoneDoor_B0)
-- map 문 슬롯 / 정상 문 visual 인스턴스: 5개 / 
+- map 문 슬롯 / 정상 문 visual 인스턴스: 5개 / 5개
 - 비단위 Transform 후보: 59개 (생성된 치수형 primitive 포함; Unity 검증과 함께 판정)
 
 ## map 카탈로그 대조
