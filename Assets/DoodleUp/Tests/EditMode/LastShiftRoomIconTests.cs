@@ -100,15 +100,68 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>머리표 두 줄이 방 여섯 전부에 들어간다.</b> 지금 배율에서 아이콘이 떨어지는 방이
-        /// 하나라도 생기면 지도가 방마다 다른 줄 수로 읽히므로, 그 순간을 여기서 잡는다.
+        /// <b>격자 일곱이 전부 <c>8x8</c> 정사각이다.</b> 줄이 하나 짧으면 그 줄을 읽다가 터지고,
+        /// 하나 길면 남는 칸이 조용히 안 그려져서 화면의 아이콘이 문서 §3.3 과 다른 모양이 된다.
+        /// 둘 다 격자를 손보는 사람이 오타 하나로 내는 사고다.
+        ///
+        /// 문서가 적은 격자는 아홉이지만 나머지 둘(화살표 <c>↑</c>·<c>↗</c>, §6)은 <c>7x7</c> 이고
+        /// 카드 C 몫이라 여기 없다.
+        /// </summary>
+        [Test]
+        public void EveryGridIsSquare()
+        {
+            foreach (var space in AllSpaces)
+                Assert.That(LastShiftRoomIcons.IsSquareGrid(space), Is.True,
+                    $"{space} 격자가 {LastShiftRoomIcons.GridSize}x{LastShiftRoomIcons.GridSize} 정사각이 아니다");
+
+            Assert.That(LastShiftRoomIcons.ShaftIsSquareGrid(), Is.True,
+                "승강구 격자가 정사각이 아니다");
+        }
+
+        /// <summary>
+        /// <b>머리표 두 줄이 방 여섯 전부에 들어간다 — <c>720p</c> 에서도.</b> 지도는 화면 짧은
+        /// 변의 <c>0.74</c> 배 정사각이라 <b>세로가 짧은 화면일수록 배율이 준다</b>. 흔한 화면
+        /// 중에서는 <c>720p</c> 가 가장 빡빡하므로, 거기서 안 걸리는 것을 재야 실측이 된다 —
+        /// <c>1080p</c> 만 재면 <c>17.4px/m</c> 라 여유가 실제보다 <c>1.5</c> 배로 보인다.
         /// </summary>
         [Test]
         public void EveryRoomFitsTheTwoLineHeader()
         {
-            foreach (var room in RoomRects())
+            foreach (var screen in new[] { new Vector2(1280f, 720f), Screen })
+            foreach (var room in RoomRects(screen))
                 Assert.That(LastShiftMapView.FitsIcon(room.Rect), Is.True,
-                    $"{room.Space} 에 아이콘이 안 들어간다 — 지도 배율이 줄었다");
+                    $"{screen.x}x{screen.y} 의 {room.Space} 에 아이콘이 안 들어간다 — 지도 배율이 줄었다");
+        }
+
+        /// <summary>
+        /// <b>배율 여유 실측.</b> 문서 §3.2 가 적어 둔 수 — <c>720p</c> 에서 <c>11.6px/m</c>,
+        /// 가장 얕은 방(숙소, <c>z 6~12</c>)이 <c>70</c>px, 필요 <c>47</c>px, 여유 <c>23</c>px —
+        /// 이 실제 좌표에서 나오는지를 잰다.
+        ///
+        /// <b>여유를 수로 박아 두는 것이 요점이다.</b> <see cref="EveryRoomFitsTheTwoLineHeader"/>
+        /// 는 <c>1</c>px 만 남아도 통과하므로, 배가 커지거나 <c>ScreenFraction</c> 이 줄어서
+        /// 여유가 야금야금 깎이는 것을 못 잡는다.
+        /// </summary>
+        [Test]
+        public void TheShallowestRoomKeepsItsHeaderMarginAt720p()
+        {
+            var plan = LastShiftMapView.Schematic(new Vector2(1280f, 720f));
+
+            Assert.That(plan.PixelsPerMeter, Is.EqualTo(11.6f).Within(0.1f),
+                $"720p 지도 배율이 문서와 다르다 — {plan.PixelsPerMeter:0.00}px/m");
+            Assert.That(LastShiftMapView.RoomHeaderHeight, Is.EqualTo(47f).Within(0.01f),
+                "머리표 두 줄이 먹는 높이가 문서 §3.2 의 47px 과 다르다");
+
+            var shallowest = RoomRects(new Vector2(1280f, 720f))
+                .OrderBy(room => room.Rect.height).First();
+
+            Assert.That(shallowest.Space, Is.EqualTo(LastShiftPlazaSpace.Quarters),
+                "가장 얕은 방이 숙소가 아니다 — 문서의 실측 대상이 바뀌었다");
+            Assert.That(shallowest.Rect.height, Is.EqualTo(70f).Within(1f),
+                $"720p 숙소 높이가 문서와 다르다 — {shallowest.Rect.height:0.0}px");
+            Assert.That(shallowest.Rect.height - LastShiftMapView.RoomHeaderHeight,
+                Is.GreaterThanOrEqualTo(20f),
+                $"가장 얕은 방의 머리표 여유가 깎였다 — {shallowest.Rect.height - LastShiftMapView.RoomHeaderHeight:0.0}px");
         }
 
         /// <summary>
@@ -224,9 +277,11 @@ namespace DoodleUp.Tests.EditMode
             return new string(cells.ToArray());
         }
 
-        private static (LastShiftPlazaSpace Space, Rect Rect)[] RoomRects()
+        private static (LastShiftPlazaSpace Space, Rect Rect)[] RoomRects() => RoomRects(Screen);
+
+        private static (LastShiftPlazaSpace Space, Rect Rect)[] RoomRects(Vector2 screen)
         {
-            var plan = LastShiftMapView.Schematic(Screen);
+            var plan = LastShiftMapView.Schematic(screen);
             return LastShiftPlazaLayout.Footprints
                 .Select(footprint => (footprint.Space,
                     plan.ToScreenRect(footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ)))

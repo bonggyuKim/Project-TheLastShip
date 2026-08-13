@@ -54,11 +54,16 @@ namespace DoodleUp.Runtime
         public const float LabelPadding = 4f;
 
         /// <summary>
-        /// 머리표 두 줄이 다 들어가는 방의 최소 높이(px). <c>테두리+여유(6) + 아이콘(18) +
+        /// 머리표 두 줄이 다 들어가는 방의 최소 높이(px). <c>테두리(2) + 여유(4) + 아이콘(18) +
         /// 이름(19) + 여유(4) = 47</c>.
+        ///
+        /// <b>아래쪽에 테두리 몫을 안 더한다.</b> 위는 테두리 안쪽에서 여유를 재야 글자가 선에
+        /// 붙어 보이지 않지만, 아래는 이름 아래 <see cref="LabelPadding"/> 만 있으면 아래
+        /// 테두리(<c>2</c>px)와 <c>2</c>px 떨어져서 겹칠 일이 없다. 대칭으로 <c>49</c>px 를 걸면
+        /// 문서가 실측한 여유(<c>720p</c> 숙소 <c>70</c>px 에 <c>23</c>px)와 <c>2</c>px 갈린다.
         /// </summary>
         public const float RoomHeaderHeight =
-            (RoomOutline + LabelPadding) * 2f + RoomIconBox + RoomNameLine;
+            RoomOutline + LabelPadding + RoomIconBox + RoomNameLine + LabelPadding;
 
         /// <summary>
         /// 이 방에 아이콘까지 들어가는가. <b>안 들어가면 아이콘을 떨구고 이름만 남긴다</b> —

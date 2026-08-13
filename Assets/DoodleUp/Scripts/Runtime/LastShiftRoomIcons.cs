@@ -135,6 +135,24 @@ namespace DoodleUp.Runtime
         /// <summary>이번 격자에서 이미 어느 조각에 먹힌 셀. 접는 동안만 쓰고 매번 지운다.</summary>
         private static readonly bool[] Taken = new bool[GridSize * GridSize];
 
+        /// <summary>
+        /// 이 방 격자가 <see cref="GridSize"/> 정사각인가. <b>줄 수나 줄 길이가 어긋나면 셀
+        /// 좌표가 그림과 갈린다</b> — 짧은 줄은 읽다가 터지고, 긴 줄은 남는 칸이 조용히 안
+        /// 그려져서 아이콘이 문서와 다른 모양이 된다. 격자를 손볼 때 그 어긋남을 잡는 자리다.
+        /// </summary>
+        public static bool IsSquareGrid(LastShiftPlazaSpace space) => Square(MaskOf(space));
+
+        /// <summary>승강구 격자도 같은 정사각인가.</summary>
+        public static bool ShaftIsSquareGrid() => Square(Shaft);
+
+        private static bool Square(string[] mask)
+        {
+            if (mask.Length != GridSize) return false;
+            foreach (var row in mask)
+                if (row.Length != GridSize) return false;
+            return true;
+        }
+
         /// <summary>이 방 격자의 <paramref name="column"/>·<paramref name="row"/> 셀이 채워졌는가.</summary>
         public static bool Filled(LastShiftPlazaSpace space, int column, int row) =>
             Lit(MaskOf(space), column, row);
