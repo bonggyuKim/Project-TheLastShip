@@ -469,9 +469,6 @@ namespace DoodleUp.Editor
 
             // 배 양 끝의 세로 패널. 조종석 선수 벽과 산소실 선미 벽이고, 둘 사이가 28m 라
             // 각 방 안에서만 보인다.
-            CreateWallPanel("Panel_BowWall", ship,
-                new Vector3(LastShiftShipDimensions.RoomMinX(LastShiftZone.Cockpit) + 0.06f, 1.7f, -0.9f),
-                new Vector3(0.12f, 1.0f, 2.2f), cockpitMaterial.color);
             CreateWallPanel("Panel_SternWall", ship,
                 new Vector3(LastShiftShipDimensions.RoomMaxX(LastShiftZone.LifeSupport) - 0.06f, 1.7f, -0.9f),
                 new Vector3(0.12f, 1.0f, 2.2f), lifeSupportMaterial.color);

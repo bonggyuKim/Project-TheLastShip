@@ -394,7 +394,7 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "spanBounds")
                     foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
-                else if (rule.operation == "assembleNoseCap") AssembleNoseCap(p[rule.assetId], root, rule);
+                else if (rule.operation == "assembleNoseCap") AssembleNoseCap(p, root, rule);
                 else
                 {
                     var placed = Place(p[rule.assetId], root, rule.id,
@@ -433,18 +433,27 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 조종석 끝의 평평한 외피를 두 개의 90도 숄더로 감싸 선수 실루엣을 닫는다.
-        /// 한 덩어리를 늘이지 않고 좌우 부재를 거울 배치해 곡률과 패널 밀도를 보존한다.
-        /// 중앙 이음은 기존 선수 외피가 맡고, 캡은 창이 있는 z-측면까지 돌아가지 않는다.
+        /// 미배치 킷 세 종만으로 조종석 밖에 반원형 머리를 조립한다.
+        /// WindowBay 두 장이 전폭 8m 전면을 만들고, Curve45 네 장이 좌우 어깨를,
+        /// Connector Neck 두 장이 몸통과의 이음을 맡는다. 신규 메시나 스케일 변형은 없다.
         /// </summary>
-        private static void AssembleNoseCap(GameObject prefab, Transform root, MapRule rule)
+        private static void AssembleNoseCap(IReadOnlyDictionary<string, GameObject> prefabs, Transform root, MapRule rule)
         {
             var center = Vector(rule.position);
-            const float shoulderOffset = 2f;
-            Place(prefab, root, rule.id + "_Port", center + Vector3.back * shoulderOffset,
-                rule.rotationY, VectorOrOne(rule.scale));
-            Place(prefab, root, rule.id + "_Starboard", center + Vector3.forward * shoulderOffset,
-                rule.rotationY + 180f, VectorOrOne(rule.scale));
+            var window = prefabs["LPK_Hull_WindowBay_4m"];
+            var shoulder = prefabs["LPK_Hull_Exterior_Curve45"];
+            var neck = prefabs["LPK_Connector_Neck_2m"];
+
+            Place(window, root, rule.id + "_WindowPort", center + Vector3.back * 2f, 90f);
+            Place(window, root, rule.id + "_WindowStarboard", center + Vector3.forward * 2f, 90f);
+
+            Place(shoulder, root, rule.id + "_ShoulderPortOuter", center + new Vector3(0.55f, 0f, -4.65f), 45f);
+            Place(shoulder, root, rule.id + "_ShoulderPortInner", center + new Vector3(2.55f, 0f, -5.75f), 0f);
+            Place(shoulder, root, rule.id + "_ShoulderStarboardOuter", center + new Vector3(0.55f, 0f, 4.65f), 135f);
+            Place(shoulder, root, rule.id + "_ShoulderStarboardInner", center + new Vector3(2.55f, 0f, 5.75f), 180f);
+
+            Place(neck, root, rule.id + "_NeckPort", center + new Vector3(2.2f, 0f, -2f), 90f);
+            Place(neck, root, rule.id + "_NeckStarboard", center + new Vector3(2.2f, 0f, 2f), 90f);
         }
 
         /// <summary>

@@ -31,8 +31,8 @@
 | `LPK_EVA_ConningTower_3m` | 사용 |
 | `LPK_EVA_TopHatch_1p6m` | 사용 |
 | `LPK_Floor_Square_2m` | 사용 |
-| `LPK_Hull_Exterior_Curve90` | 사용 |
 | `LPK_Hull_Exterior_Panel_4m` | 사용 |
+| `LPK_Hull_WindowBay_4m` | 사용 |
 | `LPK_LifeSupport_Scrubber` | 사용 |
 | `LPK_OxygenLeakPipe_2m` | 사용 |
 | `LPK_Power_Switchgear` | 사용 |
@@ -53,7 +53,7 @@
 - `LPK_Floor_Curve_45` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Floor_Transition_2m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Hull_Exterior_Curve45` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
-- `LPK_Hull_WindowBay_4m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
+- `LPK_Hull_Exterior_Curve90` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_SalvagePad_4m` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Support_Pillar` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존
 - `LPK_Wall_Curve_45` — 씬 인스턴스 없음; 다른 제작/검증 용도 가능성이 있어 원본 파일은 보존

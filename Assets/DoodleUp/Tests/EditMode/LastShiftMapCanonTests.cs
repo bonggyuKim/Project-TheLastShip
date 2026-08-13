@@ -61,19 +61,23 @@ namespace DoodleUp.Tests.EditMode
         public void CockpitSightlineFixturesMatchTheRadialRoom()
         {
             var map = JsonUtility.FromJson<MapRoot>(File.ReadAllText(MapPath));
-            var window = System.Array.Find(map.placementRules, rule => rule.id == "cockpitWindow");
+            var portWindow = System.Array.Find(map.placementRules, rule => rule.id == "cockpitWindowPort");
+            var starboardWindow = System.Array.Find(map.placementRules, rule => rule.id == "cockpitWindowStarboard");
             var mirror = System.Array.Find(map.placementRules, rule => rule.id == "cockpitMirror");
             var nose = System.Array.Find(map.placementRules, rule => rule.id == "noseCap");
 
-            Assert.That(window, Is.Not.Null);
-            Assert.That(window.position[0], Is.EqualTo(-11f).Within(0.01f), "창은 조종석 긴 외벽 중앙이어야 한다");
-            Assert.That(window.position[2], Is.LessThan(-4f), "창은 좌현 외피 바깥에 붙어야 한다");
+            Assert.That(portWindow, Is.Not.Null);
+            Assert.That(starboardWindow, Is.Not.Null);
+            Assert.That(portWindow.position[0], Is.EqualTo(-16.2f).Within(0.01f));
+            Assert.That(starboardWindow.position[0], Is.EqualTo(-16.2f).Within(0.01f));
+            Assert.That(portWindow.position[2], Is.EqualTo(-2f).Within(0.01f));
+            Assert.That(starboardWindow.position[2], Is.EqualTo(2f).Within(0.01f));
             Assert.That(mirror, Is.Not.Null);
-            Assert.That(mirror.position[0], Is.EqualTo(-6.07f).Within(0.01f), "거울은 광장 쪽 후방 내벽이어야 한다");
-            Assert.That(mirror.position[2], Is.InRange(-3.5f, 3.5f));
+            Assert.That(mirror.position[0], Is.EqualTo(-13f).Within(0.01f));
+            Assert.That(mirror.position[2], Is.EqualTo(3.93f).Within(0.01f), "거울은 조종석 우현 측벽이어야 한다");
             Assert.That(nose, Is.Not.Null);
             Assert.That(nose.operation, Is.EqualTo("assembleNoseCap"));
-            Assert.That(nose.position[0], Is.LessThan(-16f), "노즈 캡은 조종석 선수 외피 바깥이어야 한다");
+            Assert.That(nose.position[0], Is.LessThan(-18f), "노즈 캡은 조종석 선수 외피 밖으로 돌출해야 한다");
         }
 
         /// <summary>

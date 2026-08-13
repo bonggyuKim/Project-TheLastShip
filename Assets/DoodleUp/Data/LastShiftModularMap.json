@@ -250,31 +250,41 @@
       "rotationY": 0
     },
     {
-      "id": "cockpitWindow",
+      "id": "cockpitWindowPort",
       "assetId": "LPK_Cockpit_ViewWindow_4m",
       "position": [
-        -11,
+        -16.2,
         0,
-        -4.2
+        -2
       ],
-      "rotationY": 0
+      "rotationY": 90
+    },
+    {
+      "id": "cockpitWindowStarboard",
+      "assetId": "LPK_Cockpit_ViewWindow_4m",
+      "position": [
+        -16.2,
+        0,
+        2
+      ],
+      "rotationY": 90
     },
     {
       "id": "cockpitMirror",
       "assetId": "LPK_Cockpit_WallMirror_1m",
       "position": [
-        -6.07,
+        -13,
         1.0,
-        2.55
+        3.93
       ],
-      "rotationY": -90
+      "rotationY": 180
     },
     {
       "id": "noseCap",
-      "assetId": "LPK_Hull_Exterior_Curve90",
+      "assetId": "LPK_Hull_WindowBay_4m",
       "operation": "assembleNoseCap",
       "position": [
-        -16.2,
+        -18.2,
         0,
         0
       ],
