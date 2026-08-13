@@ -638,17 +638,6 @@ add("HelmSeat_Port", "LSDress_Seat", "Zone", "Cockpit", -15.3, -1.70, 0.0)
 add("HelmSeat_Starboard", "LSDress_Seat", "Zone", "Cockpit", -15.3, 1.70, 0.0)
 add("CrateStack_Aft", "LSDress_CrateStack", "Zone", "Cockpit", -13.1, 2.4, 0.0)
 
-# ── 통로 A ──────────────────────────────────────────────────────────────────
-add("CableTray_Fore", "CableTray", "Passage", 0, -9.7, 0.4, TRAY_Y)
-add("CableTray_Aft", "CableTray", "Passage", 0, -6.6, 0.4, TRAY_Y)
-add("ConduitJunction_Starboard_Fore", "ConduitJunction", "Passage", 0, -8.4, Z_STAR, JUNC_Y)
-add("ConduitJunction_Starboard_Aft", "ConduitJunction", "Passage", 0, -5.5, Z_STAR, JUNC_Y)
-add("ConduitJunction_Port", "ConduitJunction", "Passage", 0, -7.6, Z_PORT, JUNC_Y)
-add("PanelBank_Starboard", "PanelBank", "Passage", 0, -8.4, Z_STAR, PANEL_Y_PASSAGE)
-add("RibFrame_Starboard", "RibFrame", "Passage", 0, -6.6, Z_STAR, 0.0, clearance=0.22)
-add("DeckGrate_Fore", "DeckGrate", "Passage", 0, -8.6, 2.4, 0.001)
-add("DeckGrate_Aft", "DeckGrate", "Passage", 0, -7.0, 2.0, 0.001)
-
 # ── 전력실 ──────────────────────────────────────────────────────────────────
 add("CableTray_Port", "CableTray", "Zone", "Power", -2.5, -1.0, TRAY_Y)
 add("CableTray_Starboard", "CableTray", "Zone", "Power", -2.5, 0.6, TRAY_Y)
@@ -671,17 +660,6 @@ add("DeckGrate_Aft", "DeckGrate", "Zone", "Cooling", 1.0, 0.4, 0.001)
 add("HeatExchangerCoil", "LSDress_HeatExchangerCoil", "Zone", "Cooling", 4.3, 1.3, 0.0)
 add("CoolingRack", "LSDress_CoolingRack", "Zone", "Cooling", 1.3, -0.4, 0.0)
 add("LashRail_Port", "LSDress_LashRail", "Zone", "Cooling", 2.5, -2.4, 0.10)
-
-# ── 통로 B ──────────────────────────────────────────────────────────────────
-add("CableTray_Fore", "CableTray", "Passage", 1, 8.6, -1.2, TRAY_Y)
-add("CableTray_Aft", "CableTray", "Passage", 1, 9.7, -2.4, TRAY_Y)
-add("ConduitJunction_Port_Fore", "ConduitJunction", "Passage", 1, 7.0, Z_PORT, JUNC_Y)
-add("ConduitJunction_Port_Aft", "ConduitJunction", "Passage", 1, 10.2, Z_PORT, JUNC_Y)
-add("PanelBank_Inner", "PanelBank", "Passage", 1, 9.2, Z_INNER, PANEL_Y_PASSAGE)
-add("RibFrame_Inner", "RibFrame", "Passage", 1, 9.6, Z_INNER, 0.0, clearance=0.22)
-add("StowageNet_Inner", "StowageNet", "Passage", 1, 7.6, Z_INNER, NET_Y)
-add("DeckGrate_Fore", "DeckGrate", "Passage", 1, 8.0, -0.4, 0.001)
-add("DeckGrate_Aft", "DeckGrate", "Passage", 1, 10.0, -0.4, 0.001)
 
 # ── 산소실 ──────────────────────────────────────────────────────────────────
 add("CableTray_Fore", "CableTray", "Zone", "LifeSupport", 12.3, -1.0, TRAY_Y)
@@ -744,7 +722,7 @@ def layout_keys():
 
 
 def retired_layout_keys():
-    return {
+    retired = {
         (0, ZONE_ENUM["Power"], "PartsPallet"),
         (0, ZONE_ENUM["Power"], "CrateStack_Fore"),
         (0, ZONE_ENUM["Power"], "CrateStack_Aft"),
@@ -755,6 +733,18 @@ def retired_layout_keys():
         (0, ZONE_ENUM["LifeSupport"], "CrateStack_Aft"),
         (0, ZONE_ENUM["LifeSupport"], "PartsPallet"),
     }
+    # 통로 둘은 광장 개편 때 폐지됐고 직렬화 enum 값 2를 Plaza가 물려받았다.
+    # 옛 Passage 항목을 남기면 모두 Plaza 소품으로 해석되어 ID가 중복되고 문을 막는다.
+    passage_ids = {
+        0: ("CableTray_Fore", "CableTray_Aft", "ConduitJunction_Starboard_Fore",
+            "ConduitJunction_Starboard_Aft", "ConduitJunction_Port", "PanelBank_Starboard",
+            "RibFrame_Starboard", "DeckGrate_Fore", "DeckGrate_Aft"),
+        1: ("CableTray_Fore", "CableTray_Aft", "ConduitJunction_Port_Fore",
+            "ConduitJunction_Port_Aft", "PanelBank_Inner", "RibFrame_Inner",
+            "StowageNet_Inner", "DeckGrate_Fore", "DeckGrate_Aft"),
+    }
+    retired |= {(2, passage, pid) for passage, ids in passage_ids.items() for pid in ids}
+    return retired
 
 
 def existing_props_as_obstacles():
