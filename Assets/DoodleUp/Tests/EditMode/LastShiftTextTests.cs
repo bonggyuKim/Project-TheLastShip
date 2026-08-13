@@ -133,7 +133,21 @@ namespace DoodleUp.Tests.EditMode
                 "term.room.purpose.lifeSupport", "term.room.purpose.power",
                 "term.room.purpose.cooling", "term.room.purpose.quarters",
                 "term.core.name", "term.core.purpose",
-                "term.compartment.quarters"
+                "term.compartment.quarters",
+                "placement.title.hull", "placement.title.outpost", "placement.header",
+                "placement.button.close", "placement.tab.hull", "placement.tab.outpost",
+                "placement.tab.switchHint", "placement.catalog", "placement.preview",
+                "placement.controls", "placement.controls.undo",
+                "placement.compass.bow", "placement.compass.stern", "placement.compass.outpost",
+                "placement.status.awaitingHold", "placement.status.heldByOther",
+                "placement.status.holdLost", "placement.status.commitSent",
+                "placement.status.releaseSent",
+                "placement.cursor.none", "placement.cursor.mine", "placement.cursor.other",
+                "placement.commitAgain", "placement.outpost.ready", "placement.module.ready",
+                "placement.shortOfMaterials", "placement.shortOfMaterials.short",
+                "placement.shortOfMaintenance", "placement.shortOfMaintenance.short",
+                "placement.outpost.nothingToRemove", "placement.module.nothingToRemove",
+                "placement.module.generic", "placement.parent.none", "placement.parent.hull"
             };
 
             var absent = used.Where(key => !LastShiftText.Has(key)).ToArray();

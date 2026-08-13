@@ -252,13 +252,13 @@ namespace DoodleUp.Runtime
                 if (!LastShiftPlacementAuthority.IsHeldBy(ClientId))
                 {
                     awaitingCursor = true;
-                    lastResult = "배치 권한을 기다린다";
+                    lastResult = LastShiftText.Get("placement.status.awaitingHold");
                     return false;
                 }
             }
             else if (!LastShiftPlacementAuthority.TryClaim(ClientId))
             {
-                lastResult = "다른 승무원이 배치 중이다";
+                lastResult = LastShiftText.Get("placement.status.heldByOther");
                 return false;
             }
 
@@ -298,7 +298,7 @@ namespace DoodleUp.Runtime
             open = false;
             armed = false;
             DestroyPreview();
-            lastResult = "배치 권한을 잃었다";
+            lastResult = LastShiftText.Get("placement.status.holdLost");
         }
 
         // ── 튜토리얼 7~10단계 ───────────────────────────────────────────────
@@ -446,7 +446,7 @@ namespace DoodleUp.Runtime
             network.RequestPlaceModuleRpc(
                 cursor.CatalogIndex, cursor.QuarterTurns,
                 cursor.Anchor.x, cursor.Anchor.z, cursor.ParentIndex, cursor.AutoParent);
-            lastResult = "확정 요청을 보냈다";
+            lastResult = LastShiftText.Get("placement.status.commitSent");
             return false;
         }
 
@@ -463,8 +463,9 @@ namespace DoodleUp.Runtime
             if (!outcome.Accepted)
             {
                 lastResult = outcome.Result == LastShiftPlacementCommandResult.Unaffordable
-                    ? $"자재가 모자란다 — {outpostCursor.Kind.Name} {outpostCursor.Kind.MaterialCost} · " +
-                      $"잔액 {LastShiftMaterials.Balance}"
+                    ? LastShiftText.Format("placement.shortOfMaterials",
+                        outpostCursor.Kind.Name, outpostCursor.Kind.MaterialCost,
+                        LastShiftMaterials.Balance)
                     : outcome.Message;
                 // AI_B_14 — 발자국이 안 맞아 확정이 튕겼다. 자재 부족은 다른 실패이므로 뺀다:
                 // 그 문안은 "돌려서 맞출 것" 인데 돌려도 안 되는 상황이다.
@@ -513,7 +514,7 @@ namespace DoodleUp.Runtime
             if (!outcome.Accepted)
             {
                 lastResult = outcome.Result == LastShiftPlacementCommandResult.NothingToRemove
-                    ? "뜯을 골조 없음"
+                    ? LastShiftText.Get("placement.outpost.nothingToRemove")
                     : outcome.Message;
                 return false;
             }
@@ -544,7 +545,7 @@ namespace DoodleUp.Runtime
             if (network.IsServer) return ApplyRemoveOutcome(network.ServerRemoveLast((ulong)ClientId));
 
             network.RequestRemoveLastModuleRpc();
-            lastResult = "해제 요청을 보냈다";
+            lastResult = LastShiftText.Get("placement.status.releaseSent");
             return false;
         }
 
@@ -558,7 +559,8 @@ namespace DoodleUp.Runtime
             if (!outcome.Accepted)
             {
                 lastResult = outcome.Result == LastShiftPlacementCommandResult.Unaffordable
-                    ? $"여력이 모자란다 — {cursor.Kind.Name} {cursor.Kind.MaintenanceCost} · 잔액 {LastShiftMaintenance.Balance}"
+                    ? LastShiftText.Format("placement.shortOfMaintenance",
+                        cursor.Kind.Name, cursor.Kind.MaintenanceCost, LastShiftMaintenance.Balance)
                     : outcome.Message;
                 return false;
             }
@@ -1015,8 +1017,10 @@ namespace DoodleUp.Runtime
         {
             var holder = LastShiftPlacementAuthority.HolderId;
             var holderText = holder == LastShiftPlacementAuthority.NoHolder
-                ? "커서 없음"
-                : holder == ClientId ? "커서 나" : $"커서 승무원 {holder}";
+                ? LastShiftText.Get("placement.cursor.none")
+                : holder == ClientId
+                    ? LastShiftText.Get("placement.cursor.mine")
+                    : LastShiftText.Format("placement.cursor.other", holder);
 
             // <b>지금 탭이 쓰는 잔액만 적는다</b>(조항 O-2 · 튜토리얼 §2-1). 둘을 나란히 띄우면
             // "어느 게 뭘 사는 건지" 를 화면이 다시 설명해야 하고, 튜토리얼이 그 장면을 끝까지
@@ -1031,13 +1035,17 @@ namespace DoodleUp.Runtime
                       ? $" · 버림 {LastShiftMaintenance.LastPortForfeited}"
                       : string.Empty) + ")";
 
-            var title = tab == LastShiftPlacementTab.Outpost ? "선외 거점" : "선체 도면";
+            var title = LastShiftText.Get(tab == LastShiftPlacementTab.Outpost
+                ? "placement.title.outpost"
+                : "placement.title.hull");
 
             GUI.Label(new Rect(header.x + 8f, header.y + 4f, header.width - 140f, 26f),
-                $"{title} — 기항 {LastShiftMaintenance.PortIndex} · {money} · {holderText}",
+                LastShiftText.Format("placement.header",
+                    title, LastShiftMaintenance.PortIndex, money, holderText),
                 headingStyle);
 
-            if (GUI.Button(new Rect(header.xMax - 96f, header.y + 3f, 88f, 26f), "닫기  Esc")) Close();
+            if (GUI.Button(new Rect(header.xMax - 96f, header.y + 3f, 88f, 26f),
+                LastShiftText.Get("placement.button.close"))) Close();
         }
 
         /// <summary>
@@ -1069,7 +1077,9 @@ namespace DoodleUp.Runtime
                     ? new Color(0.20f, 0.34f, 0.44f, 1f)
                     : new Color(0.11f, 0.14f, 0.19f, 1f));
                 GUI.Label(rect,
-                    value == LastShiftPlacementTab.Outpost ? "거점" : "선체",
+                    LastShiftText.Get(value == LastShiftPlacementTab.Outpost
+                        ? "placement.tab.outpost"
+                        : "placement.tab.hull"),
                     centeredStyle);
 
                 if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) SelectTab(value);
@@ -1078,14 +1088,15 @@ namespace DoodleUp.Runtime
             if (locked) return;
 
             GUI.Label(new Rect(strip.x + slot * (width + 4f) + 8f, strip.y, strip.width, strip.height),
-                $"{tabKey} 로 전환", smallStyle);
+                LastShiftText.Format("placement.tab.switchHint", tabKey), smallStyle);
         }
 
         // ── 카탈로그 ────────────────────────────────────────────────────────
 
         private void DrawCatalog(Rect column)
         {
-            GUI.Label(new Rect(column.x + 4f, column.y, column.width, 18f), "카탈로그", bodyStyle);
+            GUI.Label(new Rect(column.x + 4f, column.y, column.width, 18f),
+                LastShiftText.Get("placement.catalog"), bodyStyle);
 
             var top = column.y + 20f;
             var rowHeight = Mathf.Min(34f, (column.height - 44f) / Mathf.Max(LastShiftModuleCatalog.Count, 1));
@@ -1171,8 +1182,10 @@ namespace DoodleUp.Runtime
             DrawFreeFaces(schematic);
             DrawCandidate(schematic);
 
-            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 200f, 16f), "선수 ←", smallStyle);
-            GUI.Label(new Rect(chart.xMax - 60f, chart.y + 4f, 60f, 16f), "→ 선미", smallStyle);
+            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 200f, 16f),
+                LastShiftText.Get("placement.compass.bow"), smallStyle);
+            GUI.Label(new Rect(chart.xMax - 60f, chart.y + 4f, 60f, 16f),
+                LastShiftText.Get("placement.compass.stern"), smallStyle);
             GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
                 ChartHintText, smallStyle);
         }
@@ -1182,8 +1195,10 @@ namespace DoodleUp.Runtime
         /// 동사를 막아 놓고 안내에만 남기면 그 줄이 곧 "왜 안 되지" 를 만든다.
         /// </summary>
         private static string ChartHintText =>
-            "드래그 이동(1m 격자) · 같은 자리 다시 클릭 = 확정 · 휠/R 회전 · 우클릭 취소" +
-            (LastShiftTutorial.UndoLocked ? string.Empty : " · Del 마지막 해제");
+            LastShiftText.Get("placement.controls")
+            + (LastShiftTutorial.UndoLocked
+                ? string.Empty
+                : LastShiftText.Get("placement.controls.undo"));
 
         /// <summary>
         /// 거점 도면. <b>구역 띠도 원반 테두리도 안 그린다</b> — 거점에는 압력 구역이 없고
@@ -1213,7 +1228,8 @@ namespace DoodleUp.Runtime
 
             DrawOutpostCandidate(schematic);
 
-            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 260f, 16f), "선수 ←  ·  원반 바깥 좌현", smallStyle);
+            GUI.Label(new Rect(chart.x + 6f, chart.y + 4f, 260f, 16f),
+                LastShiftText.Get("placement.compass.outpost"), smallStyle);
             GUI.Label(new Rect(chart.x + 6f, chart.yMax - 18f, chart.width - 12f, 16f),
                 ChartHintText, smallStyle);
         }
@@ -1252,7 +1268,9 @@ namespace DoodleUp.Runtime
         {
             var candidate = outpostCursor.Candidate;
             var kind = outpostCursor.Kind;
-            var parent = candidate.ParentIndex < 0 ? "없음" : LastShiftOutpost.NameOf(candidate.ParentIndex);
+            var parent = candidate.ParentIndex < 0
+                ? LastShiftText.Get("placement.parent.none")
+                : LastShiftOutpost.NameOf(candidate.ParentIndex);
 
             var line = column.y;
             void Row(string text, GUIStyle style = null)
@@ -1261,7 +1279,7 @@ namespace DoodleUp.Runtime
                 line += 20f;
             }
 
-            Row("미리보기", headingStyle);
+            Row(LastShiftText.Get("placement.preview"), headingStyle);
             line += 4f;
             Row($"{kind.Name} {kind.LengthX:0.#}×{kind.WidthZ:0.#}m");
             Row($"자재 {kind.MaterialCost} · 회전 {outpostCursor.QuarterTurns * 90}°");
@@ -1279,10 +1297,10 @@ namespace DoodleUp.Runtime
             var previous = GUI.color;
             GUI.color = ok ? OkColor : BadColor;
             Row(ok
-                ? armed ? "한 번 더 클릭 = 확정" : "계류 가능 — 클릭 또는 Enter"
+                ? LastShiftText.Get(armed ? "placement.commitAgain" : "placement.outpost.ready")
                 : affordable
                     ? RejectionText
-                    : "자재가 모자란다");
+                    : LastShiftText.Get("placement.shortOfMaterials.short"));
             GUI.color = previous;
 
             line += 6f;
@@ -1293,7 +1311,7 @@ namespace DoodleUp.Runtime
             if (!LastShiftTutorial.UndoLocked)
                 Row(LastShiftOutpost.PieceCount > 0
                     ? $"Del 환수 {LastShiftOutpost.PaidFor(LastShiftOutpost.Count - 1)}"
-                    : "뜯을 골조 없음", smallStyle);
+                    : LastShiftText.Get("placement.outpost.nothingToRemove"), smallStyle);
 
             if (hoveredIndex >= 0 && hoveredIndex < LastShiftOutpost.Count)
                 Row($"짚은 것 — {LastShiftOutpost.NameOf(hoveredIndex)} #{hoveredIndex}", smallStyle);
@@ -1379,7 +1397,9 @@ namespace DoodleUp.Runtime
             if (!spec.IsFixed)
             {
                 var catalogIndex = LastShiftCompartments.CatalogIndexOf(spec.Index);
-                return catalogIndex >= 0 ? LastShiftModuleCatalog.At(catalogIndex).Name : "모듈";
+                return catalogIndex >= 0
+                    ? LastShiftModuleCatalog.At(catalogIndex).Name
+                    : LastShiftText.Get("placement.module.generic");
             }
 
             var name = LastShiftCompartments.NameOf(spec);
@@ -1428,7 +1448,7 @@ namespace DoodleUp.Runtime
             var candidate = cursor.Candidate;
             var verdict = cursor.Verdict;
             var parent = candidate.ParentIndex < 0
-                ? "선체"
+                ? LastShiftText.Get("placement.parent.hull")
                 : ShortName(LastShiftCompartments.At(candidate.ParentIndex));
 
             var line = column.y;
@@ -1458,8 +1478,10 @@ namespace DoodleUp.Runtime
             var previous = GUI.color;
             GUI.color = ok ? OkColor : BadColor;
             Row(ok
-                ? armed ? "한 번 더 클릭 = 확정" : "배치 가능 — 클릭 또는 Enter"
-                : affordable ? Reason(verdict, cursor.Faults) : "여력이 모자란다");
+                ? LastShiftText.Get(armed ? "placement.commitAgain" : "placement.module.ready")
+                : affordable
+                    ? Reason(verdict, cursor.Faults)
+                    : LastShiftText.Get("placement.shortOfMaintenance.short"));
             GUI.color = previous;
 
             line += 6f;
@@ -1489,7 +1511,8 @@ namespace DoodleUp.Runtime
         private static string RefundHint()
         {
             var slot = LastShiftCompartments.ModuleCount - 1;
-            if (!LastShiftMaintenance.TryGetPurchase(slot, out var purchase)) return "뜯을 모듈 없음";
+            if (!LastShiftMaintenance.TryGetPurchase(slot, out var purchase))
+                return LastShiftText.Get("placement.module.nothingToRemove");
 
             return $"Del 환수 {LastShiftMaintenance.RefundFor(purchase)}";
         }
