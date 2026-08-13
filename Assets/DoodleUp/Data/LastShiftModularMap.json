@@ -46,7 +46,7 @@
           0
         ],
         "rotationY": 90,
-        "kind": "opening"
+        "kind": "plain"
       },
       "feature": "LPK_Cockpit_ControlConsole"
     },
@@ -118,7 +118,7 @@
         6,
         12
       ],
-      "ceiling": 3.0,
+      "ceiling": 3.2,
       "door": {
         "position": [
           4.8,

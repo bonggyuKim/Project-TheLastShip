@@ -114,10 +114,9 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(box.xMax, Is.LessThanOrEqualTo(1920f));
             Assert.That(box.yMin, Is.GreaterThanOrEqualTo(0f));
 
-            // 아래쪽 한계는 상시 조작 안내 줄이다 — 겹치면 둘 다 못 읽는다.
-            var inputBarTop = 1080f - LastShiftPlayerController.InputBarMargin
-                                    - LastShiftPlayerController.InputBarHeight;
-            Assert.That(box.yMax, Is.LessThanOrEqualTo(inputBarTop));
+            // 아래쪽 한계는 화면 가장자리다 — 이 자리를 막고 있던 상시 조작줄은 걷어냈다.
+            Assert.That(box.yMax,
+                Is.LessThanOrEqualTo(1080f - LastShiftPlayerController.ScreenEdgeMargin));
         }
 
         /// <summary>
