@@ -188,24 +188,6 @@
       "gapWidth": 1.6
     },
     {
-      "id": "ceilingPanels",
-      "assetId": "LPK_Floor_Square_2m",
-      "target": [
-        "plaza",
-        "cockpit",
-        "lifeSupport",
-        "power",
-        "cooling",
-        "quarters"
-      ],
-      "operation": "tileBounds",
-      "tile": [
-        2,
-        2
-      ],
-      "positionY": 3.04
-    },
-    {
       "id": "ceilings",
       "assetId": "LPK_Ceiling_Straight_4m",
       "target": [
@@ -221,6 +203,7 @@
     },
     {
       "id": "plazaLift",
+      "name": "Plaza_Lift",
       "assetId": "LPK_CentralLift_4m",
       "position": [
         0,
@@ -231,6 +214,7 @@
     },
     {
       "id": "evaTower",
+      "name": "Plaza_EvaTower",
       "assetId": "LPK_EVA_ConningTower_3m",
       "position": [
         0,
@@ -241,6 +225,7 @@
     },
     {
       "id": "evaTopHatch",
+      "name": "Plaza_EvaTopHatch",
       "assetId": "LPK_EVA_TopHatch_1p6m",
       "position": [
         0,
@@ -251,6 +236,7 @@
     },
     {
       "id": "cockpitWindowPort",
+      "name": "Cockpit_ViewWindow_Port",
       "assetId": "LPK_Cockpit_ViewWindow_4m",
       "position": [
         -16.2,
@@ -261,6 +247,7 @@
     },
     {
       "id": "cockpitWindowStarboard",
+      "name": "Cockpit_ViewWindow_Starboard",
       "assetId": "LPK_Cockpit_ViewWindow_4m",
       "position": [
         -16.2,
@@ -271,6 +258,7 @@
     },
     {
       "id": "cockpitMirror",
+      "name": "Cockpit_WallMirror_Starboard",
       "assetId": "LPK_Cockpit_WallMirror_1m",
       "position": [
         -13,
@@ -281,6 +269,7 @@
     },
     {
       "id": "noseCap",
+      "name": "Cockpit_NoseCap",
       "assetId": "LPK_Hull_WindowBay_4m",
       "operation": "assembleNoseCap",
       "position": [
@@ -313,6 +302,7 @@
     },
     {
       "id": "tether",
+      "name": "Cockpit_TetherRack",
       "assetId": "LPK_TetherRack_2m",
       "position": [
         -6.6,
@@ -323,6 +313,7 @@
     },
     {
       "id": "leak",
+      "name": "LifeSupport_OxygenLeak",
       "assetId": "LPK_OxygenLeakPipe_2m",
       "position": [
         10.5,
@@ -333,6 +324,7 @@
     },
     {
       "id": "repair",
+      "name": "LifeSupport_RepairConsole",
       "assetId": "LPK_RepairConsole_1m",
       "position": [
         12,
@@ -343,6 +335,7 @@
     },
     {
       "id": "damagedPipe",
+      "name": "LifeSupport_DamagedPipe",
       "assetId": "LPK_DamagedPipe_2m",
       "position": [
         9,

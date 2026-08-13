@@ -146,8 +146,28 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const float SpawnLookYaw = 180f;
 
-        /// <summary>에어락/도킹 지점. 조종석 콘솔 앞이다.</summary>
-        public static Vector3 DockingPoint => new(CockpitCenterX - 0.75f, 0.9f, 0f);
+        /// <summary>
+        /// 도킹 트리거. <b>승무원이 서는 자리다</b> — <c>LastShiftSandboxController.IsCrewAtDockingTrigger</c>
+        /// 가 승무원 위치와의 거리(<c>1.6m</c>)로 성공을 판정한다.
+        ///
+        /// <b>선수 끝으로 당긴다</b>(<c>docs/ship-orientation-and-room-brief-v1.md</c> §2.1 <c>T-1</c>).
+        /// 옛 자리는 방 중심에서 <c>-0.75</c>(<c>x -11.75</c>)라 조종석 한가운데였고, 그래서
+        /// "도킹하러 간다" 가 방에 들어서는 것과 같았다. 선수 끝벽 앞으로 옮기면 전면 방향을
+        /// 보면서 붙는다.
+        ///
+        /// <b>설계서의 <c>x ≤ -17</c> 은 그대로 못 쓴다</b> — 그 좌표는 선체 <b>밖</b>이고 이
+        /// 상수는 배가 닿는 자리가 아니라 그것을 확인하는 <b>사람</b>의 자리다. 밖으로 내보내면
+        /// 아무도 못 닿아 도킹이 영원히 성립하지 않는다. 선체 바깥 접안면이 따로 필요해지면
+        /// 그때 상수를 하나 더 만든다.
+        /// </summary>
+        public static Vector3 DockingPoint =>
+            new(RoomMinX(LastShiftZone.Cockpit) + DockingStandoff, 0.9f, 0f);
+
+        /// <summary>
+        /// 선수 끝벽에서 도킹 트리거까지의 거리. 끝벽에는 조종석 설비가 붙으므로 그 뒤에
+        /// 사람이 설 자리가 남아야 하고, 트리거 반경 <c>1.6m</c> 가 끝벽까지 닿아야 한다.
+        /// </summary>
+        public const float DockingStandoff = 2f;
 
         /// <summary>방 중심 x. 부르는 자리가 전부 "그 방 안 어딘가" 를 뜻한다.</summary>
         public static float CockpitCenterX => RoomCenterX(LastShiftZone.Cockpit);
@@ -159,8 +179,14 @@ namespace DoodleUp.Runtime
         /// 운석 충돌 지점. 조종석 바깥 선체다. 파공 자체는 산소실(PatchPlate 자리)에 생기지만
         /// 충돌은 반대편에서 온다 — 손상 지점과 수리 부품이 같은 자리에 있으면 "가지러 간다"가
         /// 사라진다.
+        ///
+        /// <b>선수 끝벽 바깥 판면이다</b>(§2.1 <c>T-1</c>). 옛 값은 방 중심에서 <c>-1.3</c>
+        /// (<c>x -12.3</c>)이라 <b>조종석 방 한가운데</b>였다 — 운석이 창 밖이 아니라 승무원
+        /// 등 뒤 천장에서 왔다. 진행 방향을 보는 면 바로 밖에 두면 "창으로 보이는 것이 곧
+        /// 다음에 나를 때릴 것" 이 성립한다.
         /// </summary>
-        public static Vector3 MeteorImpactPoint => new(CockpitCenterX - 1.3f, 1.1f, 0f);
+        public static Vector3 MeteorImpactPoint =>
+            new(RoomMinX(LastShiftZone.Cockpit) - HullThickness, 1.1f, 0f);
 
         // ── 부품 정위치 ──────────────────────────────────────────────────────
         // 부품이 어느 구역에 속하는지가 게임 규칙이다(PatchPlate 가 산소실에 있어야 파공

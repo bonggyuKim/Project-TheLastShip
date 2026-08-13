@@ -277,11 +277,15 @@ namespace DoodleUp.Editor
                 // 발자국이 4x6 이라 예전 숙소와 같으므로 침상 배치는 그대로 두고, 위생·휴게를
                 // 남은 x 양 끝에 붙인다. 문이 x=MinX 한가운데(z=0)이므로 z ~ 0 의 x 동선은
                 // 비워 둔다 — 여기 소품을 놓으면 배에 하나뿐인 고정 방의 문이 막힌다.
-                foreach (var (bunk, uz) in new[] { ("Port", -0.75f), ("Starboard", 0.75f) })
-                {
-                    Add(props, space, $"Bunk_{bunk}_Lower", 0.55f, uz, 2.2f, 0.25f, 0.9f, fixture, 0.45f);
-                    Add(props, space, $"Bunk_{bunk}_Upper", 0.55f, uz, 2.2f, 0.25f, 0.9f, fixture, 1.55f);
-                }
+                // <b>침상 슬롯 넷을 뺐다</b>(2026-08-14). 같은 방에 모듈 킷 설비
+                // <c>LPK_Quarters_Bunk</c> 가 맵 <c>spaces.quarters.feature</c> 로 이미 서고,
+                // 이 슬롯들은 <c>LSDress_Bunk</c> 를 그 위에 겹쳐 세우고 있었다 — 한 방에
+                // 침상이 다섯이었고, 그중 어느 것이 정본인지가 데이터에 없었다
+                // (`docs/ship-orientation-and-room-brief-v1.md` §3.7 · §8 미결 6).
+                //
+                // 남기는 쪽은 모듈 킷이다: 설비 배치가 문 맞은편 끝벽을 스스로 찾고
+                // (<c>EndWallShift</c>) 갑판 높이에 맞춰 서므로 방 치수가 바뀌어도 따라온다.
+                // 4인분 2단 1조를 하나 더 세우는 것은 art 몫이다.
 
                 Add(props, space, "Lockers", 1f, 0f, 0.45f, 1.9f, 1.6f, tint);
 

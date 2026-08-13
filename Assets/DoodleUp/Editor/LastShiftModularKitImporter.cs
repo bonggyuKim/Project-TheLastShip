@@ -403,6 +403,7 @@ namespace DoodleUp.Editor
                     if (rule.id == "plazaLift") AttachLiftPlatform(placed);
                 }
             }
+            var deckY = PanelTopY(p["LPK_Floor_Square_2m"]);
             foreach (var space in map.spaces)
             {
                 // <b>개구부에는 문을 안 세운다.</b> 정본이 kind 로 셋을 가르는데
@@ -411,16 +412,16 @@ namespace DoodleUp.Editor
                 // 통과된다" 로 지적한 그 자리다. AI_T_03 의 문안도 "문이 없는 개구부" 다.
                 if (IsOpening(space.door))
                 {
-                    PlaceFeature(p[space.feature], root, space.id + "Feature", space);
+                    PlaceFeature(p[space.feature], root, Pascal(space.id) + "_Feature", space, deckY);
                     continue;
                 }
 
-                var door = Place(p["LPK_Door_Airlock_2m"], root, space.id + "Door", Vector(space.door.position), space.door.rotationY);
+                var door = Place(p["LPK_Door_Airlock_2m"], root, Pascal(space.id) + "_Door", Vector(space.door.position), space.door.rotationY);
                 // 압력문이 붙는 자리가 아니면 열어 둔다. 안 그러면 아무도 애니메이터를 안
                 // 건드려 닫힌 자세로 남고, 통행은 되므로 닫힌 문을 그대로 통과하게 된다.
                 if (!HasPressureDoor(space.id) && door != null && door.GetComponent<Animator>() != null)
                     door.AddComponent<LastShiftPassageDoor>();
-                PlaceFeature(p[space.feature], root, space.id + "Feature", space);
+                PlaceFeature(p[space.feature], root, Pascal(space.id) + "_Feature", space, deckY);
             }
             if (map.lights != null)
                 foreach (var light in map.lights) PlaceLight(root, light);
@@ -429,8 +430,13 @@ namespace DoodleUp.Editor
             // outer edge because of a non-rectangular union split.
             RemoveInteriorWallsCoveredByShell(root);
             BuildDeckCollision(map, spaces, p, root);
-            ReportDressingInsideFeatures(root, PanelTopY(p["LPK_Floor_Square_2m"]));
+            ReportDressingInsideFeatures(root, deckY);
+            OrganizeHierarchy(map, root);
         }
+
+        /// <summary>맵 <c>id</c> 의 파스칼 표기. 명명 규칙 <c>N-1</c> 의 공간 접두다.</summary>
+        private static string Pascal(string id) =>
+            string.IsNullOrEmpty(id) ? id : char.ToUpperInvariant(id[0]) + id.Substring(1);
 
         /// <summary>
         /// 미배치 킷 세 종만으로 조종석 밖에 반원형 머리를 조립한다.
@@ -802,11 +808,47 @@ namespace DoodleUp.Editor
             return null;
         }
 
+        /// <summary>
+        /// 방 하나를 <b>한 장</b>으로 덮는다. 판을 늘려 정확히 맞추므로 방 치수가 4의 배수가
+        /// 아니어도 이음매가 안 생긴다 — 그것이 2m 타일 격자 대신 이 연산을 쓰는 이유다.
+        ///
+        /// <b>천장에서는 코어를 도려낸다.</b> 광장 코어는 EVA 승강 샤프트라 위가 뚫려 있어야
+        /// 하는데(<see cref="LastShiftEvaShaft"/>), 통짜 한 장은 그 위를 그대로 덮고 천장 킷은
+        /// 구조 메시라 <see cref="MeshCollider"/> 를 진다 — 리프트가 판에 막힌다. 타일 규칙
+        /// 쪽에는 <see cref="CoversEvaShaft"/> 가 이미 있었고 이쪽에만 없었다. 그 타일 층
+        /// (<c>ceilingPanels</c>)이 폐지되면서 이 구멍을 지킬 곳이 여기 하나만 남았다.
+        /// </summary>
         private static void SpanBounds(GameObject prefab, Transform root, string name, MapSpace space, float y)
         {
             var b = space.bounds;
-            Place(prefab, root, name, new Vector3((b[0] + b[1]) * 0.5f, y, (b[2] + b[3]) * 0.5f), 0f,
-                new Vector3((b[1] - b[0]) / 4f, 1f, (b[3] - b[2]) / 4f));
+            if (y < 0.5f || !SurroundsEvaShaft(b))
+            {
+                SpanPiece(prefab, root, name, b[0], b[1], b[2], b[3], y);
+                return;
+            }
+
+            // 코어 둘레를 네 조각으로 두른다 — 선수·선미 띠가 전폭을 지고, 좌·우현 조각이
+            // 그 사이를 메운다. 코어 자리만 비고 나머지는 이음매 없이 이어진다.
+            var half = LastShiftEvaShaft.HalfExtent;
+            SpanPiece(prefab, root, name, b[0], b[1], b[2], -half, y);
+            SpanPiece(prefab, root, name, b[0], b[1], half, b[3], y);
+            SpanPiece(prefab, root, name, b[0], -half, -half, half, y);
+            SpanPiece(prefab, root, name, half, b[1], -half, half, y);
+        }
+
+        /// <summary>이 발자국이 EVA 샤프트를 <b>완전히 품는가</b>. 품는 것은 광장 하나다.</summary>
+        private static bool SurroundsEvaShaft(float[] bounds)
+        {
+            var half = LastShiftEvaShaft.HalfExtent;
+            return bounds[0] < -half && bounds[1] > half && bounds[2] < -half && bounds[3] > half;
+        }
+
+        private static void SpanPiece(GameObject prefab, Transform root, string name,
+            float minX, float maxX, float minZ, float maxZ, float y)
+        {
+            if (maxX - minX < 0.01f || maxZ - minZ < 0.01f) return;
+            Place(prefab, root, name, new Vector3((minX + maxX) * 0.5f, y, (minZ + maxZ) * 0.5f), 0f,
+                new Vector3((maxX - minX) / 4f, 1f, (maxZ - minZ) / 4f));
         }
 
         private static void ExteriorBoundsWithDoorGap(GameObject prefab, Transform root, MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
@@ -896,6 +938,106 @@ namespace DoodleUp.Editor
             light.color = new Color(spec.color[0], spec.color[1], spec.color[2]);
             light.intensity = spec.intensity;
             light.range = spec.range;
+        }
+
+        /// <summary>
+        /// 규칙 이름별 생성물 그룹(<c>N-3</c>). 없는 이름은 규칙 id 그대로 그룹이 된다 —
+        /// 규칙이 늘어도 표를 안 고치면 그냥 자기 이름 폴더가 하나 더 생긴다.
+        /// </summary>
+        private static readonly Dictionary<string, string> GeneratedGroups = new()
+        {
+            ["floorUnderlay"] = "Floor",
+            ["floor"] = "Floor",
+            ["walls"] = "Walls",
+            ["ceilings"] = "Ceiling",
+            ["outerShell"] = "Shell",
+        };
+
+        private static bool IsBulkOperation(string operation) =>
+            operation is "tileBounds" or "wallBoundsWithDoorGap" or "spanBounds" or "exteriorBoundsWithDoorGap";
+
+        /// <summary>
+        /// 조립이 끝난 뒤 <b>이름과 계층만</b> 정리한다(<c>docs/ship-orientation-and-room-brief-v1.md</c>
+        /// §5.2 <c>N-1</c>·<c>N-3</c>).
+        ///
+        /// <b>프리팹 내부는 안 건드린다</b>(<c>N-2</c>) — 여기서 손대는 것은 씬 인스턴스 루트
+        /// 이름과 그 부모뿐이다. 전수 리네임은 비싸고 프리팹 오버라이드를 깨뜨릴 위험만 있다.
+        ///
+        /// <b>왜 배치 도중이 아니라 끝난 뒤인가.</b> <see cref="RemoveInteriorWallsCoveredByShell"/>
+        /// 같은 후처리가 규칙 id 를 이름으로 찾는다. 배치 중에 이름을 바꾸면 그 검사들이
+        /// 조용히 아무것도 못 찾게 되므로, 이름은 <b>맨 마지막</b>에 한 번만 바꾼다.
+        ///
+        /// 결과로 루트에 남는 것은 방 문 다섯·설비 여섯·소품들·<c>DeckCollision</c> 이고
+        /// 판 100여 장은 <c>_Generated</c> 밑으로 접힌다.
+        /// </summary>
+        private static void OrganizeHierarchy(ModularMap map, Transform root)
+        {
+            var groupOf = new Dictionary<string, string>();
+            var renames = new Dictionary<string, string>();
+            foreach (var rule in map.placementRules)
+            {
+                if (IsBulkOperation(rule.operation))
+                    groupOf[rule.id] = GeneratedGroups.TryGetValue(rule.id, out var group) ? group : Pascal(rule.id);
+                else if (!string.IsNullOrEmpty(rule.name)) renames[rule.id] = rule.name;
+            }
+
+            var lightIds = new HashSet<string>();
+            if (map.lights != null)
+                foreach (var light in map.lights) lightIds.Add(light.id);
+
+            var children = new List<Transform>();
+            foreach (Transform child in root) children.Add(child);
+
+            Transform generated = null;
+            Transform lights = null;
+            var counters = new Dictionary<string, int>();
+            var grouped = 0;
+            var renamed = 0;
+
+            foreach (var child in children)
+            {
+                if (groupOf.TryGetValue(child.name, out var group))
+                {
+                    generated ??= NewGroup(root, "_Generated");
+                    counters.TryGetValue(child.name, out var index);
+                    counters[child.name] = index + 1;
+                    var bucket = NewGroup(generated, group);
+                    child.name = $"{child.name}_{index:000}";
+                    child.SetParent(bucket, false);
+                    grouped++;
+                    continue;
+                }
+
+                if (lightIds.Contains(child.name))
+                {
+                    lights ??= NewGroup(root, "Lights");
+                    child.SetParent(lights, false);
+                    continue;
+                }
+
+                // 한 규칙이 조각 여럿을 내는 자리(노즈 캡의 `_Port`/`_Starboard`)는 접미사를
+                // 그대로 물려받는다 — 그 접미사가 이미 방위어(`N-4`)라 새로 지을 것이 없다.
+                foreach (var (id, alias) in renames)
+                {
+                    if (child.name != id && !child.name.StartsWith(id + "_", StringComparison.Ordinal)) continue;
+                    child.name = alias + child.name.Substring(id.Length);
+                    renamed++;
+                    break;
+                }
+            }
+
+            Debug.Log($"[LAST_SHIFT_MODULAR_NAMING] grouped={grouped} renamed={renamed} " +
+                      $"roots={root.childCount}");
+        }
+
+        /// <summary>같은 이름이 이미 있으면 그것을 쓰고, 없으면 만든다.</summary>
+        private static Transform NewGroup(Transform parent, string name)
+        {
+            var existing = parent.Find(name);
+            if (existing != null) return existing;
+            var node = new GameObject(name).transform;
+            node.SetParent(parent, false);
+            return node;
         }
 
         private static void RemoveInteriorWallsCoveredByShell(Transform root)
@@ -1000,10 +1142,17 @@ namespace DoodleUp.Editor
         /// <summary>
         /// 방 설비 하나를 놓는다. 중앙에 한 번 놓고 <b>실제 렌더러 크기를 재서</b> 끝벽으로
         /// 민다 — 설비 치수는 아트 에셋 몫이라 코드가 미리 알 수 없다.
+        ///
+        /// <b>밑면을 갑판 윗면에 맞춘다.</b> 킷 규약이 <c>pivot=bottom-center</c> 인데 여기서
+        /// <c>y=0</c> 에 놓고 있었고, 실제로 걷는 면은 바닥 판 윗면(<see cref="PanelTopY"/>,
+        /// 실측 <c>0.12</c>)이라 <b>모든 방 설비가 갑판 아래로 그만큼 잠겨</b> 있었다. 숙소
+        /// 침상이 "바닥에 박힌다" 로 보인 것이 이것이고, 회전이 아니라 높이 문제였다.
         /// </summary>
-        private static void PlaceFeature(GameObject prefab, Transform root, string name, MapSpace space)
+        private static void PlaceFeature(GameObject prefab, Transform root, string name, MapSpace space, float deckY)
         {
-            var placed = Place(prefab, root, name, BoundsCenter(space.bounds));
+            var center = BoundsCenter(space.bounds);
+            if (!float.IsNaN(deckY)) center.y = deckY;
+            var placed = Place(prefab, root, name, center);
             if (placed == null || space.door == null) return;
 
             if (!TryMeasure(placed.transform, out var box)) return;
@@ -1052,6 +1201,6 @@ namespace DoodleUp.Editor
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; public string kind; }
         [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
-        [Serializable] private sealed class MapRule { public string id; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; }
+        [Serializable] private sealed class MapRule { public string id; public string name; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; }
     }
 }
