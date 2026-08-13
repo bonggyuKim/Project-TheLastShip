@@ -80,6 +80,21 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(nose.position[0], Is.LessThan(-18f), "노즈 캡은 조종석 선수 외피 밖으로 돌출해야 한다");
         }
 
+        [Test]
+        public void QuartersHasASecondBunkSetOnTheEndWallClearOfTheDoorLane()
+        {
+            var map = JsonUtility.FromJson<MapRoot>(File.ReadAllText(MapPath));
+            var bunk = System.Array.Find(map.placementRules, rule => rule.id == "quartersBunkSecond");
+
+            Assert.That(bunk, Is.Not.Null, "숙소 4인분을 채울 두 번째 2단 침상 조가 없다.");
+            Assert.That(bunk.assetId, Is.EqualTo("LPK_Quarters_Bunk"));
+            Assert.That(bunk.position[0], Is.EqualTo(10.25f).Within(0.01f));
+            Assert.That(bunk.position[1], Is.EqualTo(0.12f).Within(0.01f),
+                "침상 밑면은 갑판 윗면에 맞아야 한다.");
+            Assert.That(bunk.position[2], Is.EqualTo(11.5f).Within(0.01f),
+                "침상은 문 반대편 z=MaxZ 끝벽에 0.05m 띄워 붙어야 한다.");
+        }
+
         /// <summary>
         /// <b>남의 화면에서는 머리가 보인다.</b> 1인칭에서 자기 머리를 접는 것은 소유자
         /// 인스턴스에만 거는 표현이고, 뼈 스케일은 복제되지 않는다. 그 전제가 성립하려면
@@ -103,6 +118,6 @@ namespace DoodleUp.Tests.EditMode
 
         [System.Serializable] private sealed class MapRoot { public MapCamera cockpitCamera; public MapRule[] placementRules; }
         [System.Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
-        [System.Serializable] private sealed class MapRule { public string id; public string operation; public float[] position; }
+        [System.Serializable] private sealed class MapRule { public string id; public string assetId; public string operation; public float[] position; }
     }
 }

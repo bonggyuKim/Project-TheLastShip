@@ -155,6 +155,17 @@
       ]
     },
     {
+      "id": "quartersBunkSecond",
+      "name": "Quarters_Feature_Bunk_Second",
+      "assetId": "LPK_Quarters_Bunk",
+      "position": [
+        10.25,
+        0.12,
+        11.5
+      ],
+      "rotationY": 0
+    },
+    {
       "id": "floor",
       "assetId": "LPK_Floor_Square_2m",
       "target": [
