@@ -43,6 +43,25 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
+        public void QuartersReplacesTheStallWithFourBerthCurtainsAndMovesTheBasinToTheDoorWall()
+        {
+            var quarters = Load().Props.Where(p =>
+                p.space.kind == LastShiftDressingSpaceKind.Compartment &&
+                p.space.compartment == LastShiftCompartment.Quarters).ToArray();
+
+            Assert.That(quarters.Any(p => p.id == "Stall"), Is.False,
+                "폐지한 화장실 Stall 이 숙소에 다시 들어왔다.");
+            Assert.That(quarters.Count(p => p.id.StartsWith("BerthCurtain_")), Is.EqualTo(4),
+                "네 침상 각각에 프라이버시 커튼이 하나씩 있어야 한다.");
+
+            var basin = quarters.Single(p => p.id == "Basin");
+            Assert.That(basin.anchor.y, Is.LessThanOrEqualTo(-0.85f),
+                "Basin 은 숙소 출입문이 있는 z=MinZ 벽에 붙어야 한다.");
+            Assert.That(basin.anchor.x, Is.LessThan(0f),
+                "Basin 은 문 중심 통로를 피한 문 반대편에 있어야 한다.");
+        }
+
+        [Test]
         public void BothStateCueRoomsAreDressed()
         {
             // 냉각실만, 또는 전력실만 단서를 가지면 둘 중 하나가 상태 없는 방으로 읽힌다.

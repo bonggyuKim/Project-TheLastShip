@@ -289,9 +289,18 @@ namespace DoodleUp.Editor
 
                 Add(props, space, "Lockers", 1f, 0f, 0.45f, 1.9f, 1.6f, tint);
 
-                // 위생 — 흡수된 화장실. 문 쪽 좌현 구석이라 들어서면서 바로 보인다.
-                Add(props, space, "Basin", -0.85f, -1f, 0.9f, 0.9f, 0.5f, fixture);
-                Add(props, space, "Stall", -0.85f, 1f, 1.0f, 2.0f, 0.9f, tint);
+                // 위생 — 흡수된 화장실. Stall 은 방 한가운데를 점유하면서도 28도밖에
+                // 접히지 않아 공간 분리도, 숙소 서사도 만들지 못했다. 세면대만 문 옆 벽
+                // (z=MinZ)의 문 반대편에 붙여 "씻고 바로 나가는" 동선으로 남긴다.
+                Add(props, space, "Basin", -0.55f, -0.9f, 0.9f, 0.9f, 0.5f, fixture);
+
+                // 프라이버시는 화장실 칸막이 대신 침상 네 자리로 돌린다. 얇은 패널이라
+                // 통로를 먹지 않고, 닫힘 둘/반열림 하나/열림 하나의 폭 차이로 사용 흔적이
+                // 읽힌다. 모듈 킷 침상 면(z=MaxZ)에 붙으며 바닥에서 살짝 띄운다.
+                Add(props, space, "BerthCurtain_Port_Lower", 0.35f, 0.86f, 0.72f, 0.78f, 0.035f, tint, 0.18f);
+                Add(props, space, "BerthCurtain_Port_Upper", 0.35f, 0.96f, 0.38f, 0.78f, 0.035f, tint, 1.05f);
+                Add(props, space, "BerthCurtain_Starboard_Lower", 0.78f, 0.86f, 0.72f, 0.78f, 0.035f, tint, 0.18f);
+                Add(props, space, "BerthCurtain_Starboard_Upper", 0.92f, 0.96f, 0.16f, 0.78f, 0.035f, tint, 1.05f);
 
                 // 휴게 — 흡수된 휴게실. 넷이 마주 앉는 자리 하나다. 이 배에서 유일하게
                 // 일 안 하는 소품이고, 그 정서가 숙소 안에 남아야 §3.2 의 흡수가 성립한다.

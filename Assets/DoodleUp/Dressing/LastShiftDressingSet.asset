@@ -1642,7 +1642,7 @@ MonoBehaviour:
       passage: 0
     size: {x: 0.9, y: 0.9, z: 0.5}
     anchorMode: 0
-    anchor: {x: -0.85, y: 0.3}
+    anchor: {x: -0.55, y: -0.9}
     bottomY: 0.12
     clearance: 0.1
     eulerAngles: {x: 0, y: 0, z: 0}
@@ -1651,19 +1651,70 @@ MonoBehaviour:
     semantics: 0
     lightIntensity: 0
     justification: 
-  - id: Stall
+  - id: BerthCurtain_Port_Lower
     space:
       kind: 1
       zone: 0
       compartment: 0
       passage: 0
-    size: {x: 1, y: 2, z: 0.9}
+    size: {x: 0.72, y: 0.78, z: 0.035}
     anchorMode: 0
-    anchor: {x: -0.85, y: 1}
-    bottomY: 0.12
+    anchor: {x: 0.35, y: 0.86}
+    bottomY: 0.18
     clearance: 0.1
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2370164969612121691, guid: 2a0dc4a16af6d9c7ff8b817a38663091, type: 3}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: BerthCurtain_Port_Upper
+    space:
+      kind: 1
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.38, y: 0.78, z: 0.035}
+    anchorMode: 0
+    anchor: {x: 0.35, y: 0.96}
+    bottomY: 1.05
+    clearance: 0.1
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: BerthCurtain_Starboard_Lower
+    space:
+      kind: 1
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.72, y: 0.78, z: 0.035}
+    anchorMode: 0
+    anchor: {x: 0.78, y: 0.86}
+    bottomY: 0.18
+    clearance: 0.1
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
+    material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: BerthCurtain_Starboard_Upper
+    space:
+      kind: 1
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.16, y: 0.78, z: 0.035}
+    anchorMode: 0
+    anchor: {x: 0.92, y: 0.96}
+    bottomY: 1.05
+    clearance: 0.1
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 0}
     material: {fileID: 2100000, guid: 4245ee5d3fa51214a8cbbba5b62e3a5f, type: 2}
     semantics: 0
     lightIntensity: 0
