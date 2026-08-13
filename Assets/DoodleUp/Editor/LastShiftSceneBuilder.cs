@@ -1207,7 +1207,8 @@ namespace DoodleUp.Editor
 
         private static ItemSpec[] ItemSpecs => new[]
         {
-            new ItemSpec("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f)),
+            new ItemSpec("Battery", LastShiftItemRole.Battery, LastShiftShipDimensions.BatteryNominal, new Vector3(0.65f, 0.65f, 0.9f), new Color(0.95f, 0.65f, 0.12f),
+                PortableBatteryModelPath),
             new ItemSpec("CoolingCanister", LastShiftItemRole.CoolingCanister, LastShiftShipDimensions.CoolingNominal, new Vector3(0.55f, 1.1f, 0.55f), new Color(0.15f, 0.72f, 0.95f),
                 CoolingCanisterModelPath),
             new ItemSpec("PatchPlate", LastShiftItemRole.PatchPlate, LastShiftShipDimensions.PatchPlateNominal, new Vector3(1.15f, 1.15f, 0.18f), new Color(0.78f, 0.82f, 0.88f)),
@@ -1222,6 +1223,8 @@ namespace DoodleUp.Editor
         /// 실물의 소유는 아트 쪽에 두고, 여기서는 게임플레이 컴포넌트만 얹는다.
         /// </summary>
         public const string CoolingCanisterModelPath = "Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_CoolingCanister.prefab";
+
+        public const string PortableBatteryModelPath = "Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_PortableBattery_0p5m.prefab";
 
         /// <summary>
         /// 부품 정위치의 정본. <see cref="CreateItems"/> 가 새로 놓을 때 쓰는 값과 <b>같은 출처</b>이며,
@@ -1336,7 +1339,7 @@ namespace DoodleUp.Editor
             item.transform.position = Vector3.zero;
             item.transform.localScale = spec.Scale;
             if (string.IsNullOrEmpty(spec.VisualModelPath))
-                item.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial($"LS_{name}", spec.Color);
+                AttachReadableItemVisual(item, spec);
             else
                 AttachProductionVisual(item, spec);
             var body = item.AddComponent<Rigidbody>();
@@ -1355,6 +1358,44 @@ namespace DoodleUp.Editor
             item.AddComponent<LastShiftOwnerNetworkTransform>();
             item.AddComponent<LastShiftNetworkGrabbable>();
             return item;
+        }
+
+        /// <summary>
+        /// 외부 모델이 아직 없는 휴대 부품의 임시 제작형 실루엣. 단일 큐브를 그대로 두지 않고
+        /// PatchPlate 는 보강 리브와 손잡이, Tether 는 스풀과 축으로 역할이 원거리에서도 읽히게 한다.
+        /// 루트 collider/scale 은 게임 규칙이므로 시각 자식만 추가한다.
+        /// </summary>
+        private static void AttachReadableItemVisual(GameObject item, ItemSpec spec)
+        {
+            Object.DestroyImmediate(item.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(item.GetComponent<MeshFilter>());
+            var material = CreateMaterial($"LS_{spec.Name}", spec.Color);
+
+            void Part(string partName, PrimitiveType primitive, Vector3 position, Vector3 scale, Vector3 euler)
+            {
+                var part = GameObject.CreatePrimitive(primitive);
+                part.name = partName;
+                part.transform.SetParent(item.transform, false);
+                part.transform.localPosition = position;
+                part.transform.localScale = scale;
+                part.transform.localEulerAngles = euler;
+                part.GetComponent<MeshRenderer>().sharedMaterial = material;
+                Object.DestroyImmediate(part.GetComponent<Collider>());
+            }
+
+            if (spec.Role == LastShiftItemRole.PatchPlate)
+            {
+                Part("Plate", PrimitiveType.Cube, Vector3.zero, Vector3.one, Vector3.zero);
+                Part("Rib_H", PrimitiveType.Cube, new Vector3(0, 0, -0.58f), new Vector3(0.88f, 0.07f, 0.14f), Vector3.zero);
+                Part("Rib_V", PrimitiveType.Cube, new Vector3(0, 0, -0.58f), new Vector3(0.14f, 0.88f, 0.14f), Vector3.zero);
+                Part("GrabHandle", PrimitiveType.Cube, new Vector3(0, 0.30f, -0.72f), new Vector3(0.34f, 0.10f, 0.10f), Vector3.zero);
+            }
+            else // Tether
+            {
+                Part("Spool", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.82f, 0.42f, 0.82f), new Vector3(90, 0, 0));
+                Part("Axle", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.28f, 0.62f, 0.28f), new Vector3(90, 0, 0));
+                Part("Grip", PrimitiveType.Cube, new Vector3(0, 0.58f, 0), new Vector3(0.55f, 0.18f, 0.20f), Vector3.zero);
+            }
         }
 
         /// <summary>

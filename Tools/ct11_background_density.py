@@ -609,9 +609,7 @@ add("StowageNet_Port", "StowageNet", "Zone", "Power", -2.6, Z_PORT, 2.20, cleara
 add("DeckGrate_Port", "DeckGrate", "Zone", "Power", -2.6, -0.6, 0.001)
 add("DeckGrate_Starboard", "DeckGrate", "Zone", "Power", -4.3, 1.8, 0.001)
 add("BreakerCabinet", "LSDress_BreakerCabinet", "Zone", "Power", -3.9, Z_STAR, 0.0, clearance=0.1725)
-add("PartsPallet", "LSDress_PartsPallet", "Zone", "Power", -3.0, -2.2, 0.0)
-add("CrateStack_Fore", "LSDress_CrateStack", "Zone", "Power", -4.4, -2.2, 0.0)
-add("CrateStack_Aft", "LSDress_CrateStack", "Zone", "Power", -0.7, -0.6, 0.0)
+add("Power_SpareBatteryRack", "LSDress_PartsPallet", "Zone", "Power", -3.0, -2.2, 0.0)
 
 # ── 냉각실 ──────────────────────────────────────────────────────────────────
 add("CableTray_Port", "CableTray", "Zone", "Cooling", 2.5, -1.0, TRAY_Y)
@@ -624,8 +622,6 @@ add("DeckGrate_Aft", "DeckGrate", "Zone", "Cooling", 1.0, 0.4, 0.001)
 add("HeatExchangerCoil", "LSDress_HeatExchangerCoil", "Zone", "Cooling", 4.3, 1.3, 0.0)
 add("CoolingRack", "LSDress_CoolingRack", "Zone", "Cooling", 1.3, -0.4, 0.0)
 add("LashRail_Port", "LSDress_LashRail", "Zone", "Cooling", 2.5, -2.4, 0.10)
-add("CrateStack_Aft", "LSDress_CrateStack", "Zone", "Cooling", 4.4, -2.2, 0.0)
-add("PartsPallet", "LSDress_PartsPallet", "Zone", "Cooling", 2.6, 1.6, 0.0)
 
 # ── 통로 B ──────────────────────────────────────────────────────────────────
 add("CableTray_Fore", "CableTray", "Passage", 1, 8.6, -1.2, TRAY_Y)
@@ -655,10 +651,8 @@ add("O2TankBank_Fore", "LSDress_O2TankBank", "Zone", "LifeSupport", 13.6, -2.2, 
 add("O2TankBank_Aft", "LSDress_O2TankBank", "Zone", "LifeSupport", 17.9, -2.2, 0.0)
 add("WallLocker_Fore", "LSDress_WallLocker", "Zone", "LifeSupport", 11.75, Z_STAR, 0.0, clearance=0.20)
 add("LockerBank_Aft", "LSDress_LockerBank", "Zone", "LifeSupport", 17.6, Z_STAR, 0.0, clearance=0.20)
-add("CrateStack_Fore", "LSDress_CrateStack", "Zone", "LifeSupport", 13.0, -0.4, 0.0)
-add("CrateStack_Mid", "LSDress_CrateStack", "Zone", "LifeSupport", 18.3, -0.4, 0.0)
-add("CrateStack_Aft", "LSDress_CrateStack", "Zone", "LifeSupport", 17.4, 1.4, 0.0)
-add("PartsPallet", "LSDress_PartsPallet", "Zone", "LifeSupport", 14.2, 1.6, 0.0)
+add("LifeSupport_CrateLashed_Fore", "LSDress_CrateStack", "Zone", "LifeSupport", 13.0, -0.4, 0.0)
+add("LifeSupport_CrateLashed_Aft", "LSDress_CrateStack", "Zone", "LifeSupport", 17.4, 1.4, 0.0)
 
 
 # 기존 프리팹(재사용) 바깥 치수 — assets-v1 §5 표 그대로.
@@ -692,15 +686,34 @@ def read_prefab_ref(name):
 
 def layout_keys():
     """이번에 쓸 (kind, 공간, id). 재실행 때 <b>자기 자신을 장애물로 세지 않기</b> 위한 것이다."""
-    return {(0 if it["kind"] == "Zone" else 2,
+    keys = {(0 if it["kind"] == "Zone" else 2,
              ZONE_ENUM[it["key"]] if it["kind"] == "Zone" else it["key"],
              it["id"]) for it in LAYOUT}
+    keys |= retired_layout_keys()
+    return keys
+
+
+def retired_layout_keys():
+    return {
+        (0, ZONE_ENUM["Power"], "PartsPallet"),
+        (0, ZONE_ENUM["Power"], "CrateStack_Fore"),
+        (0, ZONE_ENUM["Power"], "CrateStack_Aft"),
+        (0, ZONE_ENUM["Cooling"], "CrateStack_Aft"),
+        (0, ZONE_ENUM["Cooling"], "PartsPallet"),
+        (0, ZONE_ENUM["LifeSupport"], "CrateStack_Fore"),
+        (0, ZONE_ENUM["LifeSupport"], "CrateStack_Mid"),
+        (0, ZONE_ENUM["LifeSupport"], "CrateStack_Aft"),
+        (0, ZONE_ENUM["LifeSupport"], "PartsPallet"),
+    }
 
 
 def existing_props_as_obstacles():
     """이미 에셋에 든 소품. 새 소품이 그 위에 겹치면 밀도가 아니라 뭉침이 된다."""
     out = []
     mine = layout_keys()
+    # 데이터 앵커는 정적 메시가 아니다. 특히 Frost_Deck 은 냉각실 바닥 상태 표식이라
+    # LashRail 과 공간을 공유해도 실제 형상 충돌이 생기지 않는다.
+    nonvisual_ids = {"Frost_Deck", "Scorch_Deck"}
     cur = None
     zone_name = {v: k for k, v in ZONE_ENUM.items()}
     with open(SET_ASSET, encoding="utf-8") as fh:
@@ -735,7 +748,7 @@ def existing_props_as_obstacles():
                 cur = None
                 continue
             key = (cur["kind"], cur["zone"] if cur["kind"] == 0 else cur["passage"], cur["id"])
-            if key in mine:
+            if key in mine or cur["id"] in nonvisual_ids:
                 cur = None
                 continue
             sz = cur["size"]
@@ -769,7 +782,7 @@ PROP_TEMPLATE = (
     "    material: {{fileID: 0}}\n"
     "    semantics: 0\n"
     "    lightIntensity: 0\n"
-    "    justification: "
+    "    justification:"
 )
 
 def split_prop_blocks(body):
@@ -878,6 +891,9 @@ def main():
     new_keys = {(0 if p["item"]["kind"] == "Zone" else 2,
                  ZONE_ENUM[p["item"]["key"]] if p["item"]["kind"] == "Zone" else p["item"]["key"],
                  p["item"]["id"]) for p in placed}
+    # 방 서사 정리로 폐기/개명된 슬롯도 기존 asset 에서 제거한다. 새 키만 교체하면
+    # 이전 CrateStack/PartsPallet 블록이 남아 총량과 이름이 조용히 되돌아온다.
+    new_keys |= retired_layout_keys()
     head, existing = split_prop_blocks(body)
     kept = [b for b in existing if block_key(b) not in new_keys]
     body = head + "\n" + "\n".join(b.rstrip("\n") for b in kept + blocks) + "\n"

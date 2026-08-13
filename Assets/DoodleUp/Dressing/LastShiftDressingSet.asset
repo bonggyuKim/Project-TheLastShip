@@ -359,1179 +359,6 @@ MonoBehaviour:
     semantics: 64
     lightIntensity: 0.6
     justification: 
-  - id: CableTray_Fore
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.8759, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Mid
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.146, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.9854, y: 0.3197}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port_Fore
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: -0.8964, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port_Aft
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.6723, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Starboard
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: -0.7283, y: 1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PanelBank_Starboard
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.8, y: 0.9, z: 0.088}
-    anchorMode: 0
-    anchor: {x: -0.8553, y: 1}
-    bottomY: 0.95
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port_Fore
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: -0.7463, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port_Aft
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.4019, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Fore
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.988, y: -0.6426}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Starboard
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.5988, y: 0.9839}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: NavChartTable
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.4, y: 0.905, z: 0.875}
-    anchorMode: 0
-    anchor: {x: -0.8951, y: 0.5994}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 0}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HelmThrottle_Port
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.46, y: 1.0498, z: 0.54}
-    anchorMode: 0
-    anchor: {x: -0.3504, y: -0.6067}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8286207623220716509, guid: 0d73b845e29c4af1a05e63d7bc918f26, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HelmThrottle_Starboard
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.46, y: 1.0498, z: 0.54}
-    anchorMode: 0
-    anchor: {x: -0.3504, y: 0.6067}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8286207623220716509, guid: 0d73b845e29c4af1a05e63d7bc918f26, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HelmSeat_Port
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.5, y: 0.9, z: 0.5}
-    anchorMode: 0
-    anchor: {x: -0.0813, y: -0.632}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4588657775770116122, guid: 5bc3a0752cc41cbfe5fa1c054fde680a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HelmSeat_Starboard
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.5, y: 0.9, z: 0.5}
-    anchorMode: 0
-    anchor: {x: -0.0813, y: 0.632}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4588657775770116122, guid: 5bc3a0752cc41cbfe5fa1c054fde680a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Aft
-    space:
-      kind: 0
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: 0.5523, y: 0.9449}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Fore
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.977, y: -0.4954}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.8046, y: -0.4954}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Starboard_Fore
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: -0.1556, y: 1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Starboard_Aft
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.9728, y: 1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.1556, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PanelBank_Starboard
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.8, y: 0.9, z: 0.088}
-    anchorMode: 0
-    anchor: {x: -0.5, y: 1}
-    bottomY: 1.26
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Starboard
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.5776, y: 1}
-    bottomY: 0.12
-    clearance: 0.22
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Fore
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.2564, y: 0.9302}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Aft
-    space:
-      kind: 2
-      zone: 0
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.4274, y: 0.6202}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Port
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Starboard
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.2131}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: -0.7246, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.4537, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: StowageNet_Port
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
-    anchorMode: 0
-    anchor: {x: -0.0559, y: -1}
-    bottomY: 2.2
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Port
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.0543, y: -0.241}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Starboard
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.9783, y: 0.7229}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: BreakerCabinet
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.92, y: 1.94, z: 0.455}
-    anchorMode: 0
-    anchor: {x: -0.7497, y: 1}
-    bottomY: 0.12
-    clearance: 0.1725
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 3256999018155527321, guid: 2b98c60fd41e4a37890b5ce2f37a0d14, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PartsPallet
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.52, y: 0.44, z: 0.43}
-    anchorMode: 0
-    anchor: {x: 0.75, y: -0.8871}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 6994636384671913621, guid: 6b3b9ed38235c804c9b84ed9c82d14fb, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Fore
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: -0.9794, y: -0.8661}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Aft
-    space:
-      kind: 0
-      zone: 1
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: 0.9278, y: -0.2362}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Port
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Starboard
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: 0.2131}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.7246, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: -0.7, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: StowageNet_Port
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 1.1, y: 0.81, z: 0.23}
-    anchorMode: 0
-    anchor: {x: 0.0559, y: -1}
-    bottomY: 2.2
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Fore
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.163, y: 0.1606}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Aft
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: -0.8152, y: 0.1606}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: HeatExchangerCoil
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 1.16, y: 1.7, z: 0.56}
-    anchorMode: 0
-    anchor: {x: 0.9677, y: 0.4887}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7608983397483821381, guid: 4e15af820b6d43c9a72f8d05e6b31c78, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CoolingRack
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 1.52, y: 1.87, z: 0.52}
-    anchorMode: 0
-    anchor: {x: -0.7143, y: -0.1493}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8191795051805340888, guid: 1d07cd564be863f1eb6ec2fb0d2a94bf, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LashRail_Port
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.2, z: 0.12}
-    anchorMode: 0
-    anchor: {x: 0.76, y: -0.8333}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Aft
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: 0.85, y: 0.25}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PartsPallet
-    space:
-      kind: 0
-      zone: 2
-      compartment: 0
-      passage: 0
-    size: {x: 0.52, y: 0.44, z: 0.43}
-    anchorMode: 0
-    anchor: {x: 0.0532, y: 0.6452}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 6994636384671913621, guid: 6b3b9ed38235c804c9b84ed9c82d14fb, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: -0.9854, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Mid
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0, y: -0.3552}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CableTray_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 2.4, y: 0.155, z: 0.25}
-    anchorMode: 0
-    anchor: {x: 0.9489, y: 0.3197}
-    bottomY: 2.86
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: -0.7283, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Port_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.7843, y: -1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ConduitJunction_Starboard
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.74, y: 0.64, z: 0.27}
-    anchorMode: 0
-    anchor: {x: 0.7283, y: 1}
-    bottomY: 2.22
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PanelBank_Starboard
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 1.8, y: 0.9, z: 0.088}
-    anchorMode: 0
-    anchor: {x: 0.8553, y: 1}
-    bottomY: 0.95
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: -0.1722, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: RibFrame_Port_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.7123, y: 2.1, z: 0.2}
-    anchorMode: 0
-    anchor: {x: 0.7463, y: -1}
-    bottomY: 0.12
-    clearance: 0.16
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.2994, y: -0.0803}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: DeckGrate_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 1.2, y: 0.045, z: 0.9}
-    anchorMode: 0
-    anchor: {x: 0.2695, y: 0.4819}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: ScrubberStack
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 1.42, y: 1.83, z: 0.58}
-    anchorMode: 0
-    anchor: {x: -0.0162, y: 1}
-    bottomY: 0.12
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 766825059239644337, guid: 6c3d70b19af24e58b31067ca8d24f095, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: O2TankBank_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.38, y: 1.06, z: 0.44}
-    anchorMode: 0
-    anchor: {x: -0.4545, y: -0.8209}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5098516409084797595, guid: 5622aa9f72891ac4cb58137729ca31bb, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: O2TankBank_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.38, y: 1.06, z: 0.44}
-    anchorMode: 0
-    anchor: {x: 0.9416, y: -0.8209}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 5098516409084797595, guid: 5622aa9f72891ac4cb58137729ca31bb, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: WallLocker_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 1.02, y: 1.9, z: 0.44}
-    anchorMode: 0
-    anchor: {x: -0.9878, y: 1}
-    bottomY: 0.12
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2611417569167545740, guid: 0ca235374ee7dfa251e85dfa303231d7, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: LockerBank_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 2.02, y: 1.9, z: 0.44}
-    anchorMode: 0
-    anchor: {x: 0.9319, y: 1}
-    bottomY: 0.12
-    clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 4529041978261289867, guid: d858a3bfa6f6daa54e5460810560eb65, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Fore
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: -0.5814, y: -0.1575}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Mid
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: 0.2907, y: -0.5906}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: CrateStack_Aft
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.72, y: 0.52, z: 0.86}
-    anchorMode: 0
-    anchor: {x: 0.6977, y: 0.5512}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 1285030123813361692, guid: 832b23f4145514d4da315467ea4f1e9a, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
-  - id: PartsPallet
-    space:
-      kind: 0
-      zone: 3
-      compartment: 0
-      passage: 0
-    size: {x: 0.52, y: 0.44, z: 0.43}
-    anchorMode: 0
-    anchor: {x: -0.2367, y: 0.6452}
-    bottomY: 0.12
-    clearance: 0.1
-    eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 6994636384671913621, guid: 6b3b9ed38235c804c9b84ed9c82d14fb, type: 3}
-    material: {fileID: 0}
-    semantics: 0
-    lightIntensity: 0
-    justification: 
   - id: Lamp
     space:
       kind: 1
@@ -1804,3 +631,1227 @@ MonoBehaviour:
     semantics: 0
     lightIntensity: 0
     justification: 
+  - id: CableTray_Fore
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: -0.8759, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Mid
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.146, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Aft
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.9854, y: 0.3197}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Fore
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.8964, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Aft
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.6723, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Starboard
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.7283, y: 1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: PanelBank_Starboard
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.8, y: 0.9, z: 0.088}
+    anchorMode: 0
+    anchor: {x: -0.8553, y: 1}
+    bottomY: 0.95
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port_Fore
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: -0.7463, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port_Aft
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: 0.1722, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Fore
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.988, y: -0.6426}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Starboard
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.5988, y: 0.9839}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: NavChartTable
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.4, y: 0.905, z: 0.875}
+    anchorMode: 0
+    anchor: {x: -0.8951, y: -0.2398}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4407405110572991290, guid: f2a09d6c53b1487eb4c8027fa1d6e389, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: HelmThrottle_Port
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.46, y: 1.0498, z: 0.54}
+    anchorMode: 0
+    anchor: {x: -0.3504, y: -0.6067}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 8286207623220716509, guid: 0d73b845e29c4af1a05e63d7bc918f26, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: HelmThrottle_Starboard
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.46, y: 1.0498, z: 0.54}
+    anchorMode: 0
+    anchor: {x: -0.3504, y: 0.6067}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 8286207623220716509, guid: 0d73b845e29c4af1a05e63d7bc918f26, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: HelmSeat_Port
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.5, y: 0.9, z: 0.5}
+    anchorMode: 0
+    anchor: {x: -0.0813, y: -0.632}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4588657775770116122, guid: 5bc3a0752cc41cbfe5fa1c054fde680a, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: HelmSeat_Starboard
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.5, y: 0.9, z: 0.5}
+    anchorMode: 0
+    anchor: {x: -0.0813, y: 0.632}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4588657775770116122, guid: 5bc3a0752cc41cbfe5fa1c054fde680a, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CrateStack_Aft
+    space:
+      kind: 0
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1, y: 1.55, z: 0.8}
+    anchorMode: 0
+    anchor: {x: 0.5523, y: 0.9449}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: -0.977, y: -0.4954}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.8046, y: -0.4954}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Starboard_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.1556, y: 1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Starboard_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.9728, y: 1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.1556, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: PanelBank_Starboard
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.8, y: 0.9, z: 0.088}
+    anchorMode: 0
+    anchor: {x: -0.1961, y: 1}
+    bottomY: 1.26
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Starboard
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: 0.5776, y: 1}
+    bottomY: 0
+    clearance: 0.22
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.2564, y: 0.9302}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0.4274, y: 0.6202}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Port
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Starboard
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0, y: 0.2131}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.7246, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: 0.4537, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: StowageNet_Port
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 1.1, y: 0.81, z: 0.23}
+    anchorMode: 0
+    anchor: {x: -0.0559, y: -1}
+    bottomY: 2.2
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Port
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.0543, y: -0.241}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Starboard
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.9783, y: 0.7229}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: BreakerCabinet
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 0.92, y: 1.94, z: 0.455}
+    anchorMode: 0
+    anchor: {x: -0.7497, y: 1}
+    bottomY: 0
+    clearance: 0.1725
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3256999018155527321, guid: 2b98c60fd41e4a37890b5ce2f37a0d14, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: Power_SpareBatteryRack
+    space:
+      kind: 0
+      zone: 1
+      compartment: 0
+      passage: 0
+    size: {x: 1.12, y: 0.4, z: 0.92}
+    anchorMode: 0
+    anchor: {x: -0.266, y: -0.8871}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3236684652590518806, guid: c25eb55d71e461602b65ded697d0f2ed, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Port
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Starboard
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0, y: 0.2131}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.7246, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: -0.4537, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: StowageNet_Port
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.1, y: 0.81, z: 0.23}
+    anchorMode: 0
+    anchor: {x: 0.0559, y: -1}
+    bottomY: 2.2
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Fore
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0.163, y: 0.1606}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Aft
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: -0.8152, y: 0.1606}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: HeatExchangerCoil
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.16, y: 1.7, z: 0.56}
+    anchorMode: 0
+    anchor: {x: 0.9677, y: 0.4887}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7608983397483821381, guid: 4e15af820b6d43c9a72f8d05e6b31c78, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CoolingRack
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 1.52, y: 1.87, z: 0.52}
+    anchorMode: 0
+    anchor: {x: -0.7143, y: -0.1493}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 8191795051805340888, guid: 1d07cd564be863f1eb6ec2fb0d2a94bf, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: LashRail_Port
+    space:
+      kind: 0
+      zone: 2
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.2, z: 0.12}
+    anchorMode: 0
+    anchor: {x: 0, y: -0.8333}
+    bottomY: 0.1
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 8884420203507306641, guid: b040f6afe622836596a72646851e3dce, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.3448, y: 0}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.977, y: -0.743}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.3891, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.856, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: PanelBank_Inner
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 1.8, y: 0.9, z: 0.088}
+    anchorMode: 0
+    anchor: {x: 0.5882, y: 1}
+    bottomY: 1.26
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Inner
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: 0.6601, y: 1}
+    bottomY: 0
+    clearance: 0.22
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: StowageNet_Inner
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 1.1, y: 0.81, z: 0.23}
+    anchorMode: 0
+    anchor: {x: -0.1674, y: 1}
+    bottomY: 1.3
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5457113463608494743, guid: d6c41e93a70b48f5926ad83c1fe07b52, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Fore
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0, y: 0.6202}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Aft
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 1
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0.8547, y: 0.6202}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: -0.9854, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Mid
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0, y: -0.3552}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: CableTray_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 2.4, y: 0.155, z: 0.25}
+    anchorMode: 0
+    anchor: {x: 0.9489, y: 0.3197}
+    bottomY: 2.86
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1933041437336814351, guid: 7e40b6a2c95d41f8ad2378e1b4c60d93, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: -0.7283, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Port_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.7843, y: -1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ConduitJunction_Starboard
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 0.74, y: 0.64, z: 0.27}
+    anchorMode: 0
+    anchor: {x: 0.7283, y: 1}
+    bottomY: 2.22
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 973901791044479978, guid: 5c92e18b7d3a44e2b60f19ac8d5e3b27, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: PanelBank_Starboard
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.8, y: 0.9, z: 0.088}
+    anchorMode: 0
+    anchor: {x: 0.8553, y: 1}
+    bottomY: 0.95
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 1718434752203973932, guid: 3a71c0d5e4b28f4d9a1c66f0d2ba7e11, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: -0.1722, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: RibFrame_Port_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 0.7123, y: 2.1, z: 0.2}
+    anchorMode: 0
+    anchor: {x: 0.7463, y: -1}
+    bottomY: 0
+    clearance: 0.16
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 7818092873442875660, guid: b3f8a2170ce54d9b8a67f3d1c20e95a4, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0.2994, y: -0.0803}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: DeckGrate_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.045, z: 0.9}
+    anchorMode: 0
+    anchor: {x: 0.2695, y: 0.4819}
+    bottomY: 0.001
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 5871219529922506844, guid: 91b5d73f28ae4c60b1df5a82e7c04d6b, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: ScrubberStack
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.42, y: 1.83, z: 0.58}
+    anchorMode: 0
+    anchor: {x: -0.0162, y: 1}
+    bottomY: 0
+    clearance: 0.2
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 766825059239644337, guid: 6c3d70b19af24e58b31067ca8d24f095, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: O2TankBank_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.72, y: 1.16, z: 0.52}
+    anchorMode: 0
+    anchor: {x: -0.4545, y: -0.8209}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 6502795749855430340, guid: 8a52fc3706e94db2a8c1f490b5d76e31, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: O2TankBank_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.72, y: 1.16, z: 0.52}
+    anchorMode: 0
+    anchor: {x: 0.9416, y: -0.8209}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 6502795749855430340, guid: 8a52fc3706e94db2a8c1f490b5d76e31, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: WallLocker_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1.02, y: 1.9, z: 0.44}
+    anchorMode: 0
+    anchor: {x: -0.9878, y: 1}
+    bottomY: 0
+    clearance: 0.2
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 2611417569167545740, guid: 0ca235374ee7dfa251e85dfa303231d7, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: LockerBank_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 2.02, y: 1.9, z: 0.44}
+    anchorMode: 0
+    anchor: {x: 0.9319, y: 1}
+    bottomY: 0
+    clearance: 0.2
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 4529041978261289867, guid: d858a3bfa6f6daa54e5460810560eb65, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: LifeSupport_CrateLashed_Fore
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1, y: 1.55, z: 0.8}
+    anchorMode: 0
+    anchor: {x: -0.5814, y: -0.1575}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: LifeSupport_CrateLashed_Aft
+    space:
+      kind: 0
+      zone: 3
+      compartment: 0
+      passage: 0
+    size: {x: 1, y: 1.55, z: 0.8}
+    anchorMode: 0
+    anchor: {x: 0.6977, y: 0.5512}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
