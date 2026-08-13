@@ -108,7 +108,6 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(player.TryOperateNearestDoor(), Is.False, "유령은 문을 열거나 닫을 수 없다.");
             Assert.That(player.InteractionPrompt, Does.Contain("유령"),
                 "눌러도 아무 일이 없는 것보다 왜 안 되는지가 보여야 한다.");
-            Assert.That(player.InputLabel, Does.Contain("유령"));
 
             crew.ResetCrewOxygen();
             Assert.That(player.IsGhost, Is.False, "리셋은 유령을 되돌린다.");

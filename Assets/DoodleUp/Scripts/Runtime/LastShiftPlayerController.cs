@@ -82,7 +82,6 @@ namespace DoodleUp.Runtime
         [SerializeField] private Transform holdSocket;
         [SerializeField] private LastShiftGrabbable heldItem;
         [SerializeField] private LastShiftPlayerSlot playerSlot;
-        [SerializeField] private Color identityColor = new(0.2f, 0.65f, 1f);
 
         private CharacterController characterController;
         private LastShiftNetworkPlayer networkPlayer;
@@ -135,19 +134,6 @@ namespace DoodleUp.Runtime
         public bool IsGhost { get; private set; }
 
         /// <summary>
-        /// 화면 아래 조작줄. <b><c>M</c> 이 여기 없던 것이 온보딩 사고의 절반이었다</b>
-        /// (2026-08-13 플레이테스트 — "어느 방이 어딘지 모름"). 방 이름이 뜨는 유일한 화면이
-        /// 지도인데 그 키가 어디에도 안 적혀 있어서, 지도를 아는 사람만 배 배치를 알 수 있었다.
-        ///
-        /// 괄호로 <b>무엇이 보이는지</b>를 붙인다. "M 지도" 만으로는 그것이 지금 필요한 화면인지
-        /// 알 수 없고, 처음 하는 사람이 찾는 말은 "지도" 이 아니라 "방 이름" 이다.
-        /// 유령 줄에도 같이 있다 — 지도는 유령도 열 수 있는 보기 전용 화면이다.
-        /// </summary>
-        public string InputLabel => IsGhost
-            ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 / M 지도(방 이름) — 유령: 잡기·수리·문 조작 불가"
-            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / " +
-              "M 지도(방 이름) / 1·2·3 프리셋 / R 리셋";
-        /// <summary>
         /// 화면 중앙 프롬프트. <b>지금 이 자리에서 누를 것이 있을 때만 문자열이 있고, 없으면
         /// 빈 문자열이다.</b> 예전에는 아무것도 없는 자리에서도 `+   E 잡기: 대상을 조준하세요`
         /// 가 상시로 떠 있어, 화면 한가운데 폭 460px 상자가 배 전체를 도는 내내 시야를 덮었다.
@@ -177,15 +163,14 @@ namespace DoodleUp.Runtime
 
         public void Configure(Camera camera, Transform socket)
         {
-            Configure(camera, socket, LastShiftPlayerSlot.PlayerOne, new Color(0.2f, 0.65f, 1f));
+            Configure(camera, socket, LastShiftPlayerSlot.PlayerOne);
         }
 
-        public void Configure(Camera camera, Transform socket, LastShiftPlayerSlot slot, Color color)
+        public void Configure(Camera camera, Transform socket, LastShiftPlayerSlot slot)
         {
             targetCamera = camera;
             holdSocket = socket;
             playerSlot = slot;
-            identityColor = color;
             characterController = GetComponent<CharacterController>();
         }
 
@@ -1116,13 +1101,15 @@ namespace DoodleUp.Runtime
             heldItem = null;
         }
 
-        /// <summary>상시 조작 안내 줄의 높이와 화면 가장자리 여백. 프롬프트는 이 줄 위에 앉는다.</summary>
-        public const float InputBarHeight = 36f;
-        public const float InputBarMargin = 8f;
+        /// <summary>
+        /// 화면 가장자리 여백. 예전에는 하단 조작 안내 줄의 여백이기도 해서 이름이
+        /// <c>InputBarMargin</c> 이었는데, 그 줄을 걷어내고 남은 것은 <b>가장자리 여백</b>
+        /// 하나뿐이다 — 없어진 줄의 이름을 남겨 두면 다음 사람이 아래쪽 한계를 그 줄 탓으로 읽는다.
+        /// </summary>
+        public const float ScreenEdgeMargin = 8f;
 
-        /// <summary>프롬프트 상자 높이, 화면 가장자리 여백, 그리고 앵커와 상자 사이 간격.</summary>
+        /// <summary>프롬프트 상자 높이.</summary>
         public const float PromptBoxHeight = 40f;
-        public const float PromptBoxGap = 10f;
 
         /// <summary>대상 윗면과 상자 아랫변 사이의 화면 간격. 물건에 닿지 않을 만큼만 띄운다.</summary>
         public const float PromptAnchorGap = 14f;
@@ -1144,20 +1131,21 @@ namespace DoodleUp.Runtime
         ///
         /// 화면 밖으로는 안 나간다. 대상이 화면 가장자리에 걸리거나 위쪽 끝에 있으면 상자가
         /// 잘려 읽을 수 없으므로, 가장자리 여백 안쪽으로 밀어 넣는다 — 살짝 어긋나게 붙는 것이
-        /// 반쯤 잘린 것보다 낫다. 아래쪽 한계는 상시 조작 안내 줄이다(겹치면 둘 다 못 읽는다).
+        /// 반쯤 잘린 것보다 낫다. 아래쪽 한계는 화면 가장자리다 — 여기를 막고 있던 상시 조작
+        /// 안내 줄이 없어졌으므로, 아래에 있는 대상의 안내는 그 줄 자리까지 내려와 앉는다.
         /// </summary>
         public static Rect ResolvePromptRect(float screenWidth, float screenHeight, float textWidth, Vector2 anchor)
         {
-            var maxWidth = Mathf.Max(0f, screenWidth - InputBarMargin * 2f);
+            var maxWidth = Mathf.Max(0f, screenWidth - ScreenEdgeMargin * 2f);
             var boxWidth = Mathf.Min(maxWidth, textWidth + 28f);
 
             var boxX = anchor.x - boxWidth * 0.5f;
-            var maxX = Mathf.Max(InputBarMargin, screenWidth - InputBarMargin - boxWidth);
-            boxX = Mathf.Clamp(boxX, InputBarMargin, maxX);
+            var maxX = Mathf.Max(ScreenEdgeMargin, screenWidth - ScreenEdgeMargin - boxWidth);
+            boxX = Mathf.Clamp(boxX, ScreenEdgeMargin, maxX);
 
             var boxY = anchor.y - PromptAnchorGap - PromptBoxHeight;
-            var maxY = screenHeight - InputBarMargin - InputBarHeight - PromptBoxGap - PromptBoxHeight;
-            boxY = Mathf.Clamp(boxY, InputBarMargin, Mathf.Max(InputBarMargin, maxY));
+            var maxY = screenHeight - ScreenEdgeMargin - PromptBoxHeight;
+            boxY = Mathf.Clamp(boxY, ScreenEdgeMargin, Mathf.Max(ScreenEdgeMargin, maxY));
 
             return new Rect(boxX, boxY, boxWidth, PromptBoxHeight);
         }
@@ -1211,8 +1199,10 @@ namespace DoodleUp.Runtime
         /// 단위를 안 가리고 비율만 쓰므로, <c>OnGUI</c> 시절 화면 픽셀로 쓰던 것을 그대로
         /// <b>캔버스 단위로</b> 태울 수 있었다 — UGUI 전환에서 손대지 않은 부분이 이것이다.
         ///
-        /// 아래 입력 안내 줄은 그대로 상시다 — 화면 가장자리이고 시야를 덮지 않으며,
-        /// 조작 목록은 "지금 여기" 가 아니라 배우는 정보라 조건부로 만들 대상이 아니다.
+        /// <b>하단 상시 조작줄은 없다</b>(2026-08-13 사용자 지시). 화면 아래를 가로지르던 그 띠는
+        /// 한 번 읽고 나면 남은 판 내내 같은 글자를 되풀이하는 자리였다. 키를 처음 배우는 자리는
+        /// 튜토리얼 재촉과 국소 프롬프트가 이미 맡고 있다 — 지도 키(<c>M</c>)도 광장 단계 재촉이
+        /// 문장으로 들고 있으므로, 걷어내도 아무 키가 화면에서 사라지지 않는다.
         /// </summary>
         private void DrawHud()
         {
@@ -1271,12 +1261,6 @@ namespace DoodleUp.Runtime
             {
                 promptView.gameObject.SetActive(false);
             }
-
-            var barRect = new Rect(InputBarMargin, canvas.y - InputBarMargin - InputBarHeight,
-                canvas.x - InputBarMargin * 2f, InputBarHeight);
-            layer.PanelCanvas("inputBar", barRect, 0.72f);
-            layer.LabelCanvas("inputLabel", barRect, InputLabel,
-                InputLabelFontSize, TextAnchor.MiddleCenter, identityColor);
         }
 
         /// <summary>테두리 네 조각을 담는 자리. 프레임마다 새 배열을 안 만든다.</summary>
@@ -1344,9 +1328,11 @@ namespace DoodleUp.Runtime
 
             DrawMapCrew(layer, plan);
 
-            var hint = new Rect(0f, canvas.y - InputBarMargin - InputBarHeight, canvas.x, InputBarHeight);
+            // 지도가 떠 있는 동안에만 있는 줄이라 걷어낸 상시 조작줄과 운명을 같이하지 않는다 —
+            // 이 화면은 <c>M</c> 하나로 닫히고, 그 키를 안 적으면 나가는 길이 안 보인다.
+            var hint = new Rect(0f, canvas.y - MapHintMargin - MapHintHeight, canvas.x, MapHintHeight);
             layer.LabelCanvas("map:hint", hint, "지도 — M 으로 닫기",
-                InputLabelFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
+                MapHintFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
         }
 
         /// <summary>
@@ -1435,8 +1421,10 @@ namespace DoodleUp.Runtime
         /// <summary>조준점 글자 크기. 십자 사각형 안에 들어가는 최대치다.</summary>
         private const int CrosshairFontSize = 22;
 
-        /// <summary>조작 안내 줄 글자 크기.</summary>
-        private const int InputLabelFontSize = 16;
+        /// <summary>지도 화면 아래 "M 으로 닫기" 줄의 높이·여백·글자 크기.</summary>
+        private const float MapHintHeight = 36f;
+        private const float MapHintMargin = 8f;
+        private const int MapHintFontSize = 16;
 
         private LastShiftPromptView promptView;
 

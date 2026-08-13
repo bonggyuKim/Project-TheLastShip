@@ -133,27 +133,20 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>조작줄이 지도 키를 말한다.</b> 방 이름이 뜨는 화면이 지도 하나인데 그 키가 어디에도
-        /// 안 적혀 있으면, 지도를 이미 아는 사람만 배 배치를 알 수 있다 — 그것이 이 카드의
-        /// 사고 절반이었다. 유령 줄에도 있다: 지도는 유령도 열 수 있는 보기 전용 화면이다.
+        /// <b>화면 어딘가는 지도 키를 말한다.</b> 방 이름이 뜨는 화면이 지도 하나인데 그 키가
+        /// 어디에도 안 적혀 있으면, 지도를 이미 아는 사람만 배 배치를 알 수 있다 — 그것이 이
+        /// 카드의 사고 절반이었다.
+        ///
+        /// 재는 자리가 하단 조작줄에서 광장 단계 재촉으로 옮겼다(2026-08-13 사용자 지시로 그
+        /// 줄을 걷어냈다). 남은 것이 이 한 문장뿐이므로 여기서 지키지 않으면 지도 키를 알리는
+        /// 자리가 배에서 사라진다.
         /// </summary>
         [Test]
-        public void TheInputBarAdvertisesTheMapKey()
+        public void TheCrossPlazaNudgeAdvertisesTheMapKey()
         {
-            var host = new GameObject("player", typeof(LastShiftPlayerController));
-            try
-            {
-                var player = host.GetComponent<LastShiftPlayerController>();
+            var nudge = LastShiftTutorialCopy.Of(LastShiftTutorialStep.CrossPlaza).Nudge;
 
-                Assert.That(player.InputLabel, Does.Contain("M 지도"), "조작줄에 지도 키가 없다");
-
-                player.SetGhost(true);
-                Assert.That(player.InputLabel, Does.Contain("M 지도"), "유령 조작줄에 지도 키가 없다");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(host);
-            }
+            Assert.That(nudge, Does.Contain("M 지도"), "지도 키를 알리는 자리가 배에 없다");
         }
 
         private static (LastShiftPlazaSpace Space, Rect Rect)[] RoomRects()

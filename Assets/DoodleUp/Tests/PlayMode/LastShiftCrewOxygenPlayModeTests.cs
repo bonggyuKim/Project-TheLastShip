@@ -349,7 +349,7 @@ namespace DoodleUp.Tests.PlayMode
             socket.SetParent(cameraObject.transform, false);
             var controller = playerObject.AddComponent<LastShiftPlayerController>();
             // 슬롯을 나눠야 HUD 막대 두 줄이 서로 다른 승무원으로 읽힌다.
-            controller.Configure(camera, socket, LastShiftPlayerSlot.PlayerTwo, new Color(1f, 0.6f, 0.2f));
+            controller.Configure(camera, socket, LastShiftPlayerSlot.PlayerTwo);
             return controller;
         }
 
