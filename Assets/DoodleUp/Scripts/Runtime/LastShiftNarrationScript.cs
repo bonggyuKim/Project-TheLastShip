@@ -24,17 +24,13 @@ namespace DoodleUp.Runtime
         /// <summary>대본 한 줄. 열 구성은 정본 §3 그대로다.</summary>
         public readonly struct Line
         {
-            public Line(string id, string trigger, LastShiftNarrationSfx sfx, string text,
-                string nudge = "", float nudgeAfterSeconds = 0f, string prompt = "",
-                float autoAfterSeconds = 0f, bool optional = false)
+            public Line(string id, string trigger, LastShiftNarrationSfx sfx,
+                float nudgeAfterSeconds = 0f, float autoAfterSeconds = 0f, bool optional = false)
             {
                 Id = id;
                 Trigger = trigger;
                 Sfx = sfx;
-                Text = text;
-                Nudge = nudge;
                 NudgeAfterSeconds = nudgeAfterSeconds;
-                Prompt = prompt;
                 AutoAfterSeconds = autoAfterSeconds;
                 IsOptional = optional;
             }
@@ -51,10 +47,29 @@ namespace DoodleUp.Runtime
             /// </summary>
             public LastShiftNarrationSfx Sfx { get; }
 
-            public string Text { get; }
-            public string Nudge { get; }
+            /// <summary>
+            /// 화면에 뜨는 말. <b>문안은 여기 없다</b> — 대사 표(<see cref="LastShiftText"/>)의
+            /// <c>narration.&lt;줄 id&gt;.text</c> 다. 키를 줄마다 손으로 적지 않는 것은 줄에 이미
+            /// 이름(<see cref="Id"/>)이 있어서다: 두 벌로 적으면 그 둘이 언젠가 어긋난다.
+            /// </summary>
+            public string Text => LastShiftText.Get($"narration.{Id}.text");
+
+            /// <summary>못 찾고 있을 때 갈아 끼우는 말. 없는 줄이 많아 표에 있을 때만 뜬다.</summary>
+            public string Nudge => Optional("nudge");
             public float NudgeAfterSeconds { get; }
-            public string Prompt { get; }
+
+            /// <summary>상시로 남는 한 줄. 대부분의 줄에는 없다.</summary>
+            public string Prompt => Optional("prompt");
+
+            /// <summary>
+            /// 있으면 문안, 없으면 빈 문자열. <see cref="LastShiftText.Get"/> 로 바로 물으면
+            /// 애초에 안 쓰는 자리마다 "빠진 키" 경고가 떠서, 진짜 누락이 그 속에 묻힌다.
+            /// </summary>
+            private string Optional(string suffix)
+            {
+                var key = $"narration.{Id}.{suffix}";
+                return LastShiftText.Has(key) ? LastShiftText.Get(key) : string.Empty;
+            }
 
             /// <summary>
             /// <b>앞줄이 뜬 뒤 이만큼 지나면 저절로 온다</b>(정본 표의 "앞줄 후 N초" 형 트리거).
@@ -100,22 +115,13 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static readonly Line[] Wake =
         {
-            new("AI_W_01", "씬 로드 직후. 화면 암전 · 입력 잠금", Long,
-                "동면 해제 절차 개시."),
-            new("AI_W_02", "페이드 인 시작", Quiet,
-                "경과 항해 시간 1,000,000년. 오차 미보정."),
-            new("AI_W_03", "페이드 인 완료 · 시점 입력 해금", Short,
-                "주 동력 상실. 동면 유지 회로 정지됨."),
-            new("AI_W_04", "AI_W_03 후 2초", Quiet,
-                "각성은 일정이 아니라 고장의 결과임."),
-            new("AI_W_05", "이동 입력 해금", Short,
-                "기립 가능. 숙소 기압 정상.",
-                "기립할 것. 남은 예비 전력은 안내에 쓰임.", 12f),
-            new("AI_W_06", "첫 이동 입력 감지", Quiet,
-                "선내 상태를 순서대로 안내함."),
-            new("AI_W_07", "숙소 출입문 상호작용 사거리 진입", Short,
-                "문 밖은 중앙 광장. 이 배의 모든 이동은 그곳을 지남.",
-                "숙소 문으로 갈 것.", 16f)
+            new("AI_W_01", "씬 로드 직후. 화면 암전 · 입력 잠금", Long),
+            new("AI_W_02", "페이드 인 시작", Quiet),
+            new("AI_W_03", "페이드 인 완료 · 시점 입력 해금", Short),
+            new("AI_W_04", "AI_W_03 후 2초", Quiet),
+            new("AI_W_05", "이동 입력 해금", Short, nudgeAfterSeconds: 12f),
+            new("AI_W_06", "첫 이동 입력 감지", Quiet),
+            new("AI_W_07", "숙소 출입문 상호작용 사거리 진입", Short, nudgeAfterSeconds: 16f)
         };
 
         /// <summary>
@@ -131,42 +137,20 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static readonly Line[] Patrol =
         {
-            new("AI_T_01", "광장 최초 진입", Long,
-                "중앙 광장. 고정 구획 다섯이 전부 이 방에 붙어 있음."),
-            new("AI_T_02", "AI_T_01 후 3초", Quiet,
-                // 순회가 순서 무관이 된 뒤(7164c50) 이 줄이 <b>없는 순서를 주장</b>하고 있었다.
-                // 화자가 정해진 순서가 있다고 말하는데 아무 문이나 들어가도 되면, 플레이어는
-                // 자기가 규칙을 어겼다고 읽는다. 출발점 권고는 재촉에 남긴다 - 얼어붙는
-                // 사람에게는 첫 문을 가리켜 줘야 한다(정본 v1.17).
-                "둘레의 문을 하나씩 안내함. 순서는 상관없음.",
-                "선수 쪽 개구부부터 갈 것.", 14f, autoAfterSeconds: 3f),
+            new("AI_T_01", "광장 최초 진입", Long),
+            new("AI_T_02", "AI_T_01 후 3초", Quiet, nudgeAfterSeconds: 14f, autoAfterSeconds: 3f),
             // 코어는 지나가다 볼 수도, 안 볼 수도 있다 — 그래서 유일하게 건너뛸 수 있는 줄이다.
-            new("AI_T_02B", "광장 코어 사거리 진입 (순서 무관 · 1회)", Quiet,
-                "가운데 구조물은 코어. 지금은 막혀 있음.", optional: true),
-            new("AI_T_03", "조종석 진입", Short,
-                "조종석. 문이 없는 개구부로 광장과 이어짐."),
-            new("AI_T_04", "전면 스크린 시야 진입", Quiet,
-                "다음 기항과 도킹을 여기서 봄.",
-                "전면 스크린 앞으로 갈 것.", 12f),
-            new("AI_T_04B", "AI_T_04 후 2초", Quiet,
-                "창밖에 잔해가 떠 있음. 곧 그리로 나감.", autoAfterSeconds: 2f),
-            new("AI_T_05", "전력실 압력문 통과", Short,
-                "전력실. 배전반이 여기 있음."),
-            new("AI_T_06", "배전반 근접", Quiet,
-                "각성의 원인이 여기 있음. 출력은 최소선.",
-                "배전반 앞으로 갈 것.", 12f),
-            new("AI_T_07", "산소실 압력문 통과", Short,
-                "산소실. 선내 산소를 만드는 곳임."),
-            new("AI_T_08", "산소실 게이지 근접", Quiet,
-                "여기가 멈추면 배 전체가 멈춤. 복구 1순위.",
-                "게이지 앞으로 갈 것.", 12f),
-            new("AI_T_09", "냉각실 압력문 통과", Short,
-                "냉각실. 열을 버리는 곳임."),
-            new("AI_T_10", "냉각통 근접", Quiet,
-                "냉각이 끊기면 전력실이 먼저 내려감.",
-                "냉각통 앞으로 갈 것.", 12f),
-            new("AI_T_11", "마지막 미방문 방 퇴장 후 광장 재진입", Quiet,
-                "구획 안내 종료. 문의 위치를 기억할 것.")
+            new("AI_T_02B", "광장 코어 사거리 진입 (순서 무관 · 1회)", Quiet, optional: true),
+            new("AI_T_03", "조종석 진입", Short),
+            new("AI_T_04", "전면 스크린 시야 진입", Quiet, nudgeAfterSeconds: 12f),
+            new("AI_T_04B", "AI_T_04 후 2초", Quiet, autoAfterSeconds: 2f),
+            new("AI_T_05", "전력실 압력문 통과", Short),
+            new("AI_T_06", "배전반 근접", Quiet, nudgeAfterSeconds: 12f),
+            new("AI_T_07", "산소실 압력문 통과", Short),
+            new("AI_T_08", "산소실 게이지 근접", Quiet, nudgeAfterSeconds: 12f),
+            new("AI_T_09", "냉각실 압력문 통과", Short),
+            new("AI_T_10", "냉각통 근접", Quiet, nudgeAfterSeconds: 12f),
+            new("AI_T_11", "마지막 미방문 방 퇴장 후 광장 재진입", Quiet)
         };
 
         /// <summary>
@@ -175,70 +159,44 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static readonly Line[] Exit =
         {
-            new("AI_B_01", "AI_T_11 후 광장 중앙 근접", Long,
-                "선체 밖으로 나갈 길은 하나뿐임."),
-            new("AI_B_02", "AI_B_01 후 2초", Quiet,
-                "코어가 그 길임. 위로 올라가 밖으로 나감.", "코어로 갈 것.", 14f,
-                autoAfterSeconds: 2f),
+            new("AI_B_01", "AI_T_11 후 광장 중앙 근접", Long),
+            new("AI_B_02", "AI_B_01 후 2초", Quiet, nudgeAfterSeconds: 14f, autoAfterSeconds: 2f),
             // v1.15 — 긴 신호음이 여기 있었다. 블록 첫 줄이 아닌데 갖고 있었고, 본문도
             // AI_B_02("위로 올라가 밖으로 나감")와 같은 말이었다. 둘 다 v1.13 재매핑 자국이다.
-            new("AI_F_01", "승강기 상호작용 사거리 최초 진입 (IsAtDeck)", Short,
-                "입구는 조종석 방향 한 면임.",
-                "나머지 세 면은 안 열림.", 16f),
-            new("AI_F_01B", "승강 플랫폼 탑승 (발판에 올라선 프레임)", Short,
-                "발판이 산소 시계의 시작선임. 지금부터 흐름."),
-            new("AI_F_02", "TryAscend 성공 (상승 개시)", Quiet,
-                "상승 개시. 올라가는 동안 감압이 같이 돎."),
-            new("AI_F_03", "DepressurizeStopY 도착 · 감압 진행 중", Quiet,
-                "감압 중. 챔버 안에서 기다릴 것."),
-            new("AI_F_04", "감압 완료 → 2단 상승 시작", Quiet,
-                "감압 완료. 해치 문턱까지 마저 올라감."),
-            new("AI_F_05", "IsAtHullTop · 상단 해치 열림", Short,
-                "탑 정상. 여기부터 선외임.", "해치로 걸어 나갈 것.", 12f),
-            new("AI_F_06", "상단 해치 통과 (선체 외부 진입)", Quiet,
-                "잔해는 선수 좌현 위쪽임. 산소 고갈 시 강제 회수됨.")
+            new("AI_F_01", "승강기 상호작용 사거리 최초 진입 (IsAtDeck)", Short, nudgeAfterSeconds: 16f),
+            new("AI_F_01B", "승강 플랫폼 탑승 (발판에 올라선 프레임)", Short),
+            new("AI_F_02", "TryAscend 성공 (상승 개시)", Quiet),
+            new("AI_F_03", "DepressurizeStopY 도착 · 감압 진행 중", Quiet),
+            new("AI_F_04", "감압 완료 → 2단 상승 시작", Quiet),
+            new("AI_F_05", "IsAtHullTop · 상단 해치 열림", Short, nudgeAfterSeconds: 12f),
+            new("AI_F_06", "상단 해치 통과 (선체 외부 진입)", Quiet)
         };
 
         /// <summary>블록 <c>4</c> — 파밍. 왕복 두 번이 여기서 닫힌다(정본 §4-4).</summary>
         public static readonly Line[] Farming =
         {
             // v1.15 — 파밍의 첫 줄은 승강기가 아니라 잔해다. 긴 신호음이 여기로 왔다.
-            new("AI_F_07", "잔해 상호작용 사거리 진입", Long,
-                "잔해. 자재를 뜯을 수 있음.", "잔해에 붙어 자재를 뜯을 것.", 18f),
-            new("AI_F_08", "첫 채취 성공", Quiet,
-                "자재 1. 손은 두 덩이까지임."),
-            new("AI_F_09", "적재량이 상한에 도달", Short,
-                "손이 참. 더 안 뜯김. 돌아설 것.", "탑 정상으로 복귀할 것.", 18f),
-            new("AI_F_10", "TryDescend 성공 (하강 개시)", Quiet,
-                "하강 개시. 내려가는 동안 재가압이 같이 돎."),
-            new("AI_F_11", "자동 반입이 일어난 프레임", Short,
-                "들고 있던 것이 하치대로 들어감."),
-            new("AI_F_12", "AI_F_11 후 2초", Quiet,
-                "경계는 문이 아니라 기압임. 따로 할 것 없음.", autoAfterSeconds: 2f),
+            new("AI_F_07", "잔해 상호작용 사거리 진입", Long, nudgeAfterSeconds: 18f),
+            new("AI_F_08", "첫 채취 성공", Quiet),
+            new("AI_F_09", "적재량이 상한에 도달", Short, nudgeAfterSeconds: 18f),
+            new("AI_F_10", "TryDescend 성공 (하강 개시)", Quiet),
+            new("AI_F_11", "자동 반입이 일어난 프레임", Short),
+            new("AI_F_12", "AI_F_11 후 2초", Quiet, autoAfterSeconds: 2f),
             // 한 번에 다 뜯으면 "아직 남음" 이 거짓말이 된다 — 그때는 건너뛴다.
-            new("AI_F_13", "잔해 잔량이 0 보다 큰 상태에서 AI_F_12 종료", Quiet,
-                "잔해에 아직 남음. 왕복이 세는 단위임.", "한 번 더 나갈 것.", 45f, optional: true),
-            new("AI_F_14", "잔해 필드 소진", Short,
-                "필드 소진. 자재 4.")
+            new("AI_F_13", "잔해 잔량이 0 보다 큰 상태에서 AI_F_12 종료", Quiet, nudgeAfterSeconds: 45f, optional: true),
+            new("AI_F_14", "잔해 필드 소진", Short)
         };
 
         /// <summary>블록 <c>5</c> — 도면. 옛 <c>7</c>·<c>8</c>·<c>9</c>단계 그대로다(정본 §4-3).</summary>
         public static readonly Line[] Blueprint =
         {
-            new("AI_B_11", "필드 소진 후 자재 잔액이 골조 값에 도달", Long,
-                "모은 자재로 계류 골조 하나를 세울 수 있음."),
-            new("AI_B_12", "도면 자동 열림", Quiet,
-                "거점 탭. 이번에는 계류 골조 하나임.", "골조를 집을 것.", 8f),
-            new("AI_B_13", "커서가 자유면 진입", Quiet,
-                "굵게 표시된 면이 세울 자리임."),
-            new("AI_B_14", "확정 시도 실패(발자국 불일치)", Quiet,
-                "발자국이 어긋남. 돌려서 맞출 것.", "초록이 되면 확정됨.", 20f, "회전 R / 휠"),
-            new("AI_B_15", "배치 확정 성공", Short,
-                "계류 골조 설치됨. 자재 잔량 0."),
-            new("AI_B_16", "AI_B_15 후 2초 · 선체 탭 해금과 동시", Quiet,
-                "선체는 자재가 아니라 정비 여력으로 지음. 잔량 0에서도 가능함.", autoAfterSeconds: 2f),
-            new("AI_B_17", "선체 탭 최초 표시", Quiet,
-                "붙일 수 있는 면이 배 둘레 전체로 넓어짐.")
+            new("AI_B_11", "필드 소진 후 자재 잔액이 골조 값에 도달", Long),
+            new("AI_B_12", "도면 자동 열림", Quiet, nudgeAfterSeconds: 8f),
+            new("AI_B_13", "커서가 자유면 진입", Quiet),
+            new("AI_B_14", "확정 시도 실패(발자국 불일치)", Quiet, nudgeAfterSeconds: 20f),
+            new("AI_B_15", "배치 확정 성공", Short),
+            new("AI_B_16", "AI_B_15 후 2초 · 선체 탭 해금과 동시", Quiet, autoAfterSeconds: 2f),
+            new("AI_B_17", "선체 탭 최초 표시", Quiet)
         };
 
         /// <summary>
@@ -248,10 +206,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static readonly Line[] HandsOff =
         {
-            new("AI_F_15", "AI_F_14 후 2초 (도면 블록 뒤에 온다 — 조항 N-6)", Long,
-                "루프는 셋임. 나가서 뜯고, 돌아와 쌓고, 도면에서 붙임.", autoAfterSeconds: 2f),
-            new("AI_F_16", "AI_F_15 후 3초 (손 떼기)", Quiet,
-                "안내 종료. 다음 결정은 승무원이 함.", autoAfterSeconds: 3f)
+            new("AI_F_15", "AI_F_14 후 2초 (도면 블록 뒤에 온다 — 조항 N-6)", Long, autoAfterSeconds: 2f),
+            new("AI_F_16", "AI_F_15 후 3초 (손 떼기)", Quiet, autoAfterSeconds: 3f)
         };
 
         /// <summary>
@@ -268,14 +224,10 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static readonly Line[] Standing =
         {
-            new("AI_F_W1", "선외에서 슈트 산소가 경고선 도달 (판당 1회)", Alert,
-                "산소 {threshold}%. 하강과 재가압 시간까지 계산할 것."),
-            new("AI_F_W2", "선외에서 슈트 산소가 임계선 도달 (판당 1회)", Alert,
-                "산소 {threshold}%. 복귀 외 행동 권장하지 않음."),
-            new("AI_F_W3", "O-7 자동 복귀 발생", Alert,
-                "산소 고갈. 강제 회수됨."),
-            new("AI_F_W4", "AI_F_W3 후 2초 (튜토리얼 한정 · 조항 T-8)", Quiet,
-                "들고 있던 것은 잔해로 되돌아감. 다시 나갈 것.")
+            new("AI_F_W1", "선외에서 슈트 산소가 경고선 도달 (판당 1회)", Alert),
+            new("AI_F_W2", "선외에서 슈트 산소가 임계선 도달 (판당 1회)", Alert),
+            new("AI_F_W3", "O-7 자동 복귀 발생", Alert),
+            new("AI_F_W4", "AI_F_W3 후 2초 (튜토리얼 한정 · 조항 T-8)", Quiet)
         };
 
         /// <summary>

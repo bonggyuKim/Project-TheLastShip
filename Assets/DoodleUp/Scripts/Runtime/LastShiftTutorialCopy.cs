@@ -11,29 +11,39 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftTutorialLine
     {
         public LastShiftTutorialLine(
-            LastShiftTutorialStep step, string title, string guide, string nudge, float nudgeAfterSeconds,
-            string prompt = "", LastShiftNarrationSfx sfx = LastShiftNarrationSfx.None, string trigger = "")
+            LastShiftTutorialStep step, float nudgeAfterSeconds = 0f,
+            LastShiftNarrationSfx sfx = LastShiftNarrationSfx.None, string trigger = "")
         {
             Step = step;
-            Title = title;
-            Guide = guide;
-            Nudge = nudge;
             NudgeAfterSeconds = nudgeAfterSeconds;
-            Prompt = prompt;
             Sfx = sfx;
             Trigger = trigger;
+        }
+
+        /// <summary>
+        /// 있으면 문안, 없으면 빈 문자열. 안 쓰는 자리마다 "빠진 키" 경고가 뜨면 진짜
+        /// 누락이 그 속에 묻힌다.
+        /// </summary>
+        private string Optional(string suffix)
+        {
+            // None 은 "단계가 없다" 를 뜻하는 자리표라 문안이 아예 없다. 표에 물으면 빠진
+            // 키로 잡혀 화면에 ⟨tutorial.None.guide⟩ 가 뜬다.
+            if (Step == LastShiftTutorialStep.None) return string.Empty;
+
+            var key = $"tutorial.{Step}.{suffix}";
+            return LastShiftText.Has(key) ? LastShiftText.Get(key) : string.Empty;
         }
 
         public LastShiftTutorialStep Step { get; }
 
         /// <summary>지금 어느 장면인가. 띠 머리줄에 단계 번호와 나란히 붙는 <b>짧은 말</b>이다.</summary>
-        public string Title { get; }
+        public string Title => Optional("title");
 
         /// <summary>지금 할 것. 단계에 들어온 직후부터 뜬다.</summary>
-        public string Guide { get; }
+        public string Guide => Optional("guide");
 
         /// <summary>못 찾고 있을 때. <see cref="NudgeAfterSeconds"/> 를 넘기면 <see cref="Guide"/> 자리를 뺏는다.</summary>
-        public string Nudge { get; }
+        public string Nudge => Optional("nudge");
 
         /// <summary>
         /// 재촉까지의 초. §2 표의 <b>개산 × 2</b> 다 — 개산만큼 걸린 것은 정상이고, 두 배를
@@ -48,7 +58,7 @@ namespace DoodleUp.Runtime
         /// 조작 프롬프트 — 조항 <c>T-3</c> 이 "실패 사유가 아니라 조작으로 가르친다" 고 한
         /// 그 한 줄이다. <c>8</c>단계에만 있고 나머지는 빈 문자열이다.
         /// </summary>
-        public string Prompt { get; }
+        public string Prompt => Optional("prompt");
 
         public bool HasPrompt => !string.IsNullOrEmpty(Prompt);
 
@@ -102,11 +112,7 @@ namespace DoodleUp.Runtime
         private static readonly LastShiftTutorialLine[] Table =
         {
             // 1 — 배우는 것: "밖에 뭔가 있다". 잔해를 가리키는 것이 아니라 나갈 데를 가리킨다.
-            new(LastShiftTutorialStep.SightSalvage,
-                "전면 스크린",
-                "스크린 밖에 잔해 하나. 뒤쪽 개구부로 나간다",
-                "몸을 돌린다 — 뒤가 열려 있다",
-                10f),
+            new(LastShiftTutorialStep.SightSalvage, nudgeAfterSeconds: 10f),
 
             // 2 — "허브에서 문을 고른다". 문이 여럿인 것과 지금 고를 문이 하나인 것을 같이 적는다.
             //
@@ -118,74 +124,37 @@ namespace DoodleUp.Runtime
             //
             // <b>"도면" 이라 쓰지 않는다.</b> 그 말은 아래 6단계가 자유 배치 청사진에 이미
             // 쓰고 있다. 배 배치를 보는 화면은 <c>지도</c>, 모듈을 놓는 화면은 <c>도면</c> 이다.
-            new(LastShiftTutorialStep.CrossPlaza,
-                "광장",
-                "가운데 승강기가 선외로 통하는 유일한 길이다",
-                "가운데 승강구로 갈 것 — 방 이름은 M 지도에 있다",
-                12f),
+            new(LastShiftTutorialStep.CrossPlaza, nudgeAfterSeconds: 12f),
 
             // 3 — "밖에는 시계가 있다 · 시계의 시작선은 바닥 사각형이다". 두 문장으로 갈라
             // 앞에 시계를, 뒤에 시작선을 둔다. 게이지가 뜨는 그 프레임에 읽히는 줄이다.
-            new(LastShiftTutorialStep.CentralLift,
-                "중앙 승강구",
-                "승강기에 올라서면 선외로 통한다 — 올라서는 순간부터 산소가 흐른다",
-                "발판이 시계의 시작선이다. 올라설 것",
-                10f),
+            new(LastShiftTutorialStep.CentralLift, nudgeAfterSeconds: 10f),
 
             // 4 — "파밍 동사 · 한 번에 둘이다". 손이 차는 것을 미리 적어 둔다: §1-1 이 짚은
             // 오학습은 "세 번째가 왜 안 뜯기지" 를 고장으로 읽는 데서 난다.
-            new(LastShiftTutorialStep.Harvest,
-                "선외 — 잔해",
-                "자재를 뜯는다. 손은 두 덩이까지다",
-                "세 번째는 안 뜯긴다 — 두 덩이면 돌아선다",
-                18f),
+            new(LastShiftTutorialStep.Harvest, nudgeAfterSeconds: 18f),
 
             // 5 — "적재의 경계 · 배 안은 안전하다". 동사가 아니라 선을 적는다(조항 T-2).
-            new(LastShiftTutorialStep.Deposit,
-                "복귀",
-                "광장에 내려서면 들고 있는 것이 하치대로 들어간다",
-                "승강기에서 내려 광장 바닥에 선다 — 그 바닥이 경계다",
-                30f),
+            new(LastShiftTutorialStep.Deposit, nudgeAfterSeconds: 30f),
 
             // 6 — "왕복이 루프의 단위다". 한 번 더 나가라고 시키는 것이 아니라, 왕복이
             // 세는 단위라는 것을 적는다.
-            new(LastShiftTutorialStep.SecondTrip,
-                "두 번째 왕복",
-                "잔해가 아직 남았다. 같은 길을 한 번 더 — 왕복이 세는 단위다",
-                "필드를 비워야 도면이 열린다",
-                45f),
+            new(LastShiftTutorialStep.SecondTrip, nudgeAfterSeconds: 45f),
 
             // 7 — "화면 읽는 법". 열린 것을 셋으로 끊어 적는다: 탭 · 카탈로그 · 세울 자리.
-            new(LastShiftTutorialStep.Schematic,
-                "도면",
-                "거점 탭 · 카탈로그는 계류 골조 하나 · 굵은 면이 세울 자리다",
-                "골조를 집어 굵은 면에 댄다",
-                8f),
+            new(LastShiftTutorialStep.Schematic, nudgeAfterSeconds: 8f),
 
             // 8 — "고르기 → 자유면 → 회전 → 확정". 프롬프트는 조항 T-3 이 정한 그 한 줄이고,
             // 안내는 회전이 필요해질 이유("발자국이 안 맞는다")를 미리 적어 둔다.
-            new(LastShiftTutorialStep.RotateFrame,
-                "계류 골조",
-                "굵은 면에 댄다 — 발자국이 안 맞으면 돌린다",
-                "회전 R 또는 휠. 초록이 되면 확정된다",
-                20f,
-                "회전 R / 휠"),
+            new(LastShiftTutorialStep.RotateFrame, nudgeAfterSeconds: 20f),
 
             // 9 — "자재가 0 인데 지을 수 있다"(조항 O-2). §2-1 이 이 튜토리얼에서 가장 값싼
             // 교육 장면이라 부른 자리다 — 잔액이 빈 것을 먼저 적고, 그래서 무엇으로 사는지를 적는다.
-            new(LastShiftTutorialStep.HullUnlocked,
-                "선체 탭",
-                "자재가 0 인데 방을 지을 수 있다 — 선체는 여력으로 산다",
-                "선체 탭. 자유면이 배 둘레 전체로 번졌다",
-                10f),
+            new(LastShiftTutorialStep.HullUnlocked, nudgeAfterSeconds: 10f),
 
             // 10 — "규칙". 손을 떼는 단계라 시키는 말이 없다. 진입이 곧 완료여서
             // (LastShiftTutorial.HandOff) 띠에는 거의 안 걸리지만, 표에 구멍을 내지 않는다.
-            new(LastShiftTutorialStep.HandsOff,
-                "손을 뗀다",
-                "붙일 자리는 정하는 사람 몫이다. 안 되면 빨간 한 줄이 뜬다",
-                "빨간 줄을 읽으면 된다 — 규칙은 도면이 들고 있다",
-                20f)
+            new(LastShiftTutorialStep.HandsOff, nudgeAfterSeconds: 20f)
         };
 
         /// <summary>표의 행 수. 단계 <c>10</c>개와 같아야 한다 — 테스트가 이걸로 구멍을 잡는다.</summary>
@@ -200,7 +169,7 @@ namespace DoodleUp.Runtime
             var index = (int)step - 1;
             return index >= 0 && index < Table.Length
                 ? Table[index]
-                : new LastShiftTutorialLine(LastShiftTutorialStep.None, string.Empty, string.Empty, string.Empty, 0f);
+                : new LastShiftTutorialLine(LastShiftTutorialStep.None);
         }
 
         /// <summary>

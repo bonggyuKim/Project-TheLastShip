@@ -2468,7 +2468,7 @@ namespace DoodleUp.Runtime
             layer.OnboardingPanel("tutorial", banner, 1f);
             var top = banner.y;
             layer.Label("tutorialSpeaker", new Rect(banner.x + 42f, top + 18f, 420f, 24f),
-                "선내 관리 시스템", 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
+                LastShiftText.Get("hud.speaker"), 16, new Color(0.32f, 0.82f, 0.82f), fontStyle: FontStyle.Bold);
             layer.Label("tutorialHeading", new Rect(banner.x + 42f, top + 48f, banner.width - 220f, 24f),
                 LastShiftTutorialCopy.Heading(LastShiftTutorial.Step),
                 LastShiftHudLayout.HeadingFontSize, LastShiftUiTheme.Ivory, fontStyle: FontStyle.Bold);
@@ -2480,10 +2480,11 @@ namespace DoodleUp.Runtime
                 38, LastShiftUiTheme.Ivory, wrap: true);
 
             layer.Label("tutorialCarried", new Rect(banner.x + 42f, top + 142f, 240f, 24f),
-                $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}",
+                LastShiftText.Format("hud.carried",
+                    LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity),
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
             layer.Label("tutorialRemaining", new Rect(banner.x + 286f, top + 142f, 220f, 24f),
-                $"잔해 남음 {LastShiftSalvage.Remaining}",
+                LastShiftText.Format("hud.salvageRemaining", LastShiftSalvage.Remaining),
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText);
 
             // 배지는 팝 하는 동안만 굵고 밝다. 조각을 하나로 두고 모양만 갈아 끼우는 이유는
@@ -2491,8 +2492,9 @@ namespace DoodleUp.Runtime
             var popping = depositBadgePopSeconds > 0f;
             layer.Label("tutorialBalance", new Rect(banner.x + 510f, top + 142f, 250f, 24f),
                 popping
-                    ? $"자재 {LastShiftMaterials.Balance}  ▲ +{LastShiftMaterials.LastDeposited}"
-                    : $"자재 {LastShiftMaterials.Balance}",
+                    ? LastShiftText.Format("hud.materialsGained",
+                        LastShiftMaterials.Balance, LastShiftMaterials.LastDeposited)
+                    : LastShiftText.Format("hud.materials", LastShiftMaterials.Balance),
                 popping ? LastShiftHudLayout.BadgeFontSize : LastShiftHudLayout.BodyFontSize,
                 popping ? DepositBadgeColor : LastShiftUiTheme.BodyText,
                 fontStyle: popping ? FontStyle.Bold : FontStyle.Normal);
@@ -2533,7 +2535,7 @@ namespace DoodleUp.Runtime
             // 화자 이름은 띠와 함께 온다. 검정 위에 두 줄이 뜨면 "로그 한 줄" 이 아니게 된다.
             if (panelAlpha > 0f)
                 layer.Label("tutorialSpeaker", new Rect(seated.x + 42f, seated.y + 18f, 420f, 24f),
-                    "선내 관리 시스템", 16,
+                    LastShiftText.Get("hud.speaker"), 16,
                     new Color(0.32f, 0.82f, 0.82f, panelAlpha), fontStyle: FontStyle.Bold);
 
             // 재촉은 그 줄이 뜬 뒤 시간으로 갈린다(조항 N-1 — 재촉에는 신호음이 없다).
@@ -2654,7 +2656,7 @@ namespace DoodleUp.Runtime
             if (layer == null) return;
 
             layer.Label("objective", new Rect(28f, 24f, 480f, 28f),
-                "목표 — 추력과 산소를 선 위로 올려 도킹",
+                LastShiftText.Get("hud.objective"),
                 LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
 
             // <b>운석 전에는 카운트다운을 그리지 않는다.</b> 도킹 제한시간은 사고 이후 예산이라
@@ -2670,7 +2672,7 @@ namespace DoodleUp.Runtime
             var timer = new Rect(508f, 24f, 180f, 28f);
             if (!HasAppliedImpact)
             {
-                layer.Label("dockTimer", timer, "사건 대기 · M",
+                layer.Label("dockTimer", timer, LastShiftText.Get("hud.dockTimer.idle"),
                     LastShiftHudLayout.HeadingFontSize, Color.white, fontStyle: FontStyle.Bold);
                 return;
             }
@@ -2693,7 +2695,7 @@ namespace DoodleUp.Runtime
             if (layer == null) return;
 
             var thrust = ApplyGauge(layer, "thrust", LastShiftUiIcon.Thrust,
-                0, "추력", currentState.ThrustDemand, HigherIsBetter,
+                0, LastShiftText.Get("gauge.thrust"), currentState.ThrustDemand, HigherIsBetter,
                 LastShiftRecoveryTuning.DockingSuccessThrust);
 
             // G-2(b) 필요 추력선. <c>(150 − DockProgress) / 남은 초</c> 를 추력 게이지 위에
@@ -2705,7 +2707,7 @@ namespace DoodleUp.Runtime
             // §5.7.6 미결2 는 "전력에도 등급 경계가 있다면" 이었는데, 이미 있다 —
             // S-P1/P2/P3 발동선 0.65/0.40/0.15 다. 새로 정할 값이 없어 그대로 쓴다.
             ApplyGauge(layer, "power", LastShiftUiIcon.Power,
-                1, "전력", currentState.BusPower, HigherIsBetter,
+                1, LastShiftText.Get("gauge.power"), currentState.BusPower, HigherIsBetter,
                 LastShiftSituationTable.BusDetachedTrigger,
                 LastShiftSituationTable.PowerCascadeTrigger,
                 LastShiftSituationTable.PowerBlackoutTrigger);
@@ -2713,7 +2715,7 @@ namespace DoodleUp.Runtime
             // 열만 반대다 — 올라가는 것이 나쁘다. 선 셋은 S-H1/H2/H3 등급 경계 그대로이며
             // 여기서 다시 계산하지 않는다(§5.7.2).
             ApplyGauge(layer, "heat", LastShiftUiIcon.Heat,
-                2, "열", currentState.EngineHeat, HigherIsWorse,
+                2, LastShiftText.Get("gauge.heat"), currentState.EngineHeat, HigherIsWorse,
                 LastShiftSituationTable.HeatCouplingTrigger,
                 LastShiftSituationTable.HeatRunawayTrigger,
                 LastShiftSituationTable.HeatLockTrigger);
@@ -2724,7 +2726,7 @@ namespace DoodleUp.Runtime
             var docking = LastShiftResourceGauges.Docking(
                 currentState.DockProgress, LastShiftRecoveryTuning.DockTargetThrustSeconds);
             var dockGauge = layer.Gauge("docking", LastShiftUiIcon.Docking, LastShiftHudLayout.SystemGaugeRect(3));
-            dockGauge.SetName("도킹");
+            dockGauge.SetName(LastShiftText.Get("gauge.docking"));
             dockGauge.SetValue(docking.Fill);
             dockGauge.SetValueLabel(docking.ValueLabel);
             dockGauge.SetTone(LastShiftResourceGauges.ToneOf(docking.Grade, Time.unscaledTime));
@@ -2767,15 +2769,19 @@ namespace DoodleUp.Runtime
         {
             if (layer == null) return;
 
-            ApplyResourceGauge(layer, "maintenance", LastShiftUiIcon.Maintenance, 0, "정비여력", LastShiftResourceGauges.Maintenance());
-            ApplyResourceGauge(layer, "materials", LastShiftUiIcon.Materials, 1, "자재", LastShiftResourceGauges.Materials());
+            ApplyResourceGauge(layer, "maintenance", LastShiftUiIcon.Maintenance, 0,
+                LastShiftText.Get("gauge.maintenance"), LastShiftResourceGauges.Maintenance());
+            ApplyResourceGauge(layer, "materials", LastShiftUiIcon.Materials, 1,
+                LastShiftText.Get("gauge.materials"), LastShiftResourceGauges.Materials());
 
             var oxygen = TryResolveLocalZone(out var zone)
                 ? LastShiftResourceGauges.Oxygen(zonePressures[zone], ZoneOxygenGradeOf(zone))
                 : LastShiftGaugeReadout.Missing;
-            ApplyResourceGauge(layer, "oxygen", LastShiftUiIcon.Oxygen, 2, "산소", oxygen);
+            ApplyResourceGauge(layer, "oxygen", LastShiftUiIcon.Oxygen, 2,
+                LastShiftText.Get("gauge.oxygen"), oxygen);
 
-            ApplyResourceGauge(layer, "food", LastShiftUiIcon.Food, 3, "식량", LastShiftResourceGauges.Food());
+            ApplyResourceGauge(layer, "food", LastShiftUiIcon.Food, 3,
+                LastShiftText.Get("gauge.food"), LastShiftResourceGauges.Food());
         }
 
         private static void ApplyResourceGauge(
@@ -2808,7 +2814,7 @@ namespace DoodleUp.Runtime
         {
             if (layer == null) return;
 
-            var line = "계통 이상 없음";
+            var line = LastShiftText.Get("hud.status.nominal");
             var color = Color.white;
 
             if (TryResolveDominantChannel(out var channel, out var grade))
@@ -2858,8 +2864,9 @@ namespace DoodleUp.Runtime
             if (battery == null) return;
 
             var text = battery.Secured
-                ? "배터리 장착됨"
-                : $"배터리 미장착 · {LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.Resolve(battery.transform.position))}";
+                ? LastShiftText.Get("hud.battery.seated")
+                : LastShiftText.Format("hud.battery.loose",
+                    LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.Resolve(battery.transform.position)));
 
             layer.Label("battery", new Rect(478f, LastShiftHudLayout.DominantLineTop + 2f, 240f, 24f),
                 text, LastShiftHudLayout.BodyFontSize,
@@ -2931,7 +2938,7 @@ namespace DoodleUp.Runtime
             const float cellWidth = 132f;
             const float doorWidth = 52f;
             var x = originX;
-            layer.Label("zoneHeader", new Rect(x, originY, 34f, 24f), "구역",
+            layer.Label("zoneHeader", new Rect(x, originY, 34f, 24f), LastShiftText.Get("hud.zoneHeader"),
                 LastShiftHudLayout.BodyFontSize, sirenColor, fontStyle: FontStyle.Bold);
             x += 34f;
 
@@ -2963,7 +2970,7 @@ namespace DoodleUp.Runtime
 
             if (sirenActive)
                 layer.Label("zoneSiren", new Rect(originX, originY + 22f, ZonePressureRowWidth, 20f),
-                    "⚠ 전선 경보: 산소 위험 (전 구역)",
+                    LastShiftText.Get("hud.alarm.oxygen"),
                     LastShiftHudLayout.BodyFontSize, sirenColor, fontStyle: FontStyle.Bold);
         }
 
@@ -3030,8 +3037,7 @@ namespace DoodleUp.Runtime
                 // 운석은 K 다. 이 줄만 옛 배정(M)을 그대로 들고 있어서, 지도를 열려고 M 을 누른
                 // 사람에게 디버그 줄이 "운석" 이라고 답하고 있었다 — 키 안내가 둘로 갈리면
                 // 조작을 화면에서 배우는 경로가 그 자리에서 끊긴다.
-                "WASD/Space/E/F/Mouse | 1·2·3 프리셋 | R 리셋 | K 운석 | M 지도 | 화살표 조종(8초) | " +
-                "판정 후 Space 다음 판 | F3 디버그",
+                LastShiftText.Get("hud.debugBar"),
                 LastShiftHudLayout.BodyFontSize, LastShiftUiTheme.BodyText, wrap: true);
         }
 
@@ -3042,7 +3048,7 @@ namespace DoodleUp.Runtime
             {
                 var zone = (LastShiftZone)index;
                 line += $"{LastShiftZoneAtlas.ShortLabelOf(zone)}={zonePressures[zone]:F2}";
-                if (IsZoneVacuum(zone)) line += "(진공)";
+                if (IsZoneVacuum(zone)) line += LastShiftText.Get("hud.zone.vacuum");
                 if (index < LastShiftZoneAtlas.ZoneCount - 1) line += "  ";
             }
 
