@@ -37,6 +37,27 @@ namespace DoodleUp.Editor
             Debug.Log("[LAST_SHIFT_EVA_KIT] prefabs=2 hatchAnimator=PASS result=PASS");
         }
 
+        /// <summary>
+        /// 여닫는 판이 있는 것만 다시 굽는다. 배를 다시 구울 필요가 없다 — 프리팹 인스턴스는
+        /// 안쪽 마디를 원본에서 읽으므로, 원본 프리팹과 클립만 갈아 끼우면 배 안의 문 다섯과
+        /// 상부 해치가 그대로 따라온다. 전체 재조립은 관계없는 킷까지 다시 직렬화한다.
+        ///
+        /// <b>압력문 프리팹은 여기서 다시 안 만든다.</b> 배에 서는 문은 킷 FBX 가 아니라 양산
+        /// 프롭을 품고 있어서, <see cref="CreatePrefab"/> 로 다시 만들면 그 프롭이 통째로 날아간다.
+        /// 문은 <see cref="LastShiftAirlockDoorRig"/> 가 프리팹을 그대로 둔 채 매단다.
+        /// </summary>
+        [MenuItem("Last Shift/SP-02A/Rebake Hinged Doors")]
+        public static void RebakeHingedDoors()
+        {
+            Directory.CreateDirectory(PrefabFolder);
+            Directory.CreateDirectory(ControllerFolder);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            CreatePrefab("LPK_EVA_TopHatch_1p6m");
+            LastShiftAirlockDoorRig.Rig();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[LAST_SHIFT_HINGED_DOORS] hatch=1 door=1 leaves=single result=PASS");
+        }
+
         [MenuItem("Last Shift/SP-02A/Create Cockpit Mirror and Assemble")]
         public static void CreateCockpitMirrorAndAssemble()
         {
@@ -89,11 +110,14 @@ namespace DoodleUp.Editor
             var modelInstance = (GameObject)PrefabUtility.InstantiatePrefab(model);
             modelInstance.name = "Model";
             modelInstance.transform.SetParent(visual.transform, false);
+            // 여닫는 판은 바닥 정렬보다 먼저 제자리에 앉힌다. 정렬이 렌더러 경계를 보는데 판이
+            // 문틀 밖에 걸쳐 있으면 그 경계가 판을 따라가고, 그만큼 문틀이 통째로 들린다.
+            var hinged = TryHingeLeaf(name, modelInstance.transform, out var leaf);
             if (name is "LPK_EVA_ConningTower_3m" or "LPK_EVA_TopHatch_1p6m")
                 AlignModelToBottom(modelInstance);
             AddStructuralColliders(modelInstance, name);
             AddSolidPropCollider(modelInstance, name);
-            if (TryCreateAnimator(name, root, out var controller))
+            if (TryCreateAnimator(name, root, hinged ? leaf : (LastShiftHatchLeaf?)null, out var controller))
                 root.AddComponent<Animator>().runtimeAnimatorController = controller;
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{name}.prefab");
             UnityEngine.Object.DestroyImmediate(root);
@@ -287,15 +311,15 @@ namespace DoodleUp.Editor
             AssetDatabase.WriteImportSettingsIfDirty(modelPath);
         }
 
-        private static bool TryCreateAnimator(string name, GameObject root, out AnimatorController controller)
+        private static bool TryCreateAnimator(string name, GameObject root, LastShiftHatchLeaf? leaf, out AnimatorController controller)
         {
             controller = null;
             var spec = name switch
             {
-                "LPK_Door_Airlock_2m" => (pivot: "DoorLeafPivot", clip: "LP_Door_OpenClose", property: "m_LocalRotation.y", end: 0.7071f, loop: false),
+                "LPK_Door_Airlock_2m" => (pivot: "DoorLeafPivot", clip: "LP_Door_OpenClose", property: (string)null, end: 0f, loop: false),
                 "LPK_CentralLift_4m" => (pivot: "LiftPlatformPivot", clip: "LP_CentralLift_UpDown", property: "m_LocalPosition.y", end: 0.8f, loop: true),
                 "LPK_LifeSupport_Scrubber" => (pivot: "ScrubberFanPivot", clip: "LP_LifeSupportFan_Spin", property: "m_LocalRotation.y", end: 1f, loop: true),
-                "LPK_EVA_TopHatch_1p6m" => (pivot: "EVAHatchLidPivot", clip: "LP_EVA_Hatch_OpenClose", property: "m_LocalRotation.y", end: 0.3827f, loop: false),
+                "LPK_EVA_TopHatch_1p6m" => (pivot: "EVAHatchLidPivot", clip: "LP_EVA_Hatch_OpenClose", property: (string)null, end: 0f, loop: false),
                 _ => default
             };
             if (string.IsNullOrEmpty(spec.pivot)) return false;
@@ -303,9 +327,18 @@ namespace DoodleUp.Editor
             if (pivot == null) throw new InvalidOperationException($"{name} has no required pivot {spec.pivot}");
             var clipPath = $"{ControllerFolder}/{spec.clip}.anim";
             var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath) ?? new AnimationClip { name = spec.clip };
-            var binding = EditorCurveBinding.FloatCurve(AnimationUtility.CalculateTransformPath(pivot, root.transform), typeof(Transform), spec.property);
+            var path = AnimationUtility.CalculateTransformPath(pivot, root.transform);
             clip.ClearCurves();
-            AnimationUtility.SetEditorCurve(clip, binding, AnimationCurve.Linear(0f, 0f, 1f, spec.end));
+            if (spec.property == null)
+            {
+                if (leaf == null) throw new InvalidOperationException($"{name} needs a hinged leaf but none was rigged");
+                LastShiftHingeAuthoring.WriteSwing(clip, path, leaf.Value);
+            }
+            else
+            {
+                var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), spec.property);
+                AnimationUtility.SetEditorCurve(clip, binding, AnimationCurve.Linear(0f, 0f, 1f, spec.end));
+            }
             var settings = AnimationUtility.GetAnimationClipSettings(clip); settings.loopTime = spec.loop; AnimationUtility.SetAnimationClipSettings(clip, settings);
             if (AssetDatabase.GetAssetPath(clip) == string.Empty) AssetDatabase.CreateAsset(clip, clipPath);
             var controllerPath = $"{ControllerFolder}/{name}.controller";
@@ -316,6 +349,67 @@ namespace DoodleUp.Editor
             EditorUtility.SetDirty(controller);
             return true;
         }
+
+        /// <summary>
+        /// 여닫는 판을 <see cref="LastShiftHatchLeaf"/> 규격(단문)으로 다시 매단다. 닫힘 자세를
+        /// 그 자리에서 프리팹에 굽고, 여닫이 곡선이 쓸 경첩을 돌려준다.
+        ///
+        /// <b>치수를 리터럴로 안 적는다.</b> 문틀과 판을 아트가 다시 뽑으면 여기가 따라와야 하고,
+        /// 따라오라고 규격을 FBX 가 아니라 임포터에 두는 것이다. 판이 곧 메시인 압력문과 빈
+        /// 마디에 매달린 상부 해치가 <b>같은 계산</b>을 타는 것도 그래서다.
+        /// </summary>
+        private static bool TryHingeLeaf(string name, Transform model, out LastShiftHatchLeaf leaf)
+        {
+            leaf = default;
+            Transform pivot;
+            switch (name)
+            {
+                case "LPK_EVA_TopHatch_1p6m":
+                {
+                    pivot = LastShiftHingeAuthoring.Require(model, "EVAHatchLidPivot", name);
+                    var lid = LastShiftHingeAuthoring.Require(model, "EVAHatchLid", name);
+                    // 뚜껑은 원판이라 반지름이 곧 경첩까지의 거리다. 축을 판 테두리에 두면
+                    // 젖혔을 때 판이 구멍 밖으로 완전히 빠지고, 그보다 안쪽이면 남아서 걸린다.
+                    var disc = LastShiftHingeAuthoring.LocalBounds(lid, lid);
+                    var radius = Mathf.Max(disc.extents.x, disc.extents.y);
+                    var opening = LastShiftHingeAuthoring.LocalBounds(pivot.parent,
+                        LastShiftHingeAuthoring.PartsNamed(model, "Hatch_Frame_"));
+                    leaf = LastShiftHatchLeaf.AtOpening(opening.center, lid.localPosition,
+                        -LastShiftHatchLeaf.KitDepth * radius, LastShiftHatchLeaf.KitWidth, HatchSwingDegrees);
+                    break;
+                }
+                case "LPK_Door_Airlock_2m":
+                {
+                    pivot = LastShiftHingeAuthoring.Require(model, "DoorLeafPivot", name);
+                    // 문짝은 마디가 곧 메시라 판 중심이 마디 원점이다 — 덮을 자리는 문설주 둘의
+                    // 한가운데이고, 높이는 아트가 잡은 그대로 둔다(폭만 어긋나 있었다).
+                    var jambs = LastShiftHingeAuthoring.LocalBounds(pivot.parent,
+                        LastShiftHingeAuthoring.PartsNamed(model, "Door_Jamb"));
+                    var half = LastShiftHingeAuthoring.LocalBounds(pivot, pivot).extents.x;
+                    var center = pivot.localPosition;
+                    center.x = jambs.center.x;
+                    leaf = LastShiftHatchLeaf.AtOpening(center, Vector3.zero,
+                        -LastShiftHatchLeaf.KitWidth * half, LastShiftHatchLeaf.KitUp, DoorSwingDegrees);
+                    break;
+                }
+                default: return false;
+            }
+
+            // 닫힘 자세를 프리팹에도 굽는다. 클립만 고치면 플레이 전에는 옛 자세로 보이고,
+            // 바닥 정렬이 그 옛 자세를 재서 문틀 높이가 같이 틀어진다.
+            pivot.localPosition = leaf.ClosedPosition;
+            pivot.localRotation = leaf.ClosedRotation;
+            return true;
+        }
+
+        /// <summary>
+        /// 상부 해치가 젖혀지는 각. 수직(<c>90°</c>)을 넘겨 뒤로 눕혀 둔다 — 딱 수직이면
+        /// 진공에서 올라오는 승무원 시야 한가운데에 판이 서고, 어느 쪽으로 넘어갈지도 모호하다.
+        /// </summary>
+        private const float HatchSwingDegrees = 105f;
+
+        /// <summary>압력문 문짝이 젖혀지는 각. 벌크헤드 면에 붙을 만큼만 연다.</summary>
+        private const float DoorSwingDegrees = 90f;
 
         private static Transform Find(Transform root, string name)
         {
