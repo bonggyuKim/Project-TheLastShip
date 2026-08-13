@@ -1827,13 +1827,13 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-    size: {x: 1, y: 1.55, z: 0.8}
+    size: {x: 0.95, y: 1.53, z: 0.81}
     anchorMode: 0
-    anchor: {x: -0.5814, y: -0.1575}
+    anchor: {x: -0.5772, y: -0.1578}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
+    prefab: {fileID: 3032783179222453495, guid: 1d6f0a472c94446ea7d92072debd688f, type: 3}
     material: {fileID: 0}
     semantics: 0
     lightIntensity: 0
@@ -1844,13 +1844,30 @@ MonoBehaviour:
       zone: 3
       compartment: 0
       passage: 0
-    size: {x: 1, y: 1.55, z: 0.8}
+    size: {x: 0.95, y: 1.53, z: 0.81}
     anchorMode: 0
-    anchor: {x: 0.6977, y: 0.5512}
+    anchor: {x: 0.6926, y: 0.5523}
     bottomY: 0
     clearance: 0.06
     eulerAngles: {x: 0, y: 0, z: 0}
-    prefab: {fileID: 2993355245940361239, guid: 0c8c059abe3fb12691cfba7b05f8cee7, type: 3}
+    prefab: {fileID: 3032783179222453495, guid: 1d6f0a472c94446ea7d92072debd688f, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: Plaza_CrateStack_ForeStarboard
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.95, y: 1.53, z: 0.81}
+    anchorMode: 0
+    anchor: {x: -0.86, y: 0.8491}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: 0, z: 0}
+    prefab: {fileID: 3032783179222453495, guid: 1d6f0a472c94446ea7d92072debd688f, type: 3}
     material: {fileID: 0}
     semantics: 0
     lightIntensity: 0

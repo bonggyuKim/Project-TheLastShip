@@ -18,6 +18,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREFAB_DIR = os.path.join(ROOT, "Assets", "DoodleUp", "Prefabs", "Dressing")
+REALPROP_DIR = os.path.join(PREFAB_DIR, "RealProps")
 SET_ASSET = os.path.join(ROOT, "Assets", "DoodleUp", "Dressing", "LastShiftDressingSet.asset")
 
 # ── 치수 정본 미러 (LastShiftShipDimensions / LastShiftShipPhysics) ──────────
@@ -70,6 +71,8 @@ def space_bounds(kind, key):
     if kind == "Zone":
         x0, x1 = ROOM_X[key]
         return (x0, x1, -HW, HW, 0.0, CEIL)
+    if kind == "Plaza":
+        return (-6.0, 6.0, -6.0, 6.0, 0.0, CEIL)
     x0, x1 = PASSAGE_X[key]
     z0, z1 = passage_z(key)
     return (x0, x1, z0, z1, 0.0, CEIL)
@@ -262,6 +265,45 @@ def o2_tank_bank():
     return p
 
 
+def crate_lashed():
+    p = [
+        part("Crate_Lower", "LSD_Crate", (0, 0.38, 0), (0.92, 0.76, 0.72)),
+        part("Crate_Upper", "LSD_Crate", (0.08, 1.12, 0), (0.82, 0.70, 0.68)),
+        part("Strap_Port", "LSD_CrateTrim", (-0.28, 0.78, 0.37), (0.10, 1.50, 0.04)),
+        part("Strap_Starboard", "LSD_CrateTrim", (0.36, 0.78, 0.37), (0.10, 1.50, 0.04)),
+        part("Buckle_Port", "LS_Fixture", (-0.28, 0.84, 0.41), (0.18, 0.14, 0.08)),
+        part("Buckle_Starboard", "LS_Fixture", (0.36, 0.84, 0.41), (0.18, 0.14, 0.08)),
+    ]
+    return p
+
+
+def portable_battery():
+    return [
+        part("BatteryBody", "LSD_Locker", (0, 0.27, 0), (0.48, 0.54, 0.34)),
+        part("Terminal_Pos", "LSD_ScreenAmber", (-0.13, 0.57, 0), (0.10, 0.08, 0.10)),
+        part("Terminal_Neg", "LS_Fixture", (0.13, 0.57, 0), (0.10, 0.08, 0.10)),
+        part("Handle", "LSD_CrateTrim", (0, 0.64, 0), (0.30, 0.08, 0.08)),
+    ]
+
+
+def patch_plate():
+    return [
+        part("Plate", "LS_Panel", (0, 0.58, 0), (1.12, 1.12, 0.12)),
+        part("Rib_H", "LS_Fixture", (0, 0.58, 0.075), (0.92, 0.10, 0.05)),
+        part("Rib_V", "LS_Fixture", (0, 0.58, 0.075), (0.10, 0.92, 0.05)),
+        part("Grip", "LSD_CrateTrim", (0, 0.85, 0.12), (0.34, 0.10, 0.08)),
+    ]
+
+
+def tether_spool():
+    return [
+        part("Spool", "LSD_CrateTrim", (0, 0.18, 0), (0.22, 0.22, 0.22), (90, 0, 0), mesh=CYL),
+        part("Axle", "LS_Fixture", (0, 0.18, 0), (0.09, 0.30, 0.09), (90, 0, 0), mesh=CYL),
+        part("Handle", "LSD_ScreenAmber", (0, 0.42, 0), (0.18, 0.20, 0.10)),
+        part("Lead", "LSD_CrateTrim", (0, 0.22, 0.38), (0.05, 0.05, 0.76)),
+    ]
+
+
 # guid 는 스크립트에 박아 둔다 — 다시 돌려도 참조가 안 끊긴다.
 PREFABS = [
     ("LSDress_Kit_PanelBank", "3a71c0d5e4b28f4d9a1c66f0d2ba7e11", kit_panel_bank, False),
@@ -276,6 +318,13 @@ PREFABS = [
     ("LSDress_HeatExchangerCoil", "4e15af820b6d43c9a72f8d05e6b31c78", heat_exchanger_coil, True),
     ("LSDress_ScrubberStack", "6c3d70b19af24e58b31067ca8d24f095", scrubber_stack, True),
     ("LSDress_O2TankBank", "8a52fc3706e94db2a8c1f490b5d76e31", o2_tank_bank, True),
+    ("LSDress_CrateLashed", "1d6f0a472c94446ea7d92072debd688f", crate_lashed, True),
+]
+
+REAL_PROPS = [
+    ("LP_PortableBattery_Gameplay", "f30511c9894b4b64a54fd8690b90e365", portable_battery),
+    ("LP_PatchPlate_1p15m", "6e241a8a61ac4ccdbcb1e3a9a27094a0", patch_plate),
+    ("LP_TetherSpool_1p2m", "9c59d0b89fd04ebd94a33ef7d04ee1f1", tether_spool),
 ]
 
 MESH_ID = {CUBE: 10202, CYL: 10206}
@@ -363,7 +412,7 @@ RENDERER_TAIL = """  m_StaticBatchInfo:
 """
 
 
-def write_prefab(name, guid, parts, collider):
+def write_prefab(name, guid, parts, collider, directory=PREFAB_DIR):
     root_go = fid(name + "/go")
     root_tr = fid(name + "/tr")
     child_tr = [fid(f"{name}/{p['name']}/tr") for p in parts]
@@ -446,7 +495,7 @@ def write_prefab(name, guid, parts, collider):
             RENDERER_TAIL.rstrip("\n"),
         ]
 
-    path = os.path.join(PREFAB_DIR, name + ".prefab")
+    path = os.path.join(directory, name + ".prefab")
     with open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(out) + "\n")
     with open(path + ".meta", "w", encoding="utf-8", newline="\n") as fh:
@@ -651,8 +700,9 @@ add("O2TankBank_Fore", "LSDress_O2TankBank", "Zone", "LifeSupport", 13.6, -2.2, 
 add("O2TankBank_Aft", "LSDress_O2TankBank", "Zone", "LifeSupport", 17.9, -2.2, 0.0)
 add("WallLocker_Fore", "LSDress_WallLocker", "Zone", "LifeSupport", 11.75, Z_STAR, 0.0, clearance=0.20)
 add("LockerBank_Aft", "LSDress_LockerBank", "Zone", "LifeSupport", 17.6, Z_STAR, 0.0, clearance=0.20)
-add("LifeSupport_CrateLashed_Fore", "LSDress_CrateStack", "Zone", "LifeSupport", 13.0, -0.4, 0.0)
-add("LifeSupport_CrateLashed_Aft", "LSDress_CrateStack", "Zone", "LifeSupport", 17.4, 1.4, 0.0)
+add("LifeSupport_CrateLashed_Fore", "LSDress_CrateLashed", "Zone", "LifeSupport", 13.0, -0.4, 0.0)
+add("LifeSupport_CrateLashed_Aft", "LSDress_CrateLashed", "Zone", "LifeSupport", 17.4, 1.4, 0.0)
+add("Plaza_CrateStack_ForeStarboard", "LSDress_CrateLashed", "Plaza", 0, -4.7, 4.7, 0.0)
 
 
 # 기존 프리팹(재사용) 바깥 치수 — assets-v1 §5 표 그대로.
@@ -687,7 +737,7 @@ def read_prefab_ref(name):
 def layout_keys():
     """이번에 쓸 (kind, 공간, id). 재실행 때 <b>자기 자신을 장애물로 세지 않기</b> 위한 것이다."""
     keys = {(0 if it["kind"] == "Zone" else 2,
-             ZONE_ENUM[it["key"]] if it["kind"] == "Zone" else it["key"],
+             ZONE_ENUM[it["key"]] if it["kind"] == "Zone" else (it["key"] if it["kind"] == "Passage" else 0),
              it["id"]) for it in LAYOUT}
     keys |= retired_layout_keys()
     return keys
@@ -823,6 +873,13 @@ def main():
         refs[name] = (root, guid, size)
         mark = "  [collider]" if collider else ""
         print("prefab %-32s size %5.2f x %5.2f x %5.2f%s" % (name, size[0], size[1], size[2], mark))
+
+    for name, guid, builder in REAL_PROPS:
+        parts = builder()
+        write_prefab(name, guid, parts, True, REALPROP_DIR)
+        lo, hi = prefab_bbox(parts)
+        print("realprop %-30s size %5.2f x %5.2f x %5.2f" %
+              (name, hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]))
 
     for name, size in EXISTING_SIZE.items():
         root, guid = read_prefab_ref(name)
