@@ -14,6 +14,7 @@ namespace DoodleUp.Editor
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/Dressing/RealProps";
         private const float DeckSurfaceY = 0.12f;
         private const float MinimumPlanarClearance = 0.10f;
+        private const float CentimetersToMeters = 0.01f;
 
         /// <summary>
         /// <b>우리가 Blender 에서 만든 것만 쓴다.</b> 여기 있던 <c>LSReal_*</c> 여섯 개는
@@ -67,6 +68,11 @@ namespace DoodleUp.Editor
                 var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
                 visual.name = "Visual";
                 visual.transform.SetParent(root.transform, false);
+                // The beacon FBX was exported with centimetre-sized vertex coordinates, while its
+                // sparse legacy importer metadata does not preserve a usable unit conversion.
+                // Normalize only this known outlier at the reusable prefab boundary.
+                if (name == "LP_EmergencyBeacon")
+                    visual.transform.localScale = Vector3.one * CentimetersToMeters;
                 AlignVisualToBottom(visual);
                 foreach (var filter in visual.GetComponentsInChildren<MeshFilter>(true))
                 {

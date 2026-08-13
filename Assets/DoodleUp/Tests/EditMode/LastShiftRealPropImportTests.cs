@@ -34,6 +34,19 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        [Test]
+        public void EmergencyBeaconVisualIsConvertedFromCentimetersToMeters()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_EmergencyBeacon.prefab");
+            Assert.That(prefab, Is.Not.Null);
+
+            var visual = prefab.transform.Find("Visual");
+            Assert.That(visual, Is.Not.Null);
+            Assert.That(visual.localScale, Is.EqualTo(Vector3.one * 0.01f),
+                "The beacon FBX is authored in centimetres and must not enter dressing at 100x scale.");
+        }
+
         /// <summary>
         /// <b>Tripo 생성물이 배에 다시 들어오지 못하게 막는다.</b> 예전에는 반대로
         /// "<c>LSReal_*</c> 이 13곳에 링크돼 있을 것" 을 요구했는데, 그 13곳이 곧 Tripo 가
