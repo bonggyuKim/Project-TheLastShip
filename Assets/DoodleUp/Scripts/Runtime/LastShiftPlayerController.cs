@@ -143,10 +143,9 @@ namespace DoodleUp.Runtime
         /// 알 수 없고, 처음 하는 사람이 찾는 말은 "지도" 이 아니라 "방 이름" 이다.
         /// 유령 줄에도 같이 있다 — 지도는 유령도 열 수 있는 보기 전용 화면이다.
         /// </summary>
-        public string InputLabel => IsGhost
-            ? "WASD 이동 / Space 상승 / Ctrl 하강 / Mouse 시선 / M 지도(방 이름) — 유령: 잡기·수리·문 조작 불가"
-            : "WASD 이동 / Mouse 조준 / E 잡기·놓기 / F 고정 / C·V·G 수리 / Q 문 / T 밸브 유지 / " +
-              "M 지도(방 이름) / 1·2·3 프리셋 / R 리셋";
+        public string InputLabel => LastShiftText.Get(IsGhost
+            ? "hud.inputBar.ghost"
+            : "hud.inputBar.crew");
         /// <summary>
         /// 화면 중앙 프롬프트. <b>지금 이 자리에서 누를 것이 있을 때만 문자열이 있고, 없으면
         /// 빈 문자열이다.</b> 예전에는 아무것도 없는 자리에서도 `+   E 잡기: 대상을 조준하세요`
@@ -946,7 +945,7 @@ namespace DoodleUp.Runtime
             // 유령은 어느 프롬프트도 받지 않는다. 잡을 수 있다고 표시해 놓고 눌러도 안 되는
             // 것보다, 왜 안 되는지를 한 줄로 못박는 편이 낫다(문 프롬프트가 사망 승무원에게
             // "조작 불가" 를 보여 주던 것과 같은 이유다). 이건 대상이 아니라 내 상태라 앵커가 없다.
-            if (IsGhost) return PromptDraw.Floating("유령 — 이동만 가능 (잡기·수리·문 조작 불가)");
+            if (IsGhost) return PromptDraw.Floating(LastShiftText.Get("prompt.ghost.blocked"));
 
             // 밸브가 가장 먼저다. 붙잡고 있는 동안은 다른 동사가 아예 막혀 있으므로(§4.3 제약),
             // 그 상태에서 잡기·문 안내를 띄우면 눌러도 안 되는 것을 알려주는 꼴이다.
@@ -971,16 +970,17 @@ namespace DoodleUp.Runtime
             // 네트워크가 없는 단독 씬(SP-01)에서도 빈손이면 아무것도 그리지 않는다.
             if (networkPlayer == null || !networkPlayer.IsSpawned)
                 return heldItem != null
-                    ? PromptDraw.At("[E] 놓기", AnchorTopOf(heldItem, heldItem.transform.position))
+                    ? PromptDraw.At(LastShiftText.Get("prompt.item.drop"), AnchorTopOf(heldItem, heldItem.transform.position))
                     : PromptDraw.None;
             if (serverRejectionReason != null)
             {
                 if (Time.unscaledTime <= serverRejectionExpiry)
-                    return PromptDraw.Floating($"서버 거부: {serverRejectionReason}");
+                    return PromptDraw.Floating(LastShiftText.Format("prompt.item.serverRejected", serverRejectionReason));
                 serverRejectionReason = null;
             }
             if (networkPlayer.HeldItem != null && networkPlayer.HeldItem.Grabbable == null)
-                return PromptDraw.At("[E] 놓기", AnchorTopOf(networkPlayer.HeldItem, networkPlayer.HeldItem.transform.position));
+                return PromptDraw.At(LastShiftText.Get("prompt.item.drop"),
+                    AnchorTopOf(networkPlayer.HeldItem, networkPlayer.HeldItem.transform.position));
             if (networkPlayer.HeldItem != null)
             {
                 var held = networkPlayer.HeldItem;
@@ -991,8 +991,8 @@ namespace DoodleUp.Runtime
                 var heldAnchor = AnchorTopOf(held, held.transform.position);
                 return PromptDraw.At(
                     distanceToNominal <= LastShiftSandboxController.SecureDistance
-                        ? "[E] 놓기   [F] 제자리에 고정"
-                        : $"[E] 놓기   고정 위치까지 {distanceToNominal:F1}m",
+                        ? LastShiftText.Get("prompt.item.dropAndSecure")
+                        : LastShiftText.Format("prompt.item.dropWithDistance", $"{distanceToNominal:F1}"),
                     heldAnchor);
             }
             // 여기부터가 잡기 안내다. <b>판정과 표시가 같은 함수를 쓴다</b> —
@@ -1004,16 +1004,16 @@ namespace DoodleUp.Runtime
             // 아직 spawn 되지 않은 아이템은 역할을 신뢰할 수 없다. OnGUI 는 매 프레임 돌기 때문에
             // 여기서 예외가 나면 화면이 아니라 로그가 먼저 무너진다.
             if (item.Grabbable == null)
-                return PromptDraw.At("[E] 잡기 — 대상 확인 중", itemAnchor);
+                return PromptDraw.At(LastShiftText.Get("prompt.item.identifying"), itemAnchor);
             // 고정된 부품은 눌러도 안 잡힌다. 사거리 안에서 조준했을 때만 사유를 남기므로
             // 이 문장은 "잡으려 다가와 조준한 사람" 에게만 뜬다.
             if (item.IsSecured)
                 return PromptDraw.At($"{item.Grabbable.Role}: {DescribeSecured(item)}", itemAnchor);
             if (item.IsClaimed)
-                return PromptDraw.At($"{item.Grabbable.Role}: 다른 플레이어가 잡는 중", itemAnchor);
+                return PromptDraw.At(LastShiftText.Format("prompt.item.heldByOther", item.Grabbable.Role), itemAnchor);
             // 거리 숫자를 뺀다. 사거리 안에서만 뜨게 된 뒤로 그 숫자가 알려 줄 것이
             // "이미 잡을 수 있다" 뿐이고, 그건 프롬프트가 떠 있다는 사실이 이미 말한다.
-            return PromptDraw.At($"[E] {item.Grabbable.Role} 잡기", itemAnchor);
+            return PromptDraw.At(LastShiftText.Format("prompt.item.grab", item.Grabbable.Role), itemAnchor);
         }
 
         /// <summary>
@@ -1028,11 +1028,11 @@ namespace DoodleUp.Runtime
             // 손잡이 좌표는 정적이라 씬 조회 없이 바로 앵커가 된다 — 이미 손잡이 높이다.
             var handle = LastShiftCoolingValve.Position;
             if (sustainingValve)
-                return PromptDraw.At("[T] 유지 중 — 냉각 순환 밸브 (이동·다른 조작 불가)", handle);
+                return PromptDraw.At(LastShiftText.Get("prompt.valve.sustaining"), handle);
             if (!LastShiftCoolingValve.IsWithinReach(transform.position)) return PromptDraw.None;
             var crew = GetComponent<LastShiftCrewOxygen>();
-            if (crew != null && crew.IsDead) return PromptDraw.At("냉각 순환 밸브: 조작 불가", handle);
-            return PromptDraw.At("[T] 냉각 순환 밸브 유지 (누르고 있는 동안 · 그 자리에 묶인다)", handle);
+            if (crew != null && crew.IsDead) return PromptDraw.At(LastShiftText.Get("prompt.valve.dead"), handle);
+            return PromptDraw.At(LastShiftText.Get("prompt.valve.hold"), handle);
         }
 
         /// <summary>
@@ -1057,8 +1057,8 @@ namespace DoodleUp.Runtime
 
             return PromptDraw.At(
                 subjectInPlace
-                    ? "[C] 안전 복구 4.0s   [V] 임시 결속 0.8s   [G] 성능 포기"
-                    : "[G] 이 구역 포기 — 악화는 멈추고 회복은 없다",
+                    ? LastShiftText.Get("prompt.recovery.actions")
+                    : LastShiftText.Get("prompt.recovery.abandon"),
                 subjectNominal);
         }
 
@@ -1090,22 +1090,22 @@ namespace DoodleUp.Runtime
                 // 눈높이만큼 올려서 구멍 위 허공에 띄운다.
                 var mouth = AnchorAbove(hatch.Mouth);
                 if (crew != null && crew.IsDead)
-                    return PromptDraw.At($"{hatch.ShaftLabel} 승강구: 조작 불가", mouth);
+                    return PromptDraw.At(LastShiftText.Format("prompt.deckHatch.dead", hatch.ShaftLabel), mouth);
                 // 여는 쪽에 경고를 붙인다. 여기서 열리는 것은 압력이 아니라 갑판의 구멍이고,
                 // 저중력에서 뜬 물건이 그리로 빠지는 것이 이 동사의 유일한 되돌리기 비용이다.
                 return PromptDraw.At(
-                    hatch.IsOpen
-                        ? $"[Q] {hatch.ShaftLabel} 승강구 해치 닫기"
-                        : $"[Q] {hatch.ShaftLabel} 승강구 해치 열기 (갑판에 구멍)",
+                    LastShiftText.Format(
+                        hatch.IsOpen ? "prompt.deckHatch.close" : "prompt.deckHatch.open",
+                        hatch.ShaftLabel),
                     mouth);
             }
             var doorTop = AnchorTopOf(door, door.transform.position);
             if (crew != null && crew.IsDead)
-                return PromptDraw.At($"{door.BoundaryLabel} 문: 조작 불가", doorTop);
+                return PromptDraw.At(LastShiftText.Format("prompt.door.dead", door.BoundaryLabel), doorTop);
             return PromptDraw.At(
-                door.IsOpen
-                    ? $"[Q] {door.BoundaryLabel} 문 닫기 (압력 차단)"
-                    : $"[Q] {door.BoundaryLabel} 문 열기",
+                LastShiftText.Format(
+                    door.IsOpen ? "prompt.door.close" : "prompt.door.open",
+                    door.BoundaryLabel),
                 doorTop);
         }
 
@@ -1129,20 +1129,22 @@ namespace DoodleUp.Runtime
                 : LastShiftAirlock.ReturnPoint);
 
             if (action == LastShiftLiftAction.Cycling)
-                return PromptDraw.At(
-                    $"{(LastShiftAirlock.CycleTarget == LastShiftAirlockPhase.OuterOpen ? "감압" : "재가압")}" +
-                    $" {LastShiftAirlock.CycleProgress:P0}", anchor);
-            if (crew != null && crew.IsDead) return PromptDraw.At("코어: 조작 불가", anchor);
+                return PromptDraw.At(LastShiftText.Format(
+                    LastShiftAirlock.CycleTarget == LastShiftAirlockPhase.OuterOpen
+                        ? "prompt.core.depressurizing"
+                        : "prompt.core.repressurizing",
+                    $"{LastShiftAirlock.CycleProgress:P0}"), anchor);
+            if (crew != null && crew.IsDead) return PromptDraw.At(LastShiftText.Get("prompt.core.dead"), anchor);
 
-            return PromptDraw.At(action switch
+            return PromptDraw.At(LastShiftText.Get(action switch
             {
-                LastShiftLiftAction.OpenGate => "[Q] 코어 게이트 열기",
-                LastShiftLiftAction.CloseGate => "[Q] 코어 게이트 닫기",
-                LastShiftLiftAction.Ascend => "[Q] 상승 — 선외로 (올라가며 감압)",
-                LastShiftLiftAction.Descend => "[Q] 하강 — 배로 돌아간다 (내려가며 재가압)",
-                LastShiftLiftAction.BlockedBySegment => "코어: 구간 중에는 봉인 (기항에서만 열린다)",
-                _ => "코어: 발판이 위에 있다 (내려올 때까지 못 연다)"
-            }, anchor);
+                LastShiftLiftAction.OpenGate => "prompt.core.openGate",
+                LastShiftLiftAction.CloseGate => "prompt.core.closeGate",
+                LastShiftLiftAction.Ascend => "prompt.core.ascend",
+                LastShiftLiftAction.Descend => "prompt.core.descend",
+                LastShiftLiftAction.BlockedBySegment => "prompt.core.blockedBySegment",
+                _ => "prompt.core.blockedByLiftAway"
+            }), anchor);
         }
 
         /// <summary>
@@ -1154,15 +1156,20 @@ namespace DoodleUp.Runtime
             if (!LastShiftSalvage.IsWithinReach(transform.position)) return PromptDraw.None;
 
             var field = AnchorAbove(LastShiftSalvage.FieldCenter);
-            var carried = $"들고 있음 {LastShiftSalvage.Carried}/{LastShiftSalvage.CarryCapacity}";
+            var carried = LastShiftText.Format("hud.carried",
+                LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity);
             if (LastShiftSalvage.Remaining <= 0)
-                return PromptDraw.At($"{LastShiftSalvage.FieldLabel}: 다 뜯었다   {carried}", field);
+                return PromptDraw.At(LastShiftText.Format("prompt.salvage.depleted",
+                    LastShiftSalvage.FieldLabel, carried), field);
             if (LastShiftSalvage.Carried >= LastShiftSalvage.CarryCapacity)
-                return PromptDraw.At($"{LastShiftSalvage.FieldLabel}: 손이 찼다 — 에어록으로   {carried}", field);
+                return PromptDraw.At(LastShiftText.Format("prompt.salvage.handsFull",
+                    LastShiftSalvage.FieldLabel, carried), field);
             if (LastShiftSalvage.HarvestCooldown > 0f)
-                return PromptDraw.At($"{LastShiftSalvage.FieldLabel} 뜯는 중 {LastShiftSalvage.HarvestCooldown:F1}s   {carried}", field);
+                return PromptDraw.At(LastShiftText.Format("prompt.salvage.harvesting",
+                    LastShiftSalvage.FieldLabel, $"{LastShiftSalvage.HarvestCooldown:F1}", carried), field);
 
-            return PromptDraw.At($"[E] {LastShiftSalvage.FieldLabel} 뜯기 (남은 {LastShiftSalvage.Remaining})   {carried}", field);
+            return PromptDraw.At(LastShiftText.Format("prompt.salvage.harvest",
+                    LastShiftSalvage.FieldLabel, LastShiftSalvage.Remaining, carried), field);
         }
 
         /// <summary>
@@ -1171,9 +1178,9 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static string DescribeSecured(LastShiftNetworkGrabbable item)
         {
-            return item.IsSecuredByCrew
-                ? "고정 완료 (승무원이 제자리에 고정함)"
-                : "초기 고정 (프리셋 정상 상태 / 이 프리셋의 느슨한 부품을 찾으세요)";
+            return LastShiftText.Get(item.IsSecuredByCrew
+                ? "prompt.item.securedByCrew"
+                : "prompt.item.securedInitial");
         }
 
         private void DropHeldItem()
@@ -1407,7 +1414,7 @@ namespace DoodleUp.Runtime
             DrawMapCrew(layer, plan);
 
             var hint = new Rect(0f, canvas.y - InputBarMargin - InputBarHeight, canvas.x, InputBarHeight);
-            layer.LabelCanvas("map:hint", hint, "지도 — M 으로 닫기",
+            layer.LabelCanvas("map:hint", hint, LastShiftText.Get("hud.map.hint"),
                 InputLabelFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
         }
 
