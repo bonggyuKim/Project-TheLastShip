@@ -8,7 +8,7 @@
 - 재귀 참조 에셋/프리팹: 65개
 - 중첩 프리팹 고유 오브젝트 이름(최하위 포함): 312개
 - Ship prefab 직렬화 GameObject: 100개
-- 드레싱 슬롯: 102개
+- 드레싱 슬롯: 106개
 - map 사용 modular asset ID: 18개
 - 폴더 내 modular prefab: 35개
 - map 미사용 modular prefab: 17개 (프로젝트 라이브러리 보관, 씬 배치 없음)
@@ -154,18 +154,22 @@
 | 88 | `CrateStack_Aft` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_CargoCrate_0p7m.prefab` |
 | 89 | `PartsPallet` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_PortableBattery_0p5m.prefab` |
 | 90 | `Lamp` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Lamp_Observatory.prefab` |
-| 91 | `Bunk_Port_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
-| 92 | `Bunk_Port_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
-| 93 | `Bunk_Starboard_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
-| 94 | `Bunk_Starboard_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
-| 95 | `Lockers` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_LockerBank.prefab` |
-| 96 | `Basin` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Basin.prefab` |
-| 97 | `Stall` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Stall.prefab` |
-| 98 | `Table` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Table.prefab` |
-| 99 | `Bench_Port` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bench.prefab` |
-| 100 | `Bench_Starboard` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bench.prefab` |
-| 101 | `VentFan_Service` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_VentFan.prefab` |
-| 102 | `EmergencyBeacon_Service` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_EmergencyBeacon.prefab` |
+| 91 | `BerthLight_Port_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_BerthLight.prefab` |
+| 92 | `BerthLight_Port_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_BerthLight.prefab` |
+| 93 | `BerthLight_Starboard_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_BerthLight.prefab` |
+| 94 | `BerthLight_Starboard_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_BerthLight.prefab` |
+| 95 | `Bunk_Port_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
+| 96 | `Bunk_Port_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
+| 97 | `Bunk_Starboard_Lower` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
+| 98 | `Bunk_Starboard_Upper` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bunk.prefab` |
+| 99 | `Lockers` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_LockerBank.prefab` |
+| 100 | `Basin` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Basin.prefab` |
+| 101 | `Stall` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Stall.prefab` |
+| 102 | `Table` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Table.prefab` |
+| 103 | `Bench_Port` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bench.prefab` |
+| 104 | `Bench_Starboard` | `Assets/DoodleUp/Prefabs/Dressing/LSDress_Bench.prefab` |
+| 105 | `VentFan_Service` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_VentFan.prefab` |
+| 106 | `EmergencyBeacon_Service` | `Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_EmergencyBeacon.prefab` |
 
 ## 판정
 
