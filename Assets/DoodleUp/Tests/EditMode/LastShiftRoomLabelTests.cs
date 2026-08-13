@@ -23,20 +23,16 @@ namespace DoodleUp.Tests.EditMode
             Enum.GetValues(typeof(LastShiftPlazaSpace)).Cast<LastShiftPlazaSpace>().ToArray();
 
         /// <summary>
-        /// <b>여섯 방이 전부 이름과 부제를 갖는다.</b> 하나라도 비면 지도에 이름 없는 사각형이
+        /// <b>여섯 방이 전부 이름을 갖는다.</b> 하나라도 비면 지도에 이름 없는 사각형이
         /// 남고, 그 사각형이 정확히 이 카드가 고치려는 그것이다.
         /// </summary>
         [Test]
-        public void EveryRoomHasANameAndAPurpose()
+        public void EveryRoomHasAName()
         {
             foreach (var space in AllSpaces)
-            {
                 Assert.That(LastShiftRoomLabels.NameOf(space), Is.Not.Empty, $"{space} 이름이 비었다");
-                Assert.That(LastShiftRoomLabels.PurposeOf(space), Is.Not.Empty, $"{space} 부제가 비었다");
-            }
 
             Assert.That(LastShiftRoomLabels.ShaftName, Is.Not.Empty);
-            Assert.That(LastShiftRoomLabels.ShaftPurpose, Is.Not.Empty);
         }
 
         /// <summary>
@@ -89,22 +85,6 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>부제는 여섯 자 안이다.</b> 방 하나가 지도에서 <c>110~220</c>px 이고 부제 글자가
-        /// <c>11</c>px 라, 그보다 길면 좁은 방에서 글자가 방 밖으로 삐져나가 이웃 방 테두리를 넘는다.
-        /// 공백·가운뎃점은 반각이라 세지 않는다.
-        /// </summary>
-        [Test]
-        public void PurposesFitTheNarrowestRoom()
-        {
-            foreach (var space in AllSpaces)
-            {
-                var syllables = LastShiftRoomLabels.PurposeOf(space).Count(IsHangul);
-                Assert.That(syllables, Is.LessThanOrEqualTo(6),
-                    $"{space} 부제가 방보다 길다 — {LastShiftRoomLabels.PurposeOf(space)}");
-            }
-        }
-
-        /// <summary>
         /// <b>이름표가 자기 방 안에 선다.</b> 이름은 방 사각형 위쪽 안쪽 띠라, 방 여섯 전부에서
         /// 그 띠가 테두리를 안 넘어야 한다 — 넘으면 그 이름이 이웃 방 것으로 읽힌다.
         /// </summary>
@@ -122,46 +102,6 @@ namespace DoodleUp.Tests.EditMode
                 Assert.That(band.center.x, Is.EqualTo(room.Rect.center.x).Within(0.01f),
                     $"{room.Space} 이름이 방 가운데에서 좌우로 밀려 있다");
             }
-        }
-
-        /// <summary>
-        /// <b>부제도 자기 방 안에 선다 — 들어가는 방에서만 뜬다.</b> 지금 배의 방 여섯은 전부
-        /// 두 줄이 들어가지만, 검사를 "전부 들어간다" 로 적지 않는다: 방이 좁아지거나 지도 배율이
-        /// 줄면 그때 <see cref="LastShiftMapView.FitsPurpose"/> 가 거짓이 되어야 하고, 그 갈래가
-        /// 실제로 방 안쪽을 지키는지가 여기서 재진다.
-        /// </summary>
-        [Test]
-        public void ThePurposeBandStaysInsideItsRoomWhenItFits()
-        {
-            var fitted = 0;
-            foreach (var room in RoomRects())
-            {
-                if (!LastShiftMapView.FitsPurpose(room.Rect)) continue;
-                fitted++;
-
-                var band = LastShiftMapView.RoomPurposeRect(room.Rect);
-                Assert.That(band.yMin, Is.GreaterThanOrEqualTo(
-                        LastShiftMapView.RoomNameRect(room.Rect).yMax - 0.01f),
-                    $"{room.Space} 부제가 이름 줄과 겹친다");
-                Assert.That(band.yMax, Is.LessThanOrEqualTo(room.Rect.yMax),
-                    $"{room.Space} 부제가 방 아래 테두리를 넘는다");
-            }
-
-            Assert.That(fitted, Is.EqualTo(LastShiftPlazaLayout.Footprints.Length),
-                "지금 배에서는 방 여섯 전부에 부제가 들어가야 한다 — 지도 배율이 줄었다");
-        }
-
-        /// <summary>
-        /// <b>좁아지면 부제가 사라진다.</b> 이름 한 줄만 남는 갈래가 실제로 있는지를 재지 않으면,
-        /// 상한이 이름+부제 높이보다 낮게 잡혀 있어도 아무도 모른다.
-        /// </summary>
-        [Test]
-        public void APinchedRoomDropsThePurpose()
-        {
-            var pinched = new Rect(0f, 0f, 200f, LastShiftMapView.RoomNameLine + 2f);
-
-            Assert.That(LastShiftMapView.FitsPurpose(pinched), Is.False,
-                "이름 한 줄이 겨우 드는 방에 부제까지 들어간다고 답했다");
         }
 
         /// <summary>
@@ -224,7 +164,5 @@ namespace DoodleUp.Tests.EditMode
                     plan.ToScreenRect(footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ)))
                 .ToArray();
         }
-
-        private static bool IsHangul(char glyph) => glyph >= '가' && glyph <= '힣';
     }
 }

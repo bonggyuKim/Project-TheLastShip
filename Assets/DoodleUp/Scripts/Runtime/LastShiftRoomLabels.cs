@@ -1,7 +1,12 @@
 namespace DoodleUp.Runtime
 {
     /// <summary>
-    /// 광장 둘레 방 여섯의 <b>사람이 읽는 이름</b>과 그 방에서 무엇을 하는지 한 마디.
+    /// 광장 둘레 방 여섯의 <b>사람이 읽는 이름</b>.
+    ///
+    /// <b>부제는 여기 없다.</b> 지도 머리표가 <c>이름 / 부제</c> 에서 <c>아이콘 / 이름</c> 으로
+    /// 바뀌면서(<see cref="LastShiftRoomIcons"/>) 부제를 부르는 자리가 0 이 됐고, 부르는 데 없는
+    /// 문자열 표를 남기면 다음 사람이 그것을 정본으로 착각한다. 그 방에서 무엇을 하는가는
+    /// 이제 아이콘 실루엣이 진다.
     ///
     /// <b>이 자리가 없어서 온보딩이 막혔다</b>(2026-08-13 플레이테스트: "처음 하는 사람이 어느
     /// 방이 어딘지 모름"). 배는 광장 하나에 문이 다섯 뚫린 방사형이라, 광장에 서면 갈 수 있는
@@ -34,9 +39,6 @@ namespace DoodleUp.Runtime
         /// </summary>
         public const string ShaftName = "중앙 승강구";
 
-        /// <summary>승강구가 하는 일. 방 부제와 같은 규약으로 짧다.</summary>
-        public const string ShaftPurpose = "선외 출입";
-
         /// <summary>
         /// 이 방의 이름. <b>기능실 넷은 구역 이름을 그대로 쓴다</b> — 파생이라 HUD 와 갈릴 수가
         /// 없고, 구역 이름이 바뀌면 지도가 따라온다.
@@ -49,28 +51,6 @@ namespace DoodleUp.Runtime
             LastShiftPlazaSpace.Plaza => "광장",
             LastShiftPlazaSpace.Quarters => "숙소",
             _ => LastShiftZoneAtlas.ShortLabelOf(LastShiftPlazaLayout.Of(space).Zone)
-        };
-
-        /// <summary>
-        /// 그 방에 <b>왜 가는가</b> 한 마디. 이름만으로는 "전력실" 이 무엇을 하는 방인지 모르는
-        /// 사람에게 아무것도 아니므로, 이름 아래 한 줄로 그 방에서 걸리는 동사나 계기를 적는다.
-        ///
-        /// <b>계통 이름이 아니라 그 방에서 할 일을 적는다.</b> 냉각실이 "열 배출" 인 것보다
-        /// 밸브가 거기 있다는 것이 처음 하는 사람에게 쓸모 있고(<see cref="LastShiftCoolingValve"/>),
-        /// 광장이 "허브" 인 것보다 들고 온 자재가 거기서 들어간다는 것이 쓸모 있다.
-        ///
-        /// <b>길이가 규약이다.</b> 방 하나가 지도에서 <c>110~220</c>px 이고 부제 글자가
-        /// <c>11</c>px 라 여덯 자를 넘기면 방 밖으로 삐져나간다 —
-        /// <c>LastShiftRoomLabelTests</c> 가 그 상한을 잰다.
-        /// </summary>
-        public static string PurposeOf(LastShiftPlazaSpace space) => space switch
-        {
-            LastShiftPlazaSpace.Plaza => "자재 하치대",
-            LastShiftPlazaSpace.CockpitRoom => "추력 · 항로",
-            LastShiftPlazaSpace.LifeSupportRoom => "산소 생성",
-            LastShiftPlazaSpace.PowerRoom => "전력 버스",
-            LastShiftPlazaSpace.CoolingRoom => "열 배출 밸브",
-            _ => "기상 지점"
         };
     }
 }

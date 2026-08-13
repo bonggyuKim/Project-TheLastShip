@@ -1318,6 +1318,11 @@ namespace DoodleUp.Runtime
                 -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent);
             DrawMapOutline(layer, "map:core", core, LastShiftUiTheme.Unstable, 0.75f);
 
+            // 승강구 아이콘은 코어 <b>안</b>이다. 방 아이콘과 같은 18px 인 것이 규약이다 —
+            // 크기가 다르면 중요도가 다른 것으로 읽힌다.
+            DrawMapIcon(layer, "map:shaftIcon",
+                LastShiftRoomIcons.ShaftBands(LastShiftMapView.ShaftIconRect(core), MapIconScratch));
+
             // 코어에는 이름이 반드시 붙는다. 튜토리얼이 사람을 보내는 곳이 여기인데(선외로 나가는
             // 유일한 길) 이름이 없으면 광장 한복판의 못 지나가는 기둥으로만 읽힌다.
             layer.Label("map:shaftName", LastShiftMapView.ShaftNameRect(core),
@@ -1375,29 +1380,42 @@ namespace DoodleUp.Runtime
             }
         }
 
+        /// <summary>아이콘 조각을 담는 자리. 프레임마다 새 배열을 안 만든다.</summary>
+        private static readonly Rect[] MapIconScratch = new Rect[LastShiftRoomIcons.MaxBands];
+
+        /// <summary>지도 아이콘 진하기. 이름과 같은 색이되 한 단 옅다 — 사람 표식이 전경이다.</summary>
+        private const float MapIconAlpha = 0.85f;
+
         /// <summary>
-        /// 방 하나의 이름표 — 이름 한 줄, 자리가 되면 부제 한 줄. 문구는
+        /// 방 하나의 머리표 — <b>아이콘 한 줄, 이름 한 줄</b>. 이름은
         /// <see cref="LastShiftRoomLabels"/> 하나에서 나온다(HUD 구역 칸과 같은 이름을 쓴다).
         ///
-        /// <b>부제는 방이 좁으면 생략한다.</b> 두 줄을 억지로 넣으면 아래 줄이 이웃 방 위로
-        /// 넘어가서 그 부제가 어느 방 것인지 모르게 된다 — 판정은
-        /// <see cref="LastShiftMapView.FitsPurpose"/> 가 좌표로 내린다.
+        /// <b>아이콘이 이름을 대체하지 않는다.</b> 처음 보는 사람은 방열핀 실루엣과 봄베 실루엣을
+        /// 아이콘만으로 못 가르고, 이름을 통째로 걷으면 "어느 방이 어딘지 모름" 으로 되돌아간다.
+        /// 아이콘이 먼저 눈에 들어오고 이름이 그 아이콘을 가르치는 배치라, 두 번째 판부터
+        /// 아이콘만으로 읽히는 것이 이 두 줄이 노리는 상태다.
+        ///
+        /// <b>좁은 방에서는 아이콘을 떨군다</b>(<see cref="LastShiftMapView.FitsIcon"/>).
+        /// 안 빌린 조각은 층이 다음 프레임에 끄므로 지우는 코드가 따로 없다.
         /// </summary>
         private static void DrawMapRoomName(LastShiftUiLayer layer, int index, Rect room,
             LastShiftPlazaSpace space)
         {
+            if (LastShiftMapView.FitsIcon(room))
+                DrawMapIcon(layer, "map:icon" + index,
+                    LastShiftRoomIcons.Bands(space, LastShiftMapView.RoomIconRect(room), MapIconScratch));
+
             layer.Label("map:name" + index, LastShiftMapView.RoomNameRect(room),
                 LastShiftRoomLabels.NameOf(space), LastShiftMapView.RoomNameFontSize,
                 LastShiftUiTheme.Ivory, TextAnchor.MiddleCenter);
+        }
 
-            // 조각을 안 쓰는 프레임에도 이름은 남으므로, 좁은 방에서는 부제 자리를 빈 문자열로
-            // 덮는다. 안 덮으면 화면 크기가 바뀌어 방이 줄었을 때 지난 프레임의 부제가 남는다.
-            layer.Label("map:purpose" + index, LastShiftMapView.RoomPurposeRect(room),
-                LastShiftMapView.FitsPurpose(room) ? LastShiftRoomLabels.PurposeOf(space) : string.Empty,
-                LastShiftMapView.RoomPurposeFontSize,
-                new Color(LastShiftUiTheme.BodyText.r, LastShiftUiTheme.BodyText.g,
-                    LastShiftUiTheme.BodyText.b, 0.7f),
-                TextAnchor.MiddleCenter);
+        /// <summary><see cref="MapIconScratch"/> 에 접혀 있는 조각을 그대로 빌려 칠한다.</summary>
+        private static void DrawMapIcon(LastShiftUiLayer layer, string id, int bands)
+        {
+            for (var band = 0; band < bands; band++)
+                Tint(layer.Panel(id + ":" + band, MapIconScratch[band]),
+                    LastShiftUiTheme.Ivory, MapIconAlpha);
         }
 
         private static void DrawMapOutline(LastShiftUiLayer layer, string id, Rect rect,

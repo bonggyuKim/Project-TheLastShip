@@ -40,49 +40,81 @@ namespace DoodleUp.Runtime
         /// <summary>방 이름 글자 크기(px). 표식(<see cref="CrewMarkerSize"/>)보다 작다 — 이름은 배경이고 사람이 전경이다.</summary>
         public const int RoomNameFontSize = 15;
 
-        /// <summary>방 부제 글자 크기(px). 이름보다 뚜렷하게 작아야 둘이 한 덩이로 안 읽힌다.</summary>
-        public const int RoomPurposeFontSize = 11;
-
         /// <summary>이름 한 줄이 먹는 높이(px).</summary>
         public const float RoomNameLine = RoomNameFontSize + 4f;
 
-        /// <summary>부제 한 줄이 먹는 높이(px).</summary>
-        public const float RoomPurposeLine = RoomPurposeFontSize + 3f;
+        /// <summary>
+        /// 방 아이콘 상자 한 변(px). <b>승강구도 같은 값이다</b> — 크기가 다르면 중요도가
+        /// 다른 것으로 읽힌다. 격자가 <c>8x8</c>(<see cref="LastShiftRoomIcons.GridSize"/>)이라
+        /// 셀 한 변은 <c>2.25</c>px 이다.
+        /// </summary>
+        public const float RoomIconBox = 18f;
 
         /// <summary>글자와 테두리 사이 여유(px). 이만큼은 비어야 글자가 테두리에 붙어 보이지 않는다.</summary>
         public const float LabelPadding = 4f;
 
         /// <summary>
-        /// 방 이름이 놓이는 자리 — <b>방 사각형의 위쪽 안쪽</b>이다.
+        /// 머리표 두 줄이 다 들어가는 방의 최소 높이(px). <c>테두리+여유(6) + 아이콘(18) +
+        /// 이름(19) + 여유(4) = 47</c>.
+        /// </summary>
+        public const float RoomHeaderHeight =
+            (RoomOutline + LabelPadding) * 2f + RoomIconBox + RoomNameLine;
+
+        /// <summary>
+        /// 이 방에 아이콘까지 들어가는가. <b>안 들어가면 아이콘을 떨구고 이름만 남긴다</b> —
+        /// 아이콘이 없으면 그 방이 무엇인지 실루엣으로는 모르게 되지만, 이름 한 줄은 어느
+        /// 방에서도 들어가므로 되돌아감이 이름 없는 사각형까지 가지는 않는다.
+        ///
+        /// <b>지금 배율에서는 안 걸린다.</b> 가장 얕은 방(숙소, <c>z 6~12</c>)이 <c>720p</c> 에서
+        /// <c>70</c>px 이라 <c>47</c>px 에 <c>23</c>px 여유가 있다. 배가 커지거나 지도 배율이
+        /// 줄었을 때 아이콘이 이웃 방으로 넘치는 것을 좌표로 막는 자리로 둔다.
+        /// </summary>
+        public static bool FitsIcon(Rect room) => room.height >= RoomHeaderHeight;
+
+        /// <summary>
+        /// 방 아이콘이 놓이는 자리 — <b>머리표 첫 줄</b>이다. 방 폭 한가운데에 정사각으로 서고,
+        /// 이름과 같은 <see cref="UnityEngine.TextAnchor.MiddleCenter"/> 규약이다.
+        ///
+        /// 아이콘이 이름보다 <b>위</b>인 것이 요점이다. 아이콘이 먼저 눈에 들어오고 이름이 그
+        /// 아이콘을 가르치는 배치라, 두 번째 판부터는 이름을 안 읽고 아이콘만으로 읽게 된다.
+        /// </summary>
+        public static Rect RoomIconRect(Rect room) => new(
+            room.center.x - RoomIconBox * 0.5f,
+            room.yMin + RoomOutline + LabelPadding,
+            RoomIconBox,
+            RoomIconBox);
+
+        /// <summary>
+        /// 방 이름이 놓이는 자리 — <b>아이콘 아래, 방 사각형의 위쪽 안쪽</b>이다.
         ///
         /// <b>한가운데가 아닌 것이 요점이다.</b> 사람 표식은 방 안 어디에나 서고 광장 한가운데에는
         /// 코어가 있어서, 이름을 중심에 두면 넷이 모인 방이나 광장에서 이름이 표식·코어에 깔린다.
         /// 위쪽 띠는 방마다 반드시 비어 있는 유일한 자리이고, 지도를 위에서 아래로 읽는 눈에는
         /// 그것이 그 사각형의 <b>머리표</b>로 읽힌다.
         ///
+        /// <b>아이콘이 떨어진 방에서는 이름이 그 자리를 넘겨받는다</b>(<see cref="FitsIcon"/>).
+        /// 안 올리면 아이콘도 없는 방에서 이름만 <c>18</c>px 아래에 떠서 아래 테두리를 넘는다.
+        ///
         /// 폭은 방 폭 그대로다 — 글자는 <see cref="UnityEngine.TextAnchor.MiddleCenter"/> 라
         /// 이름이 길어지면 좌우로 균등하게 번지고, 좁은 방에서 한쪽으로만 삐져나가지 않는다.
         /// </summary>
-        public static Rect RoomNameRect(Rect room) => new(
-            room.xMin,
-            room.yMin + RoomOutline + LabelPadding,
-            room.width,
-            RoomNameLine);
-
-        /// <summary>부제가 놓이는 자리. 이름 바로 아래 줄이다.</summary>
-        public static Rect RoomPurposeRect(Rect room)
+        public static Rect RoomNameRect(Rect room)
         {
-            var name = RoomNameRect(room);
-            return new Rect(room.xMin, name.yMax, room.width, RoomPurposeLine);
+            var top = room.yMin + RoomOutline + LabelPadding;
+            if (FitsIcon(room)) top += RoomIconBox;
+            return new Rect(room.xMin, top, room.width, RoomNameLine);
         }
 
         /// <summary>
-        /// 이 방에 부제까지 들어가는가. <b>안 들어가면 이름만 적는다</b> — 두 줄을 억지로 넣으면
-        /// 부제가 방 아래 테두리를 넘어 이웃 방 위에 겹치고, 그러면 그 부제가 어느 방 것인지
-        /// 모르게 된다. 이름 한 줄만은 어느 방에서도 들어가므로 이 검사는 부제에만 붙는다.
+        /// 승강구 아이콘이 놓이는 자리 — <b>코어 사각형 한가운데</b>다. 이름은 코어가 좁아서
+        /// 밖으로 내지만(<see cref="ShaftNameRect"/>), 아이콘 <c>18</c>px 는 코어
+        /// (<c>720p</c> 에서 <c>46</c>px) 안에 들어간다.
         /// </summary>
-        public static bool FitsPurpose(Rect room) =>
-            room.height >= (RoomOutline + LabelPadding) * 2f + RoomNameLine + RoomPurposeLine;
+        public static Rect ShaftIconRect(Rect core) => new(
+            core.center.x - RoomIconBox * 0.5f,
+            core.center.y - RoomIconBox * 0.5f,
+            RoomIconBox,
+            RoomIconBox);
 
         /// <summary>
         /// 중앙 승강구 이름이 놓이는 자리 — <b>코어 사각형 바로 아래</b>다.
