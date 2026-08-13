@@ -4,6 +4,26 @@
   "hud.map.hint": "지도 — M 으로 닫기",
   "hud.carried": "들고 있음 {0}/{1}",
 
+  "term.zone.cockpit": "조종석",
+  "term.zone.power": "전력실",
+  "term.zone.cooling": "냉각실",
+  "term.zone.lifeSupport": "산소실",
+  "term.boundary.join": "{0}↔{1}",
+
+  "term.room.plaza": "광장",
+  "term.room.quarters": "숙소",
+  "term.room.purpose.plaza": "자재 하치대",
+  "term.room.purpose.cockpit": "추력 · 항로",
+  "term.room.purpose.lifeSupport": "산소 생성",
+  "term.room.purpose.power": "전력 버스",
+  "term.room.purpose.cooling": "열 배출 밸브",
+  "term.room.purpose.quarters": "기상 지점",
+
+  "term.core.name": "중앙 승강구",
+  "term.core.purpose": "선외 출입",
+
+  "term.compartment.quarters": "숙소",
+
   "prompt.ghost.blocked": "유령 — 이동만 가능 (잡기·수리·문 조작 불가)",
 
   "prompt.item.drop": "[E] 놓기",

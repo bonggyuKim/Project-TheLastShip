@@ -112,16 +112,20 @@ namespace DoodleUp.Runtime
             };
         }
 
-        /// <summary>HUD 칸에 쓰는 짧은 이름. 문서 용어(조종석/전력실/냉각실/산소실)를 그대로 쓴다.</summary>
+        /// <summary>
+        /// HUD 칸에 쓰는 짧은 이름. <b>배 안에서 이 넷을 부르는 이름의 유일한 출처다</b> —
+        /// 지도·문 프롬프트·승강구 프롬프트가 전부 여기서 끌어 쓴다. 문안은 대사 표에 있다
+        /// (<see cref="LastShiftText"/>).
+        /// </summary>
         public static string ShortLabelOf(LastShiftZone zone)
         {
-            return zone switch
+            return LastShiftText.Get(zone switch
             {
-                LastShiftZone.Cockpit => "조종석",
-                LastShiftZone.Power => "전력실",
-                LastShiftZone.Cooling => "냉각실",
-                _ => "산소실"
-            };
+                LastShiftZone.Cockpit => "term.zone.cockpit",
+                LastShiftZone.Power => "term.zone.power",
+                LastShiftZone.Cooling => "term.zone.cooling",
+                _ => "term.zone.lifeSupport"
+            });
         }
 
         public static bool TryResolveName(string zoneName, out LastShiftZone zone)

@@ -32,10 +32,10 @@ namespace DoodleUp.Runtime
         /// 문구는 튜토리얼 <c>3</c>단계 제목과 같은 말이다(<c>LastShiftTutorialCopy</c>) —
         /// 띠에서 읽은 말과 지도에서 찾는 말이 같아야 그 둘이 이어진다.
         /// </summary>
-        public const string ShaftName = "중앙 승강구";
+        public static string ShaftName => LastShiftText.Get("term.core.name");
 
         /// <summary>승강구가 하는 일. 방 부제와 같은 규약으로 짧다.</summary>
-        public const string ShaftPurpose = "선외 출입";
+        public static string ShaftPurpose => LastShiftText.Get("term.core.purpose");
 
         /// <summary>
         /// 이 방의 이름. <b>기능실 넷은 구역 이름을 그대로 쓴다</b> — 파생이라 HUD 와 갈릴 수가
@@ -46,8 +46,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         public static string NameOf(LastShiftPlazaSpace space) => space switch
         {
-            LastShiftPlazaSpace.Plaza => "광장",
-            LastShiftPlazaSpace.Quarters => "숙소",
+            LastShiftPlazaSpace.Plaza => LastShiftText.Get("term.room.plaza"),
+            LastShiftPlazaSpace.Quarters => LastShiftText.Get("term.room.quarters"),
             _ => LastShiftZoneAtlas.ShortLabelOf(LastShiftPlazaLayout.Of(space).Zone)
         };
 
@@ -63,14 +63,14 @@ namespace DoodleUp.Runtime
         /// <c>11</c>px 라 여덯 자를 넘기면 방 밖으로 삐져나간다 —
         /// <c>LastShiftRoomLabelTests</c> 가 그 상한을 잰다.
         /// </summary>
-        public static string PurposeOf(LastShiftPlazaSpace space) => space switch
+        public static string PurposeOf(LastShiftPlazaSpace space) => LastShiftText.Get(space switch
         {
-            LastShiftPlazaSpace.Plaza => "자재 하치대",
-            LastShiftPlazaSpace.CockpitRoom => "추력 · 항로",
-            LastShiftPlazaSpace.LifeSupportRoom => "산소 생성",
-            LastShiftPlazaSpace.PowerRoom => "전력 버스",
-            LastShiftPlazaSpace.CoolingRoom => "열 배출 밸브",
-            _ => "기상 지점"
-        };
+            LastShiftPlazaSpace.Plaza => "term.room.purpose.plaza",
+            LastShiftPlazaSpace.CockpitRoom => "term.room.purpose.cockpit",
+            LastShiftPlazaSpace.LifeSupportRoom => "term.room.purpose.lifeSupport",
+            LastShiftPlazaSpace.PowerRoom => "term.room.purpose.power",
+            LastShiftPlazaSpace.CoolingRoom => "term.room.purpose.cooling",
+            _ => "term.room.purpose.quarters"
+        });
     }
 }

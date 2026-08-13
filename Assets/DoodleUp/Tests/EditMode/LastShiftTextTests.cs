@@ -125,7 +125,15 @@ namespace DoodleUp.Tests.EditMode
                 "prompt.core.openGate", "prompt.core.closeGate", "prompt.core.ascend",
                 "prompt.core.descend", "prompt.core.blockedBySegment", "prompt.core.blockedByLiftAway",
                 "prompt.salvage.depleted", "prompt.salvage.handsFull",
-                "prompt.salvage.harvesting", "prompt.salvage.harvest"
+                "prompt.salvage.harvesting", "prompt.salvage.harvest",
+                "term.zone.cockpit", "term.zone.power", "term.zone.cooling", "term.zone.lifeSupport",
+                "term.boundary.join",
+                "term.room.plaza", "term.room.quarters",
+                "term.room.purpose.plaza", "term.room.purpose.cockpit",
+                "term.room.purpose.lifeSupport", "term.room.purpose.power",
+                "term.room.purpose.cooling", "term.room.purpose.quarters",
+                "term.core.name", "term.core.purpose",
+                "term.compartment.quarters"
             };
 
             var absent = used.Where(key => !LastShiftText.Has(key)).ToArray();

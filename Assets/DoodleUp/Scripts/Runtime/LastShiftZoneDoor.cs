@@ -102,9 +102,9 @@ namespace DoodleUp.Runtime
         public bool IsMoving => !Mathf.Approximately(openAmount, IsOpen ? 1f : 0f);
 
         /// <summary>이 경계가 잇는 두 구역 이름. 프롬프트에 그대로 쓴다.</summary>
-        public string BoundaryLabel =>
-            $"{LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.LowZoneOf(boundary))}↔" +
-            $"{LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.HighZoneOf(boundary))}";
+        public string BoundaryLabel => LastShiftText.Format("term.boundary.join",
+            LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.LowZoneOf(boundary)),
+            LastShiftZoneAtlas.ShortLabelOf(LastShiftZoneAtlas.HighZoneOf(boundary)));
 
         public void Configure(int boundaryIndex, Transform fore, Transform aft, BoxCollider doorBlocker)
         {
