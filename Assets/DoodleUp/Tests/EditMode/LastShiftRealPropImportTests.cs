@@ -35,7 +35,7 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void EmergencyBeaconVisualIsConvertedFromCentimetersToMeters()
+        public void EmergencyBeaconVisualDoesNotPreserveBlenderRootScale()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/DoodleUp/Prefabs/Dressing/RealProps/LP_EmergencyBeacon.prefab");
@@ -43,8 +43,8 @@ namespace DoodleUp.Tests.EditMode
 
             var visual = prefab.transform.Find("Visual");
             Assert.That(visual, Is.Not.Null);
-            Assert.That(visual.localScale, Is.EqualTo(Vector3.one * 0.01f),
-                "The beacon FBX is authored in centimetres and must not enter dressing at 100x scale.");
+            Assert.That(visual.localScale, Is.EqualTo(Vector3.one),
+                "The beacon's Blender FBX root scale must not multiply child light offsets by 100.");
         }
 
         /// <summary>

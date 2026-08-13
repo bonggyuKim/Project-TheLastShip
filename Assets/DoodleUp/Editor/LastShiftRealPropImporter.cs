@@ -14,7 +14,6 @@ namespace DoodleUp.Editor
         private const string PrefabFolder = "Assets/DoodleUp/Prefabs/Dressing/RealProps";
         private const float DeckSurfaceY = 0.12f;
         private const float MinimumPlanarClearance = 0.10f;
-        private const float CentimetersToMeters = 0.01f;
 
         /// <summary>
         /// <b>우리가 Blender 에서 만든 것만 쓴다.</b> 여기 있던 <c>LSReal_*</c> 여섯 개는
@@ -68,11 +67,12 @@ namespace DoodleUp.Editor
                 var visual = (GameObject)PrefabUtility.InstantiatePrefab(model);
                 visual.name = "Visual";
                 visual.transform.SetParent(root.transform, false);
-                // The beacon FBX was exported with centimetre-sized vertex coordinates, while its
-                // sparse legacy importer metadata does not preserve a usable unit conversion.
-                // Normalize only this known outlier at the reusable prefab boundary.
+                // Blender's FBX root carries an authored 100x transform. Unity preserves that on
+                // the imported model root, which also multiplies the LightPivot's local offset.
+                // The mesh data is already in the intended metre size, so strip the root transform
+                // at the reusable prefab boundary instead of counter-scaling the whole prefab.
                 if (name == "LP_EmergencyBeacon")
-                    visual.transform.localScale = Vector3.one * CentimetersToMeters;
+                    visual.transform.localScale = Vector3.one;
                 AlignVisualToBottom(visual);
                 foreach (var filter in visual.GetComponentsInChildren<MeshFilter>(true))
                 {
