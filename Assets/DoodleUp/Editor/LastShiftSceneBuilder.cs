@@ -204,22 +204,54 @@ namespace DoodleUp.Editor
             return ship;
         }
 
+        /// <summary>배전반을 벽에서 띄우는 간격. 킷 설비의 <c>FeatureWallInset</c> 과 같은 이유다.</summary>
+        private const float BusPanelWallInset = 0.05f;
+
+        /// <summary>배전반이 서는 우현 벽 지점의 z. 문(<c>z=-6</c>)에서 멀고 뒷벽 설비와도 겹치지 않는다.</summary>
+        private const float BusPanelStandZ = -1.5f;
+
+        /// <summary>
+        /// 전력실 배전반. <b>뒷벽에 두지 않는다.</b>
+        ///
+        /// 예전 좌표는 <c>(PowerCenterX, 뒷벽+0.55)</c> 였는데, 정본 지도가 같은 뒷벽에 방 설비
+        /// <c>LPK_Power_Switchgear</c> 를 세운다(<c>Power_Feature</c>, <c>EndWallShift</c> 가
+        /// 문 맞은편 끝벽으로 민 자리다). 구워진 배에서 둘이 <c>x</c> 는 같고 <c>z</c> 는
+        /// <c>8cm</c> 차이라 서로를 파고 있었다 — 배전반이 통째로 설비 안에 들어 있었다.
+        ///
+        /// <b>조종석에서 이미 한 번 나온 실수다</b>(<c>LPK_Cockpit_ControlConsole</c> 옆 회색상자).
+        /// 그때는 빌더 쪽을 지웠지만 여기서는 지우지 않는다. 방 설비는 <c>StructuralNames</c> 밖이라
+        /// <b>콜라이더가 없어 통과되고</b>, 이 배전반이 전력실에서 유일하게 막히는 덩어리다.
+        /// 하부 배터리 도크도 여기 붙어 있다(아트 정본 <c>system-heroes-surface-detail-v1</c>).
+        /// 그래서 설비는 뒷벽에 두고 배전반을 우현 벽으로 옮긴다.
+        ///
+        /// <b>임포터 검사가 왜 못 잡았는지도 여기 적는다.</b>
+        /// <c>LastShiftModularKitImporter.ReportDressingInsideFeatures</c> 가 설비 keep-out 을
+        /// 재고 있지만 <c>ZoneDressing</c> 밑만 훑는다. 배전반은 배 루트의 직계라 대상 밖이었고,
+        /// 그래서 <c>clashes=0</c> 이 "깨끗하다" 로 읽혔다.
+        /// </summary>
         private static void CreateBusPanel(Transform ship)
         {
+            // 우현 벽 안쪽 면. 물건의 뒷면이 여기에 닿는다.
+            var wallX = LastShiftShipDimensions.RoomMaxX(LastShiftZone.Power) - BusPanelWallInset;
+            var standZ = LastShiftShipDimensions.RoomCenterZ(LastShiftZone.Power) + BusPanelStandZ;
+
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LastShiftSystemHeroImporter.BusPanelPrefabPath);
             if (prefab == null)
             {
+                var size = new Vector3(0.5f, 1.3f, 1.6f);
                 CreateCube("BusCabinet", ship,
-                    new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f,
-                        RoomBackWallZ(LastShiftZone.Power) + 0.55f),
-                    new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
+                    new Vector3(wallX - size.x * 0.5f, 0.65f, standZ), size, powerMaterial);
                 return;
             }
 
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, ship);
             instance.name = "BusCabinet";
-            instance.transform.position = new Vector3(LastShiftShipDimensions.PowerCenterX, 0f,
-                RoomBackWallZ(LastShiftZone.Power) + 0.55f);
+            // 정면은 프리팹 로컬 <c>+z</c> 다. 우현 벽을 등지려면 그 축이 <c>-x</c> 를 봐야 한다.
+            instance.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
+            instance.transform.position = new Vector3(0f, 0f, standZ);
+            // 두께는 아트 몫이라 코드가 미리 못 쓴다. 돌려 놓은 뒤 실측 상자로 벽에 붙인다.
+            instance.transform.position += new Vector3(
+                wallX - CombinedRendererBounds(instance).max.x, 0f, 0f);
         }
 
         /// <summary>본선 방 넷. 광장은 여기 없다 — 방이 아니라 허브다.</summary>

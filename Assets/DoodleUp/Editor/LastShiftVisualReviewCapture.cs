@@ -12,6 +12,7 @@ namespace DoodleUp.Editor
         private const string CeilingOutputDirectory = "docs/art/evidence/last-shift-ceiling-fix-2026-08-14";
         private const string QuartersOutputDirectory = "docs/art/evidence/last-shift-quarters-single-source-2026-08-14";
         private const string QuartersHeightOutputDirectory = "docs/art/evidence/last-shift-quarters-height-3m-2026-08-14";
+        private const string PowerBusPanelOutputDirectory = "docs/art/evidence/last-shift-power-buspanel-2026-08-14";
 
         /// <summary>
         /// 천장 검수 시점. 앞서의 검수 시점은 전부 <b>수평</b>이라 천장이 없어도 화면에
@@ -109,6 +110,32 @@ namespace DoodleUp.Editor
                 new View("04_quarters_wide", new Vector3(11.4f, 1.65f, 11.2f), new Vector3(5.2f, 1.6f, 7f))
             };
             Run(QuartersHeightOutputDirectory, views, "LAST_SHIFT_QUARTERS_HEIGHT", false);
+        }
+
+        /// <summary>
+        /// 전력실 배전반이 방 설비에서 빠져나왔는지의 검수(2026-08-14).
+        ///
+        /// <b>겹침은 한 장으로 못 본다.</b> 파고든 쪽에서는 두 물건이 그냥 하나로 보이므로,
+        /// 뒷벽을 정면에서 한 장(설비만 남았는가)과 우현 벽을 옆에서 한 장(배전반이 거기 섰는가),
+        /// 그리고 둘이 같이 들어오는 넓은 장이 있어야 "갈라졌다" 가 프레임에서 읽힌다.
+        ///
+        /// 좌표는 정본 지도의 <c>power.bounds</c>(<c>x -4..4</c>, <c>z -14..-6</c>)에서 잡았고
+        /// 눈높이는 다른 검수 세트와 같은 <c>1.65</c> 다.
+        /// </summary>
+        public static void CapturePowerBusPanelForAutomation()
+        {
+            var views = new[]
+            {
+                // 문(z=-6)으로 들어와 뒷벽 정면. 여기에 설비 하나만 서 있어야 한다.
+                new View("01_power_back_wall", new Vector3(0f, 1.65f, -7.2f), new Vector3(0f, 1.25f, -13.6f)),
+                // 우현 벽(x=4). 배전반이 옮겨 간 자리다 — 벽에 붙었는지·떠 있는지가 옆에서 읽힌다.
+                new View("02_power_starboard_cabinet", new Vector3(-1.4f, 1.65f, -9.2f), new Vector3(3.9f, 1.2f, -11.5f)),
+                // 둘이 한 프레임에. 갈라진 거리가 이 장에서 판단된다.
+                new View("03_power_wide", new Vector3(-3.2f, 1.9f, -7.0f), new Vector3(2.4f, 1.1f, -12.6f)),
+                // 뒷벽을 비스듬히. 설비 안에 남은 것이 있으면 이 각도에서 튀어나온다.
+                new View("04_power_feature_oblique", new Vector3(2.8f, 1.65f, -10.8f), new Vector3(0f, 1.2f, -13.7f))
+            };
+            Run(PowerBusPanelOutputDirectory, views, "LAST_SHIFT_POWER_BUSPANEL", false);
         }
 
         public static void CaptureForAutomation()
