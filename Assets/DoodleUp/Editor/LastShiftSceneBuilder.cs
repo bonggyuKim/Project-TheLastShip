@@ -304,8 +304,49 @@ namespace DoodleUp.Editor
                 new Vector3(-half, (openingHeight + height) * 0.5f, 0f),
                 new Vector3(thickness, height - openingHeight, opening), hullMaterial);
 
+            CreatePlazaCoreSurfaceDetail(core.transform, half, span, height, thickness);
+
             CreateCoreGate(core.transform, new Vector3(-half, openingHeight * 0.5f, 0f),
                 new Vector3(thickness, openingHeight, opening));
+        }
+
+        /// <summary>
+        /// 코어의 큰 단색 면을 3단으로 나누는 저비용 표면 레이어.
+        /// 외곽 콜라이더와 4x4m 동선 점유는 그대로 두고 렌더러만 얹는다. 얇은 수평 띠는
+        /// 광장 반대편에서도 높이를 읽게 하고, 비대칭 점검판은 가까이에서 방향 기준이 된다.
+        /// 플랫 컬러 두 단계만 써서 로우폴리 장난감 톤과 드로우콜 예산을 지킨다.
+        /// </summary>
+        private static void CreatePlazaCoreSurfaceDetail(Transform core, float half, float span,
+            float height, float thickness)
+        {
+            var seam = EnsureMaterial("LS_CoreSeam", new Color(0.27f, 0.31f, 0.36f));
+            var plate = EnsureMaterial("LS_CorePlate", new Color(0.14f, 0.17f, 0.20f));
+            const float skin = 0.025f;
+            const float bandHeight = 0.12f;
+
+            // 세 고정면을 같은 수평 리듬으로 묶되 중앙 판의 위치는 어긋나게 해 복제 느낌을 줄인다.
+            foreach (var y in new[] { height * 0.28f, height * 0.68f })
+            {
+                CreateDecorCube("CoreDetail_SternBand", core,
+                    new Vector3(half + thickness * 0.5f + skin * 0.5f, y, 0f),
+                    new Vector3(skin, bandHeight, span - 0.16f), seam);
+                CreateDecorCube("CoreDetail_PortBand", core,
+                    new Vector3(0f, y, -half - thickness * 0.5f - skin * 0.5f),
+                    new Vector3(span - 0.16f, bandHeight, skin), seam);
+                CreateDecorCube("CoreDetail_StarboardBand", core,
+                    new Vector3(0f, y, half + thickness * 0.5f + skin * 0.5f),
+                    new Vector3(span - 0.16f, bandHeight, skin), seam);
+            }
+
+            CreateDecorCube("CoreDetail_SternPlate", core,
+                new Vector3(half + thickness * 0.5f + skin, height * 0.48f, -0.54f),
+                new Vector3(skin * 2f, 0.82f, 1.18f), plate);
+            CreateDecorCube("CoreDetail_PortPlate", core,
+                new Vector3(0.58f, height * 0.47f, -half - thickness * 0.5f - skin),
+                new Vector3(1.12f, 0.74f, skin * 2f), plate);
+            CreateDecorCube("CoreDetail_StarboardPlate", core,
+                new Vector3(-0.46f, height * 0.51f, half + thickness * 0.5f + skin),
+                new Vector3(1.32f, 0.90f, skin * 2f), plate);
         }
 
         /// <summary>
