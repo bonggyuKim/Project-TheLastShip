@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -14,6 +16,108 @@ namespace DoodleUp.Editor
         private const string QuartersHeightOutputDirectory = "docs/art/evidence/last-shift-quarters-height-3m-2026-08-14";
         private const string PowerBusPanelOutputDirectory = "docs/art/evidence/last-shift-power-buspanel-2026-08-14";
         private const string QuartersBunkOrientationOutputDirectory = "docs/art/evidence/last-shift-quarters-bunk-orientation-2026-08-14";
+        public const string EvidenceV2OutputDirectory = "docs/art/evidence/last-shift-whole-ship-review-v2";
+        public const string EvidenceSchema = "last-shift.visual-review/v2";
+
+        /// <summary>
+        /// Whole-ship review evidence v2. Every review area has a context and a diagnostic angle,
+        /// and manifest.json records the exact camera and source state used for the images.
+        /// Existing dated evidence remains untouched so before/after sets cannot be mixed silently.
+        /// </summary>
+        [MenuItem("Last Shift/Review/Capture Whole Ship Evidence v2")]
+        public static void CaptureWholeShipEvidenceV2ForAutomation()
+        {
+            var views = EvidenceV2Views();
+            Run(EvidenceV2OutputDirectory, views, "LAST_SHIFT_VISUAL_REVIEW_V2", false);
+            WriteEvidenceManifest(EvidenceV2OutputDirectory, views);
+        }
+
+        public static View[] EvidenceV2Views() => new[]
+        {
+            new View("plaza", "context", "01_plaza_context", new Vector3(5.4f, 1.65f, -4.8f), new Vector3(-0.5f, 1.25f, 0f)),
+            new View("plaza", "diagnostic", "02_plaza_core_clearance", new Vector3(-5.4f, 1.65f, 4.8f), new Vector3(0.5f, 1.25f, 0f)),
+            new View("cockpit", "context", "03_cockpit_entry", new Vector3(-7.2f, 1.65f, 0f), new Vector3(-15.8f, 1.35f, 0f)),
+            new View("cockpit", "diagnostic", "04_cockpit_seat_grounding", new Vector3(-14.2f, 1.35f, 2.8f), new Vector3(-11.4f, 0.45f, 0f)),
+            new View("power", "context", "05_power_context", new Vector3(0f, 1.65f, -7.2f), new Vector3(0f, 1.25f, -13f)),
+            new View("power", "diagnostic", "06_power_cabinet_grounding", new Vector3(-2.8f, 1.15f, -11f), new Vector3(2.8f, 0.35f, -12.6f)),
+            new View("cooling", "context", "07_cooling_context", new Vector3(0f, 1.65f, 7.2f), new Vector3(0f, 1.25f, 13f)),
+            new View("cooling", "diagnostic", "08_cooling_box_grounding", new Vector3(3f, 1.1f, 10f), new Vector3(-2.8f, 0.3f, 12f)),
+            new View("life_support", "context", "09_life_support_context", new Vector3(7.2f, 1.65f, 0f), new Vector3(15f, 1.25f, 0f)),
+            new View("life_support", "diagnostic", "10_life_support_tank_grounding", new Vector3(11f, 1.1f, 3f), new Vector3(14f, 0.35f, -1f)),
+            new View("quarters", "context", "11_quarters_entry", new Vector3(5.2f, 1.65f, 7f), new Vector3(10.8f, 1.3f, 10.8f)),
+            new View("quarters", "diagnostic", "12_quarters_bunk_profile", new Vector3(5.4f, 1.1f, 10.4f), new Vector3(9.6f, 0.45f, 11.6f)),
+            new View("cargo_props", "context", "13_cargo_group", new Vector3(3.2f, 1.65f, 12.2f), new Vector3(-2.5f, 0.9f, 9.5f)),
+            new View("cargo_props", "diagnostic", "14_cargo_grounding", new Vector3(-3.5f, 1.05f, 8.2f), new Vector3(1f, 0.25f, 11f)),
+            new View("eva", "context", "15_eva_exterior", new Vector3(4.8f, 7.8f, 4.8f), new Vector3(0f, 6.2f, 0f)),
+            new View("eva", "diagnostic", "16_eva_lift_clearance", new Vector3(-1.2f, 1.65f, -5.2f), new Vector3(0f, 2.2f, 0f))
+        };
+
+        private static void WriteEvidenceManifest(string outputDirectory, View[] views)
+        {
+            var manifest = new EvidenceManifest
+            {
+                schema = EvidenceSchema,
+                evidenceVersion = 2,
+                scene = LastShiftSceneBuilder.ScenePath,
+                unityVersion = Application.unityVersion,
+                sourceRevision = ResolveSourceRevision(),
+                sourceDirty = ResolveSourceDirty(),
+                capturedUtc = DateTime.UtcNow.ToString("O"),
+                width = 1280,
+                height = 720,
+                verticalFov = 68f,
+                nearClip = 0.05f,
+                farClip = 80f,
+                reviewState = new ReviewState
+                {
+                    rebakeApplied = true,
+                    ceilingShellApplied = true,
+                    quartersSingleSourceApplied = true,
+                    quartersHeightMeters = 3f,
+                    powerBusPanelSeparated = true,
+                    quartersBunksUpright = true
+                },
+                views = views.Select(view => new EvidenceView
+                {
+                    area = view.Area,
+                    purpose = view.Purpose,
+                    file = view.Name + ".png",
+                    position = VectorValues(view.Position),
+                    target = VectorValues(view.Target)
+                }).ToArray()
+            };
+            File.WriteAllText(Path.Combine(outputDirectory, "manifest.json"), JsonUtility.ToJson(manifest, true), Encoding.UTF8);
+        }
+
+        private static float[] VectorValues(Vector3 value) => new[] { value.x, value.y, value.z };
+
+        private static string ResolveSourceRevision() => RunGit("rev-parse --verify HEAD", "unknown");
+        private static bool ResolveSourceDirty() => !string.IsNullOrEmpty(RunGit("status --porcelain --untracked-files=no", string.Empty));
+
+        private static string RunGit(string arguments, string fallback)
+        {
+            try
+            {
+                var start = new System.Diagnostics.ProcessStartInfo("git", arguments)
+                {
+                    WorkingDirectory = Directory.GetCurrentDirectory(),
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                using (var process = System.Diagnostics.Process.Start(start))
+                {
+                    var output = process.StandardOutput.ReadToEnd().Trim();
+                    process.WaitForExit(5000);
+                    return process.ExitCode == 0 ? output : fallback;
+                }
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
 
         /// <summary>
         /// 천장 검수 시점. 앞서의 검수 시점은 전부 <b>수평</b>이라 천장이 없어도 화면에
@@ -236,18 +340,64 @@ namespace DoodleUp.Editor
             RenderTexture.ReleaseTemporary(target);
         }
 
-        private readonly struct View
+        public readonly struct View
         {
             public View(string name, Vector3 position, Vector3 target)
+                : this("legacy", "legacy", name, position, target)
             {
+            }
+
+            public View(string area, string purpose, string name, Vector3 position, Vector3 target)
+            {
+                Area = area;
+                Purpose = purpose;
                 Name = name;
                 Position = position;
                 Target = target;
             }
 
+            public string Area { get; }
+            public string Purpose { get; }
             public string Name { get; }
             public Vector3 Position { get; }
             public Vector3 Target { get; }
+        }
+
+        [Serializable] private sealed class EvidenceManifest
+        {
+            public string schema;
+            public int evidenceVersion;
+            public string scene;
+            public string unityVersion;
+            public string sourceRevision;
+            public bool sourceDirty;
+            public string capturedUtc;
+            public int width;
+            public int height;
+            public float verticalFov;
+            public float nearClip;
+            public float farClip;
+            public ReviewState reviewState;
+            public EvidenceView[] views;
+        }
+
+        [Serializable] private sealed class ReviewState
+        {
+            public bool rebakeApplied;
+            public bool ceilingShellApplied;
+            public bool quartersSingleSourceApplied;
+            public float quartersHeightMeters;
+            public bool powerBusPanelSeparated;
+            public bool quartersBunksUpright;
+        }
+
+        [Serializable] private sealed class EvidenceView
+        {
+            public string area;
+            public string purpose;
+            public string file;
+            public float[] position;
+            public float[] target;
         }
     }
 }
