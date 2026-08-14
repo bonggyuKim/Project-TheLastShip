@@ -1460,7 +1460,7 @@ namespace DoodleUp.Editor
         }
 
         /// <summary>
-        /// 실내 조명. 구역등의 색 구분은 유지하면서 공용 환경광을 따뜻하게 들어 올려,
+        /// 실내 조명. 구역등의 색 구분은 유지하면서 공용 환경광을 중립적으로 들어 올려,
         /// 네 명의 동료와 소품 실루엣이 방 반대편에서도 읽히게 한다. 위기 색은 개별 설비와
         /// 경고등이 담당하므로 평상시 함선 전체를 청회색 공포 톤으로 물들이지 않는다.
         /// </summary>
@@ -1468,15 +1468,15 @@ namespace DoodleUp.Editor
         {
             ConfigureSpaceSky();
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            // 크림빛 fill: 검은 모서리를 걷어내되 구역등의 색과 경고등 대비는 남긴다.
-            RenderSettings.ambientLight = new Color(0.22f, 0.20f, 0.17f);
+            // 저채도 웜 그레이 fill: 검은 모서리를 걷어내되 구역등의 색과 경고등 대비는 남긴다.
+            RenderSettings.ambientLight = new Color(0.205f, 0.20f, 0.19f);
             var lightObject = new GameObject("Directional Light");
             var light = lightObject.AddComponent<Light>();
             light.type = LightType.Directional;
-            // 창과 개구부에서 들어오는 부드러운 피치색 rim. 차가운 달빛 대신 승무원과
-            // 소품의 윤곽을 살려 협동 플레이의 밝고 친근한 인상을 만든다.
-            light.intensity = 0.45f;
-            light.color = new Color(1.00f, 0.82f, 0.64f);
+            // 창과 개구부에서 들어오는 저채도 아이보리 rim. 구역색을 덮던 피치 캐스트는
+            // 빼고 승무원과 소품의 윤곽만 살린다.
+            light.intensity = 0.42f;
+            light.color = Color.white;
             lightObject.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
 
             // 천장 등은 여기서 만들지 않는다. 등기구 프리팹(LSDress_Lamp_*)이 Light 를 들고

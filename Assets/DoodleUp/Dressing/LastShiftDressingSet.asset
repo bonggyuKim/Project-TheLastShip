@@ -1566,3 +1566,37 @@ MonoBehaviour:
     semantics: 0
     lightIntensity: 0
     justification:
+  - id: Plaza_Bench_AftPort
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.45, z: 0.4}
+    anchorMode: 0
+    anchor: {x: 0.84, y: -0.87}
+    bottomY: 0.12
+    clearance: 0.1
+    eulerAngles: {x: 0, y: 35, z: 0}
+    prefab: {fileID: 2320516647030953466, guid: ce7461d6ce4665926c0a174742edbbe1, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:
+  - id: Plaza_AbandonedCrate_PortStern
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 0.95, y: 1.53, z: 0.81}
+    anchorMode: 0
+    anchor: {x: 0.86, y: 0.84}
+    bottomY: 0
+    clearance: 0.06
+    eulerAngles: {x: 0, y: -18, z: 0}
+    prefab: {fileID: 3032783179222453495, guid: 1d6f0a472c94446ea7d92072debd688f, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification:

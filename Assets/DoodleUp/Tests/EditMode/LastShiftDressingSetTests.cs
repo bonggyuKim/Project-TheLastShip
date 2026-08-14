@@ -2,6 +2,7 @@ using System.Linq;
 using DoodleUp.Runtime;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 namespace DoodleUp.Tests.EditMode
 {
@@ -72,6 +73,22 @@ namespace DoodleUp.Tests.EditMode
                                    p.space.zone == zone &&
                                    (p.semantics & LastShiftDressingSemantics.StateResponsive) != 0),
                     Is.True, $"{zone} 에 상태 단서가 없다.");
+        }
+
+        [Test]
+        public void PlazaCornersCarryNarrativePropsWithoutFillingTheHub()
+        {
+            var props = Load().Props
+                .Where(p => p.space.kind == LastShiftDressingSpaceKind.Plaza &&
+                            p.id.StartsWith("Plaza_"))
+                .ToArray();
+
+            Assert.That(props.Length, Is.EqualTo(3),
+                "광장 서사 소품은 세 모서리만 점유해 중앙 허브와 네 번째 탈출 여백을 비워 둔다.");
+            Assert.That(props.All(p => Mathf.Abs(p.anchor.x) >= 0.8f && Mathf.Abs(p.anchor.y) >= 0.8f),
+                Is.True, "광장 서사 소품이 중앙 이동 동선으로 밀려 들어왔다.");
+            Assert.That(props.Select(p => (Mathf.Sign(p.anchor.x), Mathf.Sign(p.anchor.y))).Distinct().Count(),
+                Is.EqualTo(3), "광장 서사 소품은 서로 다른 모서리에 하나씩 놓여야 한다.");
         }
 
         [Test]
