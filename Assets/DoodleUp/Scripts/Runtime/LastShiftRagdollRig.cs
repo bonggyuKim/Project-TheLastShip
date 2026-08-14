@@ -50,8 +50,12 @@ namespace DoodleUp.Runtime
             float girthScale,
             float swing1Limit,
             float swing2Limit,
-            float twistLimit)
+            float twistLimit,
+            bool isHinge = false,
+            bool hingeBendsForward = false)
         {
+            IsHinge = isHinge;
+            HingeBendsForward = hingeBendsForward;
             Part = part;
             BoneName = boneName;
             TipBoneName = tipBoneName;
@@ -97,6 +101,23 @@ namespace DoodleUp.Runtime
 
         /// <summary>비틀림 한계(도). 대칭으로 ±로 쓴다.</summary>
         public float TwistLimit { get; }
+
+        /// <summary>
+        /// 볼 조인트가 아니라 <b>경첩</b>인가. 무릎·팔꿈치가 여기 해당한다.
+        ///
+        /// 이 둘을 <c>CharacterJoint</c> 로 두면 <see cref="Swing1Limit"/> 85 · <see cref="Swing2Limit"/> 10
+        /// 처럼 <b>극단적으로 찌그러진 스윙 콘</b>이 되는데, PhysX 는 이 비율에서 한계를 못 지킨다 —
+        /// 실측으로 무릎이 한계 85° 인데 175° 까지 접혔고, 솔버 반복을 12/4 → 32/8 로 올려도
+        /// 1.8배 초과가 남았다. 경첩은 애초에 1자유도라 나머지 두 축이 아예 잠긴다.
+        /// </summary>
+        public bool IsHinge { get; }
+
+        /// <summary>
+        /// 경첩이 접히는 쪽. 팔꿈치는 손이 <b>앞으로</b>(가슴 쪽), 무릎은 발이 <b>뒤로</b> 간다.
+        /// 축의 부호는 리그마다 다르므로 값으로 박지 않고, 빌드 시점에 실제 뼈를 이 방향으로
+        /// 돌려 보고 정한다 — 리그를 다시 뽑아도 안 틀어지게 하려는 것이다.
+        /// </summary>
+        public bool HingeBendsForward { get; }
     }
 
     /// <summary>
@@ -174,13 +195,13 @@ namespace DoodleUp.Runtime
                 LastShiftRagdollGirth.BoneLength, 0.30f, 85f, 70f, 60f),
             new LastShiftRagdollBone(LastShiftRagdollPart.ForearmL, "forearm.L", "hand.L",
                 LastShiftRagdollPart.UpperArmL, false, 0.018f,
-                LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f),
+                LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f, true, true),
             new LastShiftRagdollBone(LastShiftRagdollPart.UpperArmR, "upper_arm.R", "forearm.R",
                 LastShiftRagdollPart.Chest, false, 0.028f,
                 LastShiftRagdollGirth.BoneLength, 0.30f, 85f, 70f, 60f),
             new LastShiftRagdollBone(LastShiftRagdollPart.ForearmR, "forearm.R", "hand.R",
                 LastShiftRagdollPart.UpperArmR, false, 0.018f,
-                LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f),
+                LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f, true, true),
 
             // 다리. 무릎도 경첩. 저중력에서 다리가 자유로우면 착지가 성립을 안 한다.
             new LastShiftRagdollBone(LastShiftRagdollPart.ThighL, "thigh.L", "shin.L",
@@ -188,13 +209,13 @@ namespace DoodleUp.Runtime
                 LastShiftRagdollGirth.BoneLength, 0.32f, 70f, 35f, 30f),
             new LastShiftRagdollBone(LastShiftRagdollPart.ShinL, "shin.L", "foot.L",
                 LastShiftRagdollPart.ThighL, false, 0.048f,
-                LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f),
+                LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f, true, false),
             new LastShiftRagdollBone(LastShiftRagdollPart.ThighR, "thigh.R", "shin.R",
                 LastShiftRagdollPart.Pelvis, false, 0.095f,
                 LastShiftRagdollGirth.BoneLength, 0.32f, 70f, 35f, 30f),
             new LastShiftRagdollBone(LastShiftRagdollPart.ShinR, "shin.R", "foot.R",
                 LastShiftRagdollPart.ThighR, false, 0.048f,
-                LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f)
+                LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f, true, false)
         };
 
         /// <summary>비율 합. 표를 고쳐도 총 질량이 안 흔들리게 정규화 분모로 쓴다.</summary>

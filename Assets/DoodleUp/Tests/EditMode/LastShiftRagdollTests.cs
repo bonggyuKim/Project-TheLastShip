@@ -299,29 +299,74 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void EveryNonRootPartHangsFromItsParentByACharacterJoint()
+        public void EveryNonRootPartHangsFromItsParentByAJoint()
         {
             var ragdoll = BuildRagdoll();
 
             foreach (var spec in LastShiftRagdollRig.Bones)
             {
                 var body = ragdoll.Bodies[spec.Part];
-                var joint = body.GetComponent<CharacterJoint>();
+                var joints = body.GetComponents<Joint>();
 
                 if (spec.IsRoot)
                 {
-                    Assert.That(joint, Is.Null, "골반은 자유로워야 한다 — 조인트가 붙으면 래그돌 전체가 한 점에 묶인다.");
+                    Assert.That(joints, Is.Empty, "골반은 자유로워야 한다 — 조인트가 붙으면 래그돌 전체가 한 점에 묶인다.");
                     continue;
                 }
 
-                Assert.That(joint, Is.Not.Null, $"{spec.Part} 에 조인트가 없다.");
+                // 종류가 섞이면 두 조인트가 같은 바디를 물고 서로 당긴다. 재빌드 때 지우다 만
+                // 조인트가 남는 경로가 실제로 있어서 개수까지 본다.
+                Assert.That(joints.Length, Is.EqualTo(1), $"{spec.Part} 의 조인트가 하나가 아니다.");
+
+                var joint = joints[0];
                 Assert.That(joint.connectedBody, Is.SameAs(ragdoll.Bodies[spec.Parent]),
                     $"{spec.Part} 가 {spec.Parent} 가 아닌 곳에 매달렸다.");
-                Assert.That(joint.swing1Limit.limit, Is.EqualTo(spec.Swing1Limit).Within(0.001f));
-                Assert.That(joint.axis.sqrMagnitude, Is.GreaterThan(0.5f), "비틀림 축이 0 벡터다.");
-                Assert.That(Vector3.Dot(joint.axis.normalized, joint.swingAxis.normalized), Is.EqualTo(0f).Within(0.01f),
-                    $"{spec.Part} 의 스윙 축이 비틀림 축과 수직이 아니다 — 팔꿈치·무릎이 옆으로 접힌다.");
+                Assert.That(joint.axis.sqrMagnitude, Is.GreaterThan(0.5f), "회전축이 0 벡터다.");
+
+                if (spec.IsHinge)
+                {
+                    var hinge = joint as HingeJoint;
+                    Assert.That(hinge, Is.Not.Null, $"{spec.Part} 는 경첩이어야 한다.");
+                    Assert.That(hinge.useLimits, Is.True, "한계를 안 켜면 경첩이 무한정 돈다.");
+
+                    // 접히는 쪽만 크게 열려 있어야 한다. 양쪽이 다 열리면 무릎이 앞으로도 꺾인다.
+                    var span = hinge.limits.max - hinge.limits.min;
+                    Assert.That(span, Is.EqualTo(spec.Swing1Limit + 5f).Within(0.001f),
+                        $"{spec.Part} 의 가동 범위가 한계 + 여유와 다르다.");
+                    Assert.That(Mathf.Min(Mathf.Abs(hinge.limits.min), Mathf.Abs(hinge.limits.max)),
+                        Is.EqualTo(5f).Within(0.001f), "반대쪽은 여유만 열려 있어야 한다.");
+                    continue;
+                }
+
+                var character = joint as CharacterJoint;
+                Assert.That(character, Is.Not.Null, $"{spec.Part} 는 볼 조인트여야 한다.");
+                Assert.That(character.swing1Limit.limit, Is.EqualTo(spec.Swing1Limit).Within(0.001f));
+                Assert.That(Vector3.Dot(character.axis.normalized, character.swingAxis.normalized),
+                    Is.EqualTo(0f).Within(0.01f),
+                    $"{spec.Part} 의 스윙 축이 비틀림 축과 수직이 아니다.");
             }
+        }
+
+        [Test]
+        public void KneesAndElbowsAreHingesBecauseSquashedSwingConesLeak()
+        {
+            // 실측 근거: 스윙 콘 85°×10° 로 흉내 낸 무릎이 175° 까지 접혔고, 솔버 반복을
+            // 12/4 → 32/8 로 올려도 1.8배 초과가 남았다. 1자유도로 잠가야 새지 않는다.
+            foreach (var part in new[]
+                     {
+                         LastShiftRagdollPart.ForearmL, LastShiftRagdollPart.ForearmR,
+                         LastShiftRagdollPart.ShinL, LastShiftRagdollPart.ShinR
+                     })
+                Assert.That(LastShiftRagdollRig.SpecOf(part).IsHinge, Is.True, $"{part} 는 경첩이어야 한다.");
+
+            foreach (var part in new[]
+                     {
+                         LastShiftRagdollPart.Spine, LastShiftRagdollPart.Chest, LastShiftRagdollPart.Head,
+                         LastShiftRagdollPart.UpperArmL, LastShiftRagdollPart.UpperArmR,
+                         LastShiftRagdollPart.ThighL, LastShiftRagdollPart.ThighR
+                     })
+                Assert.That(LastShiftRagdollRig.SpecOf(part).IsHinge, Is.False,
+                    $"{part} 는 여러 축으로 덜렁거려야 한다 — 경첩으로 잠그면 뻣뻣해진다.");
         }
 
         [Test]
@@ -344,8 +389,9 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(_instance.GetComponentsInChildren<Rigidbody>(true).Length,
                 Is.EqualTo(LastShiftRagdollRig.Bones.Length), "재빌드가 바디를 겹쳐 쌓았다.");
-            Assert.That(_instance.GetComponentsInChildren<CharacterJoint>(true).Length,
-                Is.EqualTo(LastShiftRagdollRig.Bones.Length - 1));
+            Assert.That(_instance.GetComponentsInChildren<Joint>(true).Length,
+                Is.EqualTo(LastShiftRagdollRig.Bones.Length - 1),
+                "재빌드가 조인트를 겹쳐 쌓았다 — 경첩과 볼 조인트가 같은 바디에 함께 남는 경로가 있다.");
             Assert.That(_instance.GetComponentsInChildren<Collider>(true).Length,
                 Is.EqualTo(LastShiftRagdollRig.Bones.Length), "재빌드가 콜라이더 홀더를 지우지 않았다.");
         }

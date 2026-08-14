@@ -297,8 +297,9 @@ namespace DoodleUp.Runtime
             {
                 var body = _bodyList[i];
                 if (body == null) continue;
-                var joint = body.GetComponent<CharacterJoint>();
-                if (joint != null) DestroyComponent(joint);
+                // CharacterJoint 만 지우면 경첩(무릎·팔꿈치)이 남아 다음 빌드에서 두 조인트가
+                // 같은 바디를 물고 서로 당긴다. 종류를 안 가리고 전부 지운다.
+                foreach (var joint in body.GetComponents<Joint>()) DestroyComponent(joint);
             }
 
             for (var i = 0; i < _bodyList.Count; i++)
@@ -425,6 +426,12 @@ namespace DoodleUp.Runtime
 
         private void AddJoint(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
         {
+            if (spec.IsHinge)
+            {
+                AddHingeJoint(bones, spec);
+                return;
+            }
+
             var tuning = _tuning;
             var bone = bones[spec.BoneName];
             var joint = bone.gameObject.GetComponent<CharacterJoint>();
@@ -454,6 +461,64 @@ namespace DoodleUp.Runtime
             joint.highTwistLimit = new SoftJointLimit { limit = spec.TwistLimit };
             joint.swing1Limit = new SoftJointLimit { limit = spec.Swing1Limit };
             joint.swing2Limit = new SoftJointLimit { limit = spec.Swing2Limit };
+        }
+
+        /// <summary>
+        /// 무릎·팔꿈치를 <see cref="HingeJoint"/> 로 만든다.
+        ///
+        /// <b>왜 볼 조인트를 안 쓰나.</b> <c>CharacterJoint</c> 로 경첩을 흉내 내려면 스윙 콘을
+        /// 85°×10° 처럼 극단적으로 찌그러뜨려야 하는데, PhysX 는 그 비율에서 한계를 못 지킨다 —
+        /// 실측으로 무릎이 175° 까지 접혔고, 솔버 반복을 12/4 → 32/8 로 올려도 1.8배 초과가
+        /// 남았다. <c>HingeJoint</c> 는 나머지 두 축이 구속으로 잠기므로 새어 나갈 자유도가 없다.
+        ///
+        /// <b>접히는 부호는 재서 정한다.</b> 회전축의 부호는 리그가 뼈를 어느 방향으로 뽑았는지에
+        /// 달려 있어서 값으로 박으면 리그를 다시 뽑을 때 조용히 뒤집힌다 — 무릎이 앞으로 꺾이는
+        /// 래그돌이 되고, 그건 화면에서만 드러난다. 그래서 실제 뼈를 축 둘레로 조금 돌려 보고
+        /// 끝점이 어디로 가는지 보고 정한다.
+        /// </summary>
+        private void AddHingeJoint(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
+        {
+            var bone = bones[spec.BoneName];
+            var joint = bone.gameObject.GetComponent<HingeJoint>();
+            if (joint == null) joint = bone.gameObject.AddComponent<HingeJoint>();
+
+            joint.connectedBody = _bodies[spec.Parent];
+            joint.anchor = Vector3.zero;
+            joint.autoConfigureConnectedAnchor = true;
+            joint.enablePreprocessing = _tuning.JointPreprocessing;
+            joint.enableCollision = false;
+            joint.useMotor = false;
+            joint.useSpring = false;
+
+            // 경첩 축은 뼈 방향에 수직인 축이다 — 볼 조인트의 스윙 축과 같은 식으로 뽑는다.
+            var twist = TwistDirection(bones, spec);
+            var reference = Mathf.Abs(Vector3.Dot(twist, transform.up)) < 0.95f ? transform.up : transform.forward;
+            var axis = Vector3.Cross(twist, reference).normalized;
+
+            joint.axis = bone.InverseTransformDirection(axis);
+            joint.useLimits = true;
+
+            var limit = spec.Swing1Limit;
+            joint.limits = HingeBendsPositive(twist, axis, spec.HingeBendsForward)
+                ? new JointLimits { min = -HingeSlackDegrees, max = limit }
+                : new JointLimits { min = -limit, max = HingeSlackDegrees };
+        }
+
+        /// <summary>
+        /// 접히지 않는 쪽으로도 열어 두는 여유(도). 0 으로 잠그면 차렷 자세가 곧 한계면이라
+        /// 솔버가 매 스텝 한계를 밟으며 덜덜 떤다.
+        /// </summary>
+        private const float HingeSlackDegrees = 5f;
+
+        /// <summary>
+        /// 축 둘레 <b>양의</b> 회전이 이 관절이 접혀야 할 쪽인가.
+        /// 뼈 끝점을 실제로 조금 돌려 보고, 그 끝점이 캐릭터 앞뒤 어느 쪽으로 가는지로 판단한다.
+        /// </summary>
+        private bool HingeBendsPositive(Vector3 twist, Vector3 axis, bool bendsForward)
+        {
+            var moved = Quaternion.AngleAxis(10f, axis) * twist - twist;
+            var forward = Vector3.Dot(moved, transform.forward);
+            return bendsForward ? forward > 0f : forward < 0f;
         }
 
         private Vector3 TwistDirection(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
