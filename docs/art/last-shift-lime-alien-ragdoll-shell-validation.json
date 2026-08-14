@@ -1,10 +1,10 @@
 {
   "asset": "LastShiftLimeAlien_Rigged",
-  "strategy": "six chain-isolated skinned shells plus rigid eye shell; smoothed cut boundaries with overlapping neck collar and shoulder cuffs",
+  "strategy": "six chain-isolated skinned shells plus rigid eye shell; planar hidden cuts with a monotonic tapered neck overlap, no raised collar or shoulder cuffs",
   "checks": {
     "RagdollShell_Torso": {
-      "verts": 1026,
-      "polys": 1895,
+      "verts": 1640,
+      "polys": 2341,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
@@ -14,8 +14,8 @@
       ]
     },
     "RagdollShell_Head": {
-      "verts": 3507,
-      "polys": 4537,
+      "verts": 2642,
+      "polys": 3564,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
@@ -23,8 +23,8 @@
       ]
     },
     "RagdollShell_Arm_L": {
-      "verts": 523,
-      "polys": 536,
+      "verts": 43,
+      "polys": 56,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
@@ -34,8 +34,8 @@
       ]
     },
     "RagdollShell_Arm_R": {
-      "verts": 521,
-      "polys": 530,
+      "verts": 41,
+      "polys": 50,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
@@ -67,6 +67,6 @@
       ]
     }
   },
-  "max_weight_sum_error": 4.0978193283081055e-08,
+  "max_weight_sum_error": 1.1920928955078125e-07,
   "stress_pose": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RagdollShell_StressPose.png"
 }
