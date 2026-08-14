@@ -1203,7 +1203,7 @@ MonoBehaviour:
     anchor: {x: 0.9677, y: 0.4887}
     bottomY: 0
     clearance: 0.06
-    eulerAngles: {x: 0, y: 0, z: 0}
+    eulerAngles: {x: 0, y: 180, z: 0}
     prefab: {fileID: 7608983397483821381, guid: 4e15af820b6d43c9a72f8d05e6b31c78, type: 3}
     material: {fileID: 0}
     semantics: 0
@@ -1441,7 +1441,7 @@ MonoBehaviour:
     anchor: {x: -0.0162, y: 1}
     bottomY: 0
     clearance: 0.2
-    eulerAngles: {x: 0, y: 0, z: 0}
+    eulerAngles: {x: 0, y: -90, z: 0}
     prefab: {fileID: 766825059239644337, guid: 6c3d70b19af24e58b31067ca8d24f095, type: 3}
     material: {fileID: 0}
     semantics: 0
