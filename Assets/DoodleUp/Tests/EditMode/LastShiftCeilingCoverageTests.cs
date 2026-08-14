@@ -202,6 +202,47 @@ namespace DoodleUp.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// 천장 부속이 <b>그 방의</b> 판 밑에 있는가. 위 검사는 배 전체에 한 줄(<c>MaxCover</c>)을
+        /// 긋기 때문에 방마다 천장이 다르면 못 본다 — 숙소를 <c>3.0</c> 으로 낮추면 본선 기준으로
+        /// 걸린 보가 그 방에서만 판을 뚫는다. 규칙의 <c>positionY</c> 는 본선에 맞춰 적혀 있고
+        /// 임포터가 방 천장 차이만큼 내리므로(<c>ceilingRelative</c>), 그 보정이 빠지면 여기서 걸린다.
+        /// </summary>
+        [Test]
+        public void CeilingFittingsStayUnderTheirOwnRoomsRoof()
+        {
+            var map = LoadMap();
+            var ship = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(ShipPrefabPath));
+            try
+            {
+                var spaces = new List<MapSpace>(AllSpaces(map));
+                var pierced = new List<string>();
+                var seen = 0;
+                foreach (var renderer in ship.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    if (OwnerNamed(renderer.transform, "ceilings") == null) continue;
+                    var bounds = renderer.bounds;
+                    var centre = new Vector2(bounds.center.x, bounds.center.z);
+                    var space = spaces.Find(s =>
+                        centre.x > s.bounds[0] && centre.x < s.bounds[1] &&
+                        centre.y > s.bounds[2] && centre.y < s.bounds[3]);
+                    if (space == null) continue;
+                    seen++;
+                    if (bounds.max.y > space.ceiling + 0.01f)
+                        pierced.Add($"{space.id}@{bounds.max.y:F2}>{space.ceiling:F2}");
+                }
+
+                Assert.That(seen, Is.GreaterThan(0), "방 안에 든 ceilings 생성물이 하나도 없다");
+                Assert.That(pierced, Is.Empty,
+                    $"천장 부속 {pierced.Count} 개가 자기 방 판을 뚫었다: " +
+                    string.Join(", ", pierced.GetRange(0, Mathf.Min(8, pierced.Count))));
+            }
+            finally
+            {
+                Object.DestroyImmediate(ship);
+            }
+        }
+
         private static string OwnerNamed(Transform node, string prefix)
         {
             for (var t = node; t != null; t = t.parent)
@@ -230,10 +271,14 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// 숙소가 <b>정본 지도 높이</b>로 서 있는가. 씬 빌더가 세우던 고정 구획 큐브
-        /// (<c>Compartment_Quarters/Ceiling</c>·<c>Floor</c>·<c>Wall_*</c>)는 지도와 같은 자리를
-        /// 두 번 세우면서 천장만 <c>3.0</c> 으로 낮게 잡고 있었다. 그 큐브가 다시 생기면
-        /// 여기서 걸린다 — 위 덮임 검사는 판이 <b>둘</b>이어도 통과하므로 이름을 따로 센다.
+        /// 숙소가 <b>정본 지도 높이</b>로, 그리고 <b>한 겹으로</b> 서 있는가. 씬 빌더가 세우던
+        /// 고정 구획 큐브(<c>Compartment_Quarters/Ceiling</c>·<c>Floor</c>·<c>Wall_*</c>)는 지도와
+        /// 같은 자리를 두 번 세우고 있었다. 그 큐브가 다시 생기면 여기서 걸린다 — 위 덮임 검사는
+        /// 판이 <b>둘</b>이어도 통과하므로 이름과 겹 수를 따로 센다.
+        ///
+        /// <b>높이가 같아졌다고 큐브가 돌아와도 되는 것이 아니다</b>(2026-08-14). 부속 대비를
+        /// 되살리며 정본 지도의 <c>quarters.ceiling</c> 을 <c>3.0</c> 으로 낮췄으므로, 이제
+        /// 큐브와 판이 같은 높이에 앉는다. 구별은 높이가 아니라 겹 수가 한다.
         /// </summary>
         [Test]
         public void TheQuartersCarriesNoLegacyCompartmentGeometry()
@@ -272,18 +317,22 @@ namespace DoodleUp.Tests.EditMode
                 // 집으려면 밑면이 그 높이인 렌더러만 골라야 한다.
                 var b = quarters.bounds;
                 var centre = new Vector2((b[0] + b[1]) * 0.5f, (b[2] + b[3]) * 0.5f);
-                Assert.That(IsCovered(CollectCovers(ship, quarters.ceiling - 0.05f, quarters.ceiling + 0.05f), centre),
-                    Is.True,
-                    $"숙소 한가운데 위 {quarters.ceiling:F2} 에 판이 없다 — " +
-                    "ceilingShell 대상에서 숙소가 다시 빠졌다");
 
-                // 걷어낸 큐브는 밑면이 정확히 <see cref="LastShiftCompartments.InteriorHeight"/>
-                // 에 앉아 있었다. 그 높이에 다시 뭔가 깔리면 3.0/3.2 두 값이 되살아난 것이다.
-                const float legacyRoof = LastShiftCompartments.InteriorHeight;
-                Assert.That(IsCovered(CollectCovers(ship, legacyRoof - 0.05f, legacyRoof + 0.05f), centre),
+                // <b>덮였나가 아니라 몇 겹인가를 센다</b>(2026-08-14). 숙소 실내고를 지도에서
+                // <c>3.0</c> 으로 낮추면서 걷어낸 큐브의 높이와 정본 높이가 같아졌다 — 예전처럼
+                // "3.0 에 아무것도 없어야 한다" 로는 큐브가 돌아와도 구분이 안 된다. 같은 자리를
+                // 두 번 세우는 것이 문제였으므로 그 자리를 덮은 판의 <b>개수</b>를 본다.
+                var slabs = CountCovers(CollectCovers(ship, quarters.ceiling - 0.05f, quarters.ceiling + 0.05f), centre);
+                Assert.That(slabs, Is.EqualTo(1),
+                    $"숙소 한가운데 위 {quarters.ceiling:F2} 를 덮은 판이 {slabs} 장이다 — " +
+                    "0 이면 ceilingShell 대상에서 숙소가 빠진 것이고, 2 이상이면 고정 구획 큐브가 돌아온 것이다");
+
+                // 본선 높이에는 아무것도 없어야 한다. 여기 판이 서면 숙소가 다시 본선과 같은
+                // 높이로 올라갔거나(지도 되돌림) 두 높이가 겹쳐 깔린 것이다.
+                var mainRoof = LastShiftShipPhysics.CeilingInnerHeight;
+                Assert.That(IsCovered(CollectCovers(ship, mainRoof - 0.05f, mainRoof + 0.05f), centre),
                     Is.False,
-                    $"숙소 한가운데 위 {legacyRoof:F2} 에 판이 다시 생겼다 — " +
-                    "정본 지도의 3.2 와 두 겹이 된다");
+                    $"숙소 한가운데 위 {mainRoof:F2} 에 판이 있다 — 부속이 본선 실내고로 되돌아갔다");
             }
             finally
             {
@@ -332,6 +381,16 @@ namespace DoodleUp.Tests.EditMode
                 if (point.x >= bounds.min.x && point.x <= bounds.max.x &&
                     point.y >= bounds.min.z && point.y <= bounds.max.z) return true;
             return false;
+        }
+
+        /// <summary>이 자리를 덮은 면의 <b>수</b>. 두 겹으로 깔린 것을 덮임 검사로는 못 본다.</summary>
+        private static int CountCovers(IReadOnlyList<Bounds> covers, Vector2 point)
+        {
+            var count = 0;
+            foreach (var bounds in covers)
+                if (point.x >= bounds.min.x && point.x <= bounds.max.x &&
+                    point.y >= bounds.min.z && point.y <= bounds.max.z) count++;
+            return count;
         }
 
         private static List<Bounds> CollectCovers(GameObject ship, float low = MinCover, float high = MaxCover)

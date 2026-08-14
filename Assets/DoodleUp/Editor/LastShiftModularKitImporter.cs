@@ -486,7 +486,7 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "wallBoundsWithDoorGap")
                     InteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "spanBounds")
-                    foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule, spaces[target]);
+                    foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule, spaces[target], map.plaza.ceiling);
                 else if (rule.operation == "ceilingShell") BuildCeilingShell(p, root, rule, map, spaces);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "assembleNoseCap") AssembleNoseCap(p, root, rule);
@@ -928,11 +928,18 @@ namespace DoodleUp.Editor
         /// <b>도려낼지는 규칙이 말한다</b>(<c>carveEvaShaft</c>). 예전에는 <c>y &gt; 0.5</c> 를
         /// 천장의 표지로 삼았는데, 천장 킷이 <b>바닥 기준</b>으로 짜여 있어(보가 조각 원점에서
         /// <c>+2.95</c>) 규칙의 <c>positionY</c> 가 <c>0.1</c> 로 내려가자 그 표지가 깨진다.
+        ///
+        /// <b><c>positionY</c> 는 본선 실내고에 맞춰 적힌 값이다</b>(<c>ceilingRelative</c>).
+        /// 규칙 하나가 여섯 공간을 겨냥하는데 부속(숙소)만 천장이 <c>0.2m</c> 낮으므로, 그
+        /// 방에서도 같은 값을 그대로 쓰면 보와 등이 <b>판을 뚫고</b> 지붕 위로 나간다. 그래서
+        /// 공간의 <c>ceiling</c> 이 본선과 다른 만큼 조각을 같이 내린다 — 규칙에 방별 <c>y</c>
+        /// 를 따로 적는 대신 <b>천장 값 하나만</b> 정본으로 두려는 것이다. 바닥에 붙는
+        /// <c>spanBounds</c> 규칙이 생겼을 때 같이 끌려 내려가면 안 되므로 켜는 쪽을 명시한다.
         /// </summary>
-        private static void SpanBounds(GameObject prefab, Transform root, MapRule rule, MapSpace space)
+        private static void SpanBounds(GameObject prefab, Transform root, MapRule rule, MapSpace space, float mainCeiling)
         {
             var name = rule.id;
-            var y = rule.positionY;
+            var y = rule.positionY + (rule.ceilingRelative ? space.ceiling - mainCeiling : 0f);
             var b = space.bounds;
             if (!rule.carveEvaShaft || !SurroundsEvaShaft(b))
             {
@@ -1590,6 +1597,6 @@ namespace DoodleUp.Editor
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; public string kind; }
         [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
-        [Serializable] private sealed class MapRule { public string id; public string name; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; public bool carveEvaShaft; }
+        [Serializable] private sealed class MapRule { public string id; public string name; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; public bool carveEvaShaft; public bool ceilingRelative; }
     }
 }

@@ -36,6 +36,49 @@ namespace DoodleUp.Tests.EditMode
                 "런타임은 지도를 쓰고 검사는 정본을 보므로 이 차이가 그대로 실패가 된다.");
         }
 
+        /// <summary>
+        /// 방 높이의 두 정본이 같은가. 지도의 <c>ceiling</c> 이 정본이고
+        /// <see cref="LastShiftPlazaLayout"/> 의 <c>Height</c> 가 그 사본인데, 사본을 아무도 안
+        /// 읽는다는 이유로 갈린 채 방치된 적이 있다(코드 <c>3.0</c> / 데이터 <c>3.2</c>). 그 어긋남이
+        /// 천장 조사에서 하루를 먹었다 — 안 읽히는 값이라도 갈리면 <b>읽는 사람</b>을 속인다.
+        ///
+        /// 대비 자체도 같이 못박는다. 부속(숙소)이 본선보다 낮은 것은 연출 규약이고(§2.2),
+        /// 지도에서 한 줄 고치면 조용히 사라지는 종류의 것이다.
+        /// </summary>
+        [Test]
+        public void MapCeilingsMatchTheLayoutCopyAndKeepTheAnnexLower()
+        {
+            var map = JsonUtility.FromJson<MapRoot>(File.ReadAllText(MapPath));
+            Assert.That(map?.spaces, Is.Not.Null, "지도에 spaces 가 없다");
+
+            Assert.That(map.plaza.ceiling,
+                Is.EqualTo(LastShiftPlazaLayout.Of(LastShiftPlazaSpace.Plaza).Height).Within(0.001f),
+                "광장 천장이 지도와 사본에서 다르다");
+
+            foreach (var space in map.spaces)
+            {
+                var copy = LastShiftPlazaLayout.Of(SpaceOf(space.id)).Height;
+                Assert.That(space.ceiling, Is.EqualTo(copy).Within(0.001f),
+                    $"{space.id} 천장이 지도 {space.ceiling:F2} / 사본 {copy:F2} 로 갈렸다");
+            }
+
+            var quarters = System.Array.Find(map.spaces, s => s.id == "quarters");
+            Assert.That(quarters, Is.Not.Null, "지도에 숙소가 없다");
+            Assert.That(quarters.ceiling, Is.LessThan(map.plaza.ceiling - 0.1f),
+                $"숙소 천장 {quarters.ceiling:F2} 가 본선 {map.plaza.ceiling:F2} 과 안 벌어졌다 — " +
+                "문을 지날 때 천장이 내려앉는 것이 부속/본선 대비의 연출이다");
+        }
+
+        private static LastShiftPlazaSpace SpaceOf(string id) => id switch
+        {
+            "cockpit" => LastShiftPlazaSpace.CockpitRoom,
+            "lifeSupport" => LastShiftPlazaSpace.LifeSupportRoom,
+            "power" => LastShiftPlazaSpace.PowerRoom,
+            "cooling" => LastShiftPlazaSpace.CoolingRoom,
+            "quarters" => LastShiftPlazaSpace.Quarters,
+            _ => LastShiftPlazaSpace.Plaza
+        };
+
         [Test]
         public void MapSpawnStandsInsideTheQuartersFootprint()
         {
@@ -116,8 +159,10 @@ namespace DoodleUp.Tests.EditMode
                 $"프리팹 머리가 {head.localScale} 로 저장돼 있다 — 동료 화면에서도 머리가 사라진다");
         }
 
-        [System.Serializable] private sealed class MapRoot { public MapCamera cockpitCamera; public MapRule[] placementRules; }
+        [System.Serializable] private sealed class MapRoot { public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; }
         [System.Serializable] private sealed class MapCamera { public float[] spawn; public float[] lookAt; }
+        [System.Serializable] private sealed class MapPlaza { public float ceiling; }
+        [System.Serializable] private sealed class MapSpace { public string id; public float ceiling; }
         [System.Serializable] private sealed class MapRule { public string id; public string assetId; public string operation; public float[] position; }
     }
 }

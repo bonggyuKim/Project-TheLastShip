@@ -118,7 +118,7 @@
         6,
         12
       ],
-      "ceiling": 3.2,
+      "ceiling": 3,
       "door": {
         "position": [
           4.8,
@@ -211,6 +211,7 @@
       ],
       "operation": "spanBounds",
       "positionY": 0.1,
+      "ceilingRelative": true,
       "carveEvaShaft": true
     },
     {

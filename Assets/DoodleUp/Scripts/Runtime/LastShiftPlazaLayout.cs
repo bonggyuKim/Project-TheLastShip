@@ -57,7 +57,7 @@ namespace DoodleUp.Runtime
         public float MaxZ { get; }
 
         /// <summary>
-        /// 천장 내면. 지금은 일곱 다 <c>3.2m</c> 다 — 정본은
+        /// 천장 내면. 본선은 <c>3.2m</c>, 부속(숙소)은 <c>3.0m</c> 다 — 정본은
         /// <c>LastShiftModularMap.json</c> 의 <c>ceiling</c> 이고 여기가 그 사본이다.
         /// </summary>
         public float Height { get; }
@@ -175,16 +175,24 @@ namespace DoodleUp.Runtime
         public const float CoreArea = CoreHalfExtent * 2f * (CoreHalfExtent * 2f);
 
         // ── 고정 구조물 일곱 ─────────────────────────────────────────────────
-        // 높이가 두 갈래인 것이 §2.2 마지막 단락의 규약이었다 — 본선 3.2m / 부속 3.0m 라
+        // 높이가 두 갈래인 것이 §2.2 마지막 단락의 규약이다 — 본선 3.2m / 부속 3.0m 라
         // 광장에 서면 어느 문이 압력 계열이고 어느 문이 생활 계열인지가 천장으로 먼저 읽힌다.
         //
-        // <b>지금은 한 갈래다</b>(2026-08-14). 부속으로 남은 것이 숙소 하나인데 정본 지도의
-        // quarters.ceiling 이 3.2 이고, 그 방을 3.0 으로 세우던 고정 구획 큐브를 걷어냈다.
-        // 여기 3.0 을 남겨 두면 <b>아무도 안 읽는 값</b>이 정본과 어긋난 채로 남는다 —
-        // 실제로 오늘 그 어긋남(코드 3.0 / 데이터 3.2)이 천장 조사를 하루 끌었다.
-        // 높이 대비를 다시 쓰려면 값을 여기서 되살리는 것이 아니라 지도에서 낮춘다.
+        // <b>대비를 지도에서 되살렸다</b>(2026-08-14). 고정 구획 큐브를 걷어내면서 숙소가
+        // 잠깐 본선과 같은 3.2 였는데, 그때 남긴 지침대로 <b>코드가 아니라 정본 지도의
+        // quarters.ceiling 을 3.0 으로 낮췄다</b>. 그러니 여기 <see cref="AnnexHeight"/> 는
+        // 되살린 리터럴이 아니라 그 지도 값의 사본이고, 둘이 갈리면
+        // <c>LastShiftMapCanonTests</c> 가 잡는다 — 코드 3.0 / 데이터 3.2 로 갈렸던 지난번
+        // 어긋남이 천장 조사를 하루 끌었다.
 
         private const float MainHeight = LastShiftShipPhysics.CeilingInnerHeight;
+
+        /// <summary>
+        /// 부속 실내고. 정본은 <c>LastShiftModularMap.json</c> 의 <c>quarters.ceiling</c> 이고
+        /// 여기가 그 사본이다. 본선보다 <c>0.2m</c> 낮은 것이 의도다 — 문을 지날 때 천장이
+        /// 내려앉아야 "생활 구역으로 넘어왔다" 가 걸음에서 읽힌다.
+        /// </summary>
+        private const float AnnexHeight = 3f;
 
         /// <summary>
         /// §2.2 좌표표 그대로. <b>순서가 <see cref="LastShiftPlazaSpace"/> 와 같아야 한다</b> —
@@ -206,7 +214,7 @@ namespace DoodleUp.Runtime
             new(LastShiftPlazaSpace.CoolingRoom, -4f, 4f, 6f, 14f,
                 MainHeight, LastShiftZone.Cooling),
             new(LastShiftPlazaSpace.Quarters, 4f, 12f, 6f, 12f,
-                MainHeight, LastShiftZone.Cockpit)
+                AnnexHeight, LastShiftZone.Cockpit)
         };
 
         public static LastShiftPlazaFootprint Of(LastShiftPlazaSpace space) => Footprints[(int)space];

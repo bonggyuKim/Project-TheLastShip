@@ -209,10 +209,13 @@ namespace DoodleUp.Runtime
         /// 문 구멍 높이 `2.2m` 는 그대로 들어간다.
         ///
         /// <b>숙소는 이제 이 값을 안 쓴다</b>(2026-08-14). 고정 구획 큐브를 걷어내면서 숙소
-        /// 실내고의 정본이 <c>LastShiftModularMap.json</c> 의 <c>quarters.ceiling</c>(`3.2m`)
-        /// 하나가 됐다. 여기 남은 것은 <b>자유 배치 모듈</b>이 서는 높이다
+        /// 실내고의 정본이 <c>LastShiftModularMap.json</c> 의 <c>quarters.ceiling</c> 하나가
+        /// 됐다. 여기 남은 것은 <b>자유 배치 모듈</b>이 서는 높이다
         /// (<see cref="LastShiftModuleAssembler"/>) — 값이 아니라 <b>주인</b>이 바뀐 것이므로,
-        /// 숙소 높이를 물을 때 이 상수를 읽으면 다시 코드 3.0 / 데이터 3.2 로 갈린다.
+        /// 숙소 높이를 물을 때 이 상수를 읽으면 다시 코드/데이터로 갈린다.
+        ///
+        /// 그 <c>quarters.ceiling</c> 은 같은 날 <c>3.0</c> 으로 내려와 이 값과 <b>우연히</b>
+        /// 같아졌다(부속/본선 대비 복원). 같은 숫자라고 같은 정본이 아니다.
         /// </summary>
         public const float InteriorHeight = 3f;
 
