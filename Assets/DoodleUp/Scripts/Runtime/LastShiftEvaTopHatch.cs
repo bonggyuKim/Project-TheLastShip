@@ -22,10 +22,22 @@ namespace DoodleUp.Runtime
 
         [SerializeField] private BoxCollider blocker;
 
+        /// <summary>
+        /// 막는 판의 <b>보이는 쪽</b>. 뚜껑(<c>1.28m</c>)이 개구부(<c>1.6m</c>)보다 작고 네 귀가
+        /// 깎여 있어, 닫힌 자세에서도 그 틈으로 우주가 보였다(실측: 승강기 안에서 위를 본
+        /// 한 시점에 2352 화소). 통행을 막는 판이 이미 그 구멍을 메우고 있으므로 같은 판에
+        /// 시각도 얹는다 — 콜라이더와 켜지고 꺼지는 때가 같아야 "보이는데 지나간다" 가 안 난다.
+        /// </summary>
+        [SerializeField] private MeshRenderer blockerVisual;
+
         private Animator hatchAnimator;
         private float openAmount;
 
-        public void Configure(BoxCollider hatchBlocker) => blocker = hatchBlocker;
+        public void Configure(BoxCollider hatchBlocker, MeshRenderer hatchBlockerVisual = null)
+        {
+            blocker = hatchBlocker;
+            blockerVisual = hatchBlockerVisual;
+        }
 
         /// <summary>지금 통행이 막혀 있는가. 검사가 형상 쪽에서 확인하는 값이다.</summary>
         public bool IsBlocking => blocker != null && blocker.enabled;
@@ -62,7 +74,9 @@ namespace DoodleUp.Runtime
 
             // 완전히 닫혔을 때만 막는다. 움직이는 콜라이더로 막으면 CharacterController 가
             // 뚜껑에 끼거나 밀려나고, 닫히는 순간에 빠져나가는 여지가 사라진다.
-            if (blocker != null) blocker.enabled = openAmount <= 0.001f;
+            var sealed_ = openAmount <= 0.001f;
+            if (blocker != null) blocker.enabled = sealed_;
+            if (blockerVisual != null) blockerVisual.enabled = sealed_;
         }
     }
 }

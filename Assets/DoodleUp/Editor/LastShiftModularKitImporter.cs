@@ -486,14 +486,15 @@ namespace DoodleUp.Editor
                 else if (rule.operation == "wallBoundsWithDoorGap")
                     InteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "spanBounds")
-                    foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule.id, spaces[target], rule.positionY);
+                    foreach (var target in rule.target) SpanBounds(p[rule.assetId], root, rule, spaces[target]);
+                else if (rule.operation == "ceilingShell") BuildCeilingShell(p, root, rule, map, spaces);
                 else if (rule.operation == "exteriorBoundsWithDoorGap") ExteriorBoundsWithDoorGap(p[rule.assetId], root, rule, map, spaces);
                 else if (rule.operation == "assembleNoseCap") AssembleNoseCap(p, root, rule);
                 else
                 {
                     var placed = Place(p[rule.assetId], root, rule.id,
                         Vector(rule.position), rule.rotationY, VectorOrOne(rule.scale));
-                    if (rule.id == "evaTopHatch") AttachTopHatch(placed);
+                    if (rule.id == "evaTopHatch") AttachTopHatch(placed, StructuralMaterialOf(p["LPK_Wall_Straight_4m"]));
                     if (rule.id == "plazaLift") AttachLiftPlatform(placed);
                 }
             }
@@ -716,18 +717,30 @@ namespace DoodleUp.Editor
         /// 뚜껑 자체에는 콜라이더가 없다(구조 메시 목록에 안 넣었다) — 열려야 하는 것이라
         /// 압력문·갑판해치와 같은 규칙을 탄다. 차단은 <b>뚫린 자리</b>를 메우는 별도 판이
         /// 맡고, 그 판은 완전히 닫혔을 때만 켜진다.
+        ///
+        /// <b>그 판을 보이게도 한다.</b> 뚜껑은 <c>1.28m</c> 인데 개구부는 <c>1.6m</c> 이고
+        /// 네 귀까지 깎여 있어, 닫힌 자세에서도 승강기 안에서 위를 보면 그 틈으로 별이 보였다.
+        /// 새 판을 만들지 않고 <b>이미 그 구멍을 메우고 있는 판</b>에 얹는다 — 켜지는 때가
+        /// 하나면 화면과 통행이 갈릴 수가 없다. 뚜껑보다 살짝 아래에 둬서 겹친 두 면이
+        /// 다투지 않게 한다.
         /// </summary>
-        private static void AttachTopHatch(GameObject hatch)
+        private static void AttachTopHatch(GameObject hatch, Material material)
         {
             if (hatch == null || hatch.GetComponent<Animator>() == null) return;
 
-            var blockerObject = new GameObject("EvaTopHatch_Blocker");
-            blockerObject.transform.SetParent(hatch.transform, false);
-            blockerObject.transform.localPosition = Vector3.zero;
-            var blocker = blockerObject.AddComponent<BoxCollider>();
             var opening = LastShiftEvaShaft.HatchOpening;
-            blocker.size = new Vector3(opening, LastShiftCompartments.PanelThickness, opening);
-            hatch.AddComponent<LastShiftEvaTopHatch>().Configure(blocker);
+            var thickness = LastShiftCompartments.PanelThickness;
+            var blockerObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blockerObject.name = "EvaTopHatch_Blocker";
+            UnityEngine.Object.DestroyImmediate(blockerObject.GetComponent<BoxCollider>());
+            blockerObject.transform.SetParent(hatch.transform, false);
+            blockerObject.transform.localPosition = new Vector3(0f, -thickness, 0f);
+            blockerObject.transform.localScale = new Vector3(opening, thickness, opening);
+            var visual = blockerObject.GetComponent<MeshRenderer>();
+            if (material != null) visual.sharedMaterial = material;
+
+            var blocker = blockerObject.AddComponent<BoxCollider>();
+            hatch.AddComponent<LastShiftEvaTopHatch>().Configure(blocker, visual);
         }
 
         /// <summary>
@@ -911,11 +924,17 @@ namespace DoodleUp.Editor
         /// 구조 메시라 <see cref="MeshCollider"/> 를 진다 — 리프트가 판에 막힌다. 타일 규칙
         /// 쪽에는 <see cref="CoversEvaShaft"/> 가 이미 있었고 이쪽에만 없었다. 그 타일 층
         /// (<c>ceilingPanels</c>)이 폐지되면서 이 구멍을 지킬 곳이 여기 하나만 남았다.
+        ///
+        /// <b>도려낼지는 규칙이 말한다</b>(<c>carveEvaShaft</c>). 예전에는 <c>y &gt; 0.5</c> 를
+        /// 천장의 표지로 삼았는데, 천장 킷이 <b>바닥 기준</b>으로 짜여 있어(보가 조각 원점에서
+        /// <c>+2.95</c>) 규칙의 <c>positionY</c> 가 <c>0.1</c> 로 내려가자 그 표지가 깨진다.
         /// </summary>
-        private static void SpanBounds(GameObject prefab, Transform root, string name, MapSpace space, float y)
+        private static void SpanBounds(GameObject prefab, Transform root, MapRule rule, MapSpace space)
         {
+            var name = rule.id;
+            var y = rule.positionY;
             var b = space.bounds;
-            if (y < 0.5f || !SurroundsEvaShaft(b))
+            if (!rule.carveEvaShaft || !SurroundsEvaShaft(b))
             {
                 SpanPiece(prefab, root, name, b[0], b[1], b[2], b[3], y);
                 return;
@@ -928,6 +947,277 @@ namespace DoodleUp.Editor
             SpanPiece(prefab, root, name, b[0], b[1], half, b[3], y);
             SpanPiece(prefab, root, name, b[0], -half, -half, half, y);
             SpanPiece(prefab, root, name, half, b[1], -half, half, y);
+        }
+
+        /// <summary>
+        /// 방마다 <b>천장 면</b>을 깐다. 그 면을 지고 있는 킷 조각이 없어서 여기서 만든다.
+        ///
+        /// <b>왜 킷을 안 쓰나.</b> <c>LPK_Ceiling_Straight_4m</c> 은 이름과 달리 판이 아니다 —
+        /// 안에 든 것은 <c>_Beam</c>(4 × 0.36 × 0.32) 과 <c>_Light</c>(2.5m 띠) 둘뿐이고
+        /// 덮는 면이 없다. 그래서 <c>ceilings</c> 규칙만으로는 보와 등만 허공에 뜬다.
+        /// 판 노릇을 하던 것은 <c>ceilingPanels</c>(2m 바닥 타일을 <c>y=3.04</c> 에 깔던 층)
+        /// 였는데, 그것을 <b>겹친 두 겹</b>으로 보고 지우면서(<c>91902d5</c>) 일곱 공간이
+        /// 통째로 하늘로 열렸다. 겹친 것이 아니라 <b>보와 판</b>이었다.
+        ///
+        /// <b>바닥 타일을 되살리지 않는다.</b> 그 판은 위아래 모서리가 깎여 있어 평면에서도
+        /// 네 귀가 잘려 있다(실측: 최대 단면 <c>±1.0</c> 인데 모서리는 <c>0.88</c>). 방 하나를
+        /// 한 장으로 늘리면 그 결각이 같이 커져 방 네 귀에 삼각 구멍이 남고, 2m 격자로 깔면
+        /// 판 100여 장과 메시 콜라이더가 그만큼 는다. 덮는 것이 목적이면 상자 한 장이 맞다.
+        ///
+        /// <b>재질은 벽에서 받는다.</b> 새 <c>.mat</c> 을 만들면 아트가 킷 색을 바꿀 때
+        /// 천장만 옛 색으로 남는다 — 같은 방을 두르는 면이니 벽과 같은 재질을 그대로 쓴다.
+        ///
+        /// <b>숙소는 대상이 아니다.</b> 거기는 고정 구획이라
+        /// <see cref="LastShiftSceneBuilder"/> 의 구획 조립이 이미 천장을 세운다. 목록은
+        /// 정본 지도의 <c>target</c> 이 들고 있으므로 여기서 이름으로 거르지 않는다.
+        /// </summary>
+        private static void BuildCeilingShell(IReadOnlyDictionary<string, GameObject> prefabs, Transform root,
+            MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
+        {
+            var material = StructuralMaterialOf(prefabs[rule.assetId]);
+            const float thickness = LastShiftShipDimensions.HullThickness;
+            var overhang = EnvelopeOverhang(prefabs, map);
+            var slabs = 0;
+            foreach (var id in rule.target)
+            {
+                var space = spaces[id];
+                var b = space.bounds;
+                // 발자국에 <b>딱 맞게</b> 깔면 안 된다. 판이 벽 바깥면 앞에서 끝나면 벽 윗변
+                // 너머로 시선이 빠져나가 방 둘레를 따라 별이 한 줄 보인다(실측: 자홍 배경으로
+                // 다시 찍어 새는 화소의 광선을 <c>y=3.2</c> 평면과 만나게 해 보니 전부
+                // <c>|x|>4.2</c>, 즉 판 끝 <b>바깥</b>에서 빠져나갔다). 고정 구획 천장이
+                // <c>LengthX + 2*두께</c> 로 깔려 그 방만 <b>0</b> 이었던 것도 같은 이유다.
+                //
+                // 그래서 <b>외피 바깥면까지</b> 내민다. 리터럴을 안 적는 이유는 그 값이
+                // 외피 규칙의 여유(<c>shellClearance</c>)와 판 두께에서 나오기 때문이다.
+                var e0 = b[0] - overhang; var e1 = b[1] + overhang;
+                var e2 = b[2] - overhang; var e3 = b[3] + overhang;
+                if (!SurroundsEvaShaft(b))
+                {
+                    slabs += CeilingSlab(root, rule.id, material, e0, e1, e2, e3, space.ceiling, thickness, 0f);
+                    continue;
+                }
+
+                // 광장은 코어를 도려낸 네 조각이다 — <see cref="SpanBounds"/> 와 같은 분할이다.
+                // 좌·우현 조각은 선수·선미 띠와 <b>겹치게</b> 잡고 <see cref="SeamLift"/> 만큼
+                // 띄운다. 같은 높이로 맞대면 그 이음매도 똑같이 틈이 난다.
+                var half = LastShiftEvaShaft.HalfExtent;
+                slabs += CeilingSlab(root, rule.id, material, e0, e1, e2, -half, space.ceiling, thickness, SeamLift);
+                slabs += CeilingSlab(root, rule.id, material, e0, e1, half, e3, space.ceiling, thickness, SeamLift);
+                slabs += CeilingSlab(root, rule.id, material, e0, -half, -half - Bite, half + Bite, space.ceiling, thickness, SeamLift * 2f);
+                slabs += CeilingSlab(root, rule.id, material, half, e1, -half - Bite, half + Bite, space.ceiling, thickness, SeamLift * 2f);
+                slabs += BuildEvaShaftTrunk(root, rule.id, material, space.ceiling, thickness);
+            }
+
+            var corners = 0;
+            var grid = EnvelopeGrid(spaces);
+            foreach (var id in rule.target)
+                corners += FillOpenCorners(root, rule.id, material, spaces, grid, spaces[id], overhang);
+            Debug.Log($"[LAST_SHIFT_CEILING_SHELL] spaces={rule.target.Length} slabs={slabs} corners={corners} " +
+                      $"overhang={overhang:F2} result=PASS");
+        }
+
+        /// <summary>
+        /// 방 <b>모서리</b>를 막는다. 외피는 변마다 발자국선 <c>[min,max]</c> 만큼만 깔리므로,
+        /// 두 변이 만나는 자리에 <c>overhang</c> 한 변짜리 <b>네모 구멍</b>이 세로로 뚫려 있다 —
+        /// 바닥부터 천장까지 통으로 열려 있어서 방 모서리마다 별이 한 줄 선다(실측: 스물다섯
+        /// 자리에서 바깥으로 광선이 나갔고, 그중 열여섯이 모서리였다).
+        ///
+        /// <b>방 안으로는 안 들어온다.</b> 구멍이 발자국 <b>밖</b>에 있으므로 채우는 상자도
+        /// 밖에 둔다 — 방 네 귀에 기둥이 서면 그건 천장 수정이 아니라 방 모양 변경이다.
+        ///
+        /// <b>이웃 방이 있는 모서리는 건드리지 않는다.</b> 그쪽은 원래 트여 있어야 하는 자리고,
+        /// 채우면 옆방 한가운데에 기둥이 선다.
+        /// </summary>
+        private static int FillOpenCorners(Transform root, string name, Material material,
+            IReadOnlyDictionary<string, MapSpace> spaces, (List<float> xs, List<float> zs) grid,
+            MapSpace space, float overhang)
+        {
+            var b = space.bounds;
+            var height = space.ceiling + LastShiftShipDimensions.HullThickness + 0.2f;
+            var filled = 0;
+
+            foreach (var sx in new[] { 1f, -1f })
+            foreach (var sz in new[] { 1f, -1f })
+            {
+                var cx = sx > 0 ? b[1] : b[0];
+                var cz = sz > 0 ? b[3] : b[2];
+                if (OccupiedSpace(spaces, cx + sx * 0.05f, cz + sz * 0.05f) != null) continue;
+                filled += Post(root, name, material, cx + sx * overhang * 0.5f, cz + sz * overhang * 0.5f, overhang, height);
+            }
+
+            // 변 <b>중간</b>의 이음매도 같은 구멍이다. 외피는 격자 칸마다 한 장씩 깔리므로
+            // 다른 방의 발자국선이 이 변을 가로지르는 자리마다 판이 끊긴다 — 냉각실 좌현
+            // <c>z=12</c>(숙소 발자국선)에서 그 틈으로 별이 보였다.
+            foreach (var sx in new[] { 1f, -1f })
+            {
+                var cx = sx > 0 ? b[1] : b[0];
+                foreach (var z in grid.zs)
+                {
+                    if (z <= b[2] + 0.01f || z >= b[3] - 0.01f) continue;
+                    if (OccupiedSpace(spaces, cx + sx * 0.05f, z) != null) continue;
+                    filled += Post(root, name, material, cx + sx * overhang * 0.5f, z, overhang, height);
+                }
+            }
+            foreach (var sz in new[] { 1f, -1f })
+            {
+                var cz = sz > 0 ? b[3] : b[2];
+                foreach (var x in grid.xs)
+                {
+                    if (x <= b[0] + 0.01f || x >= b[1] - 0.01f) continue;
+                    if (OccupiedSpace(spaces, x, cz + sz * 0.05f) != null) continue;
+                    filled += Post(root, name, material, x, cz + sz * overhang * 0.5f, overhang, height);
+                }
+            }
+            return filled;
+        }
+
+        /// <summary>갑판 밑에서 천장 위까지 통으로 서는 마개 하나.</summary>
+        private static int Post(Transform root, string name, Material material, float x, float z, float side, float height) =>
+            Slab(root, name, material, new Vector3(x, height * 0.5f - 0.2f, z), new Vector3(side, height, side), 0f);
+
+        /// <summary>외피가 판을 끊는 격자. 외피 규칙이 쓰는 것과 같은 좌표 목록이다.</summary>
+        private static (List<float> xs, List<float> zs) EnvelopeGrid(IReadOnlyDictionary<string, MapSpace> spaces)
+        {
+            var xs = new List<float>(); var zs = new List<float>();
+            foreach (var space in spaces.Values)
+            {
+                xs.Add(space.bounds[0]); xs.Add(space.bounds[1]);
+                zs.Add(space.bounds[2]); zs.Add(space.bounds[3]);
+            }
+            return (UniqueSorted(xs), UniqueSorted(zs));
+        }
+
+        /// <summary>이 자리를 차지한 공간. 광장까지 본다 — <c>map.spaces</c> 에는 광장이 없다.</summary>
+        private static MapSpace OccupiedSpace(IReadOnlyDictionary<string, MapSpace> spaces, float x, float z)
+        {
+            foreach (var space in spaces.Values)
+                if (x > space.bounds[0] && x < space.bounds[1] && z > space.bounds[2] && z < space.bounds[3])
+                    return space;
+            return null;
+        }
+
+        /// <summary>
+        /// 겹친 두 판의 높이 차. 같은 높이로 겹치면 그 띠에서 z-fighting 이 나므로 아래로
+        /// 오는 쪽을 <b>이만큼</b> 낮춘다. 2mm 는 눈에 안 잡히고 깊이 정렬에는 충분하다.
+        /// </summary>
+        private const float SeamLift = 0.002f;
+
+        /// <summary>이음매에서 겹치는 폭. 틈을 메우기만 하면 되므로 작게 잡는다.</summary>
+        private const float Bite = 0.05f;
+
+        /// <summary>
+        /// 천장 판이 발자국 <b>밖으로</b> 내밀어야 하는 거리. 외피 판이 발자국선에서
+        /// <c>shellClearance</c> 만큼 비켜 서고 자기 두께의 절반만큼 더 나가므로, 그 둘을
+        /// 더한 만큼은 덮어야 벽 윗변 너머로 시선이 안 빠진다. 여기에 <see cref="Bite"/> 를
+        /// 얹어 부동소수 오차 폭을 남긴다.
+        /// </summary>
+        private static float EnvelopeOverhang(IReadOnlyDictionary<string, GameObject> prefabs, ModularMap map)
+        {
+            var shell = System.Array.Find(map.placementRules, r => r.operation == "exteriorBoundsWithDoorGap");
+            if (shell == null || !prefabs.TryGetValue(shell.assetId, out var prefab))
+                return LastShiftShipDimensions.HullThickness;
+
+            var thinnest = float.PositiveInfinity;
+            var largest = 0f;
+            foreach (var filter in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                var size = filter.sharedMesh.bounds.size;
+                var volume = size.x * size.y * size.z;
+                if (volume <= largest) continue;
+                largest = volume;
+                thinnest = Mathf.Min(size.x, Mathf.Min(size.y, size.z));
+            }
+            if (float.IsInfinity(thinnest)) thinnest = LastShiftShipDimensions.HullThickness;
+            return shell.shellClearance + thinnest * 0.5f + Bite;
+        }
+
+        /// <summary>
+        /// 도려낸 코어 위를 <b>통으로 잇는다</b>. 광장 천장에 뚫린 <c>4×4</c> 는 승강 샤프트라
+        /// 막을 수 없는데, 그 위에 선 관제탑 킷은 기둥·띠·판 스물여섯 조각으로 된 <b>골조</b>라
+        /// 사이사이로 그대로 우주가 보인다. 그래서 샤프트 구간만 벽 넉 장으로 두르고 탑
+        /// 꼭대기는 해치 구멍만 남긴 테로 덮는다.
+        ///
+        /// 높이는 선체 상단(방 천장과 같은 높이)에서 해치 문턱까지다. 리터럴을 안 적는 이유는
+        /// <see cref="LastShiftEvaShaft"/> 가 이미 그 둘의 정본이기 때문이다.
+        /// </summary>
+        private static int BuildEvaShaftTrunk(Transform root, string name, Material material, float hullTopY, float thickness)
+        {
+            var half = LastShiftEvaShaft.HalfExtent;
+            var top = LastShiftEvaShaft.TopHatchY;
+            // 통은 <b>천장 판 속에서 올라와 지붕 속에서 끝난다</b>. 판 윗면·아랫면에 딱 맞추면
+            // 맞댄 두 면이 같은 높이라 그 선에서 다시 틈이 난다.
+            var bottom = hullTopY + thickness * 0.5f;
+            var roofUnderside = top - thickness;
+            var height = roofUnderside + thickness * 0.5f - bottom;
+            if (height < 0.01f) return 0;
+
+            var built = 0;
+            // 안쪽 면을 코어보다 <see cref="Bite"/> 만큼 좁게 세워 천장 판 끝을 벽 속에 묻는다.
+            // 샤프트 통로는 3.9m 로 남아 승강 플랫폼(3.1m)에는 여유가 그대로 있다.
+            var inner = half - Bite;
+            var centre = inner + thickness * 0.5f;
+            var span = 2f * (inner + thickness);
+            built += Slab(root, name, material, new Vector3(-centre, bottom + height * 0.5f, 0f), new Vector3(thickness, height, span), 0f);
+            built += Slab(root, name, material, new Vector3(centre, bottom + height * 0.5f, 0f), new Vector3(thickness, height, span), 0f);
+            built += Slab(root, name, material, new Vector3(0f, bottom + height * 0.5f, -centre), new Vector3(2f * inner, height, thickness), 0f);
+            built += Slab(root, name, material, new Vector3(0f, bottom + height * 0.5f, centre), new Vector3(2f * inner, height, thickness), 0f);
+
+            // 탑 지붕. 나가는 구멍만 남긴다 — 이 테가 없으면 통 안에서 위를 볼 때 다시 하늘이다.
+            // 윗면이 해치 문턱과 같은 높이라 승무원은 나온 자리에 그대로 선다.
+            var gate = LastShiftEvaShaft.HatchOpening * 0.5f;
+            var edge = half + thickness;
+            built += CeilingSlab(root, name, material, -edge, edge, -edge, -gate, roofUnderside, thickness, 0f);
+            built += CeilingSlab(root, name, material, -edge, edge, gate, edge, roofUnderside, thickness, 0f);
+            built += CeilingSlab(root, name, material, -edge, -gate, -gate - Bite, gate + Bite, roofUnderside, thickness, SeamLift);
+            built += CeilingSlab(root, name, material, gate, edge, -gate - Bite, gate + Bite, roofUnderside, thickness, SeamLift);
+            return built;
+        }
+
+        /// <summary>밑면이 <paramref name="underside"/> 에 오는 판 한 장. 빈 사각형이면 안 만든다.</summary>
+        private static int CeilingSlab(Transform root, string name, Material material,
+            float minX, float maxX, float minZ, float maxZ, float underside, float thickness, float lift)
+        {
+            if (maxX - minX < 0.01f || maxZ - minZ < 0.01f) return 0;
+            return Slab(root, name, material,
+                new Vector3((minX + maxX) * 0.5f, underside + thickness * 0.5f, (minZ + maxZ) * 0.5f),
+                new Vector3(maxX - minX, thickness, maxZ - minZ), lift);
+        }
+
+        /// <summary>
+        /// 상자 한 장. <b>콜라이더를 남긴다</b> — 저중력에서 뜬 물건이 방을 빠져나가는 것을
+        /// 막는 것이 이 면의 두 번째 일이고, 벽 높이를 천장 안쪽까지 올린 것과 같은 이유다.
+        /// </summary>
+        private static int Slab(Transform root, string name, Material material, Vector3 position, Vector3 scale, float lift)
+        {
+            var slab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            slab.name = name;
+            slab.transform.SetParent(root, false);
+            slab.transform.localPosition = position + Vector3.up * lift;
+            slab.transform.localScale = scale;
+            if (material != null) slab.GetComponent<MeshRenderer>().sharedMaterial = material;
+            return 1;
+        }
+
+        /// <summary>
+        /// 조각의 <b>구조 메시</b> 재질. 부피가 가장 큰 렌더러를 본체로 보는 것은
+        /// <see cref="AddStructuralColliders"/>·<see cref="PanelTopY"/> 와 같은 기준이다 —
+        /// 벽이면 <c>_Hull</c> 이고 <c>_InnerTrim</c> 은 그 위에 붙는 띠다.
+        /// </summary>
+        private static Material StructuralMaterialOf(GameObject prefab)
+        {
+            MeshRenderer body = null;
+            var largest = 0f;
+            foreach (var renderer in prefab.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                var size = renderer.bounds.size;
+                var volume = size.x * size.y * size.z;
+                if (body != null && volume <= largest) continue;
+                body = renderer;
+                largest = volume;
+            }
+            return body == null ? null : body.sharedMaterial;
         }
 
         /// <summary>이 발자국이 EVA 샤프트를 <b>완전히 품는가</b>. 품는 것은 광장 하나다.</summary>
@@ -1044,11 +1334,13 @@ namespace DoodleUp.Editor
             ["floor"] = "Floor",
             ["walls"] = "Walls",
             ["ceilings"] = "Ceiling",
+            ["ceilingShell"] = "Ceiling",
             ["outerShell"] = "Shell",
         };
 
         private static bool IsBulkOperation(string operation) =>
-            operation is "tileBounds" or "wallBoundsWithDoorGap" or "spanBounds" or "exteriorBoundsWithDoorGap";
+            operation is "tileBounds" or "wallBoundsWithDoorGap" or "spanBounds" or "exteriorBoundsWithDoorGap"
+                or "ceilingShell";
 
         /// <summary>
         /// 조립이 끝난 뒤 <b>이름과 계층만</b> 정리한다(<c>docs/ship-orientation-and-room-brief-v1.md</c>
@@ -1295,6 +1587,6 @@ namespace DoodleUp.Editor
         [Serializable] private sealed class MapSpace { public string id; public float[] bounds; public float ceiling; public MapDoor door; public string feature; }
         [Serializable] private sealed class MapDoor { public float[] position; public float rotationY; public string kind; }
         [Serializable] private sealed class MapLight { public string id; public float[] position; public float[] color; public float intensity; public float range; }
-        [Serializable] private sealed class MapRule { public string id; public string name; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; }
+        [Serializable] private sealed class MapRule { public string id; public string name; public string assetId; public string[] target; public string operation; public float[] tile; public float positionY; public float gapWidth; public float[] position; public float rotationY; public float[] scale; public float radius; public int count; public float rotationStep; public float shellClearance; public float[] offset; public bool carveEvaShaft; }
     }
 }

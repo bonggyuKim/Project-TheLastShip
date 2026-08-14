@@ -210,7 +210,20 @@
         "quarters"
       ],
       "operation": "spanBounds",
-      "positionY": 3.04
+      "positionY": 0.1,
+      "carveEvaShaft": true
+    },
+    {
+      "id": "ceilingShell",
+      "assetId": "LPK_Wall_Straight_4m",
+      "target": [
+        "plaza",
+        "cockpit",
+        "lifeSupport",
+        "power",
+        "cooling"
+      ],
+      "operation": "ceilingShell"
     },
     {
       "id": "plazaLift",
