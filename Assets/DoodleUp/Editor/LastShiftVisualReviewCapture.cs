@@ -13,6 +13,7 @@ namespace DoodleUp.Editor
         private const string QuartersOutputDirectory = "docs/art/evidence/last-shift-quarters-single-source-2026-08-14";
         private const string QuartersHeightOutputDirectory = "docs/art/evidence/last-shift-quarters-height-3m-2026-08-14";
         private const string PowerBusPanelOutputDirectory = "docs/art/evidence/last-shift-power-buspanel-2026-08-14";
+        private const string QuartersBunkOrientationOutputDirectory = "docs/art/evidence/last-shift-quarters-bunk-orientation-2026-08-14";
 
         /// <summary>
         /// 천장 검수 시점. 앞서의 검수 시점은 전부 <b>수평</b>이라 천장이 없어도 화면에
@@ -136,6 +137,35 @@ namespace DoodleUp.Editor
                 new View("04_power_feature_oblique", new Vector3(2.8f, 1.65f, -10.8f), new Vector3(0f, 1.2f, -13.7f))
             };
             Run(PowerBusPanelOutputDirectory, views, "LAST_SHIFT_POWER_BUSPANEL", false);
+        }
+
+        /// <summary>
+        /// 숙소 침상이 눕지 않고 섰는지의 검수(2026-08-14).
+        ///
+        /// <b>누운 침상은 정면에서 안 드러난다.</b> 옆으로 누우면 폭(x)은 그대로라
+        /// 끝벽을 정면으로 찍은 장에서는 여전히 "긴 물건" 으로 보인다. 드러나는 것은
+        /// 옆면이다 — 프레임·매트리스·베개·난간이 <b>위로</b> 쌓였는가, 아니면 바닥에
+        /// 눌려 한 장으로 붙었는가. 그래서 정면 한 장과 <b>측면</b> 한 장을 같이 찍는다.
+        ///
+        /// 좌표는 정본 지도의 <c>quarters.bounds</c>(<c>x 4..12</c>, <c>z 6..12</c>)와
+        /// 실제 침상 자리에서 잡았다 — 끝벽 쪽 <c>z ~ 11.5</c> 에 두 조가
+        /// <c>x 7..9</c>, <c>x 9.25..11.25</c> 로 선다. 눈높이는 다른 검수 세트와 같은
+        /// <c>1.65</c> 를 쓰되, 침상이 낮으므로 내려다보는 장은 목표점을 갑판 가까이 둔다.
+        /// </summary>
+        public static void CaptureQuartersBunkOrientationForAutomation()
+        {
+            var views = new[]
+            {
+                // 끝벽 정면. 침상 두 조가 나란히 프레임에 들어온다.
+                new View("01_bunk_end_wall_front", new Vector3(9.1f, 1.55f, 8.4f), new Vector3(9.1f, 0.5f, 11.9f)),
+                // 측면. 누웠는지 섰는지가 실제로 판정되는 장이다 — 침구가 위로 쌓여야 한다.
+                new View("02_bunk_profile_side", new Vector3(5.4f, 1.1f, 10.4f), new Vector3(9.6f, 0.45f, 11.6f)),
+                // 좌현 조 근접. 프레임/매트리스/베개가 따로 읽히는 거리다.
+                new View("03_bunk_port_closeup", new Vector3(8.0f, 1.25f, 9.9f), new Vector3(8.0f, 0.35f, 11.5f)),
+                // 비스듬히 내려다보기. 갑판에 박혔으면 이 각도에서 바닥선이 침상을 먹는다.
+                new View("04_bunk_oblique_down", new Vector3(11.3f, 1.8f, 9.2f), new Vector3(8.6f, 0.3f, 11.6f))
+            };
+            Run(QuartersBunkOrientationOutputDirectory, views, "LAST_SHIFT_QUARTERS_BUNK_ORIENTATION", false);
         }
 
         public static void CaptureForAutomation()

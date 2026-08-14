@@ -1,6 +1,7 @@
 using System.IO;
 using DoodleUp.Runtime;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace DoodleUp.Tests.EditMode
@@ -136,6 +137,46 @@ namespace DoodleUp.Tests.EditMode
                 "침상 밑면은 갑판 윗면에 맞아야 한다.");
             Assert.That(bunk.position[2], Is.EqualTo(11.5f).Within(0.01f),
                 "침상은 문 반대편 z=MaxZ 끝벽에 0.05m 띄워 붙어야 한다.");
+        }
+
+        /// <summary>
+        /// <b>침상은 눕지 않는다.</b> 이 검사가 생긴 이유는 같은 회전이 두 번 잘못 들어왔기
+        /// 때문이다. <c>LPK_Quarters_Bunk</c> 의 시각 표현은 원래 Blender 에서 나온
+        /// <c>LPK_Quarters_Bunk.fbx</c> 였고, 그 축을 맞추려면 로컬 X <c>-90도</c> 보정이
+        /// 필요했다. PR #17(<c>d3a80e3</c>) 이 그 시각 표현을 <c>LSDress_Bunk</c> 로 갈았는데,
+        /// 이쪽은 <b>Unity 안에서 Y-up 으로 직접 짜인 프리미티브 조합</b>이라 보정이 필요 없고
+        /// 그래서 회전을 무회전으로 두는 것이 맞았다. 이후 <c>fa1f601</c> 이 그것을
+        /// "슬롯 단위 관례" 로 오인해 <c>-90도</c> 를 되살렸다 — 문에서만 눈으로 확인하고
+        /// 침상은 에셋이 바뀐 사실을 못 본 채로.
+        ///
+        /// 그 결과 <c>(x, y, z) -> (x, z, -y)</c> 로 프레임·매트리스·베개의 높이가 전부 0 으로
+        /// 주저앉아, 침상이 바닥에 박힌 좁고 긴 판재로 보였다. 회전값만 못박으면 다음에 또
+        /// "복원" 될 수 있으므로 <b>결과 형태</b>로 검사한다 — 침상은 폭이 가장 길고, 깊이가
+        /// 그다음이고, 높이가 가장 낮다. 눕히면 깊이와 높이가 뒤집혀 이 순서가 깨진다.
+        /// </summary>
+        [Test]
+        public void QuartersBunkVisualStandsUprightInsteadOfLyingOnItsSide()
+        {
+            const string bunkPrefabPath =
+                "Assets/DoodleUp/Prefabs/LastShiftModularKit/LPK_Quarters_Bunk.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(bunkPrefabPath);
+            Assert.That(prefab, Is.Not.Null, bunkPrefabPath);
+
+            var renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            Assert.That(renderers, Is.Not.Empty, "침상 프리팹에 렌더러가 하나도 없다.");
+
+            var bounds = renderers[0].bounds;
+            for (var i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            var size = bounds.size;
+
+            Assert.That(size.x, Is.GreaterThan(size.z),
+                $"침상은 폭(x)이 깊이(z)보다 길어야 한다 — 실제 {size}.");
+            Assert.That(size.z, Is.GreaterThan(size.y),
+                $"침상이 옆으로 누웠다: 깊이(z) {size.z:0.###} 가 높이(y) {size.y:0.###} 이하다 — " +
+                "ProductionVisual 에 로컬 X -90도 보정이 다시 들어갔는지 본다. " +
+                "그 보정은 FBX 시각 표현에만 필요했고 지금 쓰는 LSDress_Bunk 에는 필요 없다.");
+            Assert.That(bounds.min.y, Is.GreaterThan(-0.01f),
+                $"침상이 원점 아래로 파고든다 — 갑판 위에 놓이면 바닥에 박힌다. 실제 {bounds.min}.");
         }
 
         /// <summary>
