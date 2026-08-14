@@ -187,7 +187,7 @@ namespace DoodleUp.Editor
             // <b>조종석 콘솔은 여기서 안 만든다.</b> 아트 킷의 LPK_Cockpit_ControlConsole 이
             // 1.3m 옆에 이미 서 있어서 회색상자와 <b>둘이 나란히</b> 보였다 — 사용자가 지적한
             // 레거시가 이것이다. 콜라이더는 킷 임포터가 실물 쪽에 붙인다(StructuralNames).
-            CreateCube("BusCabinet", ship.transform, new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f, RoomBackWallZ(LastShiftZone.Power) + 0.55f), new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
+            CreateBusPanel(ship.transform);
             CreateCube("LifeSupportRack", ship.transform, new Vector3(LastShiftShipDimensions.LifeSupportCenterX + 1.1f, 0.75f, RoomBackWallZ(LastShiftZone.LifeSupport) - 0.75f), new Vector3(0.8f, 1.5f, 0.8f), lifeSupportMaterial);
             CreateCoolingStack(ship.transform);
             CreateStateCues(ship.transform);
@@ -202,6 +202,24 @@ namespace DoodleUp.Editor
             // 다섯 개 있었고, 문으로 들어가면 정면이라 항상 읽혔다. 어느 방인지는 방 안의
             // 설비와 내레이션이 말한다 — 벽에 글자로 적어 두면 그 둘이 할 일이 없어진다.
             return ship;
+        }
+
+        private static void CreateBusPanel(Transform ship)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LastShiftSystemHeroImporter.BusPanelPrefabPath);
+            if (prefab == null)
+            {
+                CreateCube("BusCabinet", ship,
+                    new Vector3(LastShiftShipDimensions.PowerCenterX, 0.65f,
+                        RoomBackWallZ(LastShiftZone.Power) + 0.55f),
+                    new Vector3(1.6f, 1.3f, 0.5f), powerMaterial);
+                return;
+            }
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, ship);
+            instance.name = "BusCabinet";
+            instance.transform.position = new Vector3(LastShiftShipDimensions.PowerCenterX, 0f,
+                RoomBackWallZ(LastShiftZone.Power) + 0.55f);
         }
 
         /// <summary>본선 방 넷. 광장은 여기 없다 — 방이 아니라 허브다.</summary>
