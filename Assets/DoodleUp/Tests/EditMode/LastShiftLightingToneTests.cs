@@ -1,5 +1,6 @@
 using DoodleUp.Editor;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -55,6 +56,32 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(directional.intensity, Is.GreaterThanOrEqualTo(0.4f), scenePath);
             Assert.That(directional.color.r - directional.color.b,
                 Is.LessThanOrEqualTo(0.1f), scenePath);
+        }
+
+        [TestCase("Cockpit")]
+        [TestCase("Power")]
+        [TestCase("Cooling")]
+        [TestCase("LifeSupport")]
+        public void PrimaryRoomFixturesPreserveShadowInformation(string room)
+        {
+            var path = $"Assets/DoodleUp/Prefabs/Dressing/LSDress_Lamp_{room}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            Assert.That(prefab, Is.Not.Null, path);
+
+            var light = prefab.GetComponentInChildren<Light>(true);
+            Assert.That(light, Is.Not.Null, path);
+            Assert.That(light.shadows, Is.EqualTo(LightShadows.Soft), path);
+            Assert.That(light.shadowStrength, Is.InRange(0.75f, 0.9f), path);
+            Assert.That(light.bounceIntensity, Is.GreaterThanOrEqualTo(1.1f), path);
+        }
+
+        [Test]
+        public void SharedFixtureMaterialStaysInReadableMidtoneBand()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/DoodleUp/Materials/LS_Fixture.mat");
+            Assert.That(material, Is.Not.Null);
+            Assert.That(material.color.grayscale, Is.InRange(0.42f, 0.5f));
         }
     }
 }
