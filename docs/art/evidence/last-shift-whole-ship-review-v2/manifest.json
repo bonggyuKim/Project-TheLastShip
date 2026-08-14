@@ -1,0 +1,264 @@
+﻿{
+    "schema": "last-shift.visual-review/v2",
+    "evidenceVersion": 2,
+    "scene": "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity",
+    "unityVersion": "6000.4.0f1",
+    "sourceRevision": "481a4c63d7c8db17c0ce9fb07dbe86515acf1506",
+    "sourceDirty": false,
+    "capturedUtc": "2026-08-14T07:34:34.0305499Z",
+    "width": 1280,
+    "height": 720,
+    "verticalFov": 68.0,
+    "nearClip": 0.05000000074505806,
+    "farClip": 80.0,
+    "reviewState": {
+        "rebakeApplied": true,
+        "ceilingShellApplied": true,
+        "quartersSingleSourceApplied": true,
+        "quartersHeightMeters": 3.0,
+        "powerBusPanelSeparated": true,
+        "quartersBunksUpright": true
+    },
+    "views": [
+        {
+            "area": "plaza",
+            "purpose": "context",
+            "file": "01_plaza_context.png",
+            "position": [
+                5.400000095367432,
+                1.649999976158142,
+                -4.800000190734863
+            ],
+            "target": [
+                -0.5,
+                1.25,
+                0.0
+            ]
+        },
+        {
+            "area": "plaza",
+            "purpose": "diagnostic",
+            "file": "02_plaza_core_clearance.png",
+            "position": [
+                -5.400000095367432,
+                1.649999976158142,
+                4.800000190734863
+            ],
+            "target": [
+                0.5,
+                1.25,
+                0.0
+            ]
+        },
+        {
+            "area": "cockpit",
+            "purpose": "context",
+            "file": "03_cockpit_entry.png",
+            "position": [
+                -7.199999809265137,
+                1.649999976158142,
+                0.0
+            ],
+            "target": [
+                -15.800000190734864,
+                1.350000023841858,
+                0.0
+            ]
+        },
+        {
+            "area": "cockpit",
+            "purpose": "diagnostic",
+            "file": "04_cockpit_seat_grounding.png",
+            "position": [
+                -14.199999809265137,
+                1.350000023841858,
+                2.799999952316284
+            ],
+            "target": [
+                -11.399999618530274,
+                0.44999998807907107,
+                0.0
+            ]
+        },
+        {
+            "area": "power",
+            "purpose": "context",
+            "file": "05_power_context.png",
+            "position": [
+                0.0,
+                1.649999976158142,
+                -7.199999809265137
+            ],
+            "target": [
+                0.0,
+                1.25,
+                -13.0
+            ]
+        },
+        {
+            "area": "power",
+            "purpose": "diagnostic",
+            "file": "06_power_cabinet_grounding.png",
+            "position": [
+                -2.799999952316284,
+                1.149999976158142,
+                -11.0
+            ],
+            "target": [
+                2.799999952316284,
+                0.3499999940395355,
+                -12.600000381469727
+            ]
+        },
+        {
+            "area": "cooling",
+            "purpose": "context",
+            "file": "07_cooling_context.png",
+            "position": [
+                0.0,
+                1.649999976158142,
+                7.199999809265137
+            ],
+            "target": [
+                0.0,
+                1.25,
+                13.0
+            ]
+        },
+        {
+            "area": "cooling",
+            "purpose": "diagnostic",
+            "file": "08_cooling_box_grounding.png",
+            "position": [
+                3.0,
+                1.100000023841858,
+                10.0
+            ],
+            "target": [
+                -2.799999952316284,
+                0.30000001192092898,
+                12.0
+            ]
+        },
+        {
+            "area": "life_support",
+            "purpose": "context",
+            "file": "09_life_support_context.png",
+            "position": [
+                7.199999809265137,
+                1.649999976158142,
+                0.0
+            ],
+            "target": [
+                15.0,
+                1.25,
+                0.0
+            ]
+        },
+        {
+            "area": "life_support",
+            "purpose": "diagnostic",
+            "file": "10_life_support_tank_grounding.png",
+            "position": [
+                11.0,
+                1.100000023841858,
+                3.0
+            ],
+            "target": [
+                14.0,
+                0.3499999940395355,
+                -1.0
+            ]
+        },
+        {
+            "area": "quarters",
+            "purpose": "context",
+            "file": "11_quarters_entry.png",
+            "position": [
+                5.199999809265137,
+                1.649999976158142,
+                7.0
+            ],
+            "target": [
+                10.800000190734864,
+                1.2999999523162842,
+                10.800000190734864
+            ]
+        },
+        {
+            "area": "quarters",
+            "purpose": "diagnostic",
+            "file": "12_quarters_bunk_profile.png",
+            "position": [
+                5.400000095367432,
+                1.100000023841858,
+                10.399999618530274
+            ],
+            "target": [
+                9.600000381469727,
+                0.44999998807907107,
+                11.600000381469727
+            ]
+        },
+        {
+            "area": "cargo_props",
+            "purpose": "context",
+            "file": "13_cargo_group.png",
+            "position": [
+                3.200000047683716,
+                1.649999976158142,
+                12.199999809265137
+            ],
+            "target": [
+                -2.5,
+                0.8999999761581421,
+                9.5
+            ]
+        },
+        {
+            "area": "cargo_props",
+            "purpose": "diagnostic",
+            "file": "14_cargo_grounding.png",
+            "position": [
+                -3.5,
+                1.0499999523162842,
+                8.199999809265137
+            ],
+            "target": [
+                1.0,
+                0.25,
+                11.0
+            ]
+        },
+        {
+            "area": "eva",
+            "purpose": "context",
+            "file": "15_eva_exterior.png",
+            "position": [
+                4.800000190734863,
+                7.800000190734863,
+                4.800000190734863
+            ],
+            "target": [
+                0.0,
+                6.199999809265137,
+                0.0
+            ]
+        },
+        {
+            "area": "eva",
+            "purpose": "diagnostic",
+            "file": "16_eva_lift_clearance.png",
+            "position": [
+                -1.2000000476837159,
+                1.649999976158142,
+                -5.199999809265137
+            ],
+            "target": [
+                0.0,
+                2.200000047683716,
+                0.0
+            ]
+        }
+    ]
+}
