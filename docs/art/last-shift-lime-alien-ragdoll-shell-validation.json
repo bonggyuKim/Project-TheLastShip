@@ -1,0 +1,14 @@
+{
+  "asset": "LastShiftLimeAlien_Rigged",
+  "strategy": "six chain-isolated skinned shells plus rigid eye shell; spatial overlap bands with 0.8-1.5mm outward offset",
+  "checks": {
+    "RagdollShell_Torso": { "verts": 1935, "polys": 3172, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["pelvis", "spine", "chest"] },
+    "RagdollShell_Head": { "verts": 2611, "polys": 3641, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["head"] },
+    "RagdollShell_Arm_L": { "verts": 579, "polys": 1021, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["upper_arm.L", "forearm.L", "hand.L"] },
+    "RagdollShell_Arm_R": { "verts": 486, "polys": 868, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["upper_arm.R", "forearm.R", "hand.R"] },
+    "RagdollShell_Leg_L": { "verts": 919, "polys": 1754, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["thigh.L", "shin.L", "foot.L"] },
+    "RagdollShell_Leg_R": { "verts": 1502, "polys": 2934, "cross_chain_vertices": 0, "unweighted_vertices": 0, "allowed_bones": ["thigh.R", "shin.R", "foot.R"] }
+  },
+  "max_weight_sum_error": 4.5e-8,
+  "stress_pose": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RagdollShell_StressPose.png"
+}
