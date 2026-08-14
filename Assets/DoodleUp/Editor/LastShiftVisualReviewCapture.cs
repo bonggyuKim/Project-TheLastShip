@@ -11,6 +11,7 @@ namespace DoodleUp.Editor
         private const string OutputDirectory = "docs/art/evidence/last-shift-rebake-visual-review-2026-08-14";
         private const string CeilingOutputDirectory = "docs/art/evidence/last-shift-ceiling-fix-2026-08-14";
         private const string QuartersOutputDirectory = "docs/art/evidence/last-shift-quarters-single-source-2026-08-14";
+        private const string QuartersHeightOutputDirectory = "docs/art/evidence/last-shift-quarters-height-3m-2026-08-14";
 
         /// <summary>
         /// 천장 검수 시점. 앞서의 검수 시점은 전부 <b>수평</b>이라 천장이 없어도 화면에
@@ -85,6 +86,30 @@ namespace DoodleUp.Editor
             new View("05_quarters_aft_wall", new Vector3(8f, 1.65f, 11f), new Vector3(8f, 1.4f, 6f)),
             new View("06_quarters_fore_wall", new Vector3(8f, 1.65f, 7f), new Vector3(8f, 1.4f, 12f))
         };
+
+        /// <summary>
+        /// 부속(숙소) 실내고를 <c>3.0</c> 으로 낮춘 변경(2026-08-14)의 검수. <b>대비를 찍는
+        /// 것이라 한 방만 보면 안 된다</b> — 같은 눈높이·같은 올려보기 각도로 본선 방을 한 장
+        /// 같이 찍어야 <c>0.2m</c> 차이가 프레임에서 읽힌다.
+        ///
+        /// 문지방 시점이 첫 장인 이유. 이 연출이 실제로 걸리는 곳은 <b>문을 지나는 순간</b>이고,
+        /// 거기서 광장 판(<c>3.2</c>)과 숙소 판(<c>3.0</c>)이 단차로 만난다.
+        /// </summary>
+        public static void CaptureQuartersHeightForAutomation()
+        {
+            var views = new[]
+            {
+                // 숙소 안에서 문(x 4.8, z 6) 쪽 천장. 광장 판과 숙소 판의 단차가 프레임 위쪽에 걸린다.
+                new View("01_threshold_step", new Vector3(7.5f, 1.65f, 9f), new Vector3(4.9f, 2.9f, 6.4f)),
+                // 숙소 천장. 앞선 검수 세트와 같은 시점이라 3.2 때의 장과 겹쳐 볼 수 있다.
+                new View("02_quarters_ceiling", new Vector3(8f, 1.65f, 9f), new Vector3(9.2f, 3.4f, 9f)),
+                // 본선(냉각실) 천장 — 같은 각도의 대조군.
+                new View("03_main_ceiling_cooling", new Vector3(0f, 1.65f, 10f), new Vector3(1.2f, 3.4f, 10f)),
+                // 방 전체. 낮춘 천장이 침상·소품과 어떻게 앉는지는 넓은 장이 있어야 판단된다.
+                new View("04_quarters_wide", new Vector3(11.4f, 1.65f, 11.2f), new Vector3(5.2f, 1.6f, 7f))
+            };
+            Run(QuartersHeightOutputDirectory, views, "LAST_SHIFT_QUARTERS_HEIGHT", false);
+        }
 
         public static void CaptureForAutomation()
         {
