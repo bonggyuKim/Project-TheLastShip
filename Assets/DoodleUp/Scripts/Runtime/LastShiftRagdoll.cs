@@ -433,7 +433,7 @@ namespace DoodleUp.Runtime
             joint.connectedBody = _bodies[spec.Parent];
             joint.anchor = Vector3.zero;
             joint.autoConfigureConnectedAnchor = true;
-            joint.enablePreprocessing = false;
+            joint.enablePreprocessing = tuning.JointPreprocessing;
             joint.enableProjection = true;
             joint.projectionDistance = tuning.JointProjectionDistance;
             joint.projectionAngle = tuning.JointProjectionAngle;

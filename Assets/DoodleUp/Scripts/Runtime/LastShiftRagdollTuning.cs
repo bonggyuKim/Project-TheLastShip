@@ -107,6 +107,16 @@ namespace DoodleUp.Runtime
         public float JointProjectionAngle = 15f;
 
         /// <summary>
+        /// 조인트 전처리. <b>끈 채로 둔다</b> — 켜면 한계가 더 샌다.
+        ///
+        /// 실측(머리 튕기기 5초, 한계 대비 최대 초과 배수):
+        /// 끔 2.06배 · 켬 2.21배 · 켬+각속도 8 2.40배 · 켬+솔버 32/8 2.50배.
+        /// 솔버 반복을 12/4 → 32/8 로 올려도 1.80배로 거의 안 줄었다.
+        /// <b>즉 한계가 새는 원인은 솔버 설정이 아니다</b> — 이 값들을 다시 훑지 말 것.
+        /// </summary>
+        public bool JointPreprocessing;
+
+        /// <summary>
         /// 정지 판정을 쓸지. <c>false</c> 면 Unity 자체 슬립에만 맡긴다 —
         /// 저중력에서 안 멈추는 현상을 재현하는 쪽이 이 설정이다.
         /// </summary>
