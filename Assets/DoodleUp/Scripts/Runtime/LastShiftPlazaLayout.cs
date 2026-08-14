@@ -56,7 +56,10 @@ namespace DoodleUp.Runtime
         public float MinZ { get; }
         public float MaxZ { get; }
 
-        /// <summary>천장 내면. 본선 <c>3.2m</c> / 부속 <c>3.0m</c>.</summary>
+        /// <summary>
+        /// 천장 내면. 지금은 일곱 다 <c>3.2m</c> 다 — 정본은
+        /// <c>LastShiftModularMap.json</c> 의 <c>ceiling</c> 이고 여기가 그 사본이다.
+        /// </summary>
         public float Height { get; }
 
         /// <summary>속한 압력 구역. 광장·에어록 홀·숙소가 조종석 구역인 것이 조항 <c>S-1</c> 이다(§3).</summary>
@@ -172,11 +175,16 @@ namespace DoodleUp.Runtime
         public const float CoreArea = CoreHalfExtent * 2f * (CoreHalfExtent * 2f);
 
         // ── 고정 구조물 일곱 ─────────────────────────────────────────────────
-        // 높이가 두 갈래인 것이 규약이다(§2.2 마지막 단락) — 본선 3.2m / 부속 3.0m 라
+        // 높이가 두 갈래인 것이 §2.2 마지막 단락의 규약이었다 — 본선 3.2m / 부속 3.0m 라
         // 광장에 서면 어느 문이 압력 계열이고 어느 문이 생활 계열인지가 천장으로 먼저 읽힌다.
+        //
+        // <b>지금은 한 갈래다</b>(2026-08-14). 부속으로 남은 것이 숙소 하나인데 정본 지도의
+        // quarters.ceiling 이 3.2 이고, 그 방을 3.0 으로 세우던 고정 구획 큐브를 걷어냈다.
+        // 여기 3.0 을 남겨 두면 <b>아무도 안 읽는 값</b>이 정본과 어긋난 채로 남는다 —
+        // 실제로 오늘 그 어긋남(코드 3.0 / 데이터 3.2)이 천장 조사를 하루 끌었다.
+        // 높이 대비를 다시 쓰려면 값을 여기서 되살리는 것이 아니라 지도에서 낮춘다.
 
         private const float MainHeight = LastShiftShipPhysics.CeilingInnerHeight;
-        private const float AnnexHeight = LastShiftCompartments.InteriorHeight;
 
         /// <summary>
         /// §2.2 좌표표 그대로. <b>순서가 <see cref="LastShiftPlazaSpace"/> 와 같아야 한다</b> —
@@ -198,7 +206,7 @@ namespace DoodleUp.Runtime
             new(LastShiftPlazaSpace.CoolingRoom, -4f, 4f, 6f, 14f,
                 MainHeight, LastShiftZone.Cooling),
             new(LastShiftPlazaSpace.Quarters, 4f, 12f, 6f, 12f,
-                AnnexHeight, LastShiftZone.Cockpit)
+                MainHeight, LastShiftZone.Cockpit)
         };
 
         public static LastShiftPlazaFootprint Of(LastShiftPlazaSpace space) => Footprints[(int)space];

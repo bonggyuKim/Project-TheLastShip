@@ -19,14 +19,14 @@ namespace DoodleUp.Runtime
     /// <c>SIMUL_ZONES</c>·<c>RG-1</c> 중 무엇을 따르는지는 별개다. 이 enum 이
     /// <see cref="LastShiftZone"/> 과 섞이면 그 구분이 조용히 무너진다.
     ///
-    /// <b>이 표는 이제 <c>부속</c> 만 든다</b>(중앙 광장 허브 §2.2). 고정 공간 일곱 중
-    /// 본선 다섯(광장 + 조종석·산소실·전력실·냉각실)은 천장 <c>3.2m</c> 로 선체가 자기 몸으로
-    /// 세우고, 부속 둘(에어록 홀·숙소)만 천장 <c>3.0m</c> 짜리 구획으로 붙는다. 그 높이 차이가
-    /// §2.2 마지막 단락의 규약이고, 이 표가 높이를 하나만 들 수 있다는 사실이 경계를 그대로
-    /// 그어 준다 — 본선을 여기 담으면 <see cref="LastShiftCompartments.InteriorHeight"/> 가
-    /// 두 값이 되어야 한다.
+    /// <b>이 표는 이제 방을 안 세운다</b>(2026-08-14). §2.2 는 본선 다섯을 천장 <c>3.2m</c> 로
+    /// 선체가 세우고 부속만 <c>3.0m</c> 짜리 구획으로 붙인다고 적었는데, 남은 부속인 숙소가
+    /// 정본 지도의 <c>quarters</c> 공간과 <b>같은 자리를 두 번</b> 세우고 있었다 — 그것도 서로
+    /// 다른 높이(큐브 <c>3.0</c> / 지도 <c>3.2</c>)로. 그래서 씬 빌더의 구획 큐브를 걷어냈고,
+    /// 이 표에 남은 몫은 <b>발자국·문·부모 사슬</b>과 드레싱이 붙을 자리뿐이다. 방을 만드는
+    /// 것은 <c>LastShiftModularKitImporter</c> 하나다.
     ///
-    /// <b>좌표는 여기서 안 적는다.</b> 둘 다 <see cref="LastShiftPlazaLayout.Footprints"/> 의
+    /// <b>좌표는 여기서 안 적는다.</b> <see cref="LastShiftPlazaLayout.Footprints"/> 의
     /// 발자국을 그대로 옮긴다.
     ///
     /// <b>값이 늘면 모듈 인덱스가 통째로 밀린다.</b> 세이브 파일·네트워크 복제가 모듈 슬롯을
@@ -203,10 +203,16 @@ namespace DoodleUp.Runtime
     public static class LastShiftCompartments
     {
         /// <summary>
-        /// 전 항목 공통 내부 높이. §17.4 가 "전 항목 높이 3m 균일" 로 확정했다.
+        /// 내부 높이. §17.4 가 "전 항목 높이 3m 균일" 로 확정했다.
         /// 선체 내부(<see cref="LastShiftShipPhysics.CeilingInnerHeight"/> `3.2m`)보다 낮은 것이
-        /// 의도다 — 부속 구획이 본선보다 낮아야 통과할 때 "다른 공간으로 넘어왔다"가 읽힌다.
+        /// 의도다 — 부속이 본선보다 낮아야 통과할 때 "다른 공간으로 넘어왔다"가 읽힌다.
         /// 문 구멍 높이 `2.2m` 는 그대로 들어간다.
+        ///
+        /// <b>숙소는 이제 이 값을 안 쓴다</b>(2026-08-14). 고정 구획 큐브를 걷어내면서 숙소
+        /// 실내고의 정본이 <c>LastShiftModularMap.json</c> 의 <c>quarters.ceiling</c>(`3.2m`)
+        /// 하나가 됐다. 여기 남은 것은 <b>자유 배치 모듈</b>이 서는 높이다
+        /// (<see cref="LastShiftModuleAssembler"/>) — 값이 아니라 <b>주인</b>이 바뀐 것이므로,
+        /// 숙소 높이를 물을 때 이 상수를 읽으면 다시 코드 3.0 / 데이터 3.2 로 갈린다.
         /// </summary>
         public const float InteriorHeight = 3f;
 

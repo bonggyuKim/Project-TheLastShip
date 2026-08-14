@@ -118,9 +118,9 @@ namespace DoodleUp.Tests.EditMode
                     // 이웃 방으로 트인 자리는 막혀 있으면 안 되는 자리다.
                     if (Occupied(all, probe.origin + probe.outward * 1.0f)) continue;
 
-                    // <b>선언값이 아니라 실제로 덮은 높이</b> 바로 밑에서 바깥을 본다. 숙소는
-                    // 고정 구획 천장이라 실내고가 3.0 인데 지도에는 3.2 로 적혀 있어, 선언값을
-                    // 믿으면 광선이 천장 판 <b>속</b>에서 출발해 아무것도 못 맞힌다.
+                    // <b>선언값이 아니라 실제로 덮은 높이</b> 바로 밑에서 바깥을 본다. 판이
+                    // 선언값과 다른 높이에 앉아 있으면 광선이 천장 판 <b>속</b>에서 출발해
+                    // 아무것도 못 맞힌다 — 숙소가 실제로 그랬다(큐브 3.0 / 지도 3.2).
                     var roof = RoofAt(covers, probe.origin);
                     if (float.IsPositiveInfinity(roof)) continue;
                     var direction = new Vector3(probe.outward.x, 0f, probe.outward.y);
@@ -221,13 +221,86 @@ namespace DoodleUp.Tests.EditMode
             Assert.That(shell, Is.Not.Null, "정본 지도에 ceilingShell 규칙이 없다");
             Assert.That(shell.operation, Is.EqualTo("ceilingShell"));
 
-            foreach (var id in new[] { "plaza", "cockpit", "power", "cooling", "lifeSupport" })
+            // 숙소가 여기 들어온 것이 2026-08-14 의 변경이다. 씬 빌더의 고정 구획 큐브가
+            // 같은 방을 3.0 으로 한 번 더 세우고 있었고, 그 큐브를 걷으면서 천장 주인이
+            // 이 규칙 하나가 됐다 — 빠지면 숙소만 지붕 없이 남는다.
+            foreach (var id in new[] { "plaza", "cockpit", "power", "cooling", "lifeSupport", "quarters" })
                 Assert.That(System.Array.IndexOf(shell.target, id), Is.GreaterThanOrEqualTo(0),
                     $"{id} 가 천장 대상에서 빠졌다");
+        }
 
-            // 숙소는 고정 구획이라 구획 조립이 이미 천장을 세운다. 여기 넣으면 두 겹이 된다.
-            Assert.That(System.Array.IndexOf(shell.target, "quarters"), Is.LessThan(0),
-                "숙소는 구획 천장이 이미 있어 ceilingShell 대상이 아니다");
+        /// <summary>
+        /// 숙소가 <b>정본 지도 높이</b>로 서 있는가. 씬 빌더가 세우던 고정 구획 큐브
+        /// (<c>Compartment_Quarters/Ceiling</c>·<c>Floor</c>·<c>Wall_*</c>)는 지도와 같은 자리를
+        /// 두 번 세우면서 천장만 <c>3.0</c> 으로 낮게 잡고 있었다. 그 큐브가 다시 생기면
+        /// 여기서 걸린다 — 위 덮임 검사는 판이 <b>둘</b>이어도 통과하므로 이름을 따로 센다.
+        /// </summary>
+        [Test]
+        public void TheQuartersCarriesNoLegacyCompartmentGeometry()
+        {
+            var map = LoadMap();
+            var quarters = System.Array.Find(map.spaces, space => space.id == "quarters");
+            Assert.That(quarters, Is.Not.Null, "정본 지도에 숙소 공간이 없다");
+
+            var ship = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(ShipPrefabPath));
+            try
+            {
+                var root = FindDescendant(ship.transform, "Compartment_Quarters");
+                Assert.That(root, Is.Not.Null, "드레싱이 붙을 숙소 루트가 없다");
+
+                // 판은 전부 루트 <b>바로 아래</b>에 섰다. 소품까지 훑으면 드레싱이 언젠가
+                // 같은 이름을 쓸 때 이 검사가 엉뚱한 것을 잡는다.
+                var legacy = new List<string>();
+                for (var index = 0; index < root.childCount; index++)
+                {
+                    var child = root.GetChild(index).name;
+                    if (child is "Floor" or "Ceiling" ||
+                        child.StartsWith("Wall_", System.StringComparison.Ordinal))
+                        legacy.Add(child);
+                }
+
+                Assert.That(legacy, Is.Empty,
+                    $"숙소에 legacy 구획 지오메트리가 {legacy.Count} 개 남았다: " +
+                    string.Join(", ", legacy.GetRange(0, Mathf.Min(8, legacy.Count))) +
+                    " — 정본 지도의 quarters 공간과 두 겹이 된다");
+
+                // 이름만 세면 <b>다시 생긴</b> 것은 잡아도 <b>안 생긴</b> 것은 못 잡는다.
+                // 그래서 판이 실제로 어느 높이에 앉았는지를 같이 잰다.
+                //
+                // <b>가장 낮은 면을 보면 안 된다.</b> 천장 보(<c>ceilings</c> 규칙)가 판보다
+                // 아래 걸려 있어서 방 한가운데의 최저 면은 늘 보다 — 실측 <c>2.85</c>. 판을
+                // 집으려면 밑면이 그 높이인 렌더러만 골라야 한다.
+                var b = quarters.bounds;
+                var centre = new Vector2((b[0] + b[1]) * 0.5f, (b[2] + b[3]) * 0.5f);
+                Assert.That(IsCovered(CollectCovers(ship, quarters.ceiling - 0.05f, quarters.ceiling + 0.05f), centre),
+                    Is.True,
+                    $"숙소 한가운데 위 {quarters.ceiling:F2} 에 판이 없다 — " +
+                    "ceilingShell 대상에서 숙소가 다시 빠졌다");
+
+                // 걷어낸 큐브는 밑면이 정확히 <see cref="LastShiftCompartments.InteriorHeight"/>
+                // 에 앉아 있었다. 그 높이에 다시 뭔가 깔리면 3.0/3.2 두 값이 되살아난 것이다.
+                const float legacyRoof = LastShiftCompartments.InteriorHeight;
+                Assert.That(IsCovered(CollectCovers(ship, legacyRoof - 0.05f, legacyRoof + 0.05f), centre),
+                    Is.False,
+                    $"숙소 한가운데 위 {legacyRoof:F2} 에 판이 다시 생겼다 — " +
+                    "정본 지도의 3.2 와 두 겹이 된다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(ship);
+            }
+        }
+
+        private static Transform FindDescendant(Transform node, string name)
+        {
+            if (node.name == name) return node;
+            for (var index = 0; index < node.childCount; index++)
+            {
+                var hit = FindDescendant(node.GetChild(index), name);
+                if (hit != null) return hit;
+            }
+
+            return null;
         }
 
         /// <summary>이 자리를 덮은 면 중 <b>가장 낮은</b> 밑면. 없으면 무한대다.</summary>

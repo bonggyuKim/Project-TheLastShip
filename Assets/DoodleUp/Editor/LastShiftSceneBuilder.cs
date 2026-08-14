@@ -22,7 +22,6 @@ namespace DoodleUp.Editor
         public const string LifeSupportZoneName = LastShiftSceneZones.LifeSupportZoneName;
 
         private static Material hullMaterial;
-        private static Material floorMaterial;
         private static Material cockpitMaterial;
         private static Material powerMaterial;
         /// <summary>
@@ -36,12 +35,10 @@ namespace DoodleUp.Editor
 
         private static Material coolingMaterial;
         private static Material lifeSupportMaterial;
-        private static Material ceilingMaterial;
         private static Material ductMaterial;
         private static Material panelMaterial;
         private static Material starMaterial;
         private static Material voidMaterial;
-        private static Material compartmentMaterial;
 
         // ── 드레싱 재질 ─────────────────────────────────────────────────────────
         // 색 정본은 Runtime 의 LastShiftDressing 이고 여기서는 캐시만 든다.
@@ -684,17 +681,26 @@ namespace DoodleUp.Editor
         // 구멍으로 남긴다. 면 소유 규칙은 그대로다 — 바뀐 것은 소유자가 누구인가뿐이다.
 
         /// <summary>
-        /// 구획 열한 개(§17.4). 에어록은 없다 — 우회 통로 z 경로가 미결이라 좌표가 안 나온다(§17.5).
+        /// 고정 구획의 <b>드레싱 앵커</b>. 세우는 것은 소품뿐이고 방 자체는 안 세운다.
         ///
-        /// 이 지오메트리는 압력존에 안 들어간다(§17.6). <see cref="LastShiftZoneDoor"/> 를 쓰지
-        /// 않는 것이 그 경계를 코드에서 지키는 자리다 — 그 컴포넌트를 여기에 달면 씬 검증기의
-        /// "문 개수 = 구역 경계 수" 가 깨지고, 깨진 것을 고치려다 구획이 압력 위상에 조용히
-        /// 편입된다. 구획 문은 지금 단계에서 <b>판이거나 구멍이거나</b> 둘 중 하나다.
+        /// <b>판은 정본 지도가 든다</b>(2026-08-14). 여기 있던 회색상자 벽·바닥·천장은 정본
+        /// 지도의 <c>quarters</c> 공간과 같은 자리를 두 번 세우고 있었다 — 광장·방 넷에서
+        /// 이미 한 번 걷어낸 것(콜라이더 52 + 418)과 같은 계열이고, 숙소만 남아 있었다.
+        /// 겹친 것만 문제가 아니라 <b>높이가 서로 달랐다</b>: 큐브는
+        /// <see cref="LastShiftCompartments.InteriorHeight"/>(<c>3.0</c>), 지도는
+        /// <c>quarters.ceiling</c>(<c>3.2</c>). 그래서 같은 방이 코드로 재면 3.0, 데이터로
+        /// 재면 3.2 였고 그 어긋남이 천장 조사에서 하루를 먹었다.
+        ///
+        /// <b>천장 판은 지도 쪽에서 이어받는다.</b> <c>ceilingShell</c> 규칙이 숙소를 대상에서
+        /// 빼고 있었던 이유가 "여기가 이미 세운다" 였으므로, 이 큐브를 걷는 변경과 그 규칙에
+        /// 숙소를 넣는 변경은 한 쌍이다. 하나만 하면 숙소가 하늘로 열린다.
+        ///
+        /// <b>루트는 남는다.</b> 드레싱 에셋이 <c>compartment: 0</c> 을 발자국 로컬 좌표로
+        /// 들고 있어(<see cref="CreateCompartmentDressing"/>), 이 <c>GameObject</c> 가 없어지면
+        /// 숙소 소품 열여덟 개가 붙을 자리를 잃는다.
         /// </summary>
         private static void CreateCompartments(Transform ship)
         {
-            compartmentMaterial ??= CreateMaterial("LS_Compartment", new Color(0.31f, 0.29f, 0.33f));
-
             var root = new GameObject("Compartments");
             root.transform.SetParent(ship, false);
 
@@ -794,46 +800,15 @@ namespace DoodleUp.Editor
 
 
 
+        /// <summary>
+        /// 구획 하나. <b>지오메트리는 안 세운다</b> — <see cref="CreateCompartments"/> 참조.
+        /// 남는 것은 발자국 원점에 선 루트와 그 아래 드레싱이다.
+        /// </summary>
         private static void CreateCompartment(Transform parent, LastShiftCompartmentSpec spec)
         {
-            const float thickness = LastShiftCompartments.PanelThickness;
-            const float height = LastShiftCompartments.InteriorHeight;
-
-            // <b>여기서 재질을 만든다.</b> 예전에는 <c>CreateSpaceCeiling</c> 이 처음 불릴 때
-            // 곁들여 만들어졌고, 그 함수가 없어지자 <c>ceilingMaterial</c> 이 <c>null</c> 인 채로
-            // 남아 천장이 분홍으로 나왔다. 재질을 쓰는 자리가 스스로 확보해야 다른 함수가
-            // 없어져도 안 딸려 나간다.
-            ceilingMaterial ??= CreateMaterial("LS_Ceiling", new Color(0.21f, 0.23f, 0.26f));
-            floorMaterial ??= CreateMaterial("LS_Floor", new Color(0.24f, 0.25f, 0.28f));
-
             var root = new GameObject(LastShiftCompartments.NameOf(spec));
             root.transform.SetParent(parent, false);
             root.transform.localPosition = new Vector3(spec.CenterX, 0f, spec.CenterZ);
-
-            var halfX = spec.LengthX * 0.5f;
-            var halfZ = spec.WidthZ * 0.5f;
-            var slabX = spec.LengthX + 2f * thickness;
-            var slabZ = spec.WidthZ + 2f * thickness;
-
-            CreateCube("Floor", root.transform, new Vector3(0f, -thickness * 0.5f, 0f),
-                new Vector3(slabX, thickness, slabZ), floorMaterial);
-            CreateCube("Ceiling", root.transform, new Vector3(0f, height + thickness * 0.5f, 0f),
-                new Vector3(slabX, thickness, slabZ), ceilingMaterial);
-
-            foreach (var alongX in new[] { true, false })
-            foreach (var atMax in new[] { false, true })
-            {
-                if (IsOwnDoorFace(spec, alongX, atMax)) continue;
-
-                var half = alongX ? halfX : halfZ;
-                var freeHalf = alongX ? halfZ : halfX;
-                var plane = (atMax ? half : -half) + (atMax ? thickness * 0.5f : -thickness * 0.5f);
-                var openings = ChildDoorwaysOn(spec, alongX, atMax);
-                CreateWallWithOpenings(
-                    $"Wall_{(alongX ? "X" : "Z")}{(atMax ? "Max" : "Min")}", root.transform,
-                    alongX, plane, -freeHalf - thickness, freeHalf + thickness, height,
-                    thickness, compartmentMaterial, openings, WindowsOn(spec, alongX, atMax));
-            }
 
             CreateCompartmentLabel(spec, root.transform);
             CreateCompartmentDressing(spec, root.transform);
@@ -843,54 +818,14 @@ namespace DoodleUp.Editor
             // "씬 조명은 씬에서 고친다" 가 한 군데서만 깨진다.
         }
 
-        /// <summary>이 면이 구획 자기 안쪽 문이 놓인 면인가. 그 면은 부모(또는 선체)가 세운다.</summary>
-        private static bool IsOwnDoorFace(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
-        {
-            if (spec.DoorPlane != (alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ)) return false;
-            var face = alongX
-                ? (atMax ? spec.MaxX : spec.MinX)
-                : (atMax ? spec.MaxZ : spec.MinZ);
-            return Mathf.Abs(spec.DoorPlaneCoordinate - face) < 0.001f;
-        }
-
-        private static LastShiftCompartmentSpec[] ChildrenOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
-        {
-            var face = alongX
-                ? (atMax ? spec.MaxX : spec.MinX)
-                : (atMax ? spec.MaxZ : spec.MinZ);
-            return LastShiftCompartments.Specs
-                .Where(child => child.ParentIndex == spec.Index &&
-                                child.DoorPlane == (alongX ? LastShiftDoorPlane.AlongX : LastShiftDoorPlane.AlongZ) &&
-                                Mathf.Abs(child.DoorPlaneCoordinate - face) < 0.001f)
-                .ToArray();
-        }
-
-        /// <summary>
-        /// 이 면에 뚫어야 하는 구멍의 자유축 로컬 좌표. 잠긴 자식은 구멍을 안 낸다.
-        ///
-        /// <b>이제 자식 구획만 본다.</b> 예전에는 회랑 둘이 구획 쪽 면에 문을 따로 요구해서
-        /// 그 목록을 합쳐야 했는데, 회랑이 폐지되면서 그 항목이 없어졌다
-        /// (docs/bow-cockpit-central-plaza-layout-v1.md §165·§166) — 구멍을 여는 것은
-        /// <c>ParentIndex</c> 사슬 하나뿐이라 <see cref="LastShiftCompartments.DoorDepth"/> 의
-        /// 트리 전제가 다시 유일한 전제가 됐다.
-        /// </summary>
-        private static float[] ChildDoorwaysOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax)
-        {
-            var origin = alongX ? spec.CenterZ : spec.CenterX;
-            var face = alongX
-                ? (atMax ? spec.MaxX : spec.MinX)
-                : (atMax ? spec.MaxZ : spec.MinZ);
-            return ChildrenOn(spec, alongX, atMax)
-                .Where(child => child.IsPassable)
-                .Select(child => child.DoorCenter)
-                .Select(doorCenter => doorCenter - origin)
-                .ToArray();
-        }
-
         /// <summary>
         /// 벽에 뚫리는 구멍 하나. 문은 바닥부터라 <see cref="BottomY"/> 가 <c>0</c> 이고,
-        /// 창은 문턱이 있어 그렇지 않다 — 둘을 같은 자료형으로 두는 것은 판을 자르는 규칙이
-        /// 같기 때문이다. 다른 것은 구멍 <b>위아래에 무엇이 남는가</b>뿐이다.
+        /// 창은 문턱이 있어 그렇지 않다.
+        ///
+        /// <b>이제 남은 쓰임은 조종석 창 띠 하나다.</b> 판을 <b>자르던</b> 쪽
+        /// (<c>CreateWallWithOpenings</c>·<c>CreateSlab</c>)은 고정 구획 큐브와 같이 걷혔고
+        /// (2026-08-14), 유리를 어디에 세울지를 재는 쪽만
+        /// (<see cref="CockpitWindowBand"/> → <see cref="CreateCockpitWindows"/>) 남았다.
         /// </summary>
         private readonly struct WallAperture
         {
@@ -906,97 +841,6 @@ namespace DoodleUp.Editor
             public float HalfWidth { get; }
             public float BottomY { get; }
             public float TopY { get; }
-        }
-
-        /// <summary>
-        /// 이 구획 면에 뚫리는 창. <b>지금은 없다</b> — 유일한 구획 창이던 관측실 선수 끝벽이
-        /// 그 방과 함께 카탈로그로 이관됐다(맵 개편 §3.2).
-        ///
-        /// 함수를 남겨 두는 것은 벽 빌더가 문과 창을 <see cref="WallAperture"/> 하나로 자르고
-        /// 있기 때문이다. 창을 다시 여는 것은 카탈로그 관측실 프리팹이 올 때이고, 그때
-        /// 좌표는 여기가 아니라 모듈 쪽이 든다.
-        /// </summary>
-        private static WallAperture[] WindowsOn(LastShiftCompartmentSpec spec, bool alongX, bool atMax) =>
-            NoApertures;
-
-        private static readonly WallAperture[] NoApertures = System.Array.Empty<WallAperture>();
-
-        /// <summary>
-        /// 판 한 장. <paramref name="openings"/> 는 이 면의 자유축 위 문 중심이고, 비어 있으면
-        /// 통짜다. 구멍이 있으면 구간을 잘라 세우고 그 위에 인방을 얹는다 — 인방이 없으면
-        /// 문 높이(2.2)에서 천장까지가 그대로 뚫려 그림과 통행 가능 범위가 어긋난다.
-        ///
-        /// <paramref name="windows"/> 는 바닥에 안 닿는 구멍이다. 판을 자르는 규칙은 문과
-        /// 같고 아래에 문턱 판, 위에 인방이 한 장씩 더 붙는다.
-        /// </summary>
-        private static void CreateWallWithOpenings(string name, Transform parent, bool alongX,
-            float plane, float freeMin, float freeMax, float height, float thickness,
-            Material material, float[] openings, WallAperture[] windows = null)
-        {
-            const float doorWidth = LastShiftZoneDoor.OpeningWidth;
-            const float doorHeight = LastShiftZoneDoor.OpeningHeight;
-            windows ??= NoApertures;
-
-            // 문과 창을 자유축 위에서 한 줄로 세워 자른다. 둘을 따로 자르면 같은 판을 두 번
-            // 세우게 되고, 그건 씬에서 z-파이팅으로만 드러난다.
-            var spans = openings
-                .Select(opening => (Min: opening - doorWidth * 0.5f, Max: opening + doorWidth * 0.5f))
-                .Concat(windows.Select(window =>
-                    (Min: window.Center - window.HalfWidth, Max: window.Center + window.HalfWidth)))
-                .OrderBy(span => span.Min);
-
-            var edges = new System.Collections.Generic.List<float> { freeMin };
-            foreach (var span in spans)
-            {
-                edges.Add(span.Min);
-                edges.Add(span.Max);
-            }
-            edges.Add(freeMax);
-
-            // 짝수 index 로 시작하는 구간이 판, 그 사이가 구멍이다.
-            for (var segment = 0; segment + 1 < edges.Count; segment += 2)
-            {
-                var min = edges[segment];
-                var max = edges[segment + 1];
-                if (max - min <= 0.0001f) continue;
-                CreateSlab($"{name}_{segment / 2}", parent, alongX, plane,
-                    (min + max) * 0.5f, max - min, height, 0f, thickness, material);
-            }
-
-            // 창은 위아래가 다 남는다. 문턱 판이 없으면 방에서 바닥이 그대로 우주로 이어져
-            // 창이 아니라 발코니가 되고, 인방이 없으면 천장까지 뚫려 방이 반쯤 사라진다.
-            for (var index = 0; index < windows.Length; index++)
-            {
-                var window = windows[index];
-                if (window.BottomY > 0.0001f)
-                    CreateSlab($"{name}_Sill_{index}", parent, alongX, plane,
-                        window.Center, window.HalfWidth * 2f, window.BottomY, 0f, thickness, material);
-                if (height - window.TopY > 0.0001f)
-                    CreateSlab($"{name}_Head_{index}", parent, alongX, plane,
-                        window.Center, window.HalfWidth * 2f, height - window.TopY, window.TopY,
-                        thickness, material);
-            }
-
-            // 인방은 벽이 문보다 높을 때만 있다. 좌현 문턱 판(높이 0.6)처럼 벽 자체가 문보다
-            // 낮은 자리에서는 인방 대신 그 위의 창 띠가 이어받는다 — 여기서 안 걸러 내면
-            // 높이가 음수인 큐브가 서고, 그건 씬에서 안쪽이 뒤집힌 판으로 보인다.
-            if (height - doorHeight <= 0.0001f) return;
-
-            for (var index = 0; index < openings.Length; index++)
-                CreateSlab($"{name}_Lintel_{index}", parent, alongX, plane,
-                    openings[index], doorWidth, height - doorHeight, doorHeight, thickness, material);
-        }
-
-        private static void CreateSlab(string name, Transform parent, bool alongX, float plane,
-            float freeCenter, float freeSize, float height, float bottom, float thickness, Material material)
-        {
-            var position = alongX
-                ? new Vector3(plane, bottom + height * 0.5f, freeCenter)
-                : new Vector3(freeCenter, bottom + height * 0.5f, plane);
-            var scale = alongX
-                ? new Vector3(thickness, height, freeSize)
-                : new Vector3(freeSize, height, thickness);
-            CreateCube(name, parent, position, scale, material);
         }
 
         private static void CreateCompartmentLabel(LastShiftCompartmentSpec spec, Transform root)
@@ -1180,15 +1024,6 @@ namespace DoodleUp.Editor
             zone.transform.SetParent(parent, false);
             zone.transform.position = new Vector3(LastShiftShipDimensions.RoomCenterX(zoneId), 0f, 0f);
             CreateZoneStrip(zone.transform, zoneId, material);
-        }
-
-        /// <summary>바닥 판 한 장. x·z 구간으로 받는다 — 구멍을 두르는 넉 장이 전부 구간 계산이라 중심·크기로 받으면 읽기 어렵다.</summary>
-        private static void CreateFloorSlab(Transform parent, string name, float minX, float maxX, float minZ, float maxZ)
-        {
-            const float thickness = LastShiftShipDimensions.HullThickness;
-            if (maxX - minX <= 0.0001f || maxZ - minZ <= 0.0001f) return;
-            CreateCube(name, parent, new Vector3((minX + maxX) * 0.5f, -thickness * 0.5f, (minZ + maxZ) * 0.5f),
-                new Vector3(maxX - minX, thickness, maxZ - minZ), floorMaterial);
         }
 
         private static void CreateZoneStrip(Transform zone, LastShiftZone zoneId, Material material)
@@ -1552,8 +1387,8 @@ namespace DoodleUp.Editor
             hazardMaterial ??= EnsureMaterial("LS_Hazard", new Color(0.86f, 0.62f, 0.10f));
 
         /// <summary>
-        /// 설비 중성색. 소품 대부분이 이것을 쓴다 — 구획 벽(<c>LS_Compartment</c>)보다 밝아
-        /// 실루엣이 벽에서 떨어지고, 구획색보다 채도가 낮아 색 위계를 안 건드린다.
+        /// 설비 중성색. 소품 대부분이 이것을 쓴다 — 킷 벽보다 밝아 실루엣이 벽에서 떨어지고,
+        /// 구획색보다 채도가 낮아 색 위계를 안 건드린다.
         /// </summary>
         private static Material EnsureFixtureMaterial() =>
             fixtureMaterial ??= EnsureMaterial("LS_Fixture", new Color(0.39f, 0.40f, 0.43f));
@@ -1561,17 +1396,14 @@ namespace DoodleUp.Editor
         private static void ResetCachedMaterials()
         {
             hullMaterial = null;
-            floorMaterial = null;
             cockpitMaterial = null;
             powerMaterial = null;
             coolingMaterial = null;
             lifeSupportMaterial = null;
-            ceilingMaterial = null;
             ductMaterial = null;
             panelMaterial = null;
             starMaterial = null;
             voidMaterial = null;
-            compartmentMaterial = null;
             fixtureMaterial = null;
             // 에셋 편집을 다음 빌드가 다시 읽게 한다. 안 비우면 Inspector 에서 소품을 고친 뒤
             // 다시 구웠는데 도메인 리로드 전까지 옛 데이터로 서는 일이 난다.

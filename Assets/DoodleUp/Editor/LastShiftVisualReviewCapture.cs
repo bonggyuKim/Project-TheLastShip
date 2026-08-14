@@ -10,6 +10,7 @@ namespace DoodleUp.Editor
     {
         private const string OutputDirectory = "docs/art/evidence/last-shift-rebake-visual-review-2026-08-14";
         private const string CeilingOutputDirectory = "docs/art/evidence/last-shift-ceiling-fix-2026-08-14";
+        private const string QuartersOutputDirectory = "docs/art/evidence/last-shift-quarters-single-source-2026-08-14";
 
         /// <summary>
         /// 천장 검수 시점. 앞서의 검수 시점은 전부 <b>수평</b>이라 천장이 없어도 화면에
@@ -55,6 +56,35 @@ namespace DoodleUp.Editor
             };
             Run("tmp/ceiling-leak-mask", views, "LAST_SHIFT_CEILING_LEAK_MASK", true);
         }
+
+        /// <summary>
+        /// 숙소 <b>한 방만</b> 여섯 시점. 고정 구획 큐브를 걷어내고 그 방을 정본 지도 하나가
+        /// 세우게 한 변경(2026-08-14)의 검수용이다 — 벽 넷·바닥·천장이 각각 <b>한 벌씩</b>
+        /// 서 있는지를 봐야 하므로 방 전체를 도는 시점이 필요하다. 천장 검수 세트의
+        /// <c>06_quarters_up</c> 한 장으로는 벽과 바닥이 프레임에 안 들어온다.
+        ///
+        /// 좌표는 정본 지도의 <c>quarters.bounds</c>(<c>x 4..12</c>, <c>z 6..12</c>)에서 잡았고,
+        /// 눈높이는 다른 검수 세트와 같은 <c>1.65</c> 다.
+        /// </summary>
+        public static void CaptureQuartersForAutomation() => Run(QuartersOutputDirectory, QuartersViews(), "LAST_SHIFT_QUARTERS_REVIEW", false);
+
+        /// <summary>같은 시점을 자홍 배경으로. 새는 자리를 화소로 세는 측정용이라 <c>tmp/</c> 다.</summary>
+        public static void CaptureQuartersLeakMasksForAutomation() => Run("tmp/quarters-leak-mask", QuartersViews(), "LAST_SHIFT_QUARTERS_LEAK_MASK", true);
+
+        private static View[] QuartersViews() => new[]
+        {
+            // 천장. 판이 한 겹인지, 3.2 로 올라갔는지가 보 높이와의 간격으로 읽힌다.
+            new View("01_quarters_ceiling", new Vector3(8f, 1.65f, 9f), new Vector3(9.2f, 3.4f, 9f)),
+            // 바닥. 걷어낸 큐브 바닥과 지도 바닥 타일이 겹쳐 z-파이팅이 나던 자리다.
+            new View("02_quarters_floor", new Vector3(8f, 2.4f, 9f), new Vector3(8.6f, 0f, 9f)),
+            // 문 벽(좌현, x=4). 문 구멍이 하나인지 — 큐브 벽이 살아 있으면 판이 문 앞을 덮는다.
+            new View("03_quarters_door_wall", new Vector3(10.5f, 1.65f, 9f), new Vector3(4f, 1.4f, 7f)),
+            // 끝벽(우현, x=12).
+            new View("04_quarters_end_wall", new Vector3(5.5f, 1.65f, 9f), new Vector3(12f, 1.4f, 9f)),
+            // 선미 벽(z=6)과 선수 벽(z=12). 두 벌이 서면 여기서 두께가 두 배로 보인다.
+            new View("05_quarters_aft_wall", new Vector3(8f, 1.65f, 11f), new Vector3(8f, 1.4f, 6f)),
+            new View("06_quarters_fore_wall", new Vector3(8f, 1.65f, 7f), new Vector3(8f, 1.4f, 12f))
+        };
 
         public static void CaptureForAutomation()
         {

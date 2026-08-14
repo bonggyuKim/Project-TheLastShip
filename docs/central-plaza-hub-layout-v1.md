@@ -96,7 +96,9 @@
 | 숙소 | `+4 ~ +12` | `+6 ~ +12` | `8 × 6 = 48m²` | ~~`+3~+9`/`+6~+10`/`24m²`~~ |
 | ~~에어록 홀~~ | — | — | — | **폐지.** `central-lift-eva-ascent-v1.md` §0 — 발자국은 광장 자유면으로 돌아간다 |
 
-높이: 광장·조종석·산소실·전력실·냉각실은 `3.2m`(`LastShiftShipPhysics.CeilingInnerHeight`), 숙소는 `3.0m`(`LastShiftCompartments.InteriorHeight`). **본선보다 부속이 낮다는 규약을 유지한다.**
+높이: 일곱 다 `3.2m`. 정본은 `Assets/DoodleUp/Data/LastShiftModularMap.json` 의 `ceiling` 이고 `LastShiftPlazaLayout.Footprints` 가 그 사본이다.
+
+~~숙소는 `3.0m`(`LastShiftCompartments.InteriorHeight`) — 본선보다 부속이 낮다는 규약을 유지한다.~~ **2026-08-14 폐기.** 숙소를 `3.0` 으로 세우던 것은 씬 빌더의 고정 구획 큐브였는데, 그 큐브가 정본 지도의 `quarters` 공간과 **같은 자리를 두 번** 세우고 있었다(벽·바닥·천장 전부). 큐브를 걷어내면서 그 방의 주인이 지도 하나가 됐고, 지도가 적고 있던 값이 `3.2` 다. 높이 대비를 다시 쓰려면 코드에 `3.0` 을 되살리는 것이 아니라 지도의 `quarters.ceiling` 을 낮춘다 — 그래야 코드와 데이터가 다시 안 갈린다.
 
 전체 AABB `x [−16, +16]` · `z [−14, +14]` — **`32 × 28m`, 종횡비 `1.14:1`.** ~~`28×23m`, `1.22:1`~~. 발자국 합 `480.0m²`(코어 `16m²` 공제 → `464.0m²`).
 

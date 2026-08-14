@@ -967,9 +967,12 @@ namespace DoodleUp.Editor
         /// <b>재질은 벽에서 받는다.</b> 새 <c>.mat</c> 을 만들면 아트가 킷 색을 바꿀 때
         /// 천장만 옛 색으로 남는다 — 같은 방을 두르는 면이니 벽과 같은 재질을 그대로 쓴다.
         ///
-        /// <b>숙소는 대상이 아니다.</b> 거기는 고정 구획이라
-        /// <see cref="LastShiftSceneBuilder"/> 의 구획 조립이 이미 천장을 세운다. 목록은
-        /// 정본 지도의 <c>target</c> 이 들고 있으므로 여기서 이름으로 거르지 않는다.
+        /// <b>숙소도 이제 대상이다</b>(2026-08-14). 예전에는 <see cref="LastShiftSceneBuilder"/>
+        /// 의 고정 구획 큐브가 그 방 천장을 따로 세워서 목록에서 뺐는데, 그 큐브가 벽·바닥까지
+        /// 같은 자리에 두 번 세우고 있었고 높이도 <c>3.0</c> 으로 지도의 <c>3.2</c> 와 달랐다.
+        /// 큐브를 걷으면서 숙소 천장의 주인이 여기 하나가 됐다 — 둘은 한 쌍의 변경이라 한쪽만
+        /// 하면 숙소가 하늘로 열리거나 판이 두 겹으로 남는다. 목록은 정본 지도의
+        /// <c>target</c> 이 들고 있으므로 여기서 이름으로 거르지 않는다.
         /// </summary>
         private static void BuildCeilingShell(IReadOnlyDictionary<string, GameObject> prefabs, Transform root,
             MapRule rule, ModularMap map, IReadOnlyDictionary<string, MapSpace> spaces)
@@ -985,7 +988,7 @@ namespace DoodleUp.Editor
                 // 발자국에 <b>딱 맞게</b> 깔면 안 된다. 판이 벽 바깥면 앞에서 끝나면 벽 윗변
                 // 너머로 시선이 빠져나가 방 둘레를 따라 별이 한 줄 보인다(실측: 자홍 배경으로
                 // 다시 찍어 새는 화소의 광선을 <c>y=3.2</c> 평면과 만나게 해 보니 전부
-                // <c>|x|>4.2</c>, 즉 판 끝 <b>바깥</b>에서 빠져나갔다). 고정 구획 천장이
+                // <c>|x|>4.2</c>, 즉 판 끝 <b>바깥</b>에서 빠져나갔다). 걷어낸 고정 구획 천장이
                 // <c>LengthX + 2*두께</c> 로 깔려 그 방만 <b>0</b> 이었던 것도 같은 이유다.
                 //
                 // 그래서 <b>외피 바깥면까지</b> 내민다. 리터럴을 안 적는 이유는 그 값이
