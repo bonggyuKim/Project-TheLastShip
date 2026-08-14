@@ -1,39 +1,39 @@
 # LAST SHIFT rebake 이후 전체 씬 시각 검수 — 2026-08-14
 
-## 판정
+## 검수 방식
 
-**수정 필요 (visual gate FAIL).** `LastShiftShipGraybox` rebake 결과는 방별 구조와 기능색은 읽히지만, 현재 상태를 최종 인게임 비주얼로 승인할 수 없다.
+이 기록은 좋다/나쁘다 판정을 하지 않고 `LastShiftShipGraybox` rebake 이후 화면에서 보이는 현상만 적는다.
 
 검수 조건은 `LAST_SHIFT_SOLO` 씬, Unity 6000.4.0f1, 1280×720, 동일 카메라 FOV 68°와 씬 기본 조명이다. 캡처는 `DoodleUp.Editor.LastShiftVisualReviewCapture.CaptureForAutomation`으로 재생성한다.
 
-## 핵심 관찰
+## 공간별 관찰
 
-| 우선순위 | 범위 | 실제 화면 관찰 | 아트 판정 |
-|---|---|---|---|
-| P0 | 조종석·전력·냉각·생명유지실 | 상부 대부분에 별 배경이 직접 노출된다. 조명 기구와 덕트가 우주에 떠 있는 것처럼 보인다. | 실내 천장/헐 연속성이 깨져 플레이 공간이 미완성으로 읽힌다. 천장 렌더 누락 또는 면 방향/조립 상태를 먼저 수정해야 한다. |
-| P0 | 중앙 광장 | 4×4m 코어가 양 접근 시점 모두 화면 중앙 대부분을 차지하며, 표면 신호가 거의 없는 검은 직육면체로 읽힌다. | 코어 점유 크기는 gameplay 고정이므로 줄이지 않는다. 네 면의 값 분할, 상태 스트립, 모서리 챔퍼로 큰 암면을 해체해야 한다. |
-| P1 | 전력실 | 주황 소품과 녹색 판독점은 구분되지만 주 설비가 검은 덩어리로 합쳐진다. | 기능색은 유지. 전면 패널 테두리/상단 실루엣에 중간 명도 분리를 추가한다. |
-| P1 | 냉각실 | 시안 계열은 남아 있으나 중앙 설비와 전면 캐니스터가 겹쳐 목적물이 한 덩어리로 보인다. | 플레이 카메라에서 캐니스터가 설비 윤곽을 가리지 않는지 수동 이동 검증이 필요하다. |
-| P1 | 생명유지실 | 방별 민트 신호는 가장 잘 읽히지만 근경의 큰 갈색 프롭이 우측 시야를 과도하게 막는다. | 통행 폭을 유지하며 프롭 높이/회전을 낮춰 핵심 판독 패널 시야를 확보한다. |
-| P2 | 숙소 | 천장이 닫혀 있고 웜 톤과 가구 실루엣이 안정적으로 읽힌다. 다만 바닥과 사물함 암부가 거의 검정이다. | 현재 구성은 유지하되 인게임 플레이 카메라에서 승무원 실루엣 분리만 재확인한다. |
-
-## 유지할 방향
-
-- 방별 색 구분: 조종석 청록, 전력 주황, 냉각 시안, 생명유지 민트가 서로 혼동되지 않는다.
-- 무광 로우폴리 표면과 단순한 큰 형태는 프로젝트 스타일 가이드에 맞는다.
-- 붉은 바닥 라인은 동선 경계로 꾸준히 보이지만, 현재는 모든 방에서 우세하므로 방 고유색보다 강해지지 않게 유지한다.
-- 중앙 코어의 4×4m 점유는 `SIMUL_ZONES` 가독성 조건이므로 아트 수정으로 축소하지 않는다.
+| 범위 | 화면에서 보이는 현상 |
+|---|---|
+| 광장/모서리 | 양 대각 시점 모두 중앙 4×4m 구조물이 화면 중앙을 크게 가린다. 네 면은 거의 단색 암면이다. 상부에는 보·레일·조명·EVA 타워 지지대가 여러 높이와 각도로 교차한다. 천장 면 없이 별 배경이 보인다. 한쪽 모서리 벽은 주황빛을 받고 반대쪽은 거의 검정이다. |
+| 조종석 노즈캡/창문 | 정면의 베이지 패널 두 장과 중앙 청록 구조 사이로 외부 별 배경이 보인다. 좌우 벽의 큰 검정 면과 정면 베이지 면의 명도 차가 크다. 중앙 검정 좌석/기둥이 정면 구조를 가린다. 천장 조명과 길쭉한 보가 별 배경 앞에 떠 있는 형태로 보인다. 좌우 좌석과 콘솔 크기가 정면 패널에 비해 작다. |
+| 전력실 | 중앙 검정 설비가 화면 폭의 약 1/3을 차지하고 녹색 점 세 개만 분리된다. 좌측 근경 주황 상자는 화면 밖으로 잘리고, 우측 바닥 소품은 벽 아래 붉은 라인과 겹친다. 천장 면 없이 별 배경이 보이며 조명과 보가 허공에 놓인 형태다. |
+| 냉각실 | 전면 캐니스터가 중앙 설비와 같은 축에 겹친다. 좌측 근경의 큰 직육면체가 화면 높이 대부분을 차지하고 프레임 밖으로 잘린다. 중앙 벽 설비는 주변 벽보다 밝은 회색이다. 천장 면 없이 별 배경이 보인다. |
+| 산소실/생명유지실 | 좌우에 키 큰 탱크/기둥이 반복되고 중앙에도 원통이 있어 깊이 방향 시야가 여러 번 끊긴다. 우측 갈색 직육면체가 화면 아래 우측 절반가량을 가린다. 민트 발광선과 시안 소품은 보이지만, 천장 면 없이 별 배경과 조명 레일이 노출된다. |
+| 숙소 침상 2조/커튼 | 첫 시점에서 긴 수평판 세 개와 중앙 테이블이 높이와 색이 비슷하게 겹친다. 침상 가장자리와 바닥 타일 사이에 밝은 회색 직사각형 두 장이 보인다. 커튼은 벽 쪽의 얇은 갈색 판으로 보이고 침상과 색이 유사하다. 역방향에서는 좌측 사물함/벽이 거의 검정이며, 우측 근경 가구가 프레임에 잘린다. 이 공간은 천장 면이 보인다. |
+| 화물 소품 시점 | 좌측 검정 대형 프롭, 중앙 갈색 프롭, 우측 밝은 회색 프롭이 카메라에 매우 가깝게 놓여 각각 화면 가장자리에 잘린다. 세 프롭 사이 통로만 좁게 보이며 바닥 접촉점은 가려진다. 별도 `CargoBay` 방은 현행 modular map에 없어 냉각실 쪽 적재 소품 군을 촬영했다. 천장 면 없이 별 배경이 보인다. |
+| EVA 상부 해치 | 외부 상단 시점에서 타워 지지대, 긴 보, 천장 레일이 서로 교차한다. 해치 중심은 주변 검정 구조와 같은 명도라 경계가 약하며, 시안 점광원 네 개가 모서리에 보인다. 우주선 내부의 조종석과 방들이 상부에서 그대로 내려다보인다. |
+| EVA 리프트 내부 | 광장 접근 시 중앙 암색 벽이 화면 대부분을 차지한다. 상단 지지대와 보 사이로 별 배경이 보이고, 좌우 방 입구는 중앙 구조물 양옆의 좁은 영역으로만 보인다. |
 
 ## 증거
 
-- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/01_plaza_bow.png`
-- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/02_plaza_stern.png`
-- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/03_cockpit.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/01_plaza_bow_corners.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/02_plaza_stern_corners.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/03_cockpit_nose_windows.png`
 - `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/04_power.png`
 - `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/05_cooling.png`
-- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/06_life_support.png`
-- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/07_quarters.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/06_oxygen_life_support.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/07_quarters_bunks_curtains.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/08_quarters_reverse.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/09_cargo_props.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/10_eva_hatch_exterior.png`
+- `docs/art/evidence/last-shift-rebake-visual-review-2026-08-14/11_eva_lift_interior.png`
 
 ## 수동 확인 필요
 
-이 자동 캡처는 정지 상태의 기본 씬 조명만 검수한다. 수정 후 실제 플레이 카메라로 광장 양방향 접근, 문 통과, 캐니스터 운반, 4인 승무원 중첩 상황을 확인해야 한다. 특히 천장 수정 후에도 조명 기구가 천장 면에 묻히지 않는지와 숙소 암부에서 캐릭터가 분리되는지가 남는다.
+이 캡처는 정지 상태의 기본 씬 조명과 지정 좌표 카메라를 사용했다. 실제 플레이 카메라의 높이·후처리·캐릭터 점유에 따라 가림 비율은 달라질 수 있다. 부유/관통 여부는 가려진 바닥 접촉점과 동적 해치 상태를 에디터 Scene View에서 근접 확인해야 한다.

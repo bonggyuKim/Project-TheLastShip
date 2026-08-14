@@ -25,13 +25,17 @@ namespace DoodleUp.Editor
 
             var views = new[]
             {
-                new View("01_plaza_bow", new Vector3(4.8f, 1.65f, 0f), new Vector3(-1f, 1.25f, 0f)),
-                new View("02_plaza_stern", new Vector3(-4.8f, 1.65f, 0f), new Vector3(1f, 1.25f, 0f)),
-                new View("03_cockpit", new Vector3(-7.2f, 1.65f, 0f), new Vector3(-14.5f, 1.35f, 0f)),
+                new View("01_plaza_bow_corners", new Vector3(5.4f, 1.65f, -4.8f), new Vector3(-0.5f, 1.25f, 0f)),
+                new View("02_plaza_stern_corners", new Vector3(-5.4f, 1.65f, 4.8f), new Vector3(0.5f, 1.25f, 0f)),
+                new View("03_cockpit_nose_windows", new Vector3(-7.2f, 1.65f, 0f), new Vector3(-15.8f, 1.35f, 0f)),
                 new View("04_power", new Vector3(0f, 1.65f, -7.2f), new Vector3(0f, 1.25f, -13f)),
                 new View("05_cooling", new Vector3(0f, 1.65f, 7.2f), new Vector3(0f, 1.25f, 13f)),
-                new View("06_life_support", new Vector3(7.2f, 1.65f, 0f), new Vector3(15f, 1.25f, 0f)),
-                new View("07_quarters", new Vector3(5.2f, 1.65f, 7f), new Vector3(10.8f, 1.3f, 10.8f))
+                new View("06_oxygen_life_support", new Vector3(7.2f, 1.65f, 0f), new Vector3(15f, 1.25f, 0f)),
+                new View("07_quarters_bunks_curtains", new Vector3(5.2f, 1.65f, 7f), new Vector3(10.8f, 1.3f, 10.8f)),
+                new View("08_quarters_reverse", new Vector3(11.4f, 1.65f, 11.2f), new Vector3(6f, 1.3f, 7f)),
+                new View("09_cargo_props", new Vector3(3.2f, 1.65f, 12.2f), new Vector3(-2.5f, 0.9f, 9.5f)),
+                new View("10_eva_hatch_exterior", new Vector3(4.8f, 7.8f, 4.8f), new Vector3(0f, 6.2f, 0f)),
+                new View("11_eva_lift_interior", new Vector3(-1.2f, 1.65f, -5.2f), new Vector3(0f, 2.2f, 0f))
             };
 
             try
