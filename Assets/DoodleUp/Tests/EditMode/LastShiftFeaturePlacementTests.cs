@@ -10,7 +10,7 @@ namespace DoodleUp.Tests.EditMode
     ///
     /// <b>이 규칙이 없던 동안 무슨 일이 났는가.</b> 설비가 <c>BoundsCenter</c> 에 서면서
     /// 그 방의 통행이 설비를 도는 고리가 됐고, 냉각실에서 승무원이 방 중앙에서 막혔다
-    /// (<c>FourCrewLeaveTheCockpit…</c>). 방에 볼일이 있는 사람이 목표 지점에 못 갔다.
+    /// (<c>FourCrewLeaveTheQuarters…</c>). 방에 볼일이 있는 사람이 목표 지점에 못 갔다.
     ///
     /// art 가 건 조건이 셋이다 — <b>문 개구부 · 접근면 · 통행폭</b>을 안 건드릴 것.
     /// 셋 다 "문에서 가장 먼 벽" 이라는 한 가지 선택에서 따라 나오므로, 여기서는 그

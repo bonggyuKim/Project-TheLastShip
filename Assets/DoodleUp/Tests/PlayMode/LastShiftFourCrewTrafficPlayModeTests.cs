@@ -19,10 +19,10 @@ namespace DoodleUp.Tests.PlayMode
     /// CharacterController 는 밀려난 자리에서 다시 벽에 걸린다. 그래서 이 파일은 좌표가 아니라
     /// <b>도달 여부</b>를 재고, 못 간 자리를 좌표째로 남긴다.
     ///
-    /// <b>스폰 넷이 전부 조종석 방 안이라는 것이 이 시뮬레이션의 요점이다.</b>
-    /// (<see cref="LastShiftNetworkSession.SpawnForSlot"/>) 그래서 넷은 시작하자마자
-    /// 조종석↔광장 개구부 <b>하나</b>를 같이 지나야 하고, 배에서 유일하게 4인이 한 점에
-    /// 몰리는 자리가 거기다.
+    /// <b>스폰 넷이 전부 숙소 안이라는 것이 이 시뮬레이션의 요점이다.</b>
+    /// (<see cref="LastShiftNetworkSession.SpawnForSlot"/> — 온보딩 1단계가 "기상(숙소)" 라
+    /// fb71c1b 에서 조종석에서 옮겨왔다) 그래서 넷은 시작하자마자 숙소↔광장 생활문
+    /// <b>하나</b>를 같이 지나야 하고, 배에서 유일하게 4인이 한 점에 몰리는 자리가 거기다.
     /// </summary>
     public sealed class LastShiftFourCrewTrafficPlayModeTests
     {
@@ -159,11 +159,11 @@ namespace DoodleUp.Tests.PlayMode
         // ── 2. 동시 동선 ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// 넷이 <b>같은 시각에</b> 조종석 방을 떠나 서로 다른 네 목적지로 간다. 개구부 하나에서
-        /// 갈라져 압력문 셋 + 생활문 하나로 흩어지는, 4인 플레이의 표준 첫 동선이다.
+        /// 넷이 <b>같은 시각에</b> 숙소를 떠나 서로 다른 네 목적지로 간다. 생활문 하나에서
+        /// 갈라져 압력문 셋 + 조종석 개구부로 흩어지는, 4인 플레이의 표준 첫 동선이다.
         /// </summary>
         [UnityTest]
-        public IEnumerator FourCrewLeaveTheCockpitThroughOneOpeningAndReachFourDifferentDestinations()
+        public IEnumerator FourCrewLeaveTheQuartersThroughOneDoorAndReachFourDifferentDestinations()
         {
             yield return OpenEveryPressureDoor();
 
@@ -237,14 +237,21 @@ namespace DoodleUp.Tests.PlayMode
         }
 
         /// <summary>
-        /// 목적지 넷은 압력 구역 셋 + 부속 하나다. 경유점에 <b>코어를 피하는 꺾임</b>이 들어가는
-        /// 이유는 광장 한가운데가 <c>4 x 4</c> 코어로 막혀 있어 직선이 안 나기 때문이다 —
+        /// 목적지 넷은 압력 구역 셋 + 조종석이다. <b>출발이 숙소</b>라 넷은 먼저 생활문
+        /// <c>(4.8, 6)</c> 하나로 몰렸다가 광장에서 흩어진다. 경유점에 <b>코어를 피하는 꺾임</b>이
+        /// 들어가는 이유는 광장 한가운데가 <c>4 x 4</c> 코어로 막혀 있어 직선이 안 나기 때문이다 —
         /// 실플레이에서도 사람이 그렇게 돈다.
         ///
         /// <b>문은 정면으로만 지난다.</b> 구멍이 <c>1.6m</c> 뿐이라 벌크헤드를 비스듬히 가로지르는
         /// 경유점을 주면 캡슐이 문틀 옆 벽면을 긁으며 서고, 그때 재는 것은 "4인이 몰려서 막혔다"가
         /// 아니라 "대각선으로 벽에 박았다"가 된다. 그래서 문마다 앞뒤로 <b>정렬 경유점</b>을 놓아
         /// 통과 방향을 문 법선에 맞춘다 — 실플레이에서 사람이 문을 나온 뒤에 방향을 트는 것과 같다.
+        ///
+        /// <b>숙소 안에서는 문 x 를 잡은 채 -z 로만 내려간다.</b> 숙소 서쪽은 냉각실과 맞댄
+        /// 칸막이(<c>walls_007</c>, <c>x = 4</c> 평면)이고 그 벽에는 구멍이 없다. 나가기 전에
+        /// 광장 쪽 목적지를 먼저 겨누면 넷이 그대로 그 벽에 박힌다 — 스폰이 조종석에서 숙소로
+        /// 옮겨온(fb71c1b) 뒤에도 이 경로가 조종석 개구부를 첫 경유점으로 들고 있어서 실제로
+        /// 넷 다 <c>(4.52, 6.7~8.6)</c> 에 갇혔다.
         /// </summary>
         private static List<Route> BuildDispersalRoutes()
         {
@@ -254,34 +261,40 @@ namespace DoodleUp.Tests.PlayMode
             var life = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.LifeSupportRoom).Waypoint; // (+6, 0)
             var quarters = LastShiftPlazaLayout.DoorOf(LastShiftPlazaSpace.Quarters).Waypoint;   // (4.8, 6)
 
-            // 개구부를 <b>빠져나온 자리</b>. 넷이 여기서 처음 흩어진다. 코어(±2) 밖이다.
-            var plazaSide = new Vector2(-4.8f, 0f);
+            // 생활문을 <b>빠져나온 자리</b>. 넷이 여기서 처음 흩어진다. 코어(±2) 밖이고
+            // 광장 안(z < 6)이다.
+            var plazaSide = new Vector2(quarters.x, 4.8f);
 
             return new List<Route>
             {
-                // 전력실. 개구부에서 좌현 아래로 비스듬히 내려가 문 앞에서 정렬한다.
+                // 전력실. 문을 나와 우현을 따라 선미로 내려간 뒤 문 앞에서 정렬한다.
                 new(0, "전력실", new List<Vector2>
-                    { opening, plazaSide, new(0f, -4.5f), power, Center(LastShiftPlazaSpace.PowerRoom) }),
+                {
+                    quarters, plazaSide, new(4.5f, 0f), new(4.5f, -4.5f), new(0f, -4.5f),
+                    power, Center(LastShiftPlazaSpace.PowerRoom)
+                }),
 
-                // 냉각실. 같은 요령으로 우현 위쪽. 문을 지난 뒤 <b>좌현으로 한 번 비킨다</b> —
-                // 문 정면 z=7.2 에 CoolingCanister 가 서 있어 문에서 방 중심까지 직선이 안 난다.
+                // 냉각실. 문을 나와 광장 위쪽을 가로질러 냉각문 앞에서 정렬한다. 문을 지난 뒤
+                // <b>좌현으로 한 번 비킨다</b> — 문 정면 z=7.2 에 CoolingCanister 가 서 있어
+                // 문에서 방 중심까지 직선이 안 난다.
                 new(1, "냉각실", new List<Vector2>
                 {
-                    opening, plazaSide, new(0f, 4.5f), cooling, new(0f, 6.6f), new(-1.5f, 7.4f),
+                    quarters, plazaSide, new(0f, 4.5f), cooling, new(0f, 6.6f), new(-1.5f, 7.4f),
                     Center(LastShiftPlazaSpace.CoolingRoom)
                 }),
 
-                // 산소실. 코어를 우현으로 크게 돌아 선미로 간다.
+                // 산소실. 우현을 따라 내려와 선미 문 앞에서 정렬한다.
                 new(2, "산소실", new List<Vector2>
                 {
-                    opening, plazaSide, new(-4.5f, 4.5f), new(4.5f, 4.5f), new(4.5f, 0f),
-                    life, Center(LastShiftPlazaSpace.LifeSupportRoom)
+                    quarters, plazaSide, new(4.5f, 0f), life, Center(LastShiftPlazaSpace.LifeSupportRoom)
                 }),
 
-                // 숙소. 에어록 홀 폐지(2026-08-10) 이후 유일하게 남은 생활문(비압력) 목적지다.
-                // 코어를 우현 위로 크게 돌아 문 앞에서 정렬한다.
-                new(3, "숙소", new List<Vector2>
-                    { opening, plazaSide, new(-4.5f, 4.5f), new(4.5f, 4.5f), quarters, Center(LastShiftPlazaSpace.Quarters) })
+                // 조종석. 코어를 뱃머리 쪽으로 크게 돌아 개구부 앞에서 정렬한다.
+                new(3, "조종석", new List<Vector2>
+                {
+                    quarters, plazaSide, new(-4.5f, 4.5f), new(-4.5f, 0f), opening,
+                    Center(LastShiftPlazaSpace.CockpitRoom)
+                })
             };
         }
 
