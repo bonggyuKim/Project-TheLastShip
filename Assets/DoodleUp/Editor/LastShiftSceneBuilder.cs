@@ -252,6 +252,7 @@ namespace DoodleUp.Editor
             // 두께는 아트 몫이라 코드가 미리 못 쓴다. 돌려 놓은 뒤 실측 상자로 벽에 붙인다.
             instance.transform.position += new Vector3(
                 wallX - CombinedRendererBounds(instance).max.x, 0f, 0f);
+            GroundOnMainDeck(instance);
         }
 
         /// <summary>본선 방 넷. 광장은 여기 없다 — 방이 아니라 허브다.</summary>
@@ -1053,11 +1054,36 @@ namespace DoodleUp.Editor
                 instance.name = prop.id;
                 instance.transform.localEulerAngles = prop.eulerAngles;
 
+                // 드레싱 데이터의 bottomY=0은 논리 갑판 원점이다. 실제 모듈 바닥은 두께가
+                // 있어 윗면이 더 높으므로, 바닥 프리팹의 실측 보행면에 렌더러 밑면을 맞춘다.
+                // 이 보정이 없으면 하부 마운트가 판 안에 잠기고 본체만 가는 봉 위에 떠 보인다.
+                if (prop.prefab != null && Mathf.Abs(prop.bottomY) <= 0.001f && IsMainDeckSpace(prop.space))
+                    GroundOnMainDeck(instance);
+
                 // 상태 단서에는 조건을 붙인다. 구역이 위기 등급일 때만 뜨고, 켜질 때 0.8초 ·
                 // 걷힐 때 1.2초로 이어서 움직인다(game-art 확정 2026-08-12).
                 if (stateResponsive)
                     instance.AddComponent<LastShiftStateCueView>().Configure(ZoneOfSpace(prop.space));
             }
+        }
+
+        private static bool IsMainDeckSpace(LastShiftDressingSpace space) =>
+            space.kind is LastShiftDressingSpaceKind.Zone
+                or LastShiftDressingSpaceKind.Compartment
+                or LastShiftDressingSpaceKind.Plaza;
+
+        /// <summary>
+        /// 바닥 두께와 프리팹 피벗을 별도 리터럴로 복제하지 않고, 실제 렌더러 밑면을 실제
+        /// 보행면에 붙인다. 조종석 좌석과 세 기능실 설비가 공유하는 접지 경로다.
+        /// </summary>
+        private static void GroundOnMainDeck(GameObject instance)
+        {
+            var deckY = LastShiftModularKitImporter.DeckSurfaceY();
+            if (float.IsNaN(deckY))
+                throw new System.InvalidOperationException("모듈 바닥 보행면을 측정할 수 없다.");
+
+            var bounds = CombinedRendererBounds(instance);
+            instance.transform.position += Vector3.up * (deckY - bounds.min.y);
         }
 
         /// <summary>

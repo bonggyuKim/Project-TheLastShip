@@ -802,6 +802,14 @@ namespace DoodleUp.Editor
                 : structural.transform.localToWorldMatrix.MultiplyPoint(structural.sharedMesh.bounds.max).y;
         }
 
+        /// <summary>현재 모듈 바닥의 실제 보행면. 드레싱과 설비가 같은 측정값을 공유한다.</summary>
+        public static float DeckSurfaceY()
+        {
+            var floor = AssetDatabase.LoadAssetAtPath<GameObject>(
+                $"{PrefabFolder}/LPK_Floor_Square_2m.prefab");
+            return floor == null ? float.NaN : PanelTopY(floor);
+        }
+
 
         /// <summary>
         /// 이 판이 EVA 샤프트를 막는가. 막으면 깔지 않는다.
