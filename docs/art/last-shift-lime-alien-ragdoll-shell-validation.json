@@ -23,8 +23,8 @@
       ]
     },
     "RagdollShell_Arm_L": {
-      "verts": 43,
-      "polys": 56,
+      "verts": 579,
+      "polys": 1021,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
@@ -34,8 +34,8 @@
       ]
     },
     "RagdollShell_Arm_R": {
-      "verts": 41,
-      "polys": 50,
+      "verts": 486,
+      "polys": 868,
       "cross_chain_vertices": 0,
       "unweighted_vertices": 0,
       "allowed_bones": [
