@@ -1565,25 +1565,25 @@ MonoBehaviour:
     material: {fileID: 0}
     semantics: 0
     lightIntensity: 0
-    justification:
-  - id: Plaza_Bench_AftPort
+    justification: 기항 보급품을 광장 선수 우현에 내려 항해 진행에 따른 소모가 보이게 한다.
+  - id: Plaza_TetherRack_ForePort
     space:
       kind: 2
       zone: 0
       compartment: 0
       passage: 0
-    size: {x: 1.2, y: 0.45, z: 0.4}
+    size: {x: 2, y: 2.2, z: 0.8}
     anchorMode: 0
-    anchor: {x: 0.84, y: -0.87}
-    bottomY: 0.12
+    anchor: {x: -0.84, y: -0.87}
+    bottomY: 0
     clearance: 0.1
-    eulerAngles: {x: 0, y: 35, z: 0}
-    prefab: {fileID: 2320516647030953466, guid: ce7461d6ce4665926c0a174742edbbe1, type: 3}
+    eulerAngles: {x: 0, y: 90, z: 0}
+    prefab: {fileID: 7758386588804914788, guid: ba3c0a819ea14694ca7f59a43306afc5, type: 3}
     material: {fileID: 0}
     semantics: 0
     lightIntensity: 0
-    justification:
-  - id: Plaza_AbandonedCrate_PortStern
+    justification: EVA 승강이 중앙 코어이므로 테더와 장구는 출발점 옆에 둔다.
+  - id: Plaza_RepairMaterials_AftPort
     space:
       kind: 2
       zone: 0
@@ -1591,12 +1591,29 @@ MonoBehaviour:
       passage: 0
     size: {x: 0.95, y: 1.53, z: 0.81}
     anchorMode: 0
-    anchor: {x: 0.86, y: 0.84}
+    anchor: {x: 0.86, y: -0.84}
     bottomY: 0
     clearance: 0.06
-    eulerAngles: {x: 0, y: -18, z: 0}
+    eulerAngles: {x: 0, y: 18, z: 0}
     prefab: {fileID: 3032783179222453495, guid: 1d6f0a472c94446ea7d92072debd688f, type: 3}
     material: {fileID: 0}
     semantics: 0
     lightIntensity: 0
-    justification:
+    justification: 전력실과 생명유지실 양쪽에서 가까운 모서리에 공용 수리 자재를 둔다.
+  - id: Plaza_ShiftBench_AftStarboard
+    space:
+      kind: 2
+      zone: 0
+      compartment: 0
+      passage: 0
+    size: {x: 1.2, y: 0.45, z: 0.4}
+    anchorMode: 0
+    anchor: {x: 0.84, y: 0.87}
+    bottomY: 0.12
+    clearance: 0.1
+    eulerAngles: {x: 0, y: -35, z: 0}
+    prefab: {fileID: 2320516647030953466, guid: ce7461d6ce4665926c0a174742edbbe1, type: 3}
+    material: {fileID: 0}
+    semantics: 0
+    lightIntensity: 0
+    justification: 숙소와 생명유지실 사이를 교대 전 잠깐 머무는 지점으로 읽히게 한다.
