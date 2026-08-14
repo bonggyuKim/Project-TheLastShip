@@ -77,15 +77,46 @@ namespace DoodleUp.Tests.EditMode
         }
 
         [Test]
-        public void SelfCollisionIsOffByDefaultBecauseTheCrewIsStubby()
+        public void SelfCollisionSurvivesForThePairsThatAreNotAlreadyOverlapping()
         {
-            var tuning = LastShiftRagdollTuning.Comic();
+            // 예전 기본값은 "전부 무시"였고, 그 상태로 뽑은 영상에서 팔·몸통이 머리 메시를
+            // 통과해 스킨이 찢어진 것처럼 보였다. 촌수 상한이 그래프 지름 이상으로 다시 올라가면
+            // 같은 증상이 그대로 돌아온다.
             var longest = LastShiftRagdollRig.Bones
                 .SelectMany(a => LastShiftRagdollRig.Bones.Select(b => LastShiftRagdollRig.GraphDistance(a.Part, b.Part)))
                 .Max();
 
-            Assert.That(tuning.SelfCollisionIgnoreDistance, Is.GreaterThanOrEqualTo(longest),
-                "자기 충돌을 남기면 팔·골반 캡슐이 처음부터 겹쳐 있어 리셋마다 래그돌이 터진다.");
+            Assert.That(LastShiftRagdollTuning.Comic().SelfCollisionIgnoreDistance, Is.LessThan(longest),
+                "촌수만으로 전부 끄면 몸이 서로를 통과한다 — 겹치는 쌍은 빌드 시점에 직접 재서 끈다.");
+        }
+
+        [Test]
+        public void BuiltRagdollKeepsMostSelfCollisionPairs()
+        {
+            var ragdoll = BuildRagdoll();
+
+            Assert.That(ragdoll.SelfCollisionsKept, Is.GreaterThan(0),
+                "살아남은 쌍이 없으면 자기 충돌이 사실상 꺼진 것이고, 몸이 서로를 통과한다.");
+
+            // 끄는 쌍은 "차렷 자세에서 이미 겹친 것"뿐이라 소수여야 한다. 절반을 넘으면
+            // 겹침 판정이 아니라 다른 이유로 무더기로 꺼지고 있다는 뜻이다.
+            Assert.That(ragdoll.SelfCollisionsKept, Is.GreaterThan(ragdoll.SelfCollisionsIgnored),
+                "겹친 쌍만 끄는데 꺼진 쪽이 더 많다면 판정이 의도대로 안 돌고 있다.");
+        }
+
+        [Test]
+        public void EveryPartResolvesItsOwnCollider()
+        {
+            // 뼈에서 GetComponentInChildren 로 찾으면 자식 뼈의 콜라이더를 먼저 집는다.
+            // 그 값으로 자기 충돌 쌍을 고르면 엉뚱한 쌍이 꺼지고, 증상은 화면에서만 드러난다.
+            var ragdoll = BuildRagdoll();
+
+            foreach (var collider in ragdoll.Colliders)
+                Assert.That(collider.transform.parent, Is.Not.Null,
+                    "콜라이더 홀더는 항상 자기 뼈의 자식이어야 한다.");
+
+            Assert.That(ragdoll.Colliders.Count, Is.EqualTo(LastShiftRagdollRig.Bones.Length),
+                "부위마다 콜라이더가 정확히 하나여야 부위 → 콜라이더 대응이 성립한다.");
         }
 
         [Test]

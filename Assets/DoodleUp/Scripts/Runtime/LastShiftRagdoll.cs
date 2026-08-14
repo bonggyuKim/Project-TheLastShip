@@ -31,6 +31,15 @@ namespace DoodleUp.Runtime
         private readonly List<Collider> _colliders = new List<Collider>();
         private readonly List<RestPose> _restPoses = new List<RestPose>();
 
+        /// <summary>
+        /// 부위 → 그 부위 <b>자신의</b> 콜라이더. 뼈에서 <c>GetComponentInChildren</c> 로 찾으면
+        /// 안 된다 — 콜라이더 홀더는 뼈의 <b>마지막</b> 자식이라, 자식 뼈를 가진 부위(골반·가슴 등)는
+        /// 깊이 우선 탐색이 자식 뼈 쪽 콜라이더를 먼저 집는다. 자기 충돌을 끌 쌍을 고르는 데
+        /// 그 값을 쓰면 엉뚱한 쌍이 꺼진다.
+        /// </summary>
+        private readonly Dictionary<LastShiftRagdollPart, Collider> _colliderOf =
+            new Dictionary<LastShiftRagdollPart, Collider>();
+
         private LastShiftRagdollTuning _tuning;
         private LastShiftRagdollSettle _settle;
         private float _restSeconds;
@@ -309,7 +318,10 @@ namespace DoodleUp.Runtime
             _bodies.Clear();
             _bodyList.Clear();
             _colliders.Clear();
+            _colliderOf.Clear();
             _restPoses.Clear();
+            SelfCollisionsIgnored = 0;
+            SelfCollisionsKept = 0;
             Root = null;
         }
 
@@ -381,6 +393,7 @@ namespace DoodleUp.Runtime
                 var sphere = holder.AddComponent<SphereCollider>();
                 sphere.radius = radius / uniformScale;
                 _colliders.Add(sphere);
+                _colliderOf[spec.Part] = sphere;
                 return;
             }
 
@@ -407,10 +420,12 @@ namespace DoodleUp.Runtime
             capsule.radius = capsuleRadius / uniformScale;
             capsule.height = Mathf.Max(length, capsuleRadius * 2f) / uniformScale;
             _colliders.Add(capsule);
+            _colliderOf[spec.Part] = capsule;
         }
 
         private void AddJoint(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
         {
+            var tuning = _tuning;
             var bone = bones[spec.BoneName];
             var joint = bone.gameObject.GetComponent<CharacterJoint>();
             if (joint == null) joint = bone.gameObject.AddComponent<CharacterJoint>();
@@ -420,8 +435,8 @@ namespace DoodleUp.Runtime
             joint.autoConfigureConnectedAnchor = true;
             joint.enablePreprocessing = false;
             joint.enableProjection = true;
-            joint.projectionDistance = 0.05f;
-            joint.projectionAngle = 15f;
+            joint.projectionDistance = tuning.JointProjectionDistance;
+            joint.projectionAngle = tuning.JointProjectionAngle;
             joint.enableCollision = false;
 
             var twist = TwistDirection(bones, spec);
@@ -456,26 +471,70 @@ namespace DoodleUp.Runtime
             return fromParent.sqrMagnitude > 1e-8f ? fromParent.normalized : transform.up;
         }
 
+        /// <summary>
+        /// 자기 몸끼리 충돌을 <b>꼭 필요한 쌍만</b> 끈다.
+        ///
+        /// <b>전부 끄면 몸이 서로를 통과한다.</b> 예전 기본값(<c>SelfCollisionIgnoreDistance = 99</c>)이
+        /// 그랬고, 그 상태로 뽑은 영상에서 팔·몸통이 머리 메시 안으로 파고들어 스킨이 찢어져
+        /// 보였다 — 스킨이 실제로 찢어진 게 아니라 <b>가려 줄 충돌이 아예 없었다.</b>
+        /// (실측으로 확인: 스킨 웨이트는 전부 물리로 구동되는 뼈에 걸려 있고, 조인트가 벌어진
+        /// 최대치도 3cm 라 둘 다 원인이 아니었다.)
+        ///
+        /// 그렇다고 전부 켜면 첫 프레임에 터진다. 이 승무원은 땅딸막해서 <b>차렷 자세에서 이미</b>
+        /// 위팔 캡슐이 몸통과 겹쳐 있고, 겹친 채로 만난 두 콜라이더는 서로를 밀어내며 폭발한다.
+        ///
+        /// 그래서 거리 기준(관절로 이어진 직계 쌍)에 더해, <b>차렷 자세에서 실제로 겹쳐 있는
+        /// 쌍</b>만 골라서 끈다. 폭발의 씨앗은 겹침이지 촌수가 아니므로, 겹침을 직접 재는 쪽이
+        /// 촌수로 뭉뚱그리는 것보다 정확하다 — 안 겹친 쌍은 전부 살아남아 서로를 막는다.
+        /// </summary>
         private void IgnoreNearbySelfCollisions(LastShiftRagdollTuning tuning)
         {
+            var ignored = 0;
+            var kept = 0;
+
             for (var a = 0; a < LastShiftRagdollRig.Bones.Length; a++)
             for (var b = a + 1; b < LastShiftRagdollRig.Bones.Length; b++)
             {
                 var partA = LastShiftRagdollRig.Bones[a].Part;
                 var partB = LastShiftRagdollRig.Bones[b].Part;
-                if (LastShiftRagdollRig.GraphDistance(partA, partB) > tuning.SelfCollisionIgnoreDistance) continue;
 
                 var colliderA = ColliderOf(partA);
                 var colliderB = ColliderOf(partB);
                 if (colliderA == null || colliderB == null) continue;
+
+                var near = LastShiftRagdollRig.GraphDistance(partA, partB) <= tuning.SelfCollisionIgnoreDistance;
+                if (!near && !OverlapsAtRest(colliderA, colliderB))
+                {
+                    kept++;
+                    continue;
+                }
+
                 UnityEngine.Physics.IgnoreCollision(colliderA, colliderB, true);
+                ignored++;
             }
+
+            SelfCollisionsIgnored = ignored;
+            SelfCollisionsKept = kept;
         }
+
+        /// <summary>차렷 자세에서 두 콜라이더가 이미 파고들어 있는가. 빌드 직후에만 뜻이 있다.</summary>
+        private static bool OverlapsAtRest(Collider a, Collider b)
+        {
+            return UnityEngine.Physics.ComputePenetration(
+                a, a.transform.position, a.transform.rotation,
+                b, b.transform.position, b.transform.rotation,
+                out _, out _);
+        }
+
+        /// <summary>충돌을 끈 쌍 수. 전부 꺼져 있으면 몸이 서로를 통과한다 — 회귀 시험이 이 값을 본다.</summary>
+        public int SelfCollisionsIgnored { get; private set; }
+
+        /// <summary>충돌을 살려 둔 쌍 수. 0 이면 자기 충돌이 사실상 없는 것이다.</summary>
+        public int SelfCollisionsKept { get; private set; }
 
         private Collider ColliderOf(LastShiftRagdollPart part)
         {
-            if (!_bodies.TryGetValue(part, out var body) || body == null) return null;
-            return body.GetComponentInChildren<Collider>();
+            return _colliderOf.TryGetValue(part, out var collider) ? collider : null;
         }
 
         private Dictionary<string, Transform> ResolveBones()
