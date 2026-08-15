@@ -51,6 +51,56 @@ namespace DoodleUp.Tests.PlayMode
         /// </summary>
         private static bool AnythingOnScreen() => LastShiftOnboardingBanner.IsVisible;
 
+        /// <summary>
+        /// 안내 줄이 <b>실제로 캔버스에 있는가</b>. 판정과 렌더를 대조하는 쪽이다.
+        ///
+        /// <b>에디터에서만 뜻이 있다.</b> 배치 모드에는 <c>OnGUI</c> 가 안 돌아 조각이 애초에
+        /// 안 빌려지므로 여기는 항상 거짓이다 — 그래서 화면이 있는 판에서만 검사한다
+        /// (<see cref="CrossCheckRender"/>).
+        /// </summary>
+        private static bool CanvasHasGuidance()
+        {
+            foreach (var text in Object.FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
+            {
+                if (text.name != "Label:tutorialGuide") continue;
+                if (!text.isActiveAndEnabled || string.IsNullOrEmpty(text.text)) continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 판정은 "떠 있다" 인데 캔버스가 비어 있던 <b>연속 시간</b>의 최댓값.
+        ///
+        /// <b>프레임 수로 세면 안 된다.</b> 코루틴은 <c>Update</c> 에서 도는데 <c>OnGUI</c> 는
+        /// 그보다 뒤라, 줄이 바뀌는 프레임에는 캔버스가 아직 앞 프레임 값(타이핑 0 글자)을
+        /// 들고 있다 — 에디터 실측에서 이 한 프레임 지연이 줄 수만큼(10 개) 잡혔고, 그건
+        /// 렌더 사고가 아니라 순서다. 진짜 사고(층 없음·임대 만료·OnGUI 미실행)는 계속 어긋난다.
+        /// </summary>
+        private float worstRenderMismatch;
+
+        private float renderMismatchStreak;
+
+        /// <summary>그 어긋남을 처음 본 자리.</summary>
+        private string firstRenderMismatch = string.Empty;
+
+        private void CrossCheckRender(string label, float allowedSeconds)
+        {
+            if (Application.isBatchMode) return;
+            if (!LastShiftOnboardingBanner.IsVisible || CanvasHasGuidance())
+            {
+                renderMismatchStreak = 0f;
+                return;
+            }
+
+            renderMismatchStreak += Time.deltaTime;
+            if (renderMismatchStreak <= worstRenderMismatch) return;
+            worstRenderMismatch = renderMismatchStreak;
+            if (worstRenderMismatch > allowedSeconds && firstRenderMismatch.Length == 0)
+                firstRenderMismatch = $"[{label}] {LastShiftOnboardingBanner.Describe()}";
+        }
+
         private static string Snapshot() => LastShiftOnboardingBanner.Describe();
 
         /// <summary>
@@ -126,6 +176,14 @@ namespace DoodleUp.Tests.PlayMode
                     firstBlank = $"[{label}] {Snapshot()}";
             }
 
+            // 판정과 렌더를 <b>같은 프레임에</b> 대조한다(카드 요청). 배치 모드에서는
+            // 세지 않는다 — OnGUI 가 안 도는 것이 게임 결함이 아니기 때문이다.
+            void SampleBoth(string label)
+            {
+                Sample(label);
+                CrossCheckRender(label, AllowedBlankSeconds);
+            }
+
             IEnumerator Stand(Vector3 target, float seconds, string label)
             {
                 Move(player, target);
@@ -134,7 +192,7 @@ namespace DoodleUp.Tests.PlayMode
                 {
                     yield return null;
                     left -= Time.deltaTime;
-                    Sample(label);
+                    SampleBoth(label);
                 }
 
                 log.Append(label).Append(" -> ").Append(Snapshot())
@@ -168,7 +226,7 @@ namespace DoodleUp.Tests.PlayMode
             {
                 yield return null;
                 closing += Time.deltaTime;
-                Sample("closing");
+                SampleBoth("closing");
             }
 
             Assert.That(LastShiftPatrolNarration.IsComplete, Is.True,
@@ -183,6 +241,12 @@ namespace DoodleUp.Tests.PlayMode
 
             Assert.That(worstBlank, Is.LessThanOrEqualTo(AllowedBlankSeconds),
                 $"안내가 {worstBlank:F2}초 연속으로 비었다. 처음 빈 자리: {firstBlank}\n{log}");
+
+            // <b>판정은 떴다는데 캔버스가 비어 있던 구간.</b> 에디터에서만 잡히는 축이고,
+            // 여기 걸리면 원인은 상태기가 아니라 그리는 쪽(층 없음·임대 만료·OnGUI 미실행)이다.
+            Assert.That(worstRenderMismatch, Is.LessThanOrEqualTo(AllowedBlankSeconds),
+                $"안내가 상태로는 떠 있는데 캔버스에서는 {worstRenderMismatch:F2}초 연속으로 비었다. " +
+                $"처음 어긋난 자리: {firstRenderMismatch}\n{log}");
         }
 
         /// <summary>
