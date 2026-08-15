@@ -40,28 +40,18 @@ namespace DoodleUp.Tests.PlayMode
             LastShiftExternalStimulus.Clear();
         }
 
-        /// <summary>지금 캔버스에 실제로 글자가 하나라도 그려져 있는가.</summary>
-        private static bool AnythingOnScreen()
-        {
-            foreach (var text in Object.FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
-            {
-                if (!text.isActiveAndEnabled || string.IsNullOrEmpty(text.text)) continue;
-                // 조준점은 "안내" 가 아니다 — 그것만 남은 화면이 곧 사용자가 말한 빈 화면이다.
-                if (text.name == "Label:crosshair") continue;
-                return true;
-            }
+        /// <summary>
+        /// 지금 안내가 화면에 있는가.
+        ///
+        /// <b>캔버스를 안 센다.</b> 예전에는 활성 <c>Text</c> 를 훑었는데, 그 조각은
+        /// <c>OnGUI</c> 가 매 프레임 빌려 주는 것이고 <b>배치 모드에는 OnGUI 가 아예 안
+        /// 돈다</b> — 그래서 이 검사는 헤드리스에서 온보딩과 무관하게 항상 빨갛고(실측
+        /// 10,343 프레임), 정작 컨트롤러 안의 계기는 한 줄도 안 남았다. 그리기 <b>직전</b>의
+        /// 판정을 보면 렌더 없이도 같은 것을 재고, 이 픽스처가 비로소 회귀를 잡는다.
+        /// </summary>
+        private static bool AnythingOnScreen() => LastShiftOnboardingBanner.IsVisible;
 
-            return false;
-        }
-
-        private static string Snapshot() =>
-            $"patrol={LastShiftPatrolNarration.HasLine} " +
-            $"director={LastShiftNarrationDirector.HasLine} " +
-            $"tutorialRunning={LastShiftTutorial.IsRunning} " +
-            $"step={LastShiftTutorial.Step} " +
-            $"wake={LastShiftWakeSequence.IsRunning} " +
-            $"standing={LastShiftStandingNarration.HasLine} " +
-            $"armed={LastShiftTutorial.IsArmed}";
+        private static string Snapshot() => LastShiftOnboardingBanner.Describe();
 
         /// <summary>
         /// 방을 만들고 순회를 끝까지 돌린 뒤, <b>빈 프레임이 하나라도 있었는지</b> 본다.
@@ -92,16 +82,49 @@ namespace DoodleUp.Tests.PlayMode
             Assert.That(player, Is.Not.Null, "승무원이 안 떴다");
 
             // 도입부는 조작이 잠긴 구간이라 끝날 때까지 기다린다.
+            //
+            // <b>기다리기만 하면 안 끝난다.</b> 마지막 두 줄(<c>AI_W_06</c>·<c>AI_W_07</c>)은
+            // 시간이 아니라 <b>플레이어 행동</b>이 미는데, 이 검사는 좌표를 옮겨 놓을 뿐이라
+            // 그 둘이 영영 안 온다 — 예전 실행에서 30초를 꽉 채우고도 <c>wake=True</c> 인 채로
+            // 진행했고, 그러면 도입부가 띠를 계속 잡아 순회 뒤 구간을 아예 안 재게 된다.
+            // 실제 플레이가 내는 신호를 여기서 그대로 낸다.
             var waited = 0f;
             while (LastShiftWakeSequence.IsRunning && waited < 30f)
             {
+                LastShiftWakeSequence.NotifyFirstMove();
+                LastShiftWakeSequence.NotifyQuartersDoorInRange();
                 waited += Time.deltaTime;
                 yield return null;
             }
 
+            Assert.That(LastShiftWakeSequence.IsRunning, Is.False,
+                $"도입부가 30초 안에 안 닫혔다 — {Snapshot()}");
+
             var log = new StringBuilder();
-            var blankFrames = 0;
+            var blankStreak = 0f;
+            var worstBlank = 0f;
             var firstBlank = string.Empty;
+
+            // 줄이 막 바뀐 프레임은 타이핑이 0 글자라 정상적으로 비어 있다(조항 N-1 의
+            // 찍는 연출). 그래서 <b>프레임 수가 아니라 연속으로 빈 시간</b>으로 잰다 —
+            // 런타임 경보(EmptyTextAlarmSeconds 1.5초)보다 빡빡하게 잡아, 한 줄 찍히는
+            // 시간(순회 0.83초)을 넘겨 비는 구간만 실패로 본다.
+            const float AllowedBlankSeconds = 1.0f;
+
+            void Sample(string label)
+            {
+                if (AnythingOnScreen())
+                {
+                    blankStreak = 0f;
+                    return;
+                }
+
+                blankStreak += Time.deltaTime;
+                if (blankStreak <= worstBlank) return;
+                worstBlank = blankStreak;
+                if (worstBlank > AllowedBlankSeconds && firstBlank.Length == 0)
+                    firstBlank = $"[{label}] {Snapshot()}";
+            }
 
             IEnumerator Stand(Vector3 target, float seconds, string label)
             {
@@ -111,9 +134,7 @@ namespace DoodleUp.Tests.PlayMode
                 {
                     yield return null;
                     left -= Time.deltaTime;
-                    if (AnythingOnScreen()) continue;
-                    blankFrames++;
-                    if (firstBlank.Length == 0) firstBlank = $"[{label}] {Snapshot()}";
+                    Sample(label);
                 }
 
                 log.Append(label).Append(" -> ").Append(Snapshot())
@@ -138,13 +159,30 @@ namespace DoodleUp.Tests.PlayMode
                 yield return Stand(Vector3.zero, 1.0f, "plaza-after-" + space);
             }
 
-            // 마지막 줄이 흐르고 자리를 놓는 구간. 여기가 사용자가 말한 빈 화면 자리다.
-            yield return Stand(Vector3.zero, 8f, "after-patrol");
+            // <b>안내가 실제로 닫힐 때까지 기다린다.</b> 예전에는 8초만 서 있다가 끝냈는데,
+            // 마지막 줄들이 아직 줄 서 있어서(<c>pending</c>) <c>IsComplete</c> 가 거짓인 채로
+            // 검사가 끝났다 — 정작 카드가 말하는 "순회 안내 종료 후" 구간을 한 번도 안 쟀다.
+            Move(player, Vector3.zero);
+            var closing = 0f;
+            while (!LastShiftPatrolNarration.IsComplete && closing < 60f)
+            {
+                yield return null;
+                closing += Time.deltaTime;
+                Sample("closing");
+            }
+
+            Assert.That(LastShiftPatrolNarration.IsComplete, Is.True,
+                $"순회 안내가 60초 안에 안 닫혔다 — pending={LastShiftPatrolNarration.PendingCount} " +
+                $"roomsLeft={LastShiftPatrolNarration.RoomsLeft} {Snapshot()}");
+            log.Append("patrol-closed -> ").Append(Snapshot()).Append('\n');
+
+            // 자리를 놓은 뒤가 사용자가 말한 그 자리다. 안내 띠가 이어받아야 한다.
+            yield return Stand(Vector3.zero, 12f, "after-patrol");
 
             Debug.Log("[BLANK_PROBE]\n" + log);
 
-            Assert.That(blankFrames, Is.Zero,
-                $"화면이 완전히 빈 프레임이 {blankFrames} 개 있었다. 처음 빈 자리: {firstBlank}\n{log}");
+            Assert.That(worstBlank, Is.LessThanOrEqualTo(AllowedBlankSeconds),
+                $"안내가 {worstBlank:F2}초 연속으로 비었다. 처음 빈 자리: {firstBlank}\n{log}");
         }
 
         /// <summary>
@@ -180,6 +218,12 @@ namespace DoodleUp.Tests.PlayMode
                 "단계가 None 으로 돌아갔다 — 그러면 배너 분기 3번이 통째로 안 그려진다");
             Assert.That(LastShiftTutorial.IsRunning, Is.True,
                 "튜토리얼이 멈췄다 — 안내 배너가 사라진다");
+
+            // <b>가만히 서 있으면 1단계에 남아야 한다.</b> 전이 신호가 "조종석 밖" 이던 동안은
+            // 숙소 스폰이 그 조건을 첫 틱에 이미 만족해서, 실측 로그가
+            // <c>step=1 ENTER elapsed=0.0</c> · <c>step=2 ENTER elapsed=0.0</c> 두 줄로 찍혔다.
+            Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.SightSalvage),
+                $"숙소에서 깨자마자 단계가 넘어갔다 — 1단계 안내가 한 프레임도 못 뜬다. {line}");
         }
 
         /// <summary>승무원을 그 자리로 옮긴다. 컨트롤러를 껐다 켜는 것이 프로젝트 규약이다.</summary>

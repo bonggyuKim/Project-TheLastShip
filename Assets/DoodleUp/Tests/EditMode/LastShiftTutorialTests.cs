@@ -42,8 +42,8 @@ namespace DoodleUp.Tests.EditMode
 
         /// <summary>지금 잔해·원장 상태를 그대로 담은 관측. 좌표 신호 셋만 인자로 받는다.</summary>
         private static LastShiftTutorialObservation Now(
-            bool leftCockpit = false, bool inHall = false, bool outside = false) =>
-            new(leftCockpit, inHall, outside,
+            bool leftQuarters = false, bool inHall = false, bool outside = false) =>
+            new(leftQuarters, inHall, outside,
                 LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                 LastShiftSalvage.Remaining, LastShiftMaterials.Balance);
 
@@ -89,9 +89,9 @@ namespace DoodleUp.Tests.EditMode
         {
             ArriveAtFirstPort();
 
-            LastShiftTutorial.Observe(Now(leftCockpit: true), 1f);
+            LastShiftTutorial.Observe(Now(leftQuarters: true), 1f);
             Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.CrossPlaza),
-                "조종석을 벗어나면 2단계다");
+                "깨어난 방을 벗어나면 2단계다");
 
             LastShiftTutorial.Observe(Now(true, inHall: true), 1f);
             Assert.That(LastShiftTutorial.Step, Is.EqualTo(LastShiftTutorialStep.CentralLift));

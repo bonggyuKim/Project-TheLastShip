@@ -55,11 +55,11 @@ namespace DoodleUp.Runtime
     public readonly struct LastShiftTutorialObservation
     {
         public LastShiftTutorialObservation(
-            bool crewLeftCockpit, bool crewInChamber, bool crewVacuum,
+            bool crewLeftQuarters, bool crewInChamber, bool crewVacuum,
             int carried, int carryCapacity, int remaining, int balance,
             bool liftAtDeck = true, bool liftAtHullTop = false)
         {
-            CrewLeftCockpit = crewLeftCockpit;
+            CrewLeftQuarters = crewLeftQuarters;
             CrewInChamber = crewInChamber;
             CrewVacuum = crewVacuum;
             LiftAtDeck = liftAtDeck;
@@ -70,8 +70,20 @@ namespace DoodleUp.Runtime
             Balance = balance;
         }
 
-        /// <summary>승무원 하나라도 조종석 공간 밖에 있는가. <c>1 → 2</c> 신호다.</summary>
-        public bool CrewLeftCockpit { get; }
+        /// <summary>
+        /// 승무원 하나라도 <b>깨어난 방 밖</b>에 있는가. <c>1 → 2</c> 신호다.
+        ///
+        /// <b>조종석에서 숙소로 옮겨 왔다</b>(2026-08-15). 스폰이 숙소로 바뀐 뒤
+        /// (<see cref="LastShiftShipDimensions.SpawnPoint"/>)에도 이 신호가 "조종석 밖" 이라,
+        /// 숙소에서 깨는 판은 <b>첫 관측 틱에 이미 참</b>이었다 — 실측으로
+        /// <c>step=1 ENTER elapsed=0.0</c> 바로 뒤에 <c>step=2 ENTER elapsed=0.0</c> 이 찍혔고,
+        /// <c>1</c>단계 안내는 한 프레임도 못 떴다.
+        ///
+        /// <b>여러 단계를 한 번에 통과하는 성질은 그대로다</b>(<see cref="Observe"/>): 숙소가
+        /// 아닌 모든 자리가 이 신호를 내므로, 복원·재접속으로 배 깊숙이 서 있는 판은 예전처럼
+        /// 다음 조건들이 이어서 걸린다.
+        /// </summary>
+        public bool CrewLeftQuarters { get; }
 
         /// <summary>
         /// 승무원 하나라도 <b>갑판 아래</b>에 있는가. <c>2 → 3</c> 신호다.
@@ -301,9 +313,8 @@ namespace DoodleUp.Runtime
         /// </summary>
         private static bool Satisfies(LastShiftTutorialStep step, in LastShiftTutorialObservation o) => step switch
         {
-            // 조종석을 벗어난다. 광장은 조종석과 같은 구역이지만(개구부라 문이 없다) 공간이
-            // 달라서 발자국 표가 둘을 가른다.
-            LastShiftTutorialStep.SightSalvage => o.CrewLeftCockpit,
+            // 깨어난 방(숙소)을 벗어난다. 방마다 발자국 표가 따로라 그 경계를 좌표로 안 잰다.
+            LastShiftTutorialStep.SightSalvage => o.CrewLeftQuarters,
 
             LastShiftTutorialStep.CrossPlaza => o.CrewInChamber,
 

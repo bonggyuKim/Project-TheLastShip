@@ -1110,7 +1110,7 @@ namespace DoodleUp.Runtime
             // 튜토리얼 관측 셋. 이 루프가 이미 승무원마다 좌표를 한 번씩 보므로 여기서 같이
             // 접는다 — 따로 돌면 "선외인가" 판정이 두 벌이 되고, 그 둘이 갈리는 순간
             // 화면에 산소 게이지가 뜬 단계와 상태기가 센 단계가 어긋난다.
-            var crewLeftCockpit = false;
+            var crewLeftQuarters = false;
             var crewInChamber = false;
             var crewVacuum = false;
             // 코어에 다가섰는가. 두 거리를 쓴다 — 접근(AI_B_01)과 도착(AI_F_01)이 대본에서
@@ -1138,7 +1138,10 @@ namespace DoodleUp.Runtime
 
                 var position = targetPlayer.transform.position;
                 var resolved = LastShiftPlazaLayout.TryResolveSpace(position.x, position.z, out var space);
-                crewLeftCockpit |= !resolved || space != LastShiftPlazaSpace.CockpitRoom;
+                // <b>깨어난 방(숙소)을 벗어났는가</b>. 조종석이 아니라 숙소인 것이 조건이다 —
+                // 스폰이 숙소로 옮겨 온 뒤(LastShiftShipDimensions.SpawnPoint) 조종석 기준으로
+                // 재면 첫 틱에 이미 참이라 1단계가 0초에 지나간다.
+                crewLeftQuarters |= !resolved || space != LastShiftPlazaSpace.Quarters;
                 // EVA 가 상향으로 뒤집히면서(2026-08-11) 신호원이 갑판 아래에서 승강
                 // 샤프트로 옮겨 왔다. 3단계는 "감압 챔버에 들어섰다" 이고 그 챔버가 곧
                 // 광장 중앙 코어다 - 평면 판정은 코어 그대로이고 높이는 배 안이면 된다.
@@ -1196,7 +1199,7 @@ namespace DoodleUp.Runtime
 
             LastShiftTutorial.Observe(
                 new LastShiftTutorialObservation(
-                    crewLeftCockpit, crewInChamber, crewVacuum,
+                    crewLeftQuarters, crewInChamber, crewVacuum,
                     LastShiftSalvage.Carried, LastShiftSalvage.CarryCapacity,
                     LastShiftSalvage.Remaining, LastShiftMaterials.Balance),
                 deltaTime);
@@ -2308,13 +2311,25 @@ namespace DoodleUp.Runtime
             // 것이었으니, 그 배제는 순환이었다. 이제 항해가 도는 동안은 무장과 무관하게 본다.
             if (!LastShiftVoyage.IsRunning) return;
 
-            var guided = false;
-            foreach (var label in FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
+            // <b>상태로 잰다.</b> 예전에는 캔버스에서 <c>Label:tutorialGuide</c> 를 찾았는데,
+            // 그 조각은 <c>OnGUI</c> 가 빌려 주는 것이고 <b>배치 모드에는 OnGUI 가 아예 안
+            // 돈다</b> — 그래서 자동 검사에서는 항상 "글자 없음" 이었고, 그 안의 계기도 한 줄도
+            // 안 남았다(진단이 세 번 0 건으로 돌아온 이유다). 그리기 이전의 판정
+            // (<see cref="LastShiftOnboardingBanner"/>)을 보면 렌더 없이도 같은 것을 잰다.
+            var guided = LastShiftOnboardingBanner.IsVisible;
+
+            // 화면이 있는 판에서는 <b>실제로 그려졌는지</b>도 같이 본다. 상태는 멀쩡한데 조각이
+            // 안 뜨는 경우(층 없음·임대 만료)가 따로 있고, 그쪽은 렌더가 있어야만 보인다.
+            if (guided && !Application.isBatchMode)
             {
-                if (label.name != "Label:tutorialGuide") continue;
-                if (!label.isActiveAndEnabled || string.IsNullOrEmpty(label.text)) continue;
-                guided = true;
-                break;
+                guided = false;
+                foreach (var label in FindObjectsByType<UnityEngine.UI.Text>(FindObjectsSortMode.None))
+                {
+                    if (label.name != "Label:tutorialGuide") continue;
+                    if (!label.isActiveAndEnabled || string.IsNullOrEmpty(label.text)) continue;
+                    guided = true;
+                    break;
+                }
             }
 
             if (guided)
@@ -2329,14 +2344,7 @@ namespace DoodleUp.Runtime
 
             emptyScreenReported = true;
             Debug.LogError($"[LAST_SHIFT_BANNER] result=NO_GUIDANCE emptyFor={emptyScreenSeconds:F1}s " +
-                           $"patrol={LastShiftPatrolNarration.HasLine} " +
-                           $"director={LastShiftNarrationDirector.HasLine} " +
-                           $"standing={LastShiftStandingNarration.HasLine} " +
-                           $"wake={LastShiftWakeSequence.IsRunning} " +
-                           $"tutorialRunning={LastShiftTutorial.IsRunning} " +
-                           $"step={LastShiftTutorial.Step} resolved={IsResolved} " +
-                           $"armed={LastShiftTutorial.IsArmed} " +
-                           $"patrolComplete={LastShiftPatrolNarration.IsComplete} " +
+                           $"{LastShiftOnboardingBanner.Describe()} resolved={IsResolved} " +
                            "detail=안내 줄이 화면에 없다");
         }
 
@@ -2396,59 +2404,54 @@ namespace DoodleUp.Runtime
             // 암전이 먼저다 — 튜토리얼 검사보다 위에 둔다. 알파가 0 이면 이 호출은 아무것도
             // 안 빌리므로 평상시 비용이 없다.
             layer.Fade(LastShiftWakeSequence.BlackoutAlpha);
-            // 기상이 먼저다 — 도입부가 도는 동안은 디렉터가 아직 한 줄도 안 띄운 상태라
-            // 실제로 겹치지 않지만, 순서를 코드에도 남겨 둔다.
-            // 상시 경고가 가장 위다 — 지금 하던 일과 무관하게 끼어드는 상태 통지라,
-            // 뜨는 동안은 진행 대사도 도입부도 덮는다.
-            if (LastShiftStandingNarration.HasLine)
+            // <b>순서를 여기서 안 정한다.</b> 어느 블록이 띠를 잡는지는
+            // <see cref="LastShiftOnboardingBanner.Source"/> 하나가 답한다 — 사슬을 여기 두면
+            // 그 판정이 OnGUI 안에만 있어서 배치 모드(=자동 검사)에서는 한 번도 안 돌고,
+            // "아무도 안 잡는 상태" 를 화면 밖에서 잴 수가 없었다.
+            switch (LastShiftOnboardingBanner.Source)
             {
-                DrawNarrationBanner(layer, LastShiftStandingNarration.Current,
-                    LastShiftStandingNarration.LineElapsedSeconds, 1f, 1f,
-                    LastShiftStandingNarration.PanelTone);
-                return;
+                case LastShiftOnboardingBannerSource.Standing:
+                    // 상시 경고가 가장 위다 — 지금 하던 일과 무관하게 끼어드는 상태 통지라,
+                    // 뜨는 동안은 진행 대사도 도입부도 덮는다.
+                    DrawNarrationBanner(layer, LastShiftStandingNarration.Current,
+                        LastShiftStandingNarration.LineElapsedSeconds, 1f, 1f,
+                        LastShiftStandingNarration.PanelTone);
+                    return;
+
+                case LastShiftOnboardingBannerSource.Wake:
+                    DrawNarrationBanner(layer, LastShiftWakeSequence.Current,
+                        LastShiftWakeSequence.LineElapsedSeconds,
+                        LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha,
+                        typed: !LastShiftWakeSequence.IsOpeningLine);
+                    return;
+
+                case LastShiftOnboardingBannerSource.Patrol:
+                    DrawNarrationBanner(layer, LastShiftPatrolNarration.Current,
+                        LastShiftPatrolNarration.LineElapsedSeconds, 1f, 1f,
+                        typingSeconds: LastShiftPatrolNarration.TypingSeconds);
+                    return;
+
+                case LastShiftOnboardingBannerSource.Director:
+                    DrawNarrationBanner(layer, LastShiftNarrationDirector.Current,
+                        LastShiftNarrationDirector.LineElapsedSeconds, 1f, 1f);
+                    return;
             }
 
-            if (LastShiftWakeSequence.HasLine)
+            if (LastShiftOnboardingBanner.Source == LastShiftOnboardingBannerSource.None)
             {
-                DrawNarrationBanner(layer, LastShiftWakeSequence.Current,
-                    LastShiftWakeSequence.LineElapsedSeconds,
-                    LastShiftWakeSequence.PanelAlpha, LastShiftWakeSequence.LineAlpha,
-                    typed: !LastShiftWakeSequence.IsOpeningLine);
-                return;
-            }
-
-            if (LastShiftPatrolNarration.HasLine && !LastShiftNarrationDirector.HasLine)
-            {
-                DrawNarrationBanner(layer, LastShiftPatrolNarration.Current,
-                    LastShiftPatrolNarration.LineElapsedSeconds, 1f, 1f,
-                    typingSeconds: LastShiftPatrolNarration.TypingSeconds);
-                return;
-            }
-
-            if (LastShiftNarrationDirector.HasLine)
-            {
-                DrawNarrationBanner(layer, LastShiftNarrationDirector.Current,
-                    LastShiftNarrationDirector.LineElapsedSeconds, 1f, 1f);
-                return;
-            }
-
-            if (!LastShiftTutorial.IsRunning)
-            {
-                // <b>여기가 화면이 비는 유일한 출구다.</b> 위 세 분기가 전부 안 걸리고 이 조건도
-                // 거짓이면 이 함수는 아무것도 안 그린다. 자동 재현으로는 이 자리에 못 갔는데
-                // 사용자는 계속 재현하므로, 실제로 여기 닿는 순간의 값을 스스로 남긴다.
+                // <b>여기가 화면이 비는 유일한 출구다.</b> 어느 블록도 띠를 안 잡으면 이 함수는
+                // 아무것도 안 그린다. 실제로 여기 닿는 순간의 값을 그대로 남긴다.
                 //
                 // <b>상태가 바뀔 때만 찍는다.</b> 프레임마다 찍으면 로그가 초당 60줄로 불어나
-                // 정작 그 순간을 못 찾는다. 온보딩이 끝난 평시에도 여기로 오므로(무장이 풀린
-                // 뒤) 무장 중일 때만 본다 — 그때가 "안내가 있어야 하는데 없는" 구간이다.
-                if (LastShiftTutorial.IsArmed)
+                // 정작 그 순간을 못 찾는다.
+                //
+                // <b>무장을 조건으로 걸지 않는다.</b> 예전에는 <c>IsArmed</c> 안에 들어 있었는데,
+                // 무장이 풀린 채로 기항에 서 있는 것이 바로 <b>영구 블랭크</b>가 나는 상태다 —
+                // 그 상태에서만 계기가 침묵했으니, 찾으려던 그 자리 하나가 정확히 사각이었다.
+                // 항해가 도는 동안은 무장과 무관하게 본다.
+                if (LastShiftVoyage.IsRunning)
                 {
-                    var blank = $"patrol={LastShiftPatrolNarration.HasLine}" +
-                                $" director={LastShiftNarrationDirector.HasLine}" +
-                                $" standing={LastShiftStandingNarration.HasLine}" +
-                                $" wake={LastShiftWakeSequence.IsRunning}" +
-                                $" step={LastShiftTutorial.Step}" +
-                                $" patrolComplete={LastShiftPatrolNarration.IsComplete}";
+                    var blank = LastShiftOnboardingBanner.Describe();
                     if (blank != lastBlankBannerState)
                     {
                         lastBlankBannerState = blank;
@@ -2542,11 +2545,9 @@ namespace DoodleUp.Runtime
             // 재촉으로 갈리면 <b>다시 찍는다</b> — 새 문장이 통째로 나타나면 앞 문장이
             // 그 자리에서 갈아치워진 것으로 보여 읽던 사람이 흐름을 놓친다.
             var swapped = line.HasNudge && lineElapsed >= line.NudgeAfterSeconds;
-            var text = swapped ? line.Nudge : LastShiftNarrationScript.Format(line);
-            if (typed)
-                text = LastShiftNarrationScript.Reveal(
-                    text, swapped ? lineElapsed - line.NudgeAfterSeconds : lineElapsed,
-                    typingSeconds > 0f ? typingSeconds : LastShiftNarrationScript.TypingSeconds);
+            // 문자열 계산은 <see cref="LastShiftOnboardingBanner.LineText"/> 한 곳이다 —
+            // 그리는 쪽과 재는 쪽이 각자 계산하면 그 둘이 갈리는 순간을 못 찾는다.
+            var text = LastShiftOnboardingBanner.LineText(line, lineElapsed, typed, typingSeconds);
             // <b>패널은 떴는데 글자가 계속 비는 경우를 잡는다.</b> 줄이 처음 뜬 프레임에는
             // 타이핑이 0 글자라 잠깐 비는 것이 정상이다 — 그래서 <b>얼마나 오래</b> 비었는지로
             // 가른다. 처음에는 줄이 바뀔 때만 찍었더니 그 정상적인 첫 프레임만 잡혀서
