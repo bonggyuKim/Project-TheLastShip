@@ -204,6 +204,92 @@ namespace DoodleUp.Tests.EditMode
                 $"지도에서 스폰 표식이 숙소 밖이다 — 표식 {marker}, 숙소 {room}");
         }
 
+        /// <summary>
+        /// <b>격자가 실제로 깔린다.</b> 눈금이 하나도 안 나오면 지도는 색만 바뀐 도면으로
+        /// 남는다 — "디지털처럼" 의 절반이 이 줄에 걸려 있다.
+        /// </summary>
+        [Test]
+        public void TheGridCoversThePlanOnBothAxes()
+        {
+            var plan = LastShiftMapView.Schematic(Screen);
+            var bands = new Rect[LastShiftMapView.MaxGridBands];
+
+            var count = LastShiftMapView.GridBands(plan, bands);
+
+            Assert.That(count, Is.GreaterThan(6), $"격자가 너무 성기다 — {count} 줄");
+            Assert.That(count, Is.LessThanOrEqualTo(bands.Length), "격자가 자리를 넘겼다");
+
+            var vertical = 0;
+            var horizontal = 0;
+            for (var i = 0; i < count; i++)
+            {
+                if (bands[i].width < bands[i].height) vertical++;
+                else horizontal++;
+            }
+
+            Assert.That(vertical, Is.GreaterThan(0), "세로줄이 없다");
+            Assert.That(horizontal, Is.GreaterThan(0), "가로줄이 없다");
+        }
+
+        /// <summary>
+        /// <b>눈금이 거리를 뜻한다.</b> 화면 사각형을 균등 분할하면 화면 비율이 바뀔 때
+        /// 격자가 배 위에서 미끄러진다 — 월드 원점에 물려 있는지를 여기서 잡는다.
+        /// </summary>
+        [Test]
+        public void TheGridLinesLandOnWholeMetreSteps()
+        {
+            var plan = LastShiftMapView.Schematic(Screen);
+            var bands = new Rect[LastShiftMapView.MaxGridBands];
+            var count = LastShiftMapView.GridBands(plan, bands);
+
+            for (var i = 0; i < count; i++)
+            {
+                var band = bands[i];
+                var vertical = band.width < band.height;
+                var world = plan.ToWorld(band.center);
+                var metres = vertical ? world.x : world.z;
+                var offGrid = Mathf.Abs(Mathf.Repeat(
+                    metres + LastShiftMapView.GridStepMeters * 0.5f,
+                    LastShiftMapView.GridStepMeters) - LastShiftMapView.GridStepMeters * 0.5f);
+
+                Assert.That(offGrid, Is.LessThan(0.05f),
+                    $"격자 줄이 눈금에서 벗어났다 — {metres:F2}m");
+            }
+        }
+
+        /// <summary>
+        /// <b>격자가 지도 밖으로 안 샌다.</b> 새면 눈금이 화면 여백까지 이어져서 지도
+        /// 경계가 사라지고, 그러면 테두리를 두른 뜻이 없다.
+        /// </summary>
+        [Test]
+        public void TheGridStaysInsideThePlan()
+        {
+            var plan = LastShiftMapView.Schematic(Screen);
+            var bands = new Rect[LastShiftMapView.MaxGridBands];
+            var count = LastShiftMapView.GridBands(plan, bands);
+            var frame = LastShiftMapView.PlanRect(Screen);
+
+            for (var i = 0; i < count; i++)
+            {
+                Assert.That(bands[i].center.x, Is.InRange(frame.xMin, frame.xMax),
+                    $"격자 줄이 지도 좌우를 넘었다 — {bands[i]}");
+                Assert.That(bands[i].center.y, Is.InRange(frame.yMin, frame.yMax),
+                    $"격자 줄이 지도 위아래를 넘었다 — {bands[i]}");
+            }
+        }
+
+        /// <summary>
+        /// <b>격자가 방보다 가늘다.</b> 같은 굵기면 두 층이 한 층으로 읽혀서 방 모양이
+        /// 격자에 녹는다.
+        /// </summary>
+        [Test]
+        public void TheGridIsThinnerThanARoomOutline()
+        {
+            Assert.That(LastShiftMapView.GridThickness,
+                Is.LessThan(LastShiftMapView.RoomOutline),
+                "격자가 방 테두리만큼 굵다 — 방이 격자에 묻힌다");
+        }
+
         private sealed class Vector2Comparer : System.Collections.Generic.IEqualityComparer<Vector2>
         {
             private readonly float tolerance;

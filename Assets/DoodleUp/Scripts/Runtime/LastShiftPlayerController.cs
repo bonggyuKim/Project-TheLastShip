@@ -1358,8 +1358,20 @@ namespace DoodleUp.Runtime
         {
             var plan = LastShiftMapView.Schematic(screen);
 
+            // 바탕은 계기가 쓰는 청람이 아니라 <b>지도 전용 남보라</b>다
+            // (<see cref="LastShiftUiTheme.MapBackdrop"/>). 지도가 떠 있는 동안에는 이 색이
+            // 화면 전체라, 그 위의 시안 선이 바탕과 채도만이 아니라 색상으로도 갈려야 한다.
             Tint(layer.Panel("map:backdrop", new Rect(0f, 0f, screen.x, screen.y)),
-                LastShiftUiTheme.PanelNavy, LastShiftMapView.BackdropAlpha);
+                LastShiftUiTheme.MapBackdrop, LastShiftMapView.BackdropAlpha);
+
+            // 격자와 테두리가 <b>방보다 먼저</b>다. 나중에 그리면 방 위를 지나가서 방이
+            // 격자에 잘린 것으로 보인다.
+            DrawMapGrid(layer, plan);
+
+            // 지도가 놓인 네모에 테두리를 두른다. 격자만 있으면 눈금이 화면 여백까지
+            // 이어진 것으로 읽히는데, 여기까지가 계기의 유리면이라는 것을 이 선이 정한다.
+            DrawMapOutline(layer, "map:frame", plan.Screen,
+                LastShiftUiTheme.MapLine, MapFrameAlpha, LastShiftMapView.GridThickness);
 
             // 방은 <b>테두리만</b> 그린다. 속을 칠하면 그 위의 표식이 배경에 묻힌다.
             //
@@ -1372,7 +1384,7 @@ namespace DoodleUp.Runtime
             {
                 var room = plan.ToScreenRect(
                     footprint.MinX, footprint.MaxX, footprint.MinZ, footprint.MaxZ);
-                DrawMapOutline(layer, "map:room" + index, room, LastShiftUiTheme.BodyText, 0.55f);
+                DrawMapOutline(layer, "map:room" + index, room, LastShiftUiTheme.MapLine, MapLineAlpha);
                 DrawMapRoomName(layer, index, room, footprint.Space);
                 index++;
             }
@@ -1382,7 +1394,9 @@ namespace DoodleUp.Runtime
             var core = plan.ToScreenRect(
                 -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent,
                 -LastShiftPlazaLayout.CoreHalfExtent, LastShiftPlazaLayout.CoreHalfExtent);
-            DrawMapOutline(layer, "map:core", core, LastShiftUiTheme.Unstable, 0.75f);
+            // 진하기는 방과 <b>같다</b>. 옅으면 못 지나가는 자리가 방보다 덜 중요한 것으로
+            // 읽히는데, 코어는 동선을 끊는 유일한 덩어리라 그 반대여야 한다. 색만 갈린다.
+            DrawMapOutline(layer, "map:core", core, LastShiftUiTheme.Unstable, MapLineAlpha);
 
             // 승강구 아이콘은 코어 <b>안</b>이다. 방 아이콘과 같은 18px 인 것이 규약이다 —
             // 크기가 다르면 중요도가 다른 것으로 읽힌다.
@@ -1404,7 +1418,7 @@ namespace DoodleUp.Runtime
                 var rect = door.PlaneIsX
                     ? plan.ToScreenRect(door.Plane - lip, door.Plane + lip, door.MinSpan, door.MaxSpan)
                     : plan.ToScreenRect(door.MinSpan, door.MaxSpan, door.Plane - lip, door.Plane + lip);
-                Tint(layer.Panel("map:door" + index, rect), LastShiftUiTheme.Nominal, 0.9f);
+                Tint(layer.Panel("map:door" + index, rect), LastShiftUiTheme.MapDoor, 1f);
                 index++;
             }
 
@@ -1414,7 +1428,7 @@ namespace DoodleUp.Runtime
             // 이 화면은 <c>M</c> 하나로 닫히고, 그 키를 안 적으면 나가는 길이 안 보인다.
             var hint = new Rect(0f, canvas.y - MapHintMargin - MapHintHeight, canvas.x, MapHintHeight);
             layer.LabelCanvas("map:hint", hint, LastShiftText.Get("hud.map.hint"),
-                MapHintFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.BodyText);
+                MapHintFontSize, TextAnchor.MiddleCenter, LastShiftUiTheme.MapLabel);
         }
 
         /// <summary>
@@ -1431,7 +1445,10 @@ namespace DoodleUp.Runtime
                 var mine = member == this;
                 var point = plan.ToScreen(member.transform.position);
                 var size = mine ? LastShiftMapView.SelfMarkerSize : LastShiftMapView.CrewMarkerSize;
-                var color = mine ? LastShiftUiTheme.Nominal : LastShiftUiTheme.Ivory;
+                // 초록은 지도에서 <b>나 하나만</b> 쓴다(문이 정상색을 쓰던 자리를 비웠다).
+                // 남은 순백이고, 아이콘과 같은 색인 것은 사고가 아니다 — 표식은 속이 찬
+                // 사각형이고 아이콘은 띠 몇 개라, 같은 색이어도 실루엣으로 갈린다.
+                var color = mine ? LastShiftUiTheme.Nominal : LastShiftUiTheme.MapIcon;
 
                 Tint(layer.Panel("map:crew" + index, LastShiftMapView.MarkerRect(point, size)), color, 1f);
 
@@ -1451,8 +1468,37 @@ namespace DoodleUp.Runtime
         /// <summary>아이콘 조각을 담는 자리. 프레임마다 새 배열을 안 만든다.</summary>
         private static readonly Rect[] MapIconScratch = new Rect[LastShiftRoomIcons.MaxBands];
 
-        /// <summary>지도 아이콘 진하기. 이름과 같은 색이되 한 단 옅다 — 사람 표식이 전경이다.</summary>
-        private const float MapIconAlpha = 0.85f;
+        /// <summary>
+        /// 지도 아이콘 진하기. <b>안 깎는다</b> — 아이콘이 지도에서 가장 밝은 것이고, 이름을
+        /// 색으로 한 단 내려(<see cref="LastShiftUiTheme.MapLabel"/>) 순서를 세운다.
+        ///
+        /// 예전에는 반대였다. 아이콘이 아이보리 <c>0.85</c> 이고 이름이 같은 아이보리 <c>1.0</c>
+        /// 이라, "아이콘이 먼저 읽히는 배치" 라고 적어 놓고 실제로는 이름이 더 밝았다.
+        /// </summary>
+        private const float MapIconAlpha = 1f;
+
+        /// <summary>
+        /// 지도 선 진하기. <b>방·코어가 같은 값을 쓴다</b> — 색으로만 갈리고 진하기로는 안
+        /// 갈려야, 굵기가 같은 선 두 종류가 같은 계통의 선으로 읽힌다. 문만 이보다 밝다
+        /// (<see cref="LastShiftUiTheme.MapDoor"/> 를 <c>1.0</c> 으로 칠한다).
+        /// </summary>
+        private const float MapLineAlpha = 0.9f;
+
+        /// <summary>
+        /// 격자 진하기. <b>여기서 제일 옅다</b> — 격자는 읽는 것이 아니라 거리감만 주는
+        /// 눈금이라, 눈에 띄면 방·표식이 그 위에서 안 읽힌다. 방 테두리
+        /// (<see cref="MapLineAlpha"/>)의 오분의 일이 그 경계다.
+        /// </summary>
+        private const float MapGridAlpha = 0.18f;
+
+        /// <summary>
+        /// 지도 테두리 진하기. 격자보다 진하고 방보다 옅다 — 계기의 가장자리는 있다는 것만
+        /// 알면 되고, 그 안의 방보다 먼저 읽히면 안 된다.
+        /// </summary>
+        private const float MapFrameAlpha = 0.4f;
+
+        /// <summary>격자 조각을 담는 자리. 프레임마다 새 배열을 안 만든다.</summary>
+        private static readonly Rect[] MapGridScratch = new Rect[LastShiftMapView.MaxGridBands];
 
         /// <summary>
         /// 방 하나의 머리표 — <b>아이콘 한 줄, 이름 한 줄</b>. 이름은
@@ -1475,21 +1521,36 @@ namespace DoodleUp.Runtime
 
             layer.Label("map:name" + index, LastShiftMapView.RoomNameRect(room),
                 LastShiftRoomLabels.NameOf(space), LastShiftMapView.RoomNameFontSize,
-                LastShiftUiTheme.Ivory, TextAnchor.MiddleCenter);
+                LastShiftUiTheme.MapLabel, TextAnchor.MiddleCenter);
         }
 
-        /// <summary><see cref="MapIconScratch"/> 에 접혀 있는 조각을 그대로 빌려 칠한다.</summary>
+        /// <summary>
+        /// <see cref="MapIconScratch"/> 에 접혀 있는 조각을 그대로 빌려 칠한다.
+        ///
+        /// <b>아이보리가 아니라 <see cref="LastShiftUiTheme.MapIcon"/> 이다.</b> 아이보리는
+        /// 노랑이 섞여 있어 남보라 바탕 위에서 크림색 종이로 읽힌다 — 팔레트만 바꾸고 이
+        /// 줄을 안 고치면 지도에서 <b>아이콘만</b> 옛 톤으로 남는다.
+        /// </summary>
         private static void DrawMapIcon(LastShiftUiLayer layer, string id, int bands)
         {
             for (var band = 0; band < bands; band++)
                 Tint(layer.Panel(id + ":" + band, MapIconScratch[band]),
-                    LastShiftUiTheme.Ivory, MapIconAlpha);
+                    LastShiftUiTheme.MapIcon, MapIconAlpha);
+        }
+
+        /// <summary>격자 눈금. 선이 스물 남짓이라 <b>조각을 프레임마다 새로 안 만든다</b>.</summary>
+        private static void DrawMapGrid(LastShiftUiLayer layer, in LastShiftHullSchematic plan)
+        {
+            var bands = LastShiftMapView.GridBands(plan, MapGridScratch);
+            for (var band = 0; band < bands; band++)
+                Tint(layer.Panel("map:grid" + band, MapGridScratch[band]),
+                    LastShiftUiTheme.MapLine, MapGridAlpha);
         }
 
         private static void DrawMapOutline(LastShiftUiLayer layer, string id, Rect rect,
-            Color color, float alpha)
+            Color color, float alpha, float thickness = LastShiftMapView.RoomOutline)
         {
-            LastShiftMapView.OutlineBands(rect, LastShiftMapView.RoomOutline, MapOutlineScratch);
+            LastShiftMapView.OutlineBands(rect, thickness, MapOutlineScratch);
             for (var side = 0; side < MapOutlineScratch.Length; side++)
                 Tint(layer.Panel(id + ":" + side, MapOutlineScratch[side]), color, alpha);
         }

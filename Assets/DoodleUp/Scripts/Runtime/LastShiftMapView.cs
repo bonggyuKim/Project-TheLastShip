@@ -213,6 +213,68 @@ namespace DoodleUp.Runtime
             new(screenPoint.x - size * 0.5f, screenPoint.y - size * 0.5f, size, size);
 
         /// <summary>
+        /// 격자 한 칸(m). <b>배의 자와 맞물린 값이다</b> — 방 깊이가 <c>6m</c>, 코어가
+        /// <c>4m</c> 라, <c>4</c> 로 끊으면 격자가 방 테두리와 자주 겹쳐 선이 두꺼워 보이지
+        /// 않으면서도 칸 하나가 "코어 하나 폭" 으로 읽힌다.
+        ///
+        /// <b>격자가 있는 것이 요점이다.</b> 실제로 위에서 찍은 그림에는 격자가 없다 —
+        /// 눈금이 규칙적으로 깔려 있으면 그 순간 화면에 띄운 계기가 되고, 색만 바꾼
+        /// 도면과 갈리는 것이 여기다(2026-08-15 사용자 피드백).
+        /// </summary>
+        public const float GridStepMeters = 4f;
+
+        /// <summary>
+        /// 격자 선 두께(px). <b>방 테두리(<see cref="RoomOutline"/>)의 절반이다</b> — 같은
+        /// 굵기면 격자와 방이 같은 층으로 읽혀서 방 모양이 격자에 녹는다.
+        /// </summary>
+        public const float GridThickness = 1f;
+
+        /// <summary>
+        /// <see cref="GridBands"/> 가 채울 자리 크기. 지금 자(반경 <c>19m</c> + 여백
+        /// <c>3m</c>, 칸 <c>4m</c>)로는 축마다 열한 줄이라 스물둘을 쓴다. 배가 커져도
+        /// 넘치는 만큼은 조용히 잘리고 예외는 안 난다.
+        /// </summary>
+        public const int MaxGridBands = 64;
+
+        /// <summary>
+        /// 격자 선을 <paramref name="into"/> 에 접어 넣고 개수를 준다. <b>월드 원점에
+        /// 물린다</b> — 화면 사각형에 맞춰 균등 분할하면 화면 비율이 바뀔 때 격자가 배
+        /// 위에서 미끄러지고, 그러면 눈금이 거리를 뜻하지 않게 된다.
+        ///
+        /// 세로줄 먼저, 가로줄이 뒤다. 그리는 쪽에서는 순서를 안 보지만 검사에서는
+        /// 앞뒤가 갈려야 한 축만 뒤집힌 것을 잡을 수 있다.
+        /// </summary>
+        public static int GridBands(in LastShiftHullSchematic plan, Rect[] into)
+        {
+            var rect = plan.Screen;
+            var step = GridStepMeters * plan.PixelsPerMeter;
+            if (step <= 0f || into == null || into.Length == 0) return 0;
+
+            var count = 0;
+            var half = GridThickness * 0.5f;
+
+            // 원점을 지나는 줄이 <c>k = 0</c> 이다. 양쪽으로 같은 수만큼 뻗으므로 지도가
+            // 좌우·상하로 대칭이고, 배가 한쪽으로 쏠려 보이지 않는다.
+            var spanX = Mathf.FloorToInt(rect.width * 0.5f / step);
+            for (var k = -spanX; k <= spanX && count < into.Length; k++)
+            {
+                var x = rect.center.x + k * step;
+                if (x < rect.xMin || x > rect.xMax) continue;
+                into[count++] = new Rect(x - half, rect.yMin, GridThickness, rect.height);
+            }
+
+            var spanY = Mathf.FloorToInt(rect.height * 0.5f / step);
+            for (var k = -spanY; k <= spanY && count < into.Length; k++)
+            {
+                var y = rect.center.y + k * step;
+                if (y < rect.yMin || y > rect.yMax) continue;
+                into[count++] = new Rect(rect.xMin, y - half, rect.width, GridThickness);
+            }
+
+            return count;
+        }
+
+        /// <summary>
         /// 사각형 하나를 테두리 네 조각으로 쪼갠다. <b>속을 안 칠한다</b> — 방을 꽉 채우면
         /// 그 위에 얹은 표식이 배경에 묻히고, 겹친 방 경계도 안 보인다.
         /// </summary>

@@ -43,6 +43,54 @@ namespace DoodleUp.Runtime
         /// <summary>본문 글자색. IMGUI 시절 값 그대로다 — 두 층이 같이 보이는 동안 톤이 갈리면 안 된다.</summary>
         public static readonly Color BodyText = new(0.88f, 0.94f, 1f);
 
+        /// <summary>
+        /// 지도(<c>M</c>) 바탕 <c>#1E1438</c>. <see cref="PanelNavy"/> 보다 <b>보라 쪽</b>이고 한 단
+        /// 어둡다 — 계기·프롬프트가 쓰는 청람과 톤은 같은 계통이되, 지도가 떠 있는 동안에는
+        /// 화면 전체가 이 색이라 그 위에 얹는 시안 선이 배경과 명도로 먼저 갈려야 한다.
+        /// 청람 그대로 두면 선과 바탕이 같은 파랑이라 대비가 채도로만 남는다.
+        ///
+        /// <b>순검정이 아닌 것이 요점이다</b>(2026-08-15 사용자 피드백 — "실사 탑뷰 같다").
+        /// 검정 바탕에 흰 선은 인쇄된 도면으로 읽히고, 남보라 바탕에 시안 선이라야 화면에
+        /// 띄운 계기로 읽힌다.
+        /// </summary>
+        public static readonly Color MapBackdrop = new(0.12f, 0.08f, 0.22f);
+
+        /// <summary>
+        /// 지도 방 테두리 <c>#57D8E8</c>. <b>지도에서 가장 많이 보이는 색이다</b> — 방 여섯의
+        /// 테두리가 전부 이 하나이고, 굵기(<see cref="LastShiftMapView.RoomOutline"/>)도 방마다
+        /// 같다. 색과 굵기를 방마다 흔들면 굵은 쪽이 중요한 방으로 읽힌다.
+        /// </summary>
+        public static readonly Color MapLine = new(0.34f, 0.85f, 0.91f);
+
+        /// <summary>
+        /// 문 <c>#B8F4FA</c>. 테두리(<see cref="MapLine"/>)와 <b>같은 계통에서 한 단 밝다</b> —
+        /// 문은 벽에 난 구멍이라 벽과 다른 색이 아니라 <b>벽이 밝아진 자리</b>로 읽혀야 한다.
+        ///
+        /// <b>초록을 뺀 자리다.</b> 문이 정상색이던 동안 내 표식(<see cref="Nominal"/>)과
+        /// 같은 초록이라, 문에 붙어 선 표식이 문과 한 덩어리로 보였다. 초록은 이제 지도에서
+        /// "나" 하나만 쓴다.
+        /// </summary>
+        public static readonly Color MapDoor = new(0.72f, 0.96f, 0.98f);
+
+        /// <summary>
+        /// 지도 아이콘 <b>순백</b>. 지도에서 가장 밝은 색이고, 그래서 방 사각형 안에서 가장
+        /// 먼저 눈에 들어온다 — 이름(<see cref="MapLabel"/>)이 한 단 어두운 것과 짝이다.
+        ///
+        /// 아이보리(<see cref="Ivory"/>)가 아니다. 아이보리는 노랑이 섞여 있어 남보라 바탕
+        /// 위에서 크림색 종이로 읽혔고, 그것이 "실사 도면 같다" 는 지적의 절반이었다.
+        /// </summary>
+        public static readonly Color MapIcon = Color.white;
+
+        /// <summary>
+        /// 지도 방 이름 <c>#9FB6D8</c>. <b>아이콘보다 어둡다</b> — 아이콘이 먼저 읽히고 이름이
+        /// 그 아이콘을 가르치는 순서라, 둘이 같은 밝기면 순서가 안 선다.
+        ///
+        /// <b>이름을 빼지는 않는다.</b> 이름 없는 지도는 "어느 방이 어딘지 모름" 으로
+        /// 되돌아간 전례가 있다(2026-08-13 플레이테스트). 어둡게 하는 것이 지우는 것과
+        /// 다른 점은, 눈을 주면 여전히 읽힌다는 것이다.
+        /// </summary>
+        public static readonly Color MapLabel = new(0.62f, 0.71f, 0.85f);
+
         /// <summary>HUD 아이콘 한 변. 32px 미만은 실루엣이 무너져 금지다.</summary>
         public const float IconSizeHud = 40f;
 
