@@ -16,22 +16,12 @@ namespace DoodleUp.Runtime
     /// </summary>
     public static class LastShiftUiFactory
     {
-        private static Font cachedFont;
-
         /// <summary>
-        /// 내장 폰트. 유니티 2022.2 에서 <c>Arial.ttf</c> 가 <c>LegacyRuntime.ttf</c> 로 바뀌었고
-        /// 둘 다 동적 폰트라 한글은 OS 폰트로 대체된다 — IMGUI 기본 스킨과 같은 경로다.
+        /// 본문 폰트. 예전에는 내장 <c>LegacyRuntime.ttf</c> 를 그대로 썼고 한글은 OS 폴백이
+        /// 그려서 실행 PC 마다 서체가 달랐다 — 지금은 번들 폰트를 <see cref="LastShiftFonts"/>
+        /// 가 잡는다. IMGUI 화면도 같은 곳을 본다.
         /// </summary>
-        public static Font DefaultFont
-        {
-            get
-            {
-                if (cachedFont != null) return cachedFont;
-                cachedFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
-                             ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
-                return cachedFont;
-            }
-        }
+        public static Font DefaultFont => LastShiftFonts.Korean;
 
         /// <summary>
         /// 오버레이 캔버스 한 장. <b><see cref="GraphicRaycaster"/> 를 안 붙인다</b> — 이 UI 는

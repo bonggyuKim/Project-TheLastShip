@@ -213,6 +213,14 @@ namespace DoodleUp.Runtime
         private static GUIStyle nextRunStyle;
 
         /// <summary>
+        /// 스타일 여섯의 바탕. <b>검사 때문에 갈라 둔 자리다</b> — <c>GUI.skin</c> 은
+        /// <c>OnGUI</c> 밖에서 읽으면 던지고 헤드리스 배치 모드에는 <c>OnGUI</c> 자체가 없어서,
+        /// 이 한 줄이 없으면 "판정 줄이 번들 폰트로 그려지는가" 를 자동 검사로 물을 수가 없다.
+        /// 실행할 때는 언제나 아래 기본값 그대로다.
+        /// </summary>
+        private static System.Func<GUIStyle> baseLabelStyle = () => new GUIStyle(GUI.skin.label);
+
+        /// <summary>
         /// <paramref name="secondsSinceSettle"/> 는 판정 이후 경과한 실시간이다. 모션이 전부
         /// 여기에 걸려 있고, <see cref="NextRunInputDelay"/> 이전에는 하단 입력 줄이 없다.
         /// </summary>
@@ -352,14 +360,26 @@ namespace DoodleUp.Runtime
 
         private static void EnsureStyles()
         {
-            // 판정 큰 줄만 Bold 가 아니다 — 폰트 폴백이 굵기를 합성하면 64px 에서 획이 뭉치고,
-            // 위계는 크기와 색으로 이미 선다(아트 §6). 프로젝트에 번들 폰트가 아직 없다.
-            headlineStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 64, fontStyle = FontStyle.Normal };
-            chipStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold };
-            causeStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 28 };
-            cellLabelStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 20 };
-            cellValueStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 36, fontStyle = FontStyle.Bold };
-            nextRunStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 24 };
+            // 폰트는 전부 번들 한글 폰트로 간다(<see cref="LastShiftFonts"/>). 이 화면이 그 카드를
+            // 부른 자리다 — 판정 줄이 64px 이라 OS 폴백 서체가 PC 마다 다른 게 여기서 제일 크게
+            // 보였다(아트 §6).
+            //
+            // 판정 큰 줄만 Bold 가 아닌 것은 그대로 둔다. 번들 폰트에도 Bold 웨이트를 따로 넣지
+            // 않아 64px 합성 굵기는 여전히 획이 뭉치고, 위계는 크기와 색으로 이미 선다(아트 §6).
+            headlineStyle ??= Style(64, FontStyle.Normal);
+            chipStyle ??= Style(22, FontStyle.Bold);
+            causeStyle ??= Style(28, FontStyle.Normal);
+            cellLabelStyle ??= Style(20, FontStyle.Normal);
+            cellValueStyle ??= Style(36, FontStyle.Bold);
+            nextRunStyle ??= Style(24, FontStyle.Normal);
+        }
+
+        private static GUIStyle Style(int fontSize, FontStyle fontStyle)
+        {
+            var style = baseLabelStyle();
+            style.fontSize = fontSize;
+            style.fontStyle = fontStyle;
+            return LastShiftFonts.Apply(style);
         }
     }
 }

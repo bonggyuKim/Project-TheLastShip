@@ -452,26 +452,28 @@ namespace DoodleUp.Runtime
 
         private void EnsureStyles()
         {
-            titleStyle ??= new GUIStyle(GUI.skin.label)
+            // 폰트는 번들 한글 폰트로 간다(<see cref="LastShiftFonts"/>). 42px 제목이 결과 화면
+            // 다음으로 큰 한글이라 폴백 서체 차이가 그대로 드러나는 자리다.
+            titleStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.label)
             {
                 fontSize = 42,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = LastShiftUiTheme.Ivory },
-            };
-            bodyStyle ??= new GUIStyle(GUI.skin.label)
+            });
+            bodyStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.label)
             {
                 fontSize = 14,
                 wordWrap = true,
                 normal = { textColor = LastShiftUiTheme.BodyText },
-            };
-            codeStyle ??= new GUIStyle(GUI.skin.textField)
+            });
+            codeStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.textField)
             {
                 fontSize = 26,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = LastShiftUiTheme.Nominal },
-            };
+            });
             primaryButtonStyle ??= CreateButtonStyle(20, LastShiftUiTheme.Ivory, LastShiftUiTheme.PanelNavy,
                 LastShiftUiTheme.Nominal, LastShiftUiTheme.Fault, true);
             secondaryButtonStyle ??= CreateButtonStyle(17, LastShiftUiTheme.PanelNavy, LastShiftUiTheme.Ivory,
@@ -483,14 +485,14 @@ namespace DoodleUp.Runtime
         private static GUIStyle CreateButtonStyle(
             int fontSize, Color background, Color foreground, Color hover, Color border, bool tintHoverFill)
         {
-            var style = new GUIStyle(GUI.skin.button)
+            var style = LastShiftFonts.Apply(new GUIStyle(GUI.skin.button)
             {
                 fontSize = fontSize,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 padding = new RectOffset(12, 12, 8, 8),
                 border = new RectOffset(1, 1, 1, 1),
-            };
+            });
             style.normal.textColor = foreground;
             style.hover.textColor = hover;
             style.active.textColor = hover;

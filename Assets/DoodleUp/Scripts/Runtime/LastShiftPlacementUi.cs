@@ -881,12 +881,14 @@ namespace DoodleUp.Runtime
                 fillTexture.Apply();
             }
 
-            headingStyle ??= new GUIStyle(GUI.skin.label)
-                { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-            bodyStyle ??= new GUIStyle(GUI.skin.label)
-                { fontSize = 13, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } };
-            smallStyle ??= new GUIStyle(GUI.skin.label)
-                { fontSize = 10, normal = { textColor = new Color(0.82f, 0.88f, 0.96f) } };
+            // 폰트는 번들 한글 폰트로 간다(<see cref="LastShiftFonts"/>) — 안 물리면 이 도면의
+            // 한글이 OS 폴백으로 떨어져 같은 화면의 UGUI 글자와 서체가 갈린다.
+            headingStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.label)
+                { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } });
+            bodyStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.label)
+                { fontSize = 13, wordWrap = true, normal = { textColor = new Color(0.88f, 0.94f, 1f) } });
+            smallStyle ??= LastShiftFonts.Apply(new GUIStyle(GUI.skin.label)
+                { fontSize = 10, normal = { textColor = new Color(0.82f, 0.88f, 0.96f) } });
             centeredStyle ??= new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleCenter };
         }
 
