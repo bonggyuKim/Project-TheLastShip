@@ -196,8 +196,19 @@ namespace DoodleUp.Tests.EditMode
             foreach (var bone in prefab.GetComponentsInChildren<Transform>(true))
                 if (bone.name == "head") head = bone;
             Assert.That(head, Is.Not.Null, "head 뼈가 없다 — 1인칭 머리 접기가 이 이름에 걸려 있다");
-            Assert.That(head.localScale, Is.EqualTo(Vector3.one),
-                $"프리팹 머리가 {head.localScale} 로 저장돼 있다 — 동료 화면에서도 머리가 사라진다");
+
+            // 성분마다 오차를 두고 본다. <c>Is.EqualTo(Vector3.one)</c> 는 NUnit 이
+            // <see cref="Vector3.Equals(object)"/>(성분 정확비교)로 판정해서, FBX 를 다시
+            // 익스포트할 때마다 붙는 <c>0.99999994</c> 급 잔차에 걸린다. 그때 나오는 메시지가
+            // <c>Expected: (1.00, 1.00, 1.00) But was: (1.00, 1.00, 1.00)</c> 라 원인이 안 보인다.
+            //
+            // 이 테스트가 막으려는 것은 잔차가 아니라 <b>0 으로 접힌 채 저장된 머리</b>다.
+            var scale = head.localScale;
+            var detail = $"프리팹 머리가 ({scale.x:R}, {scale.y:R}, {scale.z:R}) 로 저장돼 있다" +
+                " — 동료 화면에서도 머리가 사라진다";
+            Assert.That(scale.x, Is.EqualTo(1f).Within(0.001f), detail);
+            Assert.That(scale.y, Is.EqualTo(1f).Within(0.001f), detail);
+            Assert.That(scale.z, Is.EqualTo(1f).Within(0.001f), detail);
         }
 
         [System.Serializable] private sealed class MapRoot { public MapCamera cockpitCamera; public MapPlaza plaza; public MapSpace[] spaces; public MapRule[] placementRules; }

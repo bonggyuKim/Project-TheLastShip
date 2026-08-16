@@ -297,7 +297,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   playerController: {fileID: 7320766841054417678}
   playerCamera: {fileID: 1379480743754547952}
-  bodyRenderer: {fileID: 2878181385947707326}
+  bodyRenderer: {fileID: 158175803763904224}
 --- !u!114 &6163506496450769196
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -382,14 +382,14 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b0da4efc799f31a44b1c81e951d24e6a, type: 3}
+--- !u!137 &158175803763904224 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 3150293875453928408, guid: b0da4efc799f31a44b1c81e951d24e6a, type: 3}
+  m_PrefabInstance: {fileID: 2993173671686565176}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &895336571852134706 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2730655023708271626, guid: b0da4efc799f31a44b1c81e951d24e6a, type: 3}
-  m_PrefabInstance: {fileID: 2993173671686565176}
-  m_PrefabAsset: {fileID: 0}
---- !u!137 &2878181385947707326 stripped
-SkinnedMeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 1042786861621189254, guid: b0da4efc799f31a44b1c81e951d24e6a, type: 3}
   m_PrefabInstance: {fileID: 2993173671686565176}
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &6524857187831137096 stripped

@@ -92,17 +92,27 @@ namespace DoodleUp.Editor
             Require(networkPlayer != null, "network player behavior missing");
             Require(playerPrefab.GetComponent<LastShiftOwnerNetworkTransform>() != null, "network player owner-authoritative transform missing");
 
-            var body = playerPrefab.transform.Find("Remote Body");
+            var body = playerPrefab.transform.Find(LastShiftCrewBody.RootName);
             Require(body != null, "network player remote body missing");
             Require(Approximately(body.localPosition, Vector3.zero, tolerance), "network player remote body position mismatch");
             Require(Approximately(body.localRotation, Quaternion.identity, tolerance), "network player remote body rotation mismatch");
             Require(Approximately(body.localScale, Vector3.one * 1.5f, tolerance), "network player remote body scale mismatch");
-            var bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
-                .FirstOrDefault(renderer => renderer.name.Contains("Combined"));
-            Require(bodyRenderer != null, "network player remote body renderer missing");
-            Require(bodyRenderer.enabled, "network player remote body renderer must default enabled");
-            Require(bodyRenderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null, "network player remote body skinned mesh missing");
-            Require(networkPlayer.BodyRenderer == bodyRenderer, "network player remote body renderer reference mismatch");
+            // 몸은 래그돌 셸 여러 장으로 갈려 있다. 대표 하나만 보면 나머지 셸이 꺼진 채
+            // 나가는 것을 못 잡으므로 전부 확인하고, 참조는 대표와 맞는지 본다.
+            var bodyRenderers = LastShiftCrewBody.Renderers(body);
+            Require(bodyRenderers.Count > 0, "network player remote body renderer missing");
+            Require(bodyRenderers.TrueForAll(renderer => renderer.enabled), "network player remote body renderer must default enabled");
+            // <b>어느 셸이 대표인지는 묻지 않는다.</b> 저장된 링크가 몸 셸 중 하나이기만
+            // 하면 된다. 여기서 "계산한 대표와 같아야 한다" 고 걸면, 아트가 메시를 손대
+            // 계산 결과가 뒤집힐 때마다 빌드가 다시 죽는다 — 이름으로 찾다가 셸 분리에
+            // 걸려 죽은 이번 사고와 <b>같은 모양</b>의 함정을 다시 파는 것이다.
+            // 검증기가 막아야 하는 것은 <b>끊긴 링크</b>이지 취향이 아니다.
+            var bodyRenderer = networkPlayer.BodyRenderer as SkinnedMeshRenderer;
+            Require(bodyRenderer != null, "network player remote body skinned mesh missing");
+            Require(bodyRenderers.Contains(bodyRenderer), "network player remote body renderer reference mismatch");
+            // 어느 셸이 물려 있는지 남긴다. 이 링크가 조용히 낡아서 빌드가 죽은 적이 있고,
+            // 그때 로그에 이름이 없어 프리팹 YAML 의 fileID 를 손으로 따라가야 했다.
+            Debug.Log($"[LAST_SHIFT_PLAYER_BODY] shells={bodyRenderers.Count} linked={bodyRenderer.name} result=PASS");
             var animation = playerPrefab.GetComponent<LastShiftPlayerAnimator>();
             Require(animation != null && animation.Animator != null, "network player animation bridge missing");
 

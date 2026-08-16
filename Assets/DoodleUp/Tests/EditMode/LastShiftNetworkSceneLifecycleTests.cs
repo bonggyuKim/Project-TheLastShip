@@ -78,10 +78,9 @@ namespace DoodleUp.Tests.EditMode
             var scene = EditorSceneManager.OpenScene(LastShiftNetworkSceneBuilder.ScenePath, OpenSceneMode.Single);
             var manager = Array.Find(scene.GetRootGameObjects(), root => root.GetComponent<Unity.Netcode.NetworkManager>() != null)
                 .GetComponent<Unity.Netcode.NetworkManager>();
-            var bodyRenderer = Array.Find(
-                manager.NetworkConfig.PlayerPrefab.transform.Find("Remote Body")
-                    .GetComponentsInChildren<Renderer>(true),
-                renderer => renderer.name.Contains("Combined"));
+            var bodyRenderer = DoodleUp.Runtime.LastShiftCrewBody.PrimaryUnderRoot(
+                manager.NetworkConfig.PlayerPrefab.transform);
+            Assert.That(bodyRenderer, Is.Not.Null, "승무원 몸 렌더러를 못 찾았다");
             bodyRenderer.enabled = false;
             try
             {

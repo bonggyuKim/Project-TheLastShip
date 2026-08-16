@@ -1,6 +1,5 @@
 using Unity.Netcode;
 using UnityEngine;
-using System.Linq;
 
 namespace DoodleUp.Runtime
 {
@@ -492,9 +491,10 @@ namespace DoodleUp.Runtime
             if (playerController == null) playerController = GetComponent<LastShiftPlayerController>();
             if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
             if (bodyRenderer != null) return;
-            var body = transform.Find("Remote Body");
-            if (body != null) bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
-                .FirstOrDefault(renderer => renderer.name.Contains("Combined"))
+            var body = transform.Find(LastShiftCrewBody.RootName);
+            // 프리팹의 직렬화된 링크는 캐릭터를 재익스포트하면 끊긴다(중첩 프리팹 참조가
+            // FBX 안 fileID 를 따라가기 때문). 그때 여기서 다시 찾아 세운다.
+            if (body != null) bodyRenderer = LastShiftCrewBody.Primary(body)
                 ?? body.GetComponentInChildren<Renderer>(true);
         }
 
@@ -523,7 +523,7 @@ namespace DoodleUp.Runtime
             // 남의 자리 기준으로 계산되는데 경고 한 줄 말고는 표가 안 난다.
             LastShiftZoneAudio.EnsureListener(playerCamera, isLocalPlayer);
             if (bodyRenderer == null) return;
-            var body = bodyRenderer.transform.root.Find("Remote Body");
+            var body = bodyRenderer.transform.root.Find(LastShiftCrewBody.RootName);
 
             // <b>내 몸도 보인다. 머리만 없앤다.</b>
             //
@@ -551,7 +551,7 @@ namespace DoodleUp.Runtime
             // 그래서 <b>양쪽을 다 적는다</b>. 비소유자에서 그냥 손을 떼면 될 것 같지만,
             // 소유권이 옮겨간 오브젝트는 접힌 채로 남아 그 뒤로 아무 화면에서도 머리가
             // 안 보이게 된다.
-            var head = FindBone(body, "head");
+            var head = FindBone(body, LastShiftCrewBody.HeadBoneName);
             if (head != null) head.localScale = isLocalPlayer ? Vector3.zero : Vector3.one;
             localHeadBone = isLocalPlayer ? head : null;
             bodyRenderer.material.color = PlayerColor;

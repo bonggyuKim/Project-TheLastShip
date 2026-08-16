@@ -162,13 +162,15 @@ namespace DoodleUp.Editor
                 throw new System.InvalidOperationException($"Lime Alien animated prefab missing: {LimeAlienPrefabPath}");
             var body = PrefabUtility.InstantiatePrefab(bodyPrefab) as GameObject;
             if (body == null) throw new System.InvalidOperationException("Could not instantiate Lime Alien player visual");
-            body.name = "Remote Body";
+            body.name = LastShiftCrewBody.RootName;
             body.transform.SetParent(player.transform, false);
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity;
             body.transform.localScale = Vector3.one * 1.5f;
-            var bodyRenderer = body.GetComponentsInChildren<Renderer>(true)
-                .First(renderer => renderer.name.Contains("Combined"));
+            var bodyRenderer = LastShiftCrewBody.Primary(body.transform);
+            if (bodyRenderer == null)
+                throw new System.InvalidOperationException(
+                    $"Lime Alien animated prefab has no skinned body renderer: {LimeAlienPrefabPath}");
 
             var cameraObject = new GameObject("Player Camera");
             cameraObject.tag = "MainCamera";
