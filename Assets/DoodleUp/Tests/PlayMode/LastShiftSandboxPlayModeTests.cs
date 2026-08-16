@@ -317,21 +317,59 @@ namespace DoodleUp.Tests.PlayMode
             yield break;
         }
 
+        /// <summary>
+        /// 열 보호가 <b>발동해 있는 동안</b> 추력을 4분의 1로 누르는가. 새 입력도 그 상한에
+        /// 걸린다 — 이것이 <c>S-H3</c> 가 사는 자리다.
+        ///
+        /// <b>이 검사는 예전에 <c>AdvanceMission(5f)</c> 한 걸음으로 열을 <c>1.00</c> 에
+        /// 고정해 놓고 재고 있었다.</b> 그 <c>1.00</c> 은 시뮬레이션이 아니라 이산화 산물이었다.
+        /// 한 걸음이면 상승률을 걸음 <i>처음</i> 추력(0.92)으로 정해 5초 내내 적용하므로 열이
+        /// 상한에 눌러 붙지만, 60fps 로 같은 5초를 밀면 열은 <c>0.98 → 1.00</c> 을 0.5초 만에
+        /// 찍고 그 순간 추력이 <c>0.25</c> 로 눌린 뒤 자연 냉각(0.008/s)으로 도로 내려온다
+        /// (실측 <c>0.9644</c>, 발동 해제). 즉 <b>플레이어가 실제로 보는 화면에서는 5초 뒤
+        /// 열 보호가 이미 풀려 있었고</b>, 검사만 그 사실을 못 보고 있었다.
+        ///
+        /// 그래서 재는 자리를 "5초 뒤" 가 아니라 <b>발동한 그 순간</b>으로 옮긴다. 지키려던
+        /// 성질(발동 중에는 새 입력도 상한에 걸린다)은 그대로 있고, 걸음 길이에 기대던 부분만
+        /// 사라진다.
+        ///
+        /// <b>남은 설계 질문은 이 검사 밖이다.</b> 열 보호에는 사이렌(0.15/0.20)과 달리 이력이
+        /// 없어서, 발동선을 찍자마자 자연 냉각으로 풀리고 그다음 입력 한 번에 추력이 통째로
+        /// 돌아온다. 잠금으로 남길지 순간 클램프로 둘지는 밸런스 소관이라 여기서 정하지 않는다.
+        /// </summary>
         [UnityTest]
-        public IEnumerator HeatProtectionLocksThrustAtQuarterEvenAgainstNewInput()
+        public IEnumerator HeatProtectionCapsThrustAtQuarterWhileEngaged()
         {
             sandbox.ResetPreset(LastShiftPreset.HighHeatHighThrust);
             Assert.That(sandbox.ApplyMeteorImpact(), Is.True);
+            Assert.That(sandbox.CurrentState.ThrustDemand,
+                Is.GreaterThan(LastShiftRecoveryTuning.ProtectedThrustCeiling),
+                "출발 추력이 이미 보호 상한 아래면 눌리는 것을 볼 수 없다.");
 
-            sandbox.AdvanceMission(5f);
+            // 발동선까지 잘게 민다. 몇 초인지는 상수로 안 적는다 — 열 상승률이 조정되면
+            // 그 숫자만 조용히 틀리고, 검사는 "아직 발동 전" 을 재고도 통과한다.
+            var elapsed = 0f;
+            while (!sandbox.HeatProtectionEngaged && elapsed < 5f)
+            {
+                sandbox.AdvanceMission(0.1f);
+                elapsed += 0.1f;
+            }
 
-            Assert.That(sandbox.CurrentState.EngineHeat, Is.EqualTo(LastShiftRecoveryTuning.HeatProtectionTrigger).Within(0.001f));
-            Assert.That(sandbox.HeatProtectionEngaged, Is.True);
-            Assert.That(sandbox.ThrustCeiling, Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f));
-            Assert.That(sandbox.CurrentState.ThrustDemand, Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f));
+            Assert.That(sandbox.HeatProtectionEngaged, Is.True,
+                "고열·고추력 프리셋은 열 보호 발동선에 닿아야 한다.");
+            Assert.That(sandbox.CurrentState.EngineHeat,
+                Is.GreaterThanOrEqualTo(LastShiftRecoveryTuning.HeatProtectionTrigger));
+            Assert.That(sandbox.ThrustCeiling,
+                Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f));
+            Assert.That(sandbox.CurrentState.ThrustDemand,
+                Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f),
+                "발동과 동시에 추력이 4분의 1로 눌려야 한다.");
 
+            // 발동 중에는 새 입력도 상한에 걸린다. 이것이 이 검사의 본래 목적이다.
             sandbox.ApplyControl(0.9f, sandbox.CurrentState.ShipAttitudeDegrees);
-            Assert.That(sandbox.CurrentState.ThrustDemand, Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f));
+            Assert.That(sandbox.CurrentState.ThrustDemand,
+                Is.EqualTo(LastShiftRecoveryTuning.ProtectedThrustCeiling).Within(0.001f),
+                "열 보호가 걸린 동안에는 스틱을 올려도 4분의 1을 넘지 못한다(S-H3).");
 
             yield break;
         }

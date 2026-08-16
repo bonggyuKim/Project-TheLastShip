@@ -876,6 +876,19 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
+        /// 악화·진공 적분 한 걸음의 최대 길이. <see cref="LastShiftZonePressures.Equalize"/> 의
+        /// 걸음과 <b>같은 값이어야 한다</b> — 압력을 만드는 쪽과 그 압력으로 진공을 판정하는
+        /// 쪽이 다른 해상도로 돌면, 굵은 쪽이 곧 전체 정확도가 된다.
+        /// </summary>
+        private const float MaxMissionStepSeconds = 0.25f;
+
+        /// <summary>
+        /// 걸음 수 상한. 도킹 타이머 300초를 한 번에 미는 호출이 실제로 있으므로
+        /// (<c>AdvanceMission(DockingTimerSeconds)</c>) 무한정 쪼개지 않는다.
+        /// </summary>
+        private const int MaxMissionSteps = 256;
+
+        /// <summary>
         /// R2 악화 tick + R1 작업 채널 진행 + R3 판정을 한 스텝 돌린다. 운석 적용 전에는
         /// 아직 손상이 없으므로 아무것도 돌지 않고, 판정이 확정된 뒤에는 시계가 멈춘다.
         /// 테스트가 시간을 직접 밀 수 있도록 deltaTime 을 받는 public 경계로 둔다.
@@ -944,15 +957,38 @@ namespace DoodleUp.Runtime
             LapseExpiredBypasses(deltaTime);
             AdvanceRepairChannels(deltaTime);
 
-            lastTick = LastShiftDeterioration.Tick(
-                ref currentState, ref zonePressures, BuildContainment(), BreachZone, doorState, deltaTime);
-            RefreshResultAfterImpact();
-            if (lastTick.HeatProtectionEngaged) heatProtectionSeconds += deltaTime;
+            // 악화 tick 과 예비 산소 tick 을 <b>같은 잘게 나눈 걸음</b>으로 함께 민다.
+            // 이 둘을 한 걸음으로 묶는 것이 요점이다 — 진공 판정의 유일한 입력이 구역 압력이고,
+            // 그 압력을 바꾸는 것이 바로 위의 악화 tick 이기 때문이다.
+            //
+            // <b>나누기 전에는 진공 판정이 걸음 끝 압력 하나였다.</b> 그러면 큰 걸음이 양쪽으로
+            // 어긋난다. 감압 중이라면 걸음 끝에는 이미 0 이므로 걸음 <i>전체</i>가 진공으로
+            // 계산돼 아직 공기가 있던 구간의 예비 산소까지 태우고(80초 = 산소 한 통이라
+            // AdvanceMission(150f) 한 번이 곧 사망이다), 재가압 중이라면 걸음 끝에 0 을 벗어난
+            // 것만으로 걸음 <i>전체</i>가 공짜가 되어 진짜 진공에 있던 구간이 사라진다.
+            // <see cref="LastShiftZonePressures.Equalize"/> 가 이미 같은 이유로 안에서 나눠
+            // 적분하고 있는데, 그 정확해진 압력을 읽는 쪽이 한 번만 표본을 뜨면 정확도가
+            // 거기서 끊긴다.
+            //
+            // <b>한 프레임 재생에는 아무 영향이 없다.</b> deltaTime 이 한 걸음 상한 아래면
+            // steps=1 이라 아래 루프가 예전 코드와 한 글자도 다르게 돌지 않는다. 달라지는 것은
+            // 시간을 크게 미는 호출뿐이고, 그게 정확히 이 카드가 겨눈 자리다.
+            var missionSteps = Mathf.Clamp(
+                Mathf.CeilToInt(deltaTime / MaxMissionStepSeconds), 1, MaxMissionSteps);
+            var missionStepSeconds = deltaTime / missionSteps;
+            for (var step = 0; step < missionSteps; step++)
+            {
+                lastTick = LastShiftDeterioration.Tick(
+                    ref currentState, ref zonePressures, BuildContainment(), BreachZone, doorState,
+                    missionStepSeconds);
+                RefreshResultAfterImpact();
+                if (lastTick.HeatProtectionEngaged) heatProtectionSeconds += missionStepSeconds;
+                AdvanceCrewOxygen(missionStepSeconds);
+            }
 
             dockingSecondsRemaining = Mathf.Max(0f, dockingSecondsRemaining - deltaTime);
 
             UpdateSiren();
-            AdvanceCrewOxygen(deltaTime);
 
             // 연속 판정은 이제 원인이 둘이다 — 전원 예비산소 고갈(N2)과 연료 소진 표류(CT-06 N3).
             // 트리거 문자열을 하나로 두면 로그만 보고는 어느 쪽으로 끝났는지 알 수 없다.
