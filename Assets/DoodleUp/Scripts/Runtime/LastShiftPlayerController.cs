@@ -1361,7 +1361,7 @@ namespace DoodleUp.Runtime
             // 바탕은 계기가 쓰는 청람이 아니라 <b>지도 전용 남보라</b>다
             // (<see cref="LastShiftUiTheme.MapBackdrop"/>). 지도가 떠 있는 동안에는 이 색이
             // 화면 전체라, 그 위의 시안 선이 바탕과 채도만이 아니라 색상으로도 갈려야 한다.
-            Tint(layer.Panel("map:backdrop", new Rect(0f, 0f, screen.x, screen.y)),
+            Tint(layer.Fill("map:backdrop", new Rect(0f, 0f, screen.x, screen.y)),
                 LastShiftUiTheme.MapBackdrop, LastShiftMapView.BackdropAlpha);
 
             // 격자와 테두리가 <b>방보다 먼저</b>다. 나중에 그리면 방 위를 지나가서 방이
@@ -1418,7 +1418,7 @@ namespace DoodleUp.Runtime
                 var rect = door.PlaneIsX
                     ? plan.ToScreenRect(door.Plane - lip, door.Plane + lip, door.MinSpan, door.MaxSpan)
                     : plan.ToScreenRect(door.MinSpan, door.MaxSpan, door.Plane - lip, door.Plane + lip);
-                Tint(layer.Panel("map:door" + index, rect), LastShiftUiTheme.MapDoor, 1f);
+                Tint(layer.Fill("map:door" + index, rect), LastShiftUiTheme.MapDoor, 1f);
                 index++;
             }
 
@@ -1450,12 +1450,12 @@ namespace DoodleUp.Runtime
                 // 사각형이고 아이콘은 띠 몇 개라, 같은 색이어도 실루엣으로 갈린다.
                 var color = mine ? LastShiftUiTheme.Nominal : LastShiftUiTheme.MapIcon;
 
-                Tint(layer.Panel("map:crew" + index, LastShiftMapView.MarkerRect(point, size)), color, 1f);
+                Tint(layer.Fill("map:crew" + index, LastShiftMapView.MarkerRect(point, size)), color, 1f);
 
                 // 보는 쪽에 코를 하나 더 찍는다. 내 것만 그린다 — 남의 시선까지 그리면
                 // 표식 넷이 겹칠 때 어느 코가 누구 것인지 안 갈린다.
                 if (mine)
-                    Tint(layer.Panel("map:nose",
+                    Tint(layer.Fill("map:nose",
                             LastShiftMapView.MarkerRect(
                                 LastShiftMapView.NosePoint(plan, member.transform.position,
                                     member.transform.forward),
@@ -1534,7 +1534,7 @@ namespace DoodleUp.Runtime
         private static void DrawMapIcon(LastShiftUiLayer layer, string id, int bands)
         {
             for (var band = 0; band < bands; band++)
-                Tint(layer.Panel(id + ":" + band, MapIconScratch[band]),
+                Tint(layer.Fill(id + ":" + band, MapIconScratch[band]),
                     LastShiftUiTheme.MapIcon, MapIconAlpha);
         }
 
@@ -1543,7 +1543,7 @@ namespace DoodleUp.Runtime
         {
             var bands = LastShiftMapView.GridBands(plan, MapGridScratch);
             for (var band = 0; band < bands; band++)
-                Tint(layer.Panel("map:grid" + band, MapGridScratch[band]),
+                Tint(layer.Fill("map:grid" + band, MapGridScratch[band]),
                     LastShiftUiTheme.MapLine, MapGridAlpha);
         }
 
@@ -1552,7 +1552,7 @@ namespace DoodleUp.Runtime
         {
             LastShiftMapView.OutlineBands(rect, thickness, MapOutlineScratch);
             for (var side = 0; side < MapOutlineScratch.Length; side++)
-                Tint(layer.Panel(id + ":" + side, MapOutlineScratch[side]), color, alpha);
+                Tint(layer.Fill(id + ":" + side, MapOutlineScratch[side]), color, alpha);
         }
 
         /// <summary>임대해 온 조각에 색을 입힌다. <see cref="LastShiftUiLayer.Panel"/> 은 진하기만 받는다.</summary>

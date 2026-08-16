@@ -36,6 +36,7 @@ namespace DoodleUp.Runtime
         private RectTransform overlayRoot;
 
         private readonly Dictionary<string, Lease<Image>> panels = new();
+        private readonly Dictionary<string, Lease<Image>> fills = new();
         private readonly Dictionary<string, Lease<LastShiftGaugeView>> gauges = new();
         private readonly Dictionary<string, Lease<Text>> labels = new();
 
@@ -128,6 +129,25 @@ namespace DoodleUp.Runtime
             });
 
             LastShiftUiFactory.PlacePanel((RectTransform)image.transform,
+                LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
+            var color = image.color;
+            image.color = new Color(color.r, color.g, color.b, alpha);
+            return image;
+        }
+
+        /// <summary>
+        /// 맨 사각형 하나를 <b>요청한 크기 그대로</b> 빌린다. 좌표가 곧 뜻인 조각 — 도면의
+        /// 선, 눈금, 사람 표식 — 이 쓴다.
+        ///
+        /// <b><see cref="Panel"/> 과 나눠 쓰는 자리를 여기서 정한다.</b> 그쪽은
+        /// <see cref="LastShiftUiFactory.PlacePanel"/> 가 <c>192x96</c> 로 바닥을 치므로
+        /// <c>2</c>px 테두리도 <c>16</c>px 표식도 같은 둥근 카드가 된다. 이 경로는
+        /// <see cref="LastShiftUiFactory.Place"/> 라 그 바닥이 없다.
+        /// </summary>
+        public Image Fill(string id, Rect screenRect, float alpha = 1f)
+        {
+            var image = Borrow(fills, id, () => LastShiftUiFactory.CreateFill(panelRoot, $"Fill:{id}"));
+            LastShiftUiFactory.Place((RectTransform)image.transform,
                 LastShiftUiTheme.ScreenRectToCanvas(screenRect, ScreenSize));
             var color = image.color;
             image.color = new Color(color.r, color.g, color.b, alpha);
@@ -293,6 +313,7 @@ namespace DoodleUp.Runtime
         private void LateUpdate()
         {
             Sweep(panels);
+            Sweep(fills);
             Sweep(gauges);
             Sweep(labels);
         }

@@ -95,6 +95,22 @@ namespace DoodleUp.Runtime
             return image;
         }
 
+        /// <summary>
+        /// <b>맨 사각형</b>. 스프라이트도 모서리도 없는 단색 한 장이라 요청한 자리에 요청한
+        /// 크기로 그대로 선다.
+        ///
+        /// <b><see cref="CreatePanel"/> 과 나눠 쓰는 것이 요점이다.</b> 9-slice 패널은
+        /// <see cref="LastShiftUiTheme.PanelMinSize"/>(<c>192x96</c>)로 바닥을 치므로 계기·대사
+        /// 같은 <b>덩어리</b>에만 맞는다. 선 한 줄, 표식 한 점처럼 <b>좌표가 뜻인</b> 조각을
+        /// 거기에 태우면 전부 <c>192x96</c> 둥근 카드로 부풀어 도면이 카드 더미가 된다.
+        /// </summary>
+        public static Image CreateFill(Transform parent, string name)
+        {
+            var image = CreateImage(parent, name, null);
+            image.color = Color.white;
+            return image;
+        }
+
         /// <summary>화자가 있는 AI 온보딩만 쓰는 계기판 패널.</summary>
         public static Image CreateOnboardingPanel(Transform parent, string name)
         {
