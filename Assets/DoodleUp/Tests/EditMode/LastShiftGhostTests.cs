@@ -140,6 +140,42 @@ namespace DoodleUp.Tests.EditMode
             Object.DestroyImmediate(player.gameObject);
         }
 
+        /// <summary>
+        /// <b>반투명은 몸 전체에 걸려야 한다.</b> 승무원 몸이 통짜 메시 하나였을 때는
+        /// 렌더러 하나에 재질을 걸면 그것이 곧 몸 전체였다. 래그돌 셸 분리(<c>696cfff</c>)로
+        /// 몸이 여섯 장으로 갈린 뒤에는 그 전제가 깨진다 — 대표 셸에만 걸면 몸통만 비치고
+        /// 머리·팔·다리는 산 사람으로 남아, 같은 승무원이 부위마다 다르게 보인다.
+        /// 플레이어 색(4인 구분)도 같은 자리에서 같은 방식으로 걸린다.
+        ///
+        /// 재질을 직접 보지 않는 이유는 아래 <see cref="GhostMaterialTurnsTranslucentAndBack"/>
+        /// 의 주석과 같다. 여기서 고정하는 것은 <b>몇 장에 거는가</b> 다.
+        /// </summary>
+        [Test]
+        public void GhostAndPlayerColorReachEveryBodyShell()
+        {
+            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/DoodleUp/Prefabs/LastShiftNetworkPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+
+            var instance = Object.Instantiate(prefab);
+            try
+            {
+                var body = instance.transform.Find(LastShiftCrewBody.RootName);
+                Assert.That(body, Is.Not.Null, "승무원 비주얼이 없다");
+                var shells = LastShiftCrewBody.Renderers(body).Count;
+                Assert.That(shells, Is.GreaterThan(1),
+                    "이 검사는 몸이 여러 셸로 갈려 있을 때만 의미가 있다 — 통짜로 돌아갔다면 지워라");
+
+                var player = instance.GetComponent<LastShiftNetworkPlayer>();
+                Assert.That(player.ResolveBodyShellCountForProbe(), Is.EqualTo(shells),
+                    $"색·유령이 셸 {shells} 장 중 일부에만 걸린다 — 부위마다 다르게 보인다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(instance);
+            }
+        }
+
         /// <summary>구현물 4: 반투명 실루엣. 색은 유지하고 투명도만 바뀐다.</summary>
         [Test]
         public void GhostMaterialTurnsTranslucentAndBack()

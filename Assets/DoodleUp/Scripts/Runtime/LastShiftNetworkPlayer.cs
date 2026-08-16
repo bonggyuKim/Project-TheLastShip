@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -67,6 +68,16 @@ namespace DoodleUp.Runtime
         private LastShiftNetworkGrabbable heldItem;
         private LastShiftOwnerNetworkTransform ownerNetworkTransform;
         private bool appliedGhostPresentation;
+
+        /// <summary>
+        /// 몸을 이루는 셸 전부. <see cref="bodyRenderer"/> 는 그중 <b>대표 하나</b>일 뿐이라
+        /// 재질을 바꾸는 표현에는 쓸 수 없다 — 승무원이 셸 여섯 장으로 갈린 뒤로 대표에만
+        /// 칠하면 몸통만 색이 들어가고 머리·팔·다리는 회색으로 남는다.
+        ///
+        /// 직렬화하지 않는다. 끊기면 <b>조용히</b> 한 부위만 어긋나는 종류의 링크라,
+        /// 프리팹에 굳혀 두는 것보다 스폰 때 계층에서 다시 세우는 편이 안전하다.
+        /// </summary>
+        private readonly List<SkinnedMeshRenderer> bodyShells = new();
 
         /// <summary>씬 빌더가 배치한 플레이어 카메라의 로컬 오프셋. 조준 원점 기본값 계산에만 쓴다.</summary>
         private static readonly Vector3 CameraLocalOffset = new(0f, LastShiftShipPhysics.EyeHeight, 0f);
@@ -171,7 +182,10 @@ namespace DoodleUp.Runtime
         {
             if (bodyRenderer == null || appliedGhostPresentation == isGhost) return;
             appliedGhostPresentation = isGhost;
-            LastShiftGhostVisuals.Apply(bodyRenderer.material, isGhost, PlayerColor);
+            // 셸 전부를 돈다. 대표 하나만 바꾸면 몸통만 비치고 머리·팔·다리는 산 사람으로
+            // 남아, 유령인지 아닌지가 <b>부위마다 다르게</b> 보인다.
+            foreach (var shell in BodyShells())
+                LastShiftGhostVisuals.Apply(shell.material, isGhost, PlayerColor);
         }
 
         /// <summary>
@@ -490,11 +504,18 @@ namespace DoodleUp.Runtime
         {
             if (playerController == null) playerController = GetComponent<LastShiftPlayerController>();
             if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
-            if (bodyRenderer != null) return;
             var body = transform.Find(LastShiftCrewBody.RootName);
+            if (body == null) return;
+
+            // 셸 목록은 <b>링크가 살아 있어도</b> 채운다. 저장되는 것은 대표 하나뿐이라
+            // 여기서 일찍 빠져나가면 색·유령이 다시 한 부위에만 걸린다.
+            bodyShells.Clear();
+            bodyShells.AddRange(LastShiftCrewBody.Renderers(body));
+
+            if (bodyRenderer != null) return;
             // 프리팹의 직렬화된 링크는 캐릭터를 재익스포트하면 끊긴다(중첩 프리팹 참조가
             // FBX 안 fileID 를 따라가기 때문). 그때 여기서 다시 찾아 세운다.
-            if (body != null) bodyRenderer = LastShiftCrewBody.Primary(body)
+            bodyRenderer = LastShiftCrewBody.Primary(body)
                 ?? body.GetComponentInChildren<Renderer>(true);
         }
 
@@ -554,7 +575,32 @@ namespace DoodleUp.Runtime
             var head = FindBone(body, LastShiftCrewBody.HeadBoneName);
             if (head != null) head.localScale = isLocalPlayer ? Vector3.zero : Vector3.one;
             localHeadBone = isLocalPlayer ? head : null;
-            bodyRenderer.material.color = PlayerColor;
+            foreach (var shell in BodyShells())
+                shell.material.color = PlayerColor;
+        }
+
+        /// <summary>
+        /// 색·유령이 걸릴 셸 목록. 비어 있으면(참조 해석 전에 불렸거나 계층이 갈렸으면)
+        /// 그 자리에서 다시 세운다 — 조용히 대표 하나만 칠하고 끝나는 것보다 낫다.
+        /// </summary>
+        /// <summary>
+        /// 진단용 — 색과 유령이 실제로 걸릴 셸 수. <b>재질을 건드리지 않는다</b>,
+        /// <c>Renderer.material</c> 은 EditMode 에서 사본을 만들며 오류를 찍기 때문이다.
+        /// </summary>
+        public int ResolveBodyShellCountForProbe()
+        {
+            ResolveLocalReferences();
+            return BodyShells().Count;
+        }
+
+        private List<SkinnedMeshRenderer> BodyShells()
+        {
+            if (bodyShells.Count > 0) return bodyShells;
+            var body = bodyRenderer != null
+                ? bodyRenderer.transform.root.Find(LastShiftCrewBody.RootName)
+                : transform.Find(LastShiftCrewBody.RootName);
+            bodyShells.AddRange(LastShiftCrewBody.Renderers(body));
+            return bodyShells;
         }
 
         /// <summary>

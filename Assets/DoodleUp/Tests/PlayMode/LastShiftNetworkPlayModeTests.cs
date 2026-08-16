@@ -93,6 +93,22 @@ namespace DoodleUp.Tests.PlayMode
             // 그 상태다. 시야를 막는 것은 머리 하나뿐이라 그것만 접는다.
             Assert.That(player.IsBodyVisible, Is.True, "소유자 몸이 꺼져 있다 - 1인칭에 아무것도 안 남는다");
             Assert.That(player.IsLocalHeadHidden, Is.True, "소유자 머리가 안 접혔다 - 화면을 가린다");
+
+            // <b>4인 구분색은 몸 전체에 걸려야 한다.</b> 통짜 메시 하나였을 때는 대표 렌더러에
+            // 칠하면 그것이 곧 몸 전체였다. 래그돌 셸 분리 뒤에는 대표에만 걸리면 몸통만
+            // 색이 들어가고 머리·팔·다리는 회색으로 남는다 - 유령 반투명도 같은 자리에서
+            // 같은 방식으로 걸리므로 여기서 한 번 고정하면 둘 다 지켜진다.
+            var bodyShells = LastShiftCrewBody.Renderers(player.transform.Find(LastShiftCrewBody.RootName));
+            Assert.That(bodyShells.Count, Is.GreaterThan(1),
+                "몸이 셸 한 장이면 이 검사는 의미가 없다 - 통짜로 돌아갔다면 지워라");
+            foreach (var shell in bodyShells)
+            {
+                var painted = shell.material.color;
+                var expected = player.PlayerColor;
+                var drift = new Vector3(painted.r - expected.r, painted.g - expected.g, painted.b - expected.b);
+                Assert.That(drift.magnitude, Is.LessThan(0.01f),
+                    $"{shell.name} 이 플레이어 색을 못 받았다 - 승무원이 부위마다 다른 색으로 선다");
+            }
             Assert.That(sandbox.Players, Does.Contain(controller));
 
             var originalPosition = player.transform.position;
