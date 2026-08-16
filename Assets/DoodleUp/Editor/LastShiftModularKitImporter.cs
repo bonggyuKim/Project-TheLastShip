@@ -463,6 +463,30 @@ namespace DoodleUp.Editor
             Debug.Log($"[LAST_SHIFT_MODULAR_MAP] schema={map.schema} spaces={map.spaces.Length} rules={map.placementRules.Length} result=PASS");
         }
 
+        /// <summary>
+        /// 정본 지도가 정하는 방 발자국(<c>id</c> → <c>minX, maxX, minZ, maxZ</c>). 광장이 첫
+        /// 항목이다 — 광장은 <c>spaces</c> 배열 밖에 따로 적혀 있어서, 방 전부를 훑고 싶은
+        /// 쪽이 그 사실을 알고 매번 앞에 붙여야 했다.
+        ///
+        /// <b>프리팹을 안 받는다.</b> <see cref="LoadMap"/> 은 규칙이 참조하는 킷 프리팹이
+        /// 전부 있는지까지 보지만, 좌표만 묻는 쪽(검수·감사)이 킷 임포트를 기다릴 이유가 없다.
+        /// </summary>
+        public static IReadOnlyList<KeyValuePair<string, float[]>> MapSpaceFootprints()
+        {
+            if (!File.Exists(MapPath)) throw new FileNotFoundException("Canonical modular map missing", MapPath);
+            var map = JsonUtility.FromJson<ModularMap>(File.ReadAllText(MapPath));
+            if (map == null || map.plaza == null || map.spaces == null)
+                throw new InvalidOperationException($"Invalid canonical modular map: {MapPath}");
+
+            var footprints = new List<KeyValuePair<string, float[]>>
+            {
+                new("plaza", map.plaza.bounds)
+            };
+            foreach (var space in map.spaces)
+                footprints.Add(new KeyValuePair<string, float[]>(space.id, space.bounds));
+            return footprints;
+        }
+
         private static ModularMap LoadMap(IReadOnlyDictionary<string, GameObject> prefabs)
         {
             if (!File.Exists(MapPath)) throw new FileNotFoundException("Canonical modular map missing", MapPath);

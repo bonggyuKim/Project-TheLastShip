@@ -1,0 +1,73 @@
+﻿# LAST SHIFT 실내 하늘 노출 감사
+scene=Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity
+tolerance=0.000500
+
+control	(0.00, 80.00, 0.00)	face=+y	ratio=1.000000	floor=0.990000
+
+plaza	(-5.00, 1.65, -5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(5.00, 1.65, -5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(-5.00, 1.65, 5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(5.00, 1.65, 5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(0.00, 1.65, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(-5.00, 0.60, -5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(5.00, 0.60, -5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(-5.00, 0.60, 5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(5.00, 0.60, 5.00)	sphere=0.000000	worst_face=+z	face=0.000000
+plaza	(0.00, 0.60, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-15.00, 1.65, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-7.00, 1.65, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-15.00, 1.65, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-7.00, 1.65, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-11.00, 1.65, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-15.00, 0.60, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-7.00, 0.60, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-15.00, 0.60, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-7.00, 0.60, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cockpit	(-11.00, 0.60, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(7.00, 1.65, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(15.00, 1.65, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(7.00, 1.65, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(15.00, 1.65, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(11.00, 1.65, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(7.00, 0.60, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(15.00, 0.60, -3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(7.00, 0.60, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(15.00, 0.60, 3.00)	sphere=0.000000	worst_face=+z	face=0.000000
+lifeSupport	(11.00, 0.60, 0.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(-3.00, 1.65, -13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(3.00, 1.65, -13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(-3.00, 1.65, -7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(3.00, 1.65, -7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(0.00, 1.65, -10.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(-3.00, 0.60, -13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(3.00, 0.60, -13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(-3.00, 0.60, -7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(3.00, 0.60, -7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+power	(0.00, 0.60, -10.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(-3.00, 1.65, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(3.00, 1.65, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(-3.00, 1.65, 13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(3.00, 1.65, 13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(0.00, 1.65, 10.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(-3.00, 0.60, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(3.00, 0.60, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(-3.00, 0.60, 13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(3.00, 0.60, 13.00)	sphere=0.000000	worst_face=+z	face=0.000000
+cooling	(0.00, 0.60, 10.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(5.00, 1.65, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(11.00, 1.65, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(5.00, 1.65, 11.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(11.00, 1.65, 11.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(8.00, 1.65, 9.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(5.00, 0.60, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(11.00, 0.60, 7.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(5.00, 0.60, 11.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(11.00, 0.60, 11.00)	sphere=0.000000	worst_face=+z	face=0.000000
+quarters	(8.00, 0.60, 9.00)	sphere=0.000000	worst_face=+z	face=0.000000
+
+space=plaza worst_face_ratio=0.000000 eva_exempt=yes
+space=cockpit worst_face_ratio=0.000000 eva_exempt=no
+space=lifeSupport worst_face_ratio=0.000000 eva_exempt=no
+space=power worst_face_ratio=0.000000 eva_exempt=no
+space=cooling worst_face_ratio=0.000000 eva_exempt=no
+space=quarters worst_face_ratio=0.000000 eva_exempt=no
