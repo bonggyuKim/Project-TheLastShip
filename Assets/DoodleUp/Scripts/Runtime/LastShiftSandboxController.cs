@@ -772,6 +772,23 @@ namespace DoodleUp.Runtime
         {
             if (players == null || players.Length == 0) players = FindObjectsByType<LastShiftPlayerController>(FindObjectsSortMode.None);
             if (items == null || items.Length == 0) items = FindObjectsByType<LastShiftGrabbable>(FindObjectsSortMode.None);
+            EnsureAttitudeFeedback();
+        }
+
+        /// <summary>
+        /// 자세 연출 컴포넌트를 보장한다. 정본은 씬 빌더가 붙이는 쪽이고
+        /// (<c>LastShiftNetworkSceneBuilder</c>), 여기서 또 붙이는 것은 <b>이미 구워진 씬</b>과
+        /// 검증 하니스가 굽지 않고도 같은 화면을 내야 하기 때문이다 — 직렬화된 참조가 없는
+        /// 순수 표시 컴포넌트라 런타임 부착과 씬 부착의 결과가 같다.
+        ///
+        /// 클라이언트에서 이 컴포넌트(<see cref="LastShiftSandboxController"/>)는 꺼지지만
+        /// <c>Awake</c> 는 그 전에 돌고, 붙는 쪽은 따로 살아 있으므로 자세 롤은 계속 걸린다.
+        /// </summary>
+        private void EnsureAttitudeFeedback()
+        {
+            if (GetComponent<LastShiftAttitudeFeedback>() != null) return;
+            if (FindFirstObjectByType<LastShiftAttitudeFeedback>(FindObjectsInactive.Include) != null) return;
+            gameObject.AddComponent<LastShiftAttitudeFeedback>().Configure(this);
         }
 
         private void Start()

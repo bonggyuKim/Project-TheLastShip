@@ -89,6 +89,7 @@ namespace DoodleUp.Runtime
         private float yaw;
         private float pitch;
         private Vector3 cameraShakeOffset;
+        private Vector3 cameraAttitudeOffset;
         private bool grabPressed;
         private bool securePressed;
         private bool safeRestorePressed;
@@ -532,14 +533,19 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 조준각과 충격 흔들림을 한 곳에서 합성한다. 흔들림을 카메라 localRotation 에 직접
-        /// 쓰면 다음 조준 갱신이 그대로 덮어써서 흔들림이 사라지고, 반대로 흔들림이 나중에
-        /// 쓰면 조준이 밀린다. 조준 상태(pitch)는 유지하고 표시 회전만 더한다.
+        /// 조준각과 표시용 추가 회전을 한 곳에서 합성한다. 추가 회전을 카메라 localRotation 에
+        /// 직접 쓰면 다음 조준 갱신이 그대로 덮어써서 사라지고, 반대로 나중에 쓰면 조준이
+        /// 밀린다. 조준 상태(pitch)는 유지하고 표시 회전만 더한다.
+        ///
+        /// <b>더하는 채널이 둘이라 합으로 쓴다.</b> 충격 흔들림(순간)과 선체 자세 롤(상시)은
+        /// 서로 다른 컴포넌트가 서로 다른 주기로 밀어 넣는다 — 한 필드를 공유하면 나중에 민
+        /// 쪽이 앞선 쪽을 지우고, 운석이 터진 0.9초 동안 배가 갑자기 수평으로 돌아온다.
         /// </summary>
         private void ApplyCameraRotation()
         {
             if (targetCamera == null) return;
-            targetCamera.transform.localRotation = Quaternion.Euler(-pitch + cameraShakeOffset.x, cameraShakeOffset.y, cameraShakeOffset.z);
+            var offset = cameraShakeOffset + cameraAttitudeOffset;
+            targetCamera.transform.localRotation = Quaternion.Euler(-pitch + offset.x, offset.y, offset.z);
         }
 
         /// <summary>
@@ -551,6 +557,19 @@ namespace DoodleUp.Runtime
             cameraShakeOffset = eulerOffset;
             ApplyCameraRotation();
         }
+
+        /// <summary>
+        /// 선체 자세 연출(<see cref="LastShiftAttitudeFeedback"/>)이 넘기는 롤 각(도).
+        /// 흔들림과 달리 <b>상시</b> 값이라 0 으로 돌아오는 것까지 이 경로로 온다.
+        /// </summary>
+        public void SetCameraAttitudeOffset(Vector3 eulerOffset)
+        {
+            cameraAttitudeOffset = eulerOffset;
+            ApplyCameraRotation();
+        }
+
+        /// <summary>지금 카메라에 얹혀 있는 자세 롤(도). 검증이 읽는 자리다.</summary>
+        public Vector3 CameraAttitudeOffset => cameraAttitudeOffset;
 
         private void ApplyMovement(Vector2 move, bool jump, float deltaTime)
         {

@@ -105,7 +105,11 @@ namespace DoodleUp.Editor
 
             var runtime = new GameObject("LAST_SHIFT_RUNTIME");
             runtime.AddComponent<LastShiftImpactFeedback>();
+            var attitudeFeedback = runtime.AddComponent<LastShiftAttitudeFeedback>();
             var sandbox = runtime.AddComponent<LastShiftSandboxController>();
+            // 자세 롤은 샌드박스 상태를 읽는다. 클라이언트에서 샌드박스 컴포넌트가 꺼져도
+            // CurrentState 는 스냅샷으로 갱신되므로 읽는 쪽만 살아 있으면 화면이 맞는다.
+            attitudeFeedback.Configure(sandbox);
             sandbox.Configure(System.Array.Empty<LastShiftPlayerController>(), items);
             sandbox.gameObject.AddComponent<NetworkObject>();
             sandbox.gameObject.AddComponent<LastShiftNetworkSandbox>().Configure(sandbox);
