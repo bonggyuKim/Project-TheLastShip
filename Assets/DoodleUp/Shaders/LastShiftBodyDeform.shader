@@ -76,15 +76,18 @@ Shader "LastShift/BodyDeform"
 
         void vert(inout appdata_full v)
         {
-            float3 basePosition = v.vertex.xyz;
-            float3 baseNormal = v.normal;
+            // 월드에서 잰다. 스킨드 메시의 정점이 여기 어느 공간으로 들어오는지는 스키닝 경로에
+            // 따라 달라져서, 오브젝트 공간을 가정했더니 접촉점이 어느 정점에도 안 닿아 눌림이
+            // 화면에 아예 안 나왔다. 월드로 올려 재고 변위만 도로 내리면 그 가정이 필요 없다.
+            float3 basePosition = mul(unity_ObjectToWorld, v.vertex).xyz;
+            float3 baseNormal = normalize(mul((float3x3)unity_ObjectToWorld, v.normal));
             float3 moved = basePosition + lsDeformOffset(basePosition, baseNormal);
 
             // 법선을 다시 만든다. 정점만 밀고 법선을 두면 눌린 자리의 음영이 안 따라와서
             // 실루엣만 들어가고 표면은 평평해 보인다. 접평면 위 두 점을 같은 커널로 밀어
             // 외적으로 새 법선을 뽑는다 — 해석적 기울기보다 짧고, 커널을 바꿔도 안 갈린다.
             float epsilon = 0.01;
-            float3 tangent = v.tangent.xyz;
+            float3 tangent = normalize(mul((float3x3)unity_ObjectToWorld, v.tangent.xyz));
             float tangentLength = length(tangent);
             if (tangentLength > 0.0001)
             {
@@ -102,11 +105,12 @@ Shader "LastShift/BodyDeform"
                     rebuilt = normalize(rebuilt);
                     // 외적 방향이 원래 법선과 반대로 나오는 접선 손잡이도 있다. 뒤집힌 쪽을
                     // 그대로 두면 그 면만 안팎이 바뀌어 검게 뜬다.
-                    v.normal = dot(rebuilt, baseNormal) < 0.0 ? -rebuilt : rebuilt;
+                    rebuilt = dot(rebuilt, baseNormal) < 0.0 ? -rebuilt : rebuilt;
+                    v.normal = normalize(mul((float3x3)unity_WorldToObject, rebuilt));
                 }
             }
 
-            v.vertex.xyz = moved;
+            v.vertex.xyz += mul((float3x3)unity_WorldToObject, moved - basePosition);
         }
 
         void surf (Input IN, inout SurfaceOutputStandard o)

@@ -382,8 +382,14 @@ namespace DoodleUp.Runtime
             body.angularDamping = tuning.AngularDamping;
             body.maxAngularVelocity = tuning.MaxAngularSpeed;
             body.sleepThreshold = tuning.SleepThreshold;
-            body.solverIterations = tuning.SolverIterations;
-            body.solverVelocityIterations = tuning.SolverVelocityIterations;
+            // <b>경첩 부위만 반복을 올린다.</b> 팔꿈치는 각속도 상한(22 rad/s)에서 한 물리
+            // 스텝(20ms)에 25도를 지나가므로, 기본 반복으로는 한계를 밟기 전에 이미 넘어가 있다
+            // (실측: 몸통 충돌에서 경첩 각 113도, 한계 90+여유 5). 전역으로 올리면 12파트가
+            // 전부 비싸지고, 예전 측정에서 볼 조인트 쪽은 반복을 올려도 안 나아졌다 —
+            // 그래서 여기만 올린다.
+            var hingeBoost = spec.IsHinge ? HingeSolverBoost : 1;
+            body.solverIterations = tuning.SolverIterations * hingeBoost;
+            body.solverVelocityIterations = tuning.SolverVelocityIterations * hingeBoost;
             body.maxDepenetrationVelocity = tuning.MaxDepenetrationSpeed;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
@@ -550,6 +556,9 @@ namespace DoodleUp.Runtime
         /// 솔버가 매 스텝 한계를 밟으며 덜덜 떤다.
         /// </summary>
         public const float HingeSlackDegrees = 5f;
+
+        /// <summary>경첩 부위의 솔버 반복 배수. 볼 조인트는 안 올린다.</summary>
+        private const int HingeSolverBoost = 4;
 
 
         /// <summary>

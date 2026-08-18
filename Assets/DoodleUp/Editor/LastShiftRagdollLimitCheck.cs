@@ -54,6 +54,10 @@ namespace DoodleUp.Editor
                 ragdoll.ApplyImpulse(target, direction * impulse(tuning));
 
                 var worst = new float[parts.Count];
+                // 경첩은 <b>축 둘레 각</b>도 따로 잰다. 3D 상대 회전이 한계를 넘어도 경첩 각이
+                // 한계 안이면 새는 것은 경첩이 아니라 축 밖 구속(솔버 오차)이다 — 둘을 같이
+                // 안 재면 어느 쪽을 고쳐야 하는지 알 수가 없다.
+                var worstHinge = new float[parts.Count];
                 for (var s = 0; s < Mathf.CeilToInt(5f / step); s++)
                 {
                     ragdoll.StepPhysics(step);
@@ -63,6 +67,9 @@ namespace DoodleUp.Editor
                     {
                         worst[i] = Mathf.Max(worst[i],
                             Quaternion.Angle(rest[i], JointRotation(ragdoll, parts[i])));
+
+                        var hinge = ragdoll.Bodies[parts[i]].GetComponent<HingeJoint>();
+                        if (hinge != null) worstHinge[i] = Mathf.Max(worstHinge[i], Mathf.Abs(hinge.angle));
                     }
                 }
 
@@ -74,7 +81,9 @@ namespace DoodleUp.Editor
                     var allowed = Mathf.Max(1f, AllowedAngle(spec));
                     overshoot = Mathf.Max(overshoot, worst[i] / allowed);
                     line.Append($"{spec.BoneName}={worst[i].ToString("F0", CultureInfo.InvariantCulture)}/{allowed:F0}");
-                    line.Append(spec.IsHinge ? "(hinge) " : " ");
+                    line.Append(spec.IsHinge
+                        ? $"(hinge axis={worstHinge[i].ToString("F0", CultureInfo.InvariantCulture)}) "
+                        : " ");
                 }
 
                 Debug.Log($"[LAST_SHIFT_RAGDOLL_LIMIT] case={label} " +

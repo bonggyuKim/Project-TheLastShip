@@ -186,11 +186,14 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 슬롯을 렌더러마다의 오브젝트 공간으로 옮겨 넘긴다.
+        /// 슬롯을 <b>월드 공간</b> 그대로 넘긴다.
         ///
-        /// <b>스케일을 나눠 준다.</b> 접촉 반경과 깊이는 월드 미터인데 정점 셰이더는 오브젝트
-        /// 공간에서 잰다. 씬이 승무원을 1.5배로 쓰므로 그냥 넘기면 자국만 1.5배로 커진다 —
-        /// 콜라이더에서 이미 한 번 겪은 어긋남이다.
+        /// <b>오브젝트 공간으로 넘기다 한 번 실패했다.</b> 스킨드 메시의 정점이 정점 셰이더에
+        /// 어느 공간으로 들어오는지는 스키닝 경로(CPU/GPU)와 루트 본 설정에 따라 달라져서,
+        /// 오브젝트 공간을 가정하면 접촉점이 엉뚱한 자리에 떨어진다 — 커널이 어느 정점에도
+        /// 안 닿아 눌림이 <b>화면에 한 번도 안 나왔다</b>(실측: 깊이 6cm 가 잡혔는데 그림은 그대로).
+        /// 셰이더가 정점을 월드로 올려 재고 변위만 도로 내리면 그 가정이 통째로 필요 없다.
+        /// 월드로 통일하면 스케일을 나눠 줄 일도 없어진다.
         /// </summary>
         public void PushToRenderers()
         {
@@ -202,11 +205,6 @@ namespace DoodleUp.Runtime
                 var target = _renderers[r];
                 if (target == null) continue;
 
-                var toObject = target.transform;
-                var lossy = toObject.lossyScale;
-                var scale = (Mathf.Abs(lossy.x) + Mathf.Abs(lossy.y) + Mathf.Abs(lossy.z)) / 3f;
-                if (scale <= 0.0001f) continue;
-
                 var count = 0;
                 for (var i = 0; i < SlotCount; i++)
                 {
@@ -214,14 +212,12 @@ namespace DoodleUp.Runtime
                     if (Mathf.Abs(_slots[i].Depth) < sleepDepth) continue;
 
                     var world = _slots[i].Anchor.TransformPoint(_slots[i].LocalPoint);
-                    var normal = _slots[i].Anchor.TransformDirection(_slots[i].LocalNormal);
-                    var objectPoint = toObject.InverseTransformPoint(world);
-                    var objectNormal = toObject.InverseTransformDirection(normal).normalized;
+                    var normal = _slots[i].Anchor.TransformDirection(_slots[i].LocalNormal).normalized;
 
                     _positionBuffer[count] = new Vector4(
-                        objectPoint.x, objectPoint.y, objectPoint.z, _slots[i].Radius / scale);
+                        world.x, world.y, world.z, _slots[i].Radius);
                     _normalBuffer[count] = new Vector4(
-                        objectNormal.x, objectNormal.y, objectNormal.z, _slots[i].Depth / scale);
+                        normal.x, normal.y, normal.z, _slots[i].Depth);
                     count++;
                 }
                 for (var i = count; i < SlotCount; i++)
