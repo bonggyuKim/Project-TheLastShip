@@ -162,9 +162,11 @@ namespace DoodleUp.Tests.EditMode
             {
                 var body = instance.transform.Find(LastShiftCrewBody.RootName);
                 Assert.That(body, Is.Not.Null, "승무원 비주얼이 없다");
+                // <b>셸이 몇 장인지는 안 묻는다.</b> 이 캐릭터는 통짜 ↔ 부위별 분리를 이미 두 번
+                // 오갔다(2026-08-18 현재는 통짜 한 장). 개수를 못박으면 아트가 메시를 손댈 때마다
+                // 이 검사가 무의미하게 빨개진다 — 지켜야 할 것은 "있는 셸에 <b>전부</b> 걸리는가" 다.
                 var shells = LastShiftCrewBody.Renderers(body).Count;
-                Assert.That(shells, Is.GreaterThan(1),
-                    "이 검사는 몸이 여러 셸로 갈려 있을 때만 의미가 있다 — 통짜로 돌아갔다면 지워라");
+                Assert.That(shells, Is.GreaterThan(0), "몸 렌더러가 없다");
 
                 var player = instance.GetComponent<LastShiftNetworkPlayer>();
                 Assert.That(player.ResolveBodyShellCountForProbe(), Is.EqualTo(shells),

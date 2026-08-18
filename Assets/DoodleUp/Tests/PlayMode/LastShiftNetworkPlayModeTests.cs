@@ -99,8 +99,7 @@ namespace DoodleUp.Tests.PlayMode
             // 색이 들어가고 머리·팔·다리는 회색으로 남는다 - 유령 반투명도 같은 자리에서
             // 같은 방식으로 걸리므로 여기서 한 번 고정하면 둘 다 지켜진다.
             var bodyShells = LastShiftCrewBody.Renderers(player.transform.Find(LastShiftCrewBody.RootName));
-            Assert.That(bodyShells.Count, Is.GreaterThan(1),
-                "몸이 셸 한 장이면 이 검사는 의미가 없다 - 통짜로 돌아갔다면 지워라");
+            Assert.That(bodyShells.Count, Is.GreaterThan(0), "몸 렌더러가 없다");
             foreach (var shell in bodyShells)
             {
                 var painted = shell.material.color;

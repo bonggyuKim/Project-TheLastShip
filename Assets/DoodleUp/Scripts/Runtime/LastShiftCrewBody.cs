@@ -25,7 +25,7 @@ namespace DoodleUp.Runtime
         /// 1인칭에서 접는 머리 뼈 이름. 리그가 주는 이름이고
         /// <see cref="LastShiftNetworkPlayer.ApplyLocalPresentation"/> 이 이것으로 머리를 찾는다.
         /// </summary>
-        public const string HeadBoneName = "head";
+        public const string HeadBoneName = LastShiftRagdollRig.HeadBoneName;
 
         /// <summary>
         /// 몸을 이루는 스킨드 렌더러 전부. 부피가 큰 것부터, 같으면 정점 수, 그 다음 이름순 —

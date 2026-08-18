@@ -729,14 +729,14 @@ namespace DoodleUp.Runtime
 
         private float CrownRise(IReadOnlyDictionary<string, Transform> bones)
         {
-            var head = bones["head"];
+            var head = bones[LastShiftRagdollRig.HeadBoneName];
             MeasureRenderedSpan(out _, out var top);
 
             var rise = top - head.position.y;
             if (rise > 0.01f) return rise;
 
             // 메시가 없거나 바운즈가 이상하면 목 길이로 대신한다 — 프로토타입이 아예 못 서는 것보다 낫다.
-            return Mathf.Max(0.08f, Vector3.Distance(head.position, bones["chest"].position));
+            return Mathf.Max(0.08f, Vector3.Distance(head.position, bones[LastShiftRagdollRig.ChestBoneName].position));
         }
 
         private static void DestroyComponent(Component component)

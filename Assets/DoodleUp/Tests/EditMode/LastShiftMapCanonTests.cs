@@ -194,8 +194,8 @@ namespace DoodleUp.Tests.EditMode
 
             Transform head = null;
             foreach (var bone in prefab.GetComponentsInChildren<Transform>(true))
-                if (bone.name == "head") head = bone;
-            Assert.That(head, Is.Not.Null, "head 뼈가 없다 — 1인칭 머리 접기가 이 이름에 걸려 있다");
+                if (bone.name == LastShiftCrewBody.HeadBoneName) head = bone;
+            Assert.That(head, Is.Not.Null, $"{LastShiftCrewBody.HeadBoneName} 뼈가 없다 — 1인칭 머리 접기가 이 이름에 걸려 있다");
 
             // 성분마다 오차를 두고 본다. <c>Is.EqualTo(Vector3.one)</c> 는 NUnit 이
             // <see cref="Vector3.Equals(object)"/>(성분 정확비교)로 판정해서, FBX 를 다시

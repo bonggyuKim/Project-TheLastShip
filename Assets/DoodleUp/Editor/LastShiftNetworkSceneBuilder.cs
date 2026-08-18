@@ -15,7 +15,7 @@ namespace DoodleUp.Editor
     {
         public const string ScenePath = "Assets/Scenes/LAST_SHIFT_SP02A_NETWORK.unity";
         public const string PlayerPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftNetworkPlayer.prefab";
-        public const string LimeAlienPrefabPath = "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Animated.prefab";
+        public const string LimeAlienPrefabPath = "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx";
 
         [MenuItem("Last Shift/SP-02A/Rebuild Network Sandbox")]
         public static void RebuildSandbox()

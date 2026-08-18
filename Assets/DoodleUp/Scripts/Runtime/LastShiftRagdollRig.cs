@@ -128,16 +128,20 @@ namespace DoodleUp.Runtime
     /// 직접 찾는 수밖에 없고, 이름이 바뀌면 조용히 실패하므로 EditMode 테스트가 실제 FBX 를 열어
     /// 이 표의 이름이 전부 존재하는지 지킨다(<c>LastShiftRagdollTests</c>).
     ///
-    /// 실제 뼈 계층(아바타 마스크 <c>LastShiftLimeAlien_UpperBody.mask</c> 의 경로에서 읽었다):
+    /// 실제 뼈 계층(<c>Last Shift/Prototype/Dump Character Rig</c> 로 뽑았다):
     /// <code>
-    /// LastShift_LimeAlien_Rig/root/pelvis/spine/chest/head
-    ///                                          chest/upper_arm.L/forearm.L/hand.L
-    ///                                          chest/upper_arm.R/forearm.R/hand.R
-    ///                            pelvis/thigh.L/shin.L/foot.L
-    ///                            pelvis/thigh.R/shin.R/foot.R
+    /// root/DEF-spine/DEF-spine.001/…/DEF-spine.006          ← 척추·머리
+    /// LastShift_LimeAlien_Rig/…/ORG-spine/DEF-thigh.L/DEF-thigh.L.001/DEF-shin.L/…/DEF-foot.L
+    ///                         …/ORG-shoulder.L/DEF-upper_arm.L/…/DEF-forearm.L/…/DEF-hand.L
     /// </code>
-    /// <c>root</c> 밑의 <c>hand_ik</c>·<c>foot_ik</c>·<c>elbow_pole</c>·<c>knee_pole</c> 은 IK 보조라
-    /// 물리 바디를 안 준다 — 주면 팔이 두 갈래로 끌린다.
+    /// <b>척추와 팔다리가 다른 가지에 있다.</b> Rigify 가 변형본을 제어본 밑에 흩어 놓기 때문인데,
+    /// 조인트는 계층이 아니라 <c>connectedBody</c> 로 잇고 뼈 탐색도 인스턴스 전체를 훑으므로
+    /// 래그돌에는 영향이 없다. <c>MCH-</c>/<c>ORG-</c>/<c>tweak</c>/<c>spine_fk</c> 는 웨이트를
+    /// 하나도 안 들고 있어 물리 바디를 안 준다 — 주면 몸이 두 갈래로 끌린다.
+    ///
+    /// 각 팔다리는 <c>DEF-upper_arm.L</c> + <c>DEF-upper_arm.L.001</c> 처럼 두 마디로 쪼개져 있다.
+    /// 바디는 <b>앞마디에만</b> 주고 길이는 다음 관절 뼈까지로 잰다 — 뒷마디는 앞마디를 따라오는
+    /// 순수 변형용이라 바디를 주면 팔꿈치가 두 번 접힌다.
     ///
     /// <b>손·발에는 바디를 안 둔다.</b> 13개 → 12개로 줄이면 저중력에서 솔버가 눈에 띄게 안정되고,
     /// 대신 아래팔·정강이 캡슐이 손끝·발끝까지 덮게 길이를 잡는다. 프로토타입 목표가 "머리·팔이
@@ -148,11 +152,31 @@ namespace DoodleUp.Runtime
         /// <summary>모델 루트 밑의 아마추어 오브젝트 이름.</summary>
         public const string ArmatureName = "LastShift_LimeAlien_Rig";
 
+        /// <summary>
+        /// <b>이 표는 Rigify 변형본(<c>DEF-</c>) 이름을 쓴다.</b> 2026-08-18 사용자 결정으로
+        /// 옛 리그(<c>pelvis/spine/chest/head/upper_arm…</c>)를 버리고 새 Rigify 리그를 정본으로
+        /// 삼았다. 옛 이름은 이제 어디에도 없으므로 되돌리지 말 것.
+        ///
+        /// <b>척추와 팔다리가 서로 다른 가지에 있다.</b> <c>DEF-spine…006</c> 은 <c>root</c> 밑에,
+        /// 팔다리는 제어 리그(<c>MCH-/ORG-/tweak</c>) 밑에 달려 있다. 래그돌은 조인트의
+        /// <c>connectedBody</c> 로 부위를 잇지 계층으로 잇지 않으므로 이 갈림은 문제가 안 된다 —
+        /// <see cref="LastShiftRagdoll"/> 의 뼈 탐색도 아마추어가 아니라 인스턴스 전체를 훑는다.
+        ///
+        /// 제어본은 웨이트를 하나도 안 들고 있다(실측: 변형 합 6,921 = 정점 수, 제어 합 0).
+        /// 그래서 물리가 <c>DEF-</c> 만 움직여도 메시가 안 찢어진다. 리그를 다시 뽑았는데 이
+        /// 전제가 깨지면 <c>Last Shift/Prototype/Dump Character Rig</c> 가 바로 보여 준다.
+        /// </summary>
+        public const string PelvisBoneName = "DEF-spine";
+
+        public const string SpineBoneName = "DEF-spine.001";
+        public const string ChestBoneName = "DEF-spine.003";
+        public const string HeadBoneName = "DEF-spine.006";
+
         /// <summary>좌우 간격을 재는 기준 뼈들. 몸통 두께가 여기서 나온다.</summary>
-        public const string LeftHipBoneName = "thigh.L";
-        public const string RightHipBoneName = "thigh.R";
-        public const string LeftShoulderBoneName = "upper_arm.L";
-        public const string RightShoulderBoneName = "upper_arm.R";
+        public const string LeftHipBoneName = "DEF-thigh.L";
+        public const string RightHipBoneName = "DEF-thigh.R";
+        public const string LeftShoulderBoneName = "DEF-upper_arm.L";
+        public const string RightShoulderBoneName = "DEF-upper_arm.R";
 
         /// <summary>
         /// 승무원 한 명의 총 질량(kg). 절대값 자체는 재미에 안 걸리지만 <b>비율</b>은 걸린다 —
@@ -169,15 +193,15 @@ namespace DoodleUp.Runtime
         public static readonly LastShiftRagdollBone[] Bones =
         {
             // 골반. 조인트가 없는 유일한 바디라 여기가 래그돌 전체의 무게 중심이자 임펄스 기준점이다.
-            new LastShiftRagdollBone(LastShiftRagdollPart.Pelvis, "pelvis", "spine",
+            new LastShiftRagdollBone(LastShiftRagdollPart.Pelvis, PelvisBoneName, SpineBoneName,
                 LastShiftRagdollPart.Pelvis, true, 0.16f,
                 LastShiftRagdollGirth.HipSpan, 0.45f, 0f, 0f, 0f),
 
             // 허리·가슴. 여기를 너무 열면 몸이 접혀 코믹이 아니라 고장으로 보인다.
-            new LastShiftRagdollBone(LastShiftRagdollPart.Spine, "spine", "chest",
+            new LastShiftRagdollBone(LastShiftRagdollPart.Spine, SpineBoneName, ChestBoneName,
                 LastShiftRagdollPart.Pelvis, false, 0.10f,
                 LastShiftRagdollGirth.ShoulderSpan, 0.30f, 25f, 25f, 20f),
-            new LastShiftRagdollBone(LastShiftRagdollPart.Chest, "chest", "head",
+            new LastShiftRagdollBone(LastShiftRagdollPart.Chest, ChestBoneName, HeadBoneName,
                 LastShiftRagdollPart.Spine, false, 0.20f,
                 LastShiftRagdollGirth.ShoulderSpan, 0.34f, 20f, 20f, 15f),
 
@@ -185,35 +209,35 @@ namespace DoodleUp.Runtime
             // 비율 0.15 는 사람 비율(약 0.08)의 두 배 가까이인데, 이 승무원의 머리가 실제로
             // 몸의 절반쯤 되는 두들 비례라서다(실측: 신장 1.65m 중 머리 뼈부터 정수리까지 0.77m).
             // 사람 비율을 그대로 쓰면 큰 머리가 가볍게 톡 튀어 목이 안 끌린다.
-            new LastShiftRagdollBone(LastShiftRagdollPart.Head, "head", null,
+            new LastShiftRagdollBone(LastShiftRagdollPart.Head, HeadBoneName, null,
                 LastShiftRagdollPart.Chest, false, 0.15f,
                 LastShiftRagdollGirth.CrownRise, 0.5f, 55f, 40f, 45f),
 
             // 팔. 어깨는 넓게, 팔꿈치는 한 축만 열어 경첩처럼.
-            new LastShiftRagdollBone(LastShiftRagdollPart.UpperArmL, "upper_arm.L", "forearm.L",
+            new LastShiftRagdollBone(LastShiftRagdollPart.UpperArmL, LeftShoulderBoneName, "DEF-forearm.L",
                 LastShiftRagdollPart.Chest, false, 0.028f,
                 LastShiftRagdollGirth.BoneLength, 0.30f, 85f, 70f, 60f),
-            new LastShiftRagdollBone(LastShiftRagdollPart.ForearmL, "forearm.L", "hand.L",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ForearmL, "DEF-forearm.L", "DEF-hand.L",
                 LastShiftRagdollPart.UpperArmL, false, 0.018f,
                 LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f, true, true),
-            new LastShiftRagdollBone(LastShiftRagdollPart.UpperArmR, "upper_arm.R", "forearm.R",
+            new LastShiftRagdollBone(LastShiftRagdollPart.UpperArmR, RightShoulderBoneName, "DEF-forearm.R",
                 LastShiftRagdollPart.Chest, false, 0.028f,
                 LastShiftRagdollGirth.BoneLength, 0.30f, 85f, 70f, 60f),
-            new LastShiftRagdollBone(LastShiftRagdollPart.ForearmR, "forearm.R", "hand.R",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ForearmR, "DEF-forearm.R", "DEF-hand.R",
                 LastShiftRagdollPart.UpperArmR, false, 0.018f,
                 LastShiftRagdollGirth.BoneLength, 0.26f, 90f, 10f, 10f, true, true),
 
             // 다리. 무릎도 경첩. 저중력에서 다리가 자유로우면 착지가 성립을 안 한다.
-            new LastShiftRagdollBone(LastShiftRagdollPart.ThighL, "thigh.L", "shin.L",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ThighL, LeftHipBoneName, "DEF-shin.L",
                 LastShiftRagdollPart.Pelvis, false, 0.095f,
                 LastShiftRagdollGirth.BoneLength, 0.32f, 70f, 35f, 30f),
-            new LastShiftRagdollBone(LastShiftRagdollPart.ShinL, "shin.L", "foot.L",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ShinL, "DEF-shin.L", "DEF-foot.L",
                 LastShiftRagdollPart.ThighL, false, 0.048f,
                 LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f, true, false),
-            new LastShiftRagdollBone(LastShiftRagdollPart.ThighR, "thigh.R", "shin.R",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ThighR, RightHipBoneName, "DEF-shin.R",
                 LastShiftRagdollPart.Pelvis, false, 0.095f,
                 LastShiftRagdollGirth.BoneLength, 0.32f, 70f, 35f, 30f),
-            new LastShiftRagdollBone(LastShiftRagdollPart.ShinR, "shin.R", "foot.R",
+            new LastShiftRagdollBone(LastShiftRagdollPart.ShinR, "DEF-shin.R", "DEF-foot.R",
                 LastShiftRagdollPart.ThighR, false, 0.048f,
                 LastShiftRagdollGirth.BoneLength, 0.26f, 85f, 10f, 10f, true, false)
         };

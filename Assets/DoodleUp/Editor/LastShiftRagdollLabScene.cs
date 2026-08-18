@@ -23,7 +23,7 @@ namespace DoodleUp.Editor
         public const string ScenePath = "Assets/Scenes/LAST_SHIFT_RAGDOLL_LAB.unity";
 
         public const string CharacterPrefabPath =
-            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Animated.prefab";
+            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx";
 
         /// <summary>문 통과 폭. 승무원 둘이 동시에 들어가려다 부딪히는 자리를 만드는 값이다.</summary>
         public const float DoorwayGap = 1.2f;
