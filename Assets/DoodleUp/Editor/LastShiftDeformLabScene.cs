@@ -26,8 +26,17 @@ namespace DoodleUp.Editor
     {
         public const string ScenePath = "Assets/Scenes/LAST_SHIFT_DEFORM_LAB.unity";
 
+        /// <summary>
+        /// <b>이 랩만 정리본을 쓴다.</b> 래그돌 랩과 네트워크 씬은 기존 FBX 그대로 둔다 —
+        /// 두 테스트를 완전히 갈라 놓는 것이 이 씬을 따로 만든 이유이기 때문이다.
+        ///
+        /// 정리본은 본체에서 떨어져 있던 섬 셋(42/16/3 정점)을 뺀 것이다. 그 섬들은 뼈가 돌 때만
+        /// 판 조각처럼 튀어나오고 정지 자세에서는 딱 붙어 있어 눈으로는 안 걸렸다.
+        /// 임포트 직후 <c>Last Shift/Prototype/Dump Character Rig</c> 로 확인한다 —
+        /// 정리본은 <c>islands count=2</c>(본체 4,221 + 눈 흰자 1,490)다.
+        /// </summary>
         public const string CharacterPrefabPath =
-            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx";
+            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeformClean.fbx";
 
         public const string FloorMaterialPath = "Assets/DoodleUp/Materials/LS_Floor.mat";
         public const string PropMaterialPath = "Assets/DoodleUp/Materials/LS_Hull.mat";
