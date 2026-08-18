@@ -93,6 +93,13 @@ namespace DoodleUp.Editor
 
             var crew = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             crew.name = "RagdollSubject";
+
+            // <b>프리팹 연결을 끊는다.</b> 래그돌은 변형 골격을 물리 본 밑으로 다시 엮는데,
+            // 에디터는 프리팹 인스턴스 <b>안쪽</b>의 재부모화를 거부한다("Setting the parent of a
+            // transform which resides in a Prefab instance is not possible"). 거부당하면 어깨·가슴·
+            // 골반 변형본이 바인드 포즈에 박힌 채로 남아 메시가 찢어진다 — 실제로 그렇게 났다.
+            // 랩은 프리팹 갱신을 따라갈 이유가 없는 실험용 씬이라 통째로 푼다.
+            PrefabUtility.UnpackPrefabInstance(crew, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
             crew.transform.SetPositionAndRotation(new Vector3(0f, 0f, 0f), Quaternion.identity);
             crew.transform.localScale = Vector3.one * CrewScale;
             // 표현층을 래그돌보다 먼저 얹는다. 순서 자체는 빌드 시점에 다시 찾으므로 상관없지만,

@@ -131,6 +131,7 @@ namespace DoodleUp.Runtime
             _deform = GetComponentInParent<LastShiftBodyDeform>();
 
             var bones = ResolveBones();
+            ReparentDeformSkeleton(bones);
             var hipSpan = Distance(bones, LastShiftRagdollRig.LeftHipBoneName, LastShiftRagdollRig.RightHipBoneName);
             var shoulderSpan = Distance(bones, LastShiftRagdollRig.LeftShoulderBoneName, LastShiftRagdollRig.RightShoulderBoneName);
             var crownRise = CrownRise(bones);
@@ -584,6 +585,43 @@ namespace DoodleUp.Runtime
         /// 어느 방향으로 뽑았든 그 뼈의 굽힘 평면을 따라가므로, 비대칭 리그에서도 좌우가 각자
         /// 자기 자세에 맞는 프레임을 받는다.
         /// </summary>
+        /// <summary>
+        /// 변형 골격을 물리 본 밑으로 다시 엮는다.
+        ///
+        /// <b>월드 변환을 유지한다</b>(<c>SetParent(parent, true)</c>). 스키닝은 뼈의 월드
+        /// 행렬과 바인드포즈로 계산되므로, 정지 자세에서는 화면이 한 픽셀도 안 바뀐다.
+        /// 바뀌는 것은 <b>물리가 움직일 때 무엇이 따라오는가</b> 뿐이다.
+        ///
+        /// 바디를 만들기 <b>전에</b> 부른다 — 나중에 옮기면 조인트의 연결 앵커가 이미 옛 계층
+        /// 기준으로 잡힌 뒤라 관절이 어긋난다.
+        /// </summary>
+        private void ReparentDeformSkeleton(IReadOnlyDictionary<string, Transform> bones)
+        {
+            var attachments = LastShiftRagdollRig.DeformAttachments;
+            for (var i = 0; i < attachments.Length; i++)
+            {
+                var (boneName, attachTo) = attachments[i];
+                var bone = System.Array.Find(
+                    GetComponentsInChildren<Transform>(true), child => child.name == boneName);
+                if (bone == null) continue;
+
+                var parentName = LastShiftRagdollRig.SpecOf(attachTo).BoneName;
+                if (!bones.TryGetValue(parentName, out var parent) || parent == null) continue;
+                if (bone == parent || bone.parent == parent) continue;
+
+                bone.SetParent(parent, true);
+
+                // <b>조용히 실패하게 두지 않는다.</b> 에디터는 프리팹 인스턴스 안쪽의 재부모화를
+                // 거부하는데, 거부해도 예외가 아니라 콘솔 경고 한 줄만 남는다. 그 상태로 넘어가면
+                // 어깨·가슴·골반 변형본이 바인드 포즈에 박혀 메시가 찢어지고, 수치 검사는 전부
+                // 통과한다 — 실제로 그렇게 한 번 나갔다.
+                if (bone.parent != parent)
+                    throw new InvalidOperationException(
+                        $"{boneName} 를 {parentName} 밑으로 못 옮겼다 — 프리팹 인스턴스 안쪽이면 " +
+                        "먼저 언팩해야 한다. 이대로 두면 이 뼈가 바인드 포즈에 남아 메시가 찢어진다.");
+            }
+        }
+
         private Vector3 SwingAxis(Transform bone, Vector3 twist)
         {
             var best = Vector3.zero;

@@ -179,6 +179,34 @@ namespace DoodleUp.Runtime
         public const string RightShoulderBoneName = "DEF-upper_arm.R";
 
         /// <summary>
+        /// <b>물리를 안 따라가던 변형본을 어디에 매달 것인가.</b>
+        ///
+        /// Rigify 는 변형본을 제어본(<c>ORG-</c>/<c>MCH-</c>/<c>tweak</c>) 밑에 흩어 놓는다.
+        /// 래그돌은 그중 열둘에만 바디를 주므로, 나머지 변형본은 부모가 물리를 안 받아
+        /// 몸이 날아가는 동안 <b>바인드 포즈에 박혀</b> 있었다 — 어깨·가슴·골반 정점이 제자리에
+        /// 남고 나머지가 끌려가 메시가 찢어졌다(사용자 판정 2026-08-18).
+        ///
+        /// 팔다리 본은 바디가 있어 스스로는 움직이지만 계층상으로는 여전히 정적 제어본의
+        /// 자식이었다. 그래서 <b>변형 골격 전체를 물리 본 밑으로 다시 엮는다</b> — 골반에서
+        /// 시작하는 하나의 트리가 되고, 제어 계층은 변형 경로에서 완전히 빠진다.
+        ///
+        /// 월드 변환을 유지한 채 부모만 바꾸므로 정지 자세는 한 밀리미터도 안 움직인다.
+        /// </summary>
+        public static readonly (string BoneName, LastShiftRagdollPart AttachTo)[] DeformAttachments =
+        {
+            ("DEF-thigh.L", LastShiftRagdollPart.Pelvis),
+            ("DEF-thigh.R", LastShiftRagdollPart.Pelvis),
+            ("DEF-pelvis.L", LastShiftRagdollPart.Pelvis),
+            ("DEF-pelvis.R", LastShiftRagdollPart.Pelvis),
+            ("DEF-upper_arm.L", LastShiftRagdollPart.Chest),
+            ("DEF-upper_arm.R", LastShiftRagdollPart.Chest),
+            ("DEF-shoulder.L", LastShiftRagdollPart.Chest),
+            ("DEF-shoulder.R", LastShiftRagdollPart.Chest),
+            ("DEF-breast.L", LastShiftRagdollPart.Chest),
+            ("DEF-breast.R", LastShiftRagdollPart.Chest)
+        };
+
+        /// <summary>
         /// 승무원 한 명의 총 질량(kg). 절대값 자체는 재미에 안 걸리지만 <b>비율</b>은 걸린다 —
         /// 머리가 무거우면 목이 끌려가 코믹해지고, 가벼우면 톡 튀고 만다. 임펄스 세기는 전부
         /// 이 값을 기준으로 잡혀 있어서 여기를 바꾸면 <see cref="LastShiftRagdollTuning"/> 의

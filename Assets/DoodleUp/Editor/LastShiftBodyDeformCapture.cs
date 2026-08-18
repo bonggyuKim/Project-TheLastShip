@@ -27,11 +27,11 @@ namespace DoodleUp.Editor
         private const string FrontFolder = "frames_front";
 
         /// <summary>
-        /// 두 번째 각도. <b>정면만으로는 눌림을 못 읽는다</b> — 공이 접촉면을 거의 다 가려서
-        /// 자국이 공 뒤에 숨는다. 45도 넘게 틀면 눌림과 둘레 불룩함이 <b>실루엣</b>으로 나와
-        /// 깊이를 몸과 견줘 판단할 수 있다. 정면은 요청받은 각도라 같이 남긴다.
+        /// 측면. <b>정면만으로는 눌림도 찢김도 못 읽는다</b> — 공이 접촉면을 가리고, 어깨·골반이
+        /// 제자리에 남는 종류의 찢김은 실루엣에서만 드러난다. 90도에서 보면 눌림 깊이와 둘레
+        /// 불룩함이 실루엣으로 나오고 몸통이 통째로 밀리는지도 같이 보인다.
         /// </summary>
-        private const string QuarterFolder = "frames_quarter";
+        private const string SideFolder = "frames_side";
 
         private const float StepSeconds = 1f / 60f;
         private const float DurationSeconds = 2.6f;
@@ -49,9 +49,14 @@ namespace DoodleUp.Editor
         [MenuItem("Last Shift/Prototype/Capture Body Deform Video")]
         public static void CaptureForAutomation()
         {
-            var frontDirectory = Path.Combine(OutputDirectory, FrontFolder);
-            var quarterDirectory = Path.Combine(OutputDirectory, QuarterFolder);
-            foreach (var directory in new[] { frontDirectory, quarterDirectory })
+            // <b>변형을 끄고도 한 번 찍을 수 있어야 한다.</b> 메시가 찢어졌을 때 원인이 눌림
+            // 셰이더인지 스키닝인지는, 눌림만 빼고 같은 물리를 돌려 같은 프레임을 비교해야 갈린다.
+            var deformEnabled = CommandLineValue("-deform") != "off";
+            var suffix = deformEnabled ? "" : "_nodeform";
+
+            var frontDirectory = Path.Combine(OutputDirectory, FrontFolder + suffix);
+            var sideDirectory = Path.Combine(OutputDirectory, SideFolder + suffix);
+            foreach (var directory in new[] { frontDirectory, sideDirectory })
             {
                 Directory.CreateDirectory(directory);
                 foreach (var stale in Directory.GetFiles(directory, "frame_*.png")) File.Delete(stale);
@@ -78,7 +83,7 @@ namespace DoodleUp.Editor
 
             GameObject ball = null;
             GameObject cameraObject = null;
-            GameObject quarterObject = null;
+            GameObject sideObject = null;
             var pelvisStart = Vector3.zero;
             var pelvisEnd = Vector3.zero;
             var ballEnd = Vector3.zero;
@@ -108,8 +113,8 @@ namespace DoodleUp.Editor
 
                 cameraObject = new GameObject("BodyDeformCameraFront");
                 var camera = MakeCamera(cameraObject);
-                quarterObject = new GameObject("BodyDeformCameraQuarter");
-                var quarter = MakeCamera(quarterObject);
+                sideObject = new GameObject("BodyDeformCameraSide");
+                var side = MakeCamera(sideObject);
 
                 // <b>정면에서 30도만 튼다.</b> 완전 정면이면 공이 카메라 쪽으로 날아와 정작
                 // 맞는 순간의 눌림을 공이 가린다 — 접촉점과 공이 같이 보이는 최소한의 각도다.
@@ -123,24 +128,24 @@ namespace DoodleUp.Editor
                 camera.transform.position = eye;
                 camera.transform.rotation = Quaternion.LookRotation(framing - eye, Vector3.up);
 
-                var quarterEye = framing
-                                 + Quaternion.AngleAxis(45f, Vector3.up) * facing * 1.70f
+                var sideEye = framing
+                                 + Quaternion.AngleAxis(90f, Vector3.up) * facing * 1.70f
                                  + Vector3.up * 0.22f;
-                quarter.transform.position = quarterEye;
-                quarter.transform.rotation = Quaternion.LookRotation(framing - quarterEye, Vector3.up);
+                side.transform.position = sideEye;
+                side.transform.rotation = Quaternion.LookRotation(framing - sideEye, Vector3.up);
 
                 var totalSteps = Mathf.CeilToInt(DurationSeconds / StepSeconds);
                 for (var step = 0; step <= totalSteps; step++)
                 {
                     var name = "frame_" + written.ToString("D4", CultureInfo.InvariantCulture) + ".png";
                     WriteFrame(camera, Path.Combine(frontDirectory, name));
-                    WriteFrame(quarter, Path.Combine(quarterDirectory, name));
+                    WriteFrame(side, Path.Combine(sideDirectory, name));
                     written++;
 
                     var velocityBefore = ballBody.linearVelocity;
                     ragdoll.StepPhysics(StepSeconds);
                     UnityEngine.Physics.Simulate(StepSeconds);
-                    RelayBallContact(ragdoll, ballCollider, ballBody, velocityBefore);
+                    if (deformEnabled) RelayBallContact(ragdoll, ballCollider, ballBody, velocityBefore);
 
                     // 표현층은 물리와 같은 스텝으로 민다. 슬롯 깊이를 같이 재 두는 이유는,
                     // 영상 파일이 만들어졌다는 것만으로는 "눌림이 화면에 들어갔는가" 가 안 걸리기 때문이다.
@@ -154,6 +159,8 @@ namespace DoodleUp.Editor
                     if (impactFrame < 0 && active > 0) impactFrame = written;
 
                     if (written == 20) LogRenderState(deform, subject);
+                if (written == 1) LogSkeletonState(subject, "rest");
+                if (written == 40) LogSkeletonState(subject, "afterImpact");
 
                     var frameDepth = 0f;
                     for (var i = 0; i < LastShiftBodyDeform.SlotCount; i++)
@@ -172,13 +179,13 @@ namespace DoodleUp.Editor
             {
                 if (ball != null) UnityEngine.Object.DestroyImmediate(ball);
                 if (cameraObject != null) UnityEngine.Object.DestroyImmediate(cameraObject);
-                if (quarterObject != null) UnityEngine.Object.DestroyImmediate(quarterObject);
+                if (sideObject != null) UnityEngine.Object.DestroyImmediate(sideObject);
                 UnityEngine.Physics.simulationMode = previousMode;
             }
 
             File.WriteAllText(Path.Combine(OutputDirectory, "dent-depth.csv"), timeline.ToString());
             Debug.Log($"[LAST_SHIFT_DEFORM_VIDEO] deepestFrame={deepestFrame} " +
-                      $"frames={written} front={frontDirectory} quarter={quarterDirectory} " +
+                      $"frames={written} front={frontDirectory} side={sideDirectory} " +
                       $"playbackFps=30 physicsFps=60 slowMotion=0.5x " +
                       $"impactFrame={impactFrame} slots={slotsSeen} " +
                       $"deepestDent={deepestDent.ToString("F4", CultureInfo.InvariantCulture)}m " +
@@ -249,6 +256,37 @@ namespace DoodleUp.Editor
             }
         }
 
+        /// <summary>
+        /// 메시가 찢어졌는지 <b>숫자로</b> 남긴다. 스킨 바운즈가 충돌 뒤에 비정상적으로 커지면
+        /// 일부 뼈만 제자리에 남아 메시가 늘어난 것이고, 주요 뼈의 월드 위치를 같이 찍으면
+        /// 어느 뼈가 안 따라왔는지가 바로 보인다 — 화면만 보고는 "좀 이상하다" 까지밖에 못 간다.
+        /// </summary>
+        private static void LogSkeletonState(GameObject subject, string label)
+        {
+            foreach (var skin in LastShiftCrewBody.Renderers(subject.transform))
+            {
+                var bounds = skin.bounds;
+                Debug.Log($"[LAST_SHIFT_DEFORM_SKELETON] phase={label} renderer={skin.name} " +
+                          $"boundsCenter={bounds.center.ToString("F3")} boundsSize={bounds.size.ToString("F3")}");
+            }
+
+            foreach (var boneName in new[]
+                     {
+                         "DEF-spine", "DEF-spine.003", "DEF-spine.006",
+                         "DEF-shoulder.L", "DEF-breast.L", "DEF-pelvis.L",
+                         "DEF-upper_arm.L", "DEF-thigh.L"
+                     })
+            {
+                var bone = System.Array.Find(
+                    subject.GetComponentsInChildren<Transform>(true), t => t.name == boneName);
+                if (bone == null) continue;
+                Debug.Log($"[LAST_SHIFT_DEFORM_SKELETON] phase={label} bone={boneName} " +
+                          $"pos={bone.position.ToString("F3")} " +
+                          $"rot={bone.rotation.eulerAngles.ToString("F1")} " +
+                          $"parent={(bone.parent != null ? bone.parent.name : "none")}");
+            }
+        }
+
         private static GameObject BuildBall(Vector3 position, Vector3 velocity)
         {
             var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -268,6 +306,14 @@ namespace DoodleUp.Editor
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.linearVelocity = velocity;
             return ball;
+        }
+
+        private static string CommandLineValue(string key)
+        {
+            var args = Environment.GetCommandLineArgs();
+            for (var i = 0; i < args.Length - 1; i++)
+                if (args[i] == key) return args[i + 1];
+            return null;
         }
 
         private static Camera MakeCamera(GameObject host)

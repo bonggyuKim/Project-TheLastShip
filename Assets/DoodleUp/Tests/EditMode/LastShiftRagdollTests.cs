@@ -407,6 +407,68 @@ namespace DoodleUp.Tests.EditMode
                 "애니메이터가 살아 있으면 매 프레임 뼈를 되돌려 래그돌이 제자리에서 떨기만 한다.");
         }
 
+        /// <summary>
+        /// <b>웨이트를 든 뼈는 전부 물리를 따라가야 한다.</b>
+        ///
+        /// 이 검사가 생긴 이유. Rigify 리그는 변형본(<c>DEF-</c>)을 제어본(<c>ORG-</c>/<c>MCH-</c>)
+        /// 밑에 흩어 놓는데, 래그돌은 그중 열둘에만 바디를 준다. 나머지 변형본
+        /// (<c>DEF-shoulder</c>·<c>DEF-breast</c>·<c>DEF-pelvis</c>)은 부모가 <b>물리를 안 받는
+        /// 제어본</b>이라 몸이 날아가는 동안 <b>바인드 포즈에 그대로 박혀</b> 있었다.
+        /// 그 뼈들이 어깨·가슴·골반 정점을 물고 있어서, 화면에서는 몸통 일부만 제자리에 남고
+        /// 나머지가 끌려가 <b>메시가 찢어졌다</b>(사용자 판정 2026-08-18: "몸이 완전 고정되어 있고
+        /// 다른 부위만 물리 영향받아 메시가 완전 깨진다").
+        ///
+        /// 수치 검사는 이걸 하나도 못 잡았다 — 관절 한계도 부피 보존도 전부 통과했다.
+        /// 그래서 <b>구조</b>로 못박는다: 웨이트가 실린 뼈는 자기 자신이 바디이거나,
+        /// 바디를 가진 뼈의 자손이어야 한다.
+        /// </summary>
+        [Test]
+        public void EveryWeightedBoneFollowsAPhysicsBody()
+        {
+            var ragdoll = BuildRagdoll();
+
+            var driven = new HashSet<Transform>();
+            foreach (var body in ragdoll.BodyList) driven.Add(body.transform);
+
+            var stranded = new List<string>();
+            foreach (var skin in ragdoll.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var bones = skin.bones;
+                var weights = skin.sharedMesh.GetAllBoneWeights();
+                var counts = skin.sharedMesh.GetBonesPerVertex();
+
+                var carries = new bool[bones.Length];
+                var cursor = 0;
+                for (var v = 0; v < counts.Length; v++)
+                {
+                    int used = counts[v];
+                    for (var i = 0; i < used; i++, cursor++)
+                    {
+                        var w = weights[cursor];
+                        if (w.weight > 0.0001f && w.boneIndex >= 0 && w.boneIndex < bones.Length)
+                            carries[w.boneIndex] = true;
+                    }
+                }
+
+                for (var i = 0; i < bones.Length; i++)
+                {
+                    if (!carries[i] || bones[i] == null) continue;
+                    var walker = bones[i];
+                    var followed = false;
+                    while (walker != null)
+                    {
+                        if (driven.Contains(walker)) { followed = true; break; }
+                        walker = walker.parent;
+                    }
+                    if (!followed) stranded.Add(bones[i].name);
+                }
+            }
+
+            Assert.That(stranded, Is.Empty,
+                $"물리를 안 따라가는 웨이트 뼈 {stranded.Count}개: {string.Join(", ", stranded)} — " +
+                "이 뼈들이 바인드 포즈에 남아 메시를 찢는다.");
+        }
+
         private LastShiftRagdoll BuildRagdoll()
         {
             var subject = InstantiateCrew();
