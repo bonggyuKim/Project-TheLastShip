@@ -40,9 +40,18 @@ namespace DoodleUp.Runtime
         private readonly Dictionary<LastShiftRagdollPart, Collider> _colliderOf =
             new Dictionary<LastShiftRagdollPart, Collider>();
 
+        private readonly List<LastShiftRagdollContactRelay> _relays =
+            new List<LastShiftRagdollContactRelay>();
+
         private LastShiftRagdollTuning _tuning;
         private LastShiftRagdollSettle _settle;
         private float _restSeconds;
+
+        /// <summary>
+        /// 접촉을 넘겨받을 표현층. <b>없어도 된다</b> — 물리와 표현은 서로 안 읽는 것이 이 구조의
+        /// 전제라, 못 찾으면 릴레이는 붙되 아무 데도 안 보낸다.
+        /// </summary>
+        private LastShiftBodyDeform _deform;
 
         /// <summary>부위 → 물리 바디. 빌드 전에는 비어 있다.</summary>
         public IReadOnlyDictionary<LastShiftRagdollPart, Rigidbody> Bodies => _bodies;
@@ -50,6 +59,9 @@ namespace DoodleUp.Runtime
         public IReadOnlyList<Rigidbody> BodyList => _bodyList;
 
         public IReadOnlyList<Collider> Colliders => _colliders;
+
+        /// <summary>부위별 접촉 릴레이. 접촉이 어느 부위로 갔는지 검사가 이것으로 본다.</summary>
+        public IReadOnlyList<LastShiftRagdollContactRelay> Relays => _relays;
 
         /// <summary>골반. 조인트가 없는 유일한 바디라 전체 위치의 기준이다.</summary>
         public Rigidbody Root { get; private set; }
@@ -114,6 +126,9 @@ namespace DoodleUp.Runtime
                 // 바이트 단위로 동일). 매 렌더마다 다시 계산하게 강제한다.
                 skin.forceMatrixRecalculationPerRender = true;
             }
+
+            // 표현층은 선택이다. 자기 자신이나 조상에 붙어 있으면 접촉을 넘기고, 없으면 안 넘긴다.
+            _deform = GetComponentInParent<LastShiftBodyDeform>();
 
             var bones = ResolveBones();
             var hipSpan = Distance(bones, LastShiftRagdollRig.LeftHipBoneName, LastShiftRagdollRig.RightHipBoneName);
@@ -302,6 +317,15 @@ namespace DoodleUp.Runtime
                 foreach (var joint in body.GetComponents<Joint>()) DestroyComponent(joint);
             }
 
+            // 릴레이를 바디보다 <b>먼저</b> 지운다. 릴레이는 Rigidbody 를 요구하므로 남아 있으면
+            // Unity 가 "LastShiftRagdollContactRelay 가 의존한다" 며 Rigidbody 제거를 거부하고,
+            // 그러면 재빌드 때 낡은 바디가 그대로 살아난다. 조인트를 먼저 지우는 것과 같은 이유다.
+            for (var i = 0; i < _relays.Count; i++)
+            {
+                if (_relays[i] != null) DestroyComponent(_relays[i]);
+            }
+            _relays.Clear();
+
             for (var i = 0; i < _bodyList.Count; i++)
             {
                 var body = _bodyList[i];
@@ -395,6 +419,7 @@ namespace DoodleUp.Runtime
                 sphere.radius = radius / uniformScale;
                 _colliders.Add(sphere);
                 _colliderOf[spec.Part] = sphere;
+                AttachContactRelay(bone, spec.Part, radius);
                 return;
             }
 
@@ -422,6 +447,24 @@ namespace DoodleUp.Runtime
             capsule.height = Mathf.Max(length, capsuleRadius * 2f) / uniformScale;
             _colliders.Add(capsule);
             _colliderOf[spec.Part] = capsule;
+            AttachContactRelay(bone, spec.Part, capsuleRadius);
+        }
+
+        /// <summary>
+        /// 부위마다 접촉 릴레이를 얹는다.
+        ///
+        /// <b>콜라이더 홀더가 아니라 뼈에 붙인다.</b> 콜라이더는 홀더 자식에 있지만 Unity 는
+        /// 충돌 메시지를 Rigidbody 가 붙은 오브젝트로 보낸다 — 홀더에 붙이면 콜백이 안 온다.
+        ///
+        /// <b>눌림 반경은 콜라이더 굵기를 그대로 쓴다.</b> 여기서 다시 재면 콜라이더와 자국의
+        /// 크기가 갈리고, 갈린 것은 화면에서 "맞은 자리가 아닌 데가 눌리는" 것으로 보인다.
+        /// </summary>
+        private void AttachContactRelay(Transform bone, LastShiftRagdollPart part, float worldRadius)
+        {
+            var relay = bone.gameObject.GetComponent<LastShiftRagdollContactRelay>();
+            if (relay == null) relay = bone.gameObject.AddComponent<LastShiftRagdollContactRelay>();
+            relay.Configure(_deform, part, worldRadius);
+            _relays.Add(relay);
         }
 
         private void AddJoint(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
