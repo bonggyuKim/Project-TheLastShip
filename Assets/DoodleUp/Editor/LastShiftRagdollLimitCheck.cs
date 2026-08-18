@@ -62,6 +62,7 @@ namespace DoodleUp.Editor
                 {
                     ragdoll.StepPhysics(step);
                     UnityEngine.Physics.Simulate(step);
+                    ragdoll.ApplyPhysicsPose();
 
                     for (var i = 0; i < parts.Count; i++)
                     {

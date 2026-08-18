@@ -35,6 +35,7 @@ namespace DoodleUp.Editor
                                 $"bones={skin.bones.Length} submeshes={skin.sharedMesh.subMeshCount} " +
                                 $"materials={string.Join("|", System.Array.ConvertAll(skin.sharedMaterials, m => m == null ? "null" : m.name))}");
                 ReportWeights(skin, text);
+                ReportIslands(skin, text);
             }
 
             System.IO.File.WriteAllText(OutputPath, text.ToString());
@@ -88,6 +89,72 @@ namespace DoodleUp.Editor
             text.AppendLine(controlNames.Count == 0
                 ? "weights controlBones=NONE"
                 : $"weights controlBones={string.Join(", ", controlNames)}");
+        }
+
+        /// <summary>
+        /// <b>메시가 몇 덩어리인가.</b> 포즈를 크게 주면 판 모양 조각이 통째로 튀어나오는데,
+        /// 뼈가 전부 매끄럽게 따라오는데도 그러면 남는 후보는 <b>본체에서 떨어진 섬</b>이다.
+        /// 섬은 자기 뼈만 따라가므로 포즈가 커질수록 본체에서 멀어져 떠 보인다.
+        /// 정지 자세에서는 딱 붙어 있어 눈으로는 절대 안 걸린다.
+        /// </summary>
+        private static void ReportIslands(SkinnedMeshRenderer skin, StringBuilder text)
+        {
+            var mesh = skin.sharedMesh;
+            var vertices = mesh.vertices;
+            var triangles = mesh.triangles;
+
+            // 같은 자리에 있는 정점은 하나로 본다 - UV/법선 이음매 때문에 갈라진 정점을
+            // 따로 세면 멀쩡한 메시도 수백 덩어리로 나온다.
+            var welded = new int[vertices.Length];
+            var lookup = new System.Collections.Generic.Dictionary<Vector3Int, int>();
+            for (var i = 0; i < vertices.Length; i++)
+            {
+                var key = new Vector3Int(
+                    Mathf.RoundToInt(vertices[i].x * 10000f),
+                    Mathf.RoundToInt(vertices[i].y * 10000f),
+                    Mathf.RoundToInt(vertices[i].z * 10000f));
+                if (!lookup.TryGetValue(key, out var id)) { id = lookup.Count; lookup[key] = id; }
+                welded[i] = id;
+            }
+
+            var parent = new int[lookup.Count];
+            for (var i = 0; i < parent.Length; i++) parent[i] = i;
+            int Find(int x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+            void Union(int a, int b) { var ra = Find(a); var rb = Find(b); if (ra != rb) parent[ra] = rb; }
+
+            for (var i = 0; i < triangles.Length; i += 3)
+            {
+                Union(welded[triangles[i]], welded[triangles[i + 1]]);
+                Union(welded[triangles[i + 2]], welded[triangles[i + 1]]);
+            }
+
+            var sizes = new System.Collections.Generic.Dictionary<int, int>();
+            for (var i = 0; i < parent.Length; i++)
+            {
+                var root = Find(i);
+                sizes.TryGetValue(root, out var count);
+                sizes[root] = count + 1;
+            }
+
+            var ordered = new System.Collections.Generic.List<int>(sizes.Values);
+            ordered.Sort();
+            ordered.Reverse();
+            text.AppendLine($"islands count={ordered.Count} sizes={string.Join(",", ordered.GetRange(0, Mathf.Min(12, ordered.Count)))}");
+
+            // 작은 섬이 어디 있는지도 남긴다. 아트가 블렌더에서 바로 찾아갈 수 있게.
+            if (ordered.Count > 1)
+            {
+                foreach (var pair in sizes)
+                {
+                    if (pair.Value > 200) continue;
+                    var center = Vector3.zero;
+                    var seen = 0;
+                    for (var i = 0; i < vertices.Length; i++)
+                        if (Find(welded[i]) == pair.Key) { center += vertices[i]; seen++; }
+                    if (seen == 0) continue;
+                    text.AppendLine($"island verts={pair.Value} center={(center / seen).ToString("F3")}");
+                }
+            }
         }
 
         private static void Walk(Transform node, Transform root, StringBuilder text, int depth)

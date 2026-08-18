@@ -408,35 +408,64 @@ namespace DoodleUp.Tests.EditMode
         }
 
         /// <summary>
-        /// <b>웨이트를 든 뼈는 전부 물리를 따라가야 한다.</b>
+        /// <b>래그돌은 임포트된 스킨을 안 건드린다.</b> 뼈의 부모 경로도, <c>bindposes</c> 배열도.
         ///
-        /// 이 검사가 생긴 이유. Rigify 리그는 변형본(<c>DEF-</c>)을 제어본(<c>ORG-</c>/<c>MCH-</c>)
-        /// 밑에 흩어 놓는데, 래그돌은 그중 열둘에만 바디를 준다. 나머지 변형본
-        /// (<c>DEF-shoulder</c>·<c>DEF-breast</c>·<c>DEF-pelvis</c>)은 부모가 <b>물리를 안 받는
-        /// 제어본</b>이라 몸이 날아가는 동안 <b>바인드 포즈에 그대로 박혀</b> 있었다.
-        /// 그 뼈들이 어깨·가슴·골반 정점을 물고 있어서, 화면에서는 몸통 일부만 제자리에 남고
-        /// 나머지가 끌려가 <b>메시가 찢어졌다</b>(사용자 판정 2026-08-18: "몸이 완전 고정되어 있고
-        /// 다른 부위만 물리 영향받아 메시가 완전 깨진다").
-        ///
-        /// 수치 검사는 이걸 하나도 못 잡았다 — 관절 한계도 부피 보존도 전부 통과했다.
-        /// 그래서 <b>구조</b>로 못박는다: 웨이트가 실린 뼈는 자기 자신이 바디이거나,
-        /// 바디를 가진 뼈의 자손이어야 한다.
+        /// 한 번 어겼다가 크게 데었다. 바인드 포즈에 박혀 있던 변형본을 고치겠다고 부모를 물리
+        /// 본 밑으로 옮겼는데, <c>bindposes</c> 는 임포트 당시 계층 기준 그대로라 스킨 행렬이
+        /// 어긋나 배·엉덩이에서 삼각형이 통째로 튀어나왔다(2026-08-18 반려본).
+        /// 물리는 <b>프록시</b>가 지고 스킨 뼈는 포즈만 받는다 — 그 경계를 여기서 못박는다.
         /// </summary>
         [Test]
-        public void EveryWeightedBoneFollowsAPhysicsBody()
+        public void BuildingLeavesTheSkinHierarchyAndBindposesUntouched()
+        {
+            var subject = InstantiateCrew();
+
+            var pathsBefore = new Dictionary<SkinnedMeshRenderer, string[]>();
+            var bindposesBefore = new Dictionary<SkinnedMeshRenderer, Matrix4x4[]>();
+            foreach (var skin in subject.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                pathsBefore[skin] = System.Array.ConvertAll(skin.bones, PathOf);
+                bindposesBefore[skin] = skin.sharedMesh.bindposes;
+            }
+
+            subject.AddComponent<LastShiftRagdoll>().Build(LastShiftRagdollTuning.Comic());
+
+            foreach (var skin in subject.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var pathsAfter = System.Array.ConvertAll(skin.bones, PathOf);
+                Assert.That(pathsAfter, Is.EqualTo(pathsBefore[skin]),
+                    $"{skin.name} 의 뼈 부모 경로가 바뀌었다 — bindpose 와 어긋나 스킨이 깨진다.");
+
+                var bindposesAfter = skin.sharedMesh.bindposes;
+                Assert.That(bindposesAfter.Length, Is.EqualTo(bindposesBefore[skin].Length));
+                for (var i = 0; i < bindposesAfter.Length; i++)
+                    Assert.That(bindposesAfter[i], Is.EqualTo(bindposesBefore[skin][i]),
+                        $"{skin.name} 의 bindposes[{i}] 가 바뀌었다.");
+            }
+        }
+
+        /// <summary>
+        /// <b>웨이트를 든 뼈는 하나도 빠짐없이 물리를 따라와야 한다.</b>
+        ///
+        /// Rigify 는 <c>DEF-shoulder</c>·<c>DEF-breast</c>·<c>DEF-pelvis</c> 를 제어본 밑에
+        /// 매달아 놓는데 래그돌은 열두 부위에만 바디를 준다. 그대로 두면 이 여섯이 바인드
+        /// 포즈에 박혀, 몸이 날아가도 어깨·가슴·골반만 제자리에 남는다(사용자 판정 2026-08-18:
+        /// "몸이 완전 고정되어 있고 다른 부위만 물리 영향받아 메시가 완전 깨진다").
+        ///
+        /// 물리를 돌리지 않고 프록시를 직접 옮겨 본다 — 무엇이 따라오는지만 보면 되고,
+        /// 시뮬레이션을 끼우면 실패했을 때 원인이 둘로 갈린다.
+        /// </summary>
+        [Test]
+        public void EveryWeightedBoneFollowsThePhysicsPose()
         {
             var ragdoll = BuildRagdoll();
 
-            var driven = new HashSet<Transform>();
-            foreach (var body in ragdoll.BodyList) driven.Add(body.transform);
-
-            var stranded = new List<string>();
+            var weighted = new List<Transform>();
             foreach (var skin in ragdoll.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 var bones = skin.bones;
                 var weights = skin.sharedMesh.GetAllBoneWeights();
                 var counts = skin.sharedMesh.GetBonesPerVertex();
-
                 var carries = new bool[bones.Length];
                 var cursor = 0;
                 for (var v = 0; v < counts.Length; v++)
@@ -449,24 +478,42 @@ namespace DoodleUp.Tests.EditMode
                             carries[w.boneIndex] = true;
                     }
                 }
-
                 for (var i = 0; i < bones.Length; i++)
-                {
-                    if (!carries[i] || bones[i] == null) continue;
-                    var walker = bones[i];
-                    var followed = false;
-                    while (walker != null)
-                    {
-                        if (driven.Contains(walker)) { followed = true; break; }
-                        walker = walker.parent;
-                    }
-                    if (!followed) stranded.Add(bones[i].name);
-                }
+                    if (carries[i] && bones[i] != null && !weighted.Contains(bones[i])) weighted.Add(bones[i]);
             }
+            Assert.That(weighted, Is.Not.Empty, "웨이트를 든 뼈를 하나도 못 찾았다.");
 
-            Assert.That(stranded, Is.Empty,
-                $"물리를 안 따라가는 웨이트 뼈 {stranded.Count}개: {string.Join(", ", stranded)} — " +
+            var before = weighted.ConvertAll(bone => bone.position);
+
+            // 모든 프록시를 같은 만큼 옮기고 돌린다. 따라오는 뼈는 전부 같이 움직여야 한다.
+            var shift = new Vector3(0.7f, -0.4f, 0.5f);
+            var turn = Quaternion.Euler(15f, 40f, 10f);
+            foreach (var body in ragdoll.BodyList)
+                body.transform.SetPositionAndRotation(
+                    body.transform.position + shift, turn * body.transform.rotation);
+
+            ragdoll.ApplyPhysicsPose();
+
+            var stuck = new List<string>();
+            for (var i = 0; i < weighted.Count; i++)
+                if (Vector3.Distance(weighted[i].position, before[i]) < 0.01f) stuck.Add(weighted[i].name);
+
+            Assert.That(stuck, Is.Empty,
+                $"물리를 안 따라온 웨이트 뼈 {stuck.Count}개: {string.Join(", ", stuck)} — " +
                 "이 뼈들이 바인드 포즈에 남아 메시를 찢는다.");
+        }
+
+        private static string PathOf(Transform bone)
+        {
+            if (bone == null) return "(null)";
+            var path = bone.name;
+            var walker = bone.parent;
+            while (walker != null)
+            {
+                path = walker.name + "/" + path;
+                walker = walker.parent;
+            }
+            return path;
         }
 
         private LastShiftRagdoll BuildRagdoll()

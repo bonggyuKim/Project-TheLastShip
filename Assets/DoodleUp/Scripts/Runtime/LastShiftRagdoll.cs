@@ -31,6 +31,19 @@ namespace DoodleUp.Runtime
         private readonly List<Collider> _colliders = new List<Collider>();
         private readonly List<RestPose> _restPoses = new List<RestPose>();
 
+        /// <summary>부위 → 그 부위의 실제 스킨 뼈. <b>읽기만 한다</b> — 계층도 부모도 안 건드린다.</summary>
+        private readonly Dictionary<LastShiftRagdollPart, Transform> _skinBones =
+            new Dictionary<LastShiftRagdollPart, Transform>();
+
+        /// <summary>부위 → 물리 프록시의 정지 월드 포즈. 델타를 재는 기준이다.</summary>
+        private readonly Dictionary<LastShiftRagdollPart, (Vector3 Position, Quaternion Rotation)> _proxyRest =
+            new Dictionary<LastShiftRagdollPart, (Vector3, Quaternion)>();
+
+        private readonly List<GameObject> _proxies = new List<GameObject>();
+
+        /// <summary>바디가 없는 웨이트 헬퍼 뼈. 대응 부위의 물리 델타를 제 정지 포즈에 곱해 따라간다.</summary>
+        private readonly List<HelperBone> _helpers = new List<HelperBone>();
+
         /// <summary>
         /// 부위 → 그 부위 <b>자신의</b> 콜라이더. 뼈에서 <c>GetComponentInChildren</c> 로 찾으면
         /// 안 된다 — 콜라이더 홀더는 뼈의 <b>마지막</b> 자식이라, 자식 뼈를 가진 부위(골반·가슴 등)는
@@ -131,7 +144,6 @@ namespace DoodleUp.Runtime
             _deform = GetComponentInParent<LastShiftBodyDeform>();
 
             var bones = ResolveBones();
-            ReparentDeformSkeleton(bones);
             var hipSpan = Distance(bones, LastShiftRagdollRig.LeftHipBoneName, LastShiftRagdollRig.RightHipBoneName);
             var shoulderSpan = Distance(bones, LastShiftRagdollRig.LeftShoulderBoneName, LastShiftRagdollRig.RightShoulderBoneName);
             var crownRise = CrownRise(bones);
@@ -145,15 +157,24 @@ namespace DoodleUp.Runtime
                 var spec = LastShiftRagdollRig.Bones[i];
                 var bone = bones[spec.BoneName];
 
-                var body = bone.gameObject.GetComponent<Rigidbody>();
-                if (body == null) body = bone.gameObject.AddComponent<Rigidbody>();
+                // <b>물리는 프록시가 진다. 스킨 뼈에는 Rigidbody 를 안 붙인다.</b>
+                // 임포트된 스킨 계층·부모·bindposes 를 건드리지 않는 것이 이 구조의 전제다 —
+                // 뼈를 옮기거나 부모를 바꾸면 bindpose 와 어긋나 스킨 행렬이 깨진다.
+                var proxy = new GameObject(spec.Part + "__RagdollProxy");
+                proxy.transform.SetParent(transform, false);
+                proxy.transform.SetPositionAndRotation(bone.position, bone.rotation);
+                _proxies.Add(proxy);
+
+                var body = proxy.AddComponent<Rigidbody>();
                 ConfigureBody(body, spec, tuning);
 
                 _bodies[spec.Part] = body;
                 _bodyList.Add(body);
+                _skinBones[spec.Part] = bone;
+                _proxyRest[spec.Part] = (proxy.transform.position, proxy.transform.rotation);
                 _restPoses.Add(new RestPose(bone));
 
-                AddCollider(bone, bones, spec, hipSpan, shoulderSpan, crownRise);
+                AddCollider(proxy.transform, bones, spec, hipSpan, shoulderSpan, crownRise);
             }
 
             Root = _bodies[LastShiftRagdollPart.Pelvis];
@@ -165,6 +186,7 @@ namespace DoodleUp.Runtime
                 AddJoint(bones, spec);
             }
 
+            CollectHelperBones();
             IgnoreNearbySelfCollisions(tuning);
             _settle.Wake();
             _restSeconds = 0f;
@@ -293,6 +315,16 @@ namespace DoodleUp.Runtime
 
             for (var i = 0; i < _restPoses.Count; i++) _restPoses[i].Apply();
 
+            // 프록시도 정지 포즈로 되돌린다. 스킨 뼈만 되돌리면 다음 스텝에 프록시가 그것을
+            // 도로 덮어써서 리셋이 한 프레임 만에 사라진다.
+            for (var i = 0; i < LastShiftRagdollRig.Bones.Length; i++)
+            {
+                var part = LastShiftRagdollRig.Bones[i].Part;
+                if (!_proxyRest.TryGetValue(part, out var rest)) continue;
+                if (!_bodies.TryGetValue(part, out var body) || body == null) continue;
+                body.transform.SetPositionAndRotation(rest.Position, rest.Rotation);
+            }
+
             for (var i = 0; i < _bodyList.Count; i++)
             {
                 var body = _bodyList[i];
@@ -340,6 +372,13 @@ namespace DoodleUp.Runtime
                 if (collider == null) continue;
                 DestroyObject(collider.gameObject);
             }
+
+            for (var i = 0; i < _proxies.Count; i++)
+                if (_proxies[i] != null) DestroyObject(_proxies[i]);
+            _proxies.Clear();
+            _skinBones.Clear();
+            _proxyRest.Clear();
+            _helpers.Clear();
 
             _bodies.Clear();
             _bodyList.Clear();
@@ -483,7 +522,9 @@ namespace DoodleUp.Runtime
             }
 
             var tuning = _tuning;
-            var bone = bones[spec.BoneName];
+            // 조인트는 프록시에 붙는다 — 물리를 지는 것이 프록시이기 때문이다.
+            // 축은 빌드 시점에 프록시와 스킨 뼈의 회전이 같으므로 어느 쪽으로 재도 같다.
+            var bone = _bodies[spec.Part].transform;
             var joint = bone.gameObject.GetComponent<CharacterJoint>();
             if (joint == null) joint = bone.gameObject.AddComponent<CharacterJoint>();
 
@@ -523,7 +564,7 @@ namespace DoodleUp.Runtime
         /// </summary>
         private void AddHingeJoint(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
         {
-            var bone = bones[spec.BoneName];
+            var bone = _bodies[spec.Part].transform;
             var joint = bone.gameObject.GetComponent<HingeJoint>();
             if (joint == null) joint = bone.gameObject.AddComponent<HingeJoint>();
 
@@ -586,40 +627,76 @@ namespace DoodleUp.Runtime
         /// 자기 자세에 맞는 프레임을 받는다.
         /// </summary>
         /// <summary>
-        /// 변형 골격을 물리 본 밑으로 다시 엮는다.
+        /// 바디 없는 웨이트 헬퍼 뼈를 모은다.
         ///
-        /// <b>월드 변환을 유지한다</b>(<c>SetParent(parent, true)</c>). 스키닝은 뼈의 월드
-        /// 행렬과 바인드포즈로 계산되므로, 정지 자세에서는 화면이 한 픽셀도 안 바뀐다.
-        /// 바뀌는 것은 <b>물리가 움직일 때 무엇이 따라오는가</b> 뿐이다.
+        /// Rigify 는 <c>DEF-shoulder</c>·<c>DEF-breast</c>·<c>DEF-pelvis</c> 를 제어본
+        /// (<c>ORG-</c>) 밑에 매달아 놓는다. 이것들은 웨이트를 들고 있는데 바디가 없고 부모가
+        /// 물리를 안 받으므로 그대로 두면 <b>바인드 포즈에 박혀</b> 몸이 날아가도 제자리에 남는다.
         ///
-        /// 바디를 만들기 <b>전에</b> 부른다 — 나중에 옮기면 조인트의 연결 앵커가 이미 옛 계층
-        /// 기준으로 잡힌 뒤라 관절이 어긋난다.
+        /// <b>그렇다고 부모를 바꾸지는 않는다.</b> 부모를 바꾸면 임포트된 bindpose 와 어긋나
+        /// 스킨 행렬이 깨지고, 화면에서는 삼각형이 통째로 튀어나온다(2026-08-18 실패본).
+        /// 계층은 그대로 두고 <b>대응 부위의 물리 델타</b>를 제 정지 월드 포즈에 곱해 준다.
         /// </summary>
-        private void ReparentDeformSkeleton(IReadOnlyDictionary<string, Transform> bones)
+        private void CollectHelperBones()
         {
-            var attachments = LastShiftRagdollRig.DeformAttachments;
+            var attachments = LastShiftRagdollRig.HelperAttachments;
+            var all = GetComponentsInChildren<Transform>(true);
             for (var i = 0; i < attachments.Length; i++)
             {
                 var (boneName, attachTo) = attachments[i];
-                var bone = System.Array.Find(
-                    GetComponentsInChildren<Transform>(true), child => child.name == boneName);
-                if (bone == null) continue;
-
-                var parentName = LastShiftRagdollRig.SpecOf(attachTo).BoneName;
-                if (!bones.TryGetValue(parentName, out var parent) || parent == null) continue;
-                if (bone == parent || bone.parent == parent) continue;
-
-                bone.SetParent(parent, true);
-
-                // <b>조용히 실패하게 두지 않는다.</b> 에디터는 프리팹 인스턴스 안쪽의 재부모화를
-                // 거부하는데, 거부해도 예외가 아니라 콘솔 경고 한 줄만 남는다. 그 상태로 넘어가면
-                // 어깨·가슴·골반 변형본이 바인드 포즈에 박혀 메시가 찢어지고, 수치 검사는 전부
-                // 통과한다 — 실제로 그렇게 한 번 나갔다.
-                if (bone.parent != parent)
-                    throw new InvalidOperationException(
-                        $"{boneName} 를 {parentName} 밑으로 못 옮겼다 — 프리팹 인스턴스 안쪽이면 " +
-                        "먼저 언팩해야 한다. 이대로 두면 이 뼈가 바인드 포즈에 남아 메시가 찢어진다.");
+                var bone = System.Array.Find(all, child => child.name == boneName);
+                if (bone == null || !_proxyRest.ContainsKey(attachTo)) continue;
+                _helpers.Add(new HelperBone(bone, attachTo));
             }
+        }
+
+        /// <summary>
+        /// 물리 결과를 스킨 뼈에 <b>포즈로만</b> 옮긴다. 계층·부모·bindposes 는 안 건드린다.
+        ///
+        /// 바디가 있는 부위는 프록시 월드 포즈를 그대로 받는다. 중간 뼈
+        /// (<c>DEF-spine.002</c>·<c>DEF-upper_arm.L.001</c> 등)는 부모가 이미 갱신됐으므로
+        /// 계층을 타고 저절로 따라온다. 남는 것은 바디도 없고 부모도 안 움직이는 헬퍼 여섯뿐이라
+        /// 그것만 델타로 따로 민다.
+        ///
+        /// <c>FixedUpdate</c> 가 아니라 물리 <b>이후</b>에 불러야 한다 — 플레이에서는
+        /// <see cref="LateUpdate"/>, 에디터 캡처에서는 <c>Physics.Simulate</c> 다음에 직접 부른다.
+        /// </summary>
+        public void ApplyPhysicsPose()
+        {
+            if (!IsBuilt) return;
+
+            for (var i = 0; i < LastShiftRagdollRig.Bones.Length; i++)
+            {
+                var part = LastShiftRagdollRig.Bones[i].Part;
+                if (!_skinBones.TryGetValue(part, out var bone) || bone == null) continue;
+                if (!_bodies.TryGetValue(part, out var body) || body == null) continue;
+                bone.SetPositionAndRotation(body.transform.position, body.transform.rotation);
+            }
+
+            for (var i = 0; i < _helpers.Count; i++) _helpers[i].Follow(this);
+        }
+
+        private void LateUpdate() => ApplyPhysicsPose();
+
+        /// <summary>부위가 정지 포즈에서 얼마나 움직였는가. 헬퍼가 이 델타를 그대로 받는다.</summary>
+        private bool TryGetPartDelta(LastShiftRagdollPart part, out Vector3 origin, out Quaternion rotation)
+        {
+            origin = Vector3.zero;
+            rotation = Quaternion.identity;
+            if (!_proxyRest.TryGetValue(part, out var rest)) return false;
+            if (!_bodies.TryGetValue(part, out var body) || body == null) return false;
+
+            rotation = body.transform.rotation * Quaternion.Inverse(rest.Rotation);
+            origin = body.transform.position;
+            return true;
+        }
+
+        private bool TryGetPartRest(LastShiftRagdollPart part, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (!_proxyRest.TryGetValue(part, out var rest)) return false;
+            position = rest.Position;
+            return true;
         }
 
         private Vector3 SwingAxis(Transform bone, Vector3 twist)
@@ -835,6 +912,37 @@ namespace DoodleUp.Runtime
         {
             if (Application.isPlaying) Destroy(target);
             else DestroyImmediate(target);
+        }
+
+        /// <summary>
+        /// 바디 없는 웨이트 뼈 하나. 정지 월드 포즈를 들고 있다가 대응 부위의 물리 델타를
+        /// 곱해 따라간다 — 부모도 로컬 값도 안 건드리므로 bindpose 와 어긋날 일이 없다.
+        /// </summary>
+        private readonly struct HelperBone
+        {
+            public HelperBone(Transform bone, LastShiftRagdollPart attachTo)
+            {
+                _bone = bone;
+                _attachTo = attachTo;
+                _restPosition = bone.position;
+                _restRotation = bone.rotation;
+            }
+
+            private readonly Transform _bone;
+            private readonly LastShiftRagdollPart _attachTo;
+            private readonly Vector3 _restPosition;
+            private readonly Quaternion _restRotation;
+
+            public void Follow(LastShiftRagdoll ragdoll)
+            {
+                if (_bone == null) return;
+                if (!ragdoll.TryGetPartDelta(_attachTo, out var origin, out var rotation)) return;
+                if (!ragdoll.TryGetPartRest(_attachTo, out var restOrigin)) return;
+
+                _bone.SetPositionAndRotation(
+                    origin + rotation * (_restPosition - restOrigin),
+                    rotation * _restRotation);
+            }
         }
 
         private readonly struct RestPose

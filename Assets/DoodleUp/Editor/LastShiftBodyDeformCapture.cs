@@ -145,6 +145,8 @@ namespace DoodleUp.Editor
                     var velocityBefore = ballBody.linearVelocity;
                     ragdoll.StepPhysics(StepSeconds);
                     UnityEngine.Physics.Simulate(StepSeconds);
+                    // 에디터에서는 LateUpdate 가 안 도므로 물리 결과를 스킨 뼈로 직접 옮긴다.
+                    ragdoll.ApplyPhysicsPose();
                     if (deformEnabled) RelayBallContact(ragdoll, ballCollider, ballBody, velocityBefore);
 
                     // 표현층은 물리와 같은 스텝으로 민다. 슬롯 깊이를 같이 재 두는 이유는,
@@ -261,13 +263,39 @@ namespace DoodleUp.Editor
         /// 일부 뼈만 제자리에 남아 메시가 늘어난 것이고, 주요 뼈의 월드 위치를 같이 찍으면
         /// 어느 뼈가 안 따라왔는지가 바로 보인다 — 화면만 보고는 "좀 이상하다" 까지밖에 못 간다.
         /// </summary>
+        private static readonly System.Collections.Generic.Dictionary<string, Vector3> RestWorld =
+            new System.Collections.Generic.Dictionary<string, Vector3>();
+
         private static void LogSkeletonState(GameObject subject, string label)
         {
+            if (label == "rest")
+            {
+                RestWorld.Clear();
+                foreach (var bone in subject.GetComponentsInChildren<Transform>(true))
+                    if (bone.name.StartsWith("DEF-")) RestWorld[bone.name] = bone.position;
+            }
+
             foreach (var skin in LastShiftCrewBody.Renderers(subject.transform))
             {
                 var bounds = skin.bounds;
                 Debug.Log($"[LAST_SHIFT_DEFORM_SKELETON] phase={label} renderer={skin.name} " +
                           $"boundsCenter={bounds.center.ToString("F3")} boundsSize={bounds.size.ToString("F3")}");
+            }
+
+            // <b>어느 뼈가 튀는지 숫자로 짚는다.</b> 찢김은 이웃한 뼈가 서로 멀어질 때 생기므로,
+            // 정지 대비 이동량이 이웃과 크게 다른 뼈가 범인이다. 화면만 보면 "배 근처" 까지밖에 못 간다.
+            if (label != "rest")
+            {
+                var lines = new System.Collections.Generic.List<string>();
+                foreach (var pair in RestWorld)
+                {
+                    var bone = System.Array.Find(
+                        subject.GetComponentsInChildren<Transform>(true), t => t.name == pair.Key);
+                    if (bone == null) continue;
+                    lines.Add($"{pair.Key}={Vector3.Distance(bone.position, pair.Value):F3}");
+                }
+                lines.Sort((x, y) => string.CompareOrdinal(x, y));
+                Debug.Log($"[LAST_SHIFT_DEFORM_DRIFT] {string.Join(" ", lines)}");
             }
 
             foreach (var boneName in new[]

@@ -186,20 +186,15 @@ namespace DoodleUp.Runtime
         /// 몸이 날아가는 동안 <b>바인드 포즈에 박혀</b> 있었다 — 어깨·가슴·골반 정점이 제자리에
         /// 남고 나머지가 끌려가 메시가 찢어졌다(사용자 판정 2026-08-18).
         ///
-        /// 팔다리 본은 바디가 있어 스스로는 움직이지만 계층상으로는 여전히 정적 제어본의
-        /// 자식이었다. 그래서 <b>변형 골격 전체를 물리 본 밑으로 다시 엮는다</b> — 골반에서
-        /// 시작하는 하나의 트리가 되고, 제어 계층은 변형 경로에서 완전히 빠진다.
-        ///
-        /// 월드 변환을 유지한 채 부모만 바꾸므로 정지 자세는 한 밀리미터도 안 움직인다.
+        /// <b>부모는 절대 안 바꾼다.</b> 한 번 재부모화로 고쳐 봤는데, 임포트된 bindposes 는
+        /// 그대로 둔 채 계층만 바꾸는 셈이라 스킨 행렬이 깨져 배·엉덩이에서 삼각형이 통째로
+        /// 튀어나왔다(2026-08-18 반려본). 계층은 그대로 두고 대응 부위의 <b>물리 델타</b>를
+        /// 이 뼈의 정지 포즈에 곱해 따라가게 한다.
         /// </summary>
-        public static readonly (string BoneName, LastShiftRagdollPart AttachTo)[] DeformAttachments =
+        public static readonly (string BoneName, LastShiftRagdollPart AttachTo)[] HelperAttachments =
         {
-            ("DEF-thigh.L", LastShiftRagdollPart.Pelvis),
-            ("DEF-thigh.R", LastShiftRagdollPart.Pelvis),
             ("DEF-pelvis.L", LastShiftRagdollPart.Pelvis),
             ("DEF-pelvis.R", LastShiftRagdollPart.Pelvis),
-            ("DEF-upper_arm.L", LastShiftRagdollPart.Chest),
-            ("DEF-upper_arm.R", LastShiftRagdollPart.Chest),
             ("DEF-shoulder.L", LastShiftRagdollPart.Chest),
             ("DEF-shoulder.R", LastShiftRagdollPart.Chest),
             ("DEF-breast.L", LastShiftRagdollPart.Chest),
