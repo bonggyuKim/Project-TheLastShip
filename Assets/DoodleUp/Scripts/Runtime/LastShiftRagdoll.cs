@@ -490,12 +490,7 @@ namespace DoodleUp.Runtime
             joint.enableCollision = false;
 
             var twist = TwistDirection(bones, spec);
-
-            // 스윙 축은 비틀림 축에 수직인 아무 축이면 되는데, 아무거나 잡으면 팔꿈치·무릎이
-            // 옆으로 접힌다. 캐릭터의 위쪽(또는 뼈가 위쪽과 나란하면 앞쪽)과의 외적을 쓰면
-            // 다리는 무릎 축, 팔은 팔꿈치 축이 자연히 나온다 — 부위별 예외 없이 한 식으로 된다.
-            var reference = Mathf.Abs(Vector3.Dot(twist, transform.up)) < 0.95f ? transform.up : transform.forward;
-            var swing = Vector3.Cross(twist, reference).normalized;
+            var swing = SwingAxis(bone, twist);
 
             joint.axis = bone.InverseTransformDirection(twist);
             joint.swingAxis = bone.InverseTransformDirection(swing);
@@ -535,12 +530,15 @@ namespace DoodleUp.Runtime
 
             // 경첩 축은 뼈 방향에 수직인 축이다 — 볼 조인트의 스윙 축과 같은 식으로 뽑는다.
             var twist = TwistDirection(bones, spec);
-            var reference = Mathf.Abs(Vector3.Dot(twist, transform.up)) < 0.95f ? transform.up : transform.forward;
-            var axis = Vector3.Cross(twist, reference).normalized;
+            var axis = SwingAxis(bone, twist);
 
             joint.axis = bone.InverseTransformDirection(axis);
             joint.useLimits = true;
 
+            // <b><c>contactDistance</c> 는 안 준다.</b> 팔꿈치가 한계를 파고드는 것을 미리
+            // 붙잡아 보려고 8도를 줬는데, 파고드는 각은 111 -> 112 로 그대로였고 머리 튕기기
+            // 정지만 3.63 -> 4.42초로 늦어졌다(한계 앞에서부터 계속 힘이 들어가 속도가 안 죽는다).
+            // 같은 실험을 다시 하지 말 것.
             var limit = spec.Swing1Limit;
             joint.limits = HingeBendsPositive(twist, axis, spec.HingeBendsForward)
                 ? new JointLimits { min = -HingeSlackDegrees, max = limit }
@@ -551,7 +549,8 @@ namespace DoodleUp.Runtime
         /// 접히지 않는 쪽으로도 열어 두는 여유(도). 0 으로 잠그면 차렷 자세가 곧 한계면이라
         /// 솔버가 매 스텝 한계를 밟으며 덜덜 떤다.
         /// </summary>
-        private const float HingeSlackDegrees = 5f;
+        public const float HingeSlackDegrees = 5f;
+
 
         /// <summary>
         /// 축 둘레 <b>양의</b> 회전이 이 관절이 접혀야 할 쪽인가.
@@ -562,6 +561,46 @@ namespace DoodleUp.Runtime
             var moved = Quaternion.AngleAxis(10f, axis) * twist - twist;
             var forward = Vector3.Dot(moved, transform.forward);
             return bendsForward ? forward > 0f : forward < 0f;
+        }
+
+        /// <summary>
+        /// 비틀림 축에 수직인 두 번째 축. <b>뼈 자신의 정지 로컬 축에서 고른다.</b>
+        ///
+        /// 예전에는 캐릭터의 위쪽(또는 앞쪽)과 외적을 썼다. 좌우 대칭 리그에서는 그것으로도
+        /// 좌우가 거울처럼 나왔지만, 지금 리그는 정지 자세부터 좌우가 다르다(오른팔이 왼팔보다
+        /// 최대 10.8cm 뒤에 있다). 캐릭터 기준 축 하나로 양쪽을 뽑으면 같은 관절이 좌우로 다르게
+        /// 기울어진 프레임을 받고, 그러면 같은 충격에도 한쪽만 한계를 밟는다.
+        ///
+        /// 뼈의 로컬 축 셋 중 <b>비틀림 축과 가장 수직인 것</b>을 골라 직교화한다. 리그가 뼈를
+        /// 어느 방향으로 뽑았든 그 뼈의 굽힘 평면을 따라가므로, 비대칭 리그에서도 좌우가 각자
+        /// 자기 자세에 맞는 프레임을 받는다.
+        /// </summary>
+        private Vector3 SwingAxis(Transform bone, Vector3 twist)
+        {
+            var best = Vector3.zero;
+            var bestAlignment = float.MaxValue;
+            for (var i = 0; i < 3; i++)
+            {
+                var candidate = i switch
+                {
+                    0 => bone.right,
+                    1 => bone.up,
+                    _ => bone.forward
+                };
+                var alignment = Mathf.Abs(Vector3.Dot(candidate, twist));
+                if (alignment >= bestAlignment) continue;
+                bestAlignment = alignment;
+                best = candidate;
+            }
+
+            // 비틀림 축 성분을 뺀다. 안 빼면 축 둘이 직교하지 않아 PhysX 가 프레임을 자기 식대로
+            // 다시 세우고, 그러면 한계면이 의도한 자리에서 어긋난다.
+            var swing = best - twist * Vector3.Dot(best, twist);
+            if (swing.sqrMagnitude > 1e-6f) return swing.normalized;
+
+            // 뼈 로컬 축이 전부 비틀림 축과 나란한 퇴화 상황. 캐릭터 기준으로 물러난다.
+            var reference = Mathf.Abs(Vector3.Dot(twist, transform.up)) < 0.95f ? transform.up : transform.forward;
+            return Vector3.Cross(twist, reference).normalized;
         }
 
         private Vector3 TwistDirection(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
