@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DoodleUp.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -47,6 +48,11 @@ namespace DoodleUp.Editor
 
         public const float CrewScale = 1.5f;
 
+        /// <summary>랩 전용 눌림 머티리얼이 사는 곳. 배에 나가는 승무원 머티리얼은 안 건드린다.</summary>
+        public const string DeformMaterialFolder = "Assets/DoodleUp/Materials/Lab";
+
+        public const string DeformShaderName = "LastShift/BodyDeform";
+
         [MenuItem("Last Shift/Prototype/Rebuild Ragdoll Lab Scene")]
         public static void Rebuild()
         {
@@ -89,6 +95,10 @@ namespace DoodleUp.Editor
             crew.name = "RagdollSubject";
             crew.transform.SetPositionAndRotation(new Vector3(0f, 0f, 0f), Quaternion.identity);
             crew.transform.localScale = Vector3.one * CrewScale;
+            // 표현층을 래그돌보다 먼저 얹는다. 순서 자체는 빌드 시점에 다시 찾으므로 상관없지만,
+            // 읽는 사람에게 "물리가 표현을 물고 있다" 는 방향을 그대로 보이게 둔다.
+            crew.AddComponent<LastShiftBodyDeform>();
+            ApplyDeformMaterials(crew);
             crew.AddComponent<LastShiftRagdoll>();
             crew.AddComponent<LastShiftRagdollLab>();
 
@@ -111,6 +121,62 @@ namespace DoodleUp.Editor
 
             EditorSceneManager.MarkSceneDirty(scene);
             return scene;
+        }
+
+        /// <summary>
+        /// 랩 승무원의 몸 머티리얼을 눌림 셰이더 판으로 바꾼다.
+        ///
+        /// <b>배에 나가는 머티리얼은 안 건드린다.</b> 승무원 머티리얼은 FBX 에 박혀 있어
+        /// 거기를 바꾸면 재임포트마다 되돌아오고, 되돌아온 것을 아무도 못 본다.
+        /// 랩 씬에서만 덮어쓰고 원본은 그대로 둔다 — 최종 배정은 아트 룩 판정 사항이다.
+        ///
+        /// <b>슬롯마다 원래 색을 옮겨 담는다.</b> 렌더러 하나를 한 머티리얼로 통일하면
+        /// 눈 흰자까지 라임이 돼 검수하는 사람이 변형이 아니라 색을 먼저 의심한다.
+        /// </summary>
+        private static void ApplyDeformMaterials(GameObject crew)
+        {
+            var shader = Shader.Find(DeformShaderName);
+            if (shader == null)
+                throw new InvalidOperationException($"눌림 셰이더를 못 찾았다: {DeformShaderName}");
+
+            if (!AssetDatabase.IsValidFolder(DeformMaterialFolder))
+                AssetDatabase.CreateFolder("Assets/DoodleUp/Materials", "Lab");
+
+            var made = new Dictionary<string, Material>();
+            foreach (var skin in LastShiftCrewBody.Renderers(crew.transform))
+            {
+                var sources = skin.sharedMaterials;
+                var swapped = new Material[sources.Length];
+                for (var i = 0; i < sources.Length; i++)
+                {
+                    var source = sources[i];
+                    if (source == null) continue;
+                    if (!made.TryGetValue(source.name, out var deform))
+                    {
+                        deform = LoadOrCreateDeformMaterial(source, shader);
+                        made[source.name] = deform;
+                    }
+                    swapped[i] = deform;
+                }
+                skin.sharedMaterials = swapped;
+            }
+        }
+
+        private static Material LoadOrCreateDeformMaterial(Material source, Shader shader)
+        {
+            var path = $"{DeformMaterialFolder}/LS_Deform_{source.name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader);
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.shader = shader;
+            if (source.HasProperty("_Color")) material.SetColor("_Color", source.GetColor("_Color"));
+            if (source.HasProperty("_MainTex")) material.SetTexture("_MainTex", source.GetTexture("_MainTex"));
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         private static GameObject Box(string name, Vector3 center, Vector3 size, Material material)
