@@ -4,9 +4,13 @@
 
 `LastShiftLimeAlien_Rigify_Test.blend`의 목 둘레에서 두 구간으로 갈라져 있던
 `DEF-spine.004 -> .005 -> .006` hand-off를 하나의 연속 3본 곡선으로
-재배분했다. 수정본은 다음 파일이다.
+재배분했다. 왼 무릎 수정본 위에 통합한 정본과 Unity 교환 파일은 다음과 같다.
 
-- `ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test_NeckRingFixed.blend`
+- `ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.blend`
+- `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.fbx`
+
+초기 목 단독 결과인 `LastShiftLimeAlien_Rigify_Test_NeckRingFixed.blend`는 비교
+증거로만 남기며 Unity 내보내기 정본으로 사용하지 않는다.
 
 가중치 증거 이미지에서 빨강/초록/파랑은 각각 `.004`/`.005`/`.006`을
 뜻한다. 수정 전 측면의 좁고 톱니 모양이던 초록 전이대가 수정 후 넓고
@@ -55,11 +59,18 @@ Workbench 렌더는 `docs/art/evidence/last-shift-neck-ring-weight-fix/`에 있�
   'ArtSource\Characters\LastShiftLimeAlien\LastShiftLimeAlien_Rigify_Test.blend' `
   --python 'Tools\art\fix_lime_alien_neck_ring_weights.py' -- `
   --mode apply `
-  --output 'ArtSource\Characters\LastShiftLimeAlien\LastShiftLimeAlien_Rigify_Test_NeckRingFixed.blend' `
+  --output 'ArtSource\Characters\LastShiftLimeAlien\LastShiftLimeAlien_Rigify_Test.blend' `
   --report 'docs\art\evidence\last-shift-neck-ring-weight-fix\report.json' `
   --evidence-dir 'docs\art\evidence\last-shift-neck-ring-weight-fix'
+
+& 'D:\blender\blender.exe' -b `
+  'ArtSource\Characters\LastShiftLimeAlien\LastShiftLimeAlien_Rigify_Test.blend' `
+  --python 'Tools\art\rework_last_shift_left_knee_weights.py' -- `
+  --fbx-output 'Assets\DoodleUp\Art\Characters\LastShiftLimeAlien\LastShiftLimeAlien_Rigify_Test.fbx'
 ```
 
-Blender에서 최종 애니메이션 클립을 재생해 어깨가 프레임에 들어오는 실제
-카메라 거리에서도 목 뒤 실루엣이 튀지 않는지 확인해야 한다. Unity FBX
-재출력·임포트와 런타임 스키닝 검증은 테크니컬 아트 경계다.
+FBX 재임포트에서 목 잔여 변경 정점 0개, 왼 무릎 전이 역전 0개를 확인했고,
+Unity 6000.4.0f1 배치 임포트가 기존 GUID
+`4d6aa5d635f29a3c9aa13e0ce646ab44`로 성공했다. Blender에서 최종
+애니메이션 클립을 재생해 어깨가 프레임에 들어오는 실제 카메라 거리에서도
+목 뒤 실루엣이 튀지 않는지는 수동 확인이 필요하다.

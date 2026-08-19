@@ -1,5 +1,5 @@
 {
-  "source": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-bb4b362d-2386-4f96-8112-a89293c79623-20260819023858\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test.blend",
+  "source": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-64452f37-c94a-489e-a139-731bcceee30f-20260819162239\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test.blend",
   "mode": "apply",
   "mesh": "LastShift_LimeAlien_RigifyMesh",
   "rig": "rig",
@@ -60,7 +60,7 @@
       "edges_under_0p67x": 35
     }
   },
-  "output": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-bb4b362d-2386-4f96-8112-a89293c79623-20260819023858\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test_NeckRingFixed.blend",
+  "output": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-64452f37-c94a-489e-a139-731bcceee30f-20260819162239\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test.blend",
   "stress_after": {
     "X": {
       "edges": 861,

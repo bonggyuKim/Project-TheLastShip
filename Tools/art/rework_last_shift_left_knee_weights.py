@@ -10,6 +10,8 @@ Run against the Unity FBX exchange file:
 
 Only DEF-thigh.L.001 and DEF-shin.L are redistributed. Their combined weight is
 preserved per vertex, so unrelated influences and normalization remain intact.
+FBX export is restricted to the rig and the two skinned meshes in the canonical
+CHARACTER_EXPORT collection; hidden Rigify widget meshes are never exported.
 """
 
 from __future__ import annotations
@@ -25,6 +27,8 @@ import bpy
 
 MESH_NAME = "LastShift_LimeAlien_RigifyMesh"
 RIG_NAME = "rig"
+EYE_NAME = "Eye_Pupil_Rigify"
+EXPORT_COLLECTION_NAME = "CHARACTER_EXPORT"
 THIGH_GROUP = "DEF-thigh.L.001"
 SHIN_GROUP = "DEF-shin.L"
 
@@ -188,17 +192,26 @@ def patch_weights(validate_only: bool) -> dict[str, object]:
 def save_fbx(filepath: str) -> None:
     bpy.ops.object.mode_set(mode="OBJECT") if bpy.context.object and bpy.context.object.mode != "OBJECT" else None
     bpy.ops.object.select_all(action="DESELECT")
+    export_collection = bpy.data.collections.get(EXPORT_COLLECTION_NAME)
+    if export_collection is None:
+        raise RuntimeError(f"Missing FBX export collection: {EXPORT_COLLECTION_NAME}")
     export_objects = [
-        obj for obj in bpy.context.scene.objects if obj.type in {"ARMATURE", "MESH"}
+        export_collection.objects.get(name)
+        for name in (RIG_NAME, MESH_NAME, EYE_NAME)
     ]
+    if any(obj is None for obj in export_objects):
+        missing = [
+            name
+            for name, obj in zip((RIG_NAME, MESH_NAME, EYE_NAME), export_objects)
+            if obj is None
+        ]
+        raise RuntimeError(f"Missing FBX export objects: {missing}")
     for obj in export_objects:
         obj.hide_set(False)
         obj.hide_viewport = False
         obj.hide_render = False
         obj.select_set(True)
-    armature = next((obj for obj in export_objects if obj.type == "ARMATURE"), None)
-    if armature is None:
-        raise RuntimeError("No armature available for FBX export")
+    armature = export_collection.objects[RIG_NAME]
     bpy.context.view_layer.objects.active = armature
     bpy.ops.export_scene.fbx(
         filepath=os.path.abspath(filepath),
