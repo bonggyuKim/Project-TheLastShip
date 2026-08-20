@@ -33,6 +33,8 @@
    리그 `LastShift_LimeAlien_Rig`, 눈 `LastShift_LimeAlien_Eyes`
 3. `Tools/art/fix_lime_alien_left_toe_weights.py` 로 왼발 발가락 웨이트 수정
 4. `Tools/art/rework_last_shift_left_knee_weights.py` 로 왼 무릎 전이 웨이트 수정
+5. `Tools/art/rework_last_shift_hip_mouth_geometry.py` 로 왼 사타구니 3링과
+   윗입술 4링의 REST 형상 완화(입구 경계·웨이트·상대 셰이프키 고정)
 
 뼈 232개(소프트 변형본 `DEF-head.soft.*` · `DEF-belly.soft.*` 열 개 포함). 아마추어는 REST 포즈로 저장돼 있다.
 

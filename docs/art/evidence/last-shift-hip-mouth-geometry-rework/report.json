@@ -1,0 +1,152 @@
+{
+  "source": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "source_sha256_before": "33440dac5327409f6d3c504af0d5b62f64919cff96e76314501f91b513329d42",
+  "body": "LastShift_LimeAlien_Body",
+  "rig": "LastShift_LimeAlien_Rig",
+  "shape_keys": 92,
+  "selection": {
+    "left_hip_groin": {
+      "bounds": [
+        [
+          -0.18199999630451202,
+          -0.2150000035762787,
+          0.1549999862909317
+        ],
+        [
+          -0.016999997198581696,
+          0.044999998062849045,
+          0.3399999737739563
+        ]
+      ],
+      "allowed_vertices": 86,
+      "seam_edges": 87,
+      "seam_vertices": 68,
+      "graph_vertices": 86,
+      "pinned_local_boundary": 39,
+      "pinned_outer_silhouette": 10,
+      "movable_vertices": 40,
+      "rings": 3
+    },
+    "upper_mouth": {
+      "bounds": [
+        [
+          -0.08902500569820404,
+          -0.2662630081176758,
+          0.5321129560470581
+        ],
+        [
+          0.060975003987550735,
+          -0.15626299381256104,
+          0.6221129894256592
+        ]
+      ],
+      "open_boundary_vertices": 8,
+      "upper_boundary_seeds": 4,
+      "graph_vertices": 38,
+      "pinned_frontier_vertices": 9,
+      "movable_vertices": 21,
+      "rings": 4
+    }
+  },
+  "before": {
+    "left_hip_groin": {
+      "triangle_aspect": {
+        "triangles": 48,
+        "mean_longest_to_shortest": 1.8949793741572127,
+        "p95": 3.210558495347933,
+        "max": 3.591657424053387
+      },
+      "pose": {
+        "rest_laplacian_mean": 0.0059004957051175,
+        "pose_laplacian_mean": 0.006518897524440781,
+        "pose_added_roughness": 0.0006184018193232804,
+        "max_edge_stretch_ratio": 1.5419459507843614,
+        "mean_edge_stretch_ratio": 1.0462266658201742
+      }
+    },
+    "upper_mouth": {
+      "triangle_aspect": {
+        "triangles": 21,
+        "mean_longest_to_shortest": 4.237526069994739,
+        "p95": 6.016644216620635,
+        "max": 8.679499197986713
+      }
+    }
+  },
+  "relaxation": {
+    "left_hip_groin": {
+      "iterations": 4,
+      "lambda_factor": 0.32,
+      "mu_factor": -0.34,
+      "max_displacement_limit": 0.006,
+      "moved_vertices": 40,
+      "clamped_vertices": 0,
+      "mean_displacement": 0.001016159557485088,
+      "p95_displacement": 0.002757218709206277,
+      "max_displacement": 0.0036374726193069756,
+      "laplacian_mean_before": 0.005900495864891787,
+      "laplacian_mean_after": 0.005034997788374909,
+      "roughness_reduction": 0.14668226134461515
+    },
+    "upper_mouth": {
+      "iterations": 4,
+      "lambda_factor": 0.32,
+      "mu_factor": -0.34,
+      "max_displacement_limit": 0.0035,
+      "moved_vertices": 21,
+      "clamped_vertices": 0,
+      "mean_displacement": 0.0011862986016652468,
+      "p95_displacement": 0.0025938431633636505,
+      "max_displacement": 0.003060855385549605,
+      "laplacian_mean_before": 0.0052698750054836025,
+      "laplacian_mean_after": 0.004235542734961662,
+      "roughness_reduction": 0.1962726382401213
+    }
+  },
+  "after": {
+    "left_hip_groin": {
+      "triangle_aspect": {
+        "triangles": 48,
+        "mean_longest_to_shortest": 1.8222499778668453,
+        "p95": 3.2151761410555433,
+        "max": 3.386542081012211
+      },
+      "pose": {
+        "rest_laplacian_mean": 0.005034999990586679,
+        "pose_laplacian_mean": 0.005686806999147078,
+        "pose_added_roughness": 0.0006518070085603997,
+        "max_edge_stretch_ratio": 1.5269580328249488,
+        "mean_edge_stretch_ratio": 1.046293859381598
+      }
+    },
+    "upper_mouth": {
+      "triangle_aspect": {
+        "triangles": 21,
+        "mean_longest_to_shortest": 3.5116426638744582,
+        "p95": 5.198557894587607,
+        "max": 5.91506830426948
+      }
+    }
+  },
+  "regression_checks": {
+    "topology_unchanged": true,
+    "skin_weights_unchanged": true,
+    "shape_key_relative_delta_max_error": 0.0,
+    "mouth_opening_max_displacement": 0.0,
+    "hip_rest_roughness_reduced": true,
+    "upper_mouth_roughness_reduced": true,
+    "fk_pose_roughness_not_regressed": true,
+    "weight_redistribution_needed": false
+  },
+  "evidence": [
+    "hip-rest-before.png",
+    "hip-rest-after.png",
+    "hip-fk-before.png",
+    "hip-fk-after.png",
+    "mouth-before.png",
+    "mouth-after.png"
+  ],
+  "decision": "Absolute roughness in the identical FK pose improves after the rest-surface correction, so DEF-thigh.L/pelvis weights remain unchanged.",
+  "output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "output_sha256": "d34c167473006f59b64c4145f2e2fa6787426d486594935fbc2375b008b5c8da"
+}
