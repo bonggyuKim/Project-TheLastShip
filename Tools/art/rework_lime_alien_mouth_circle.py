@@ -2,8 +2,8 @@
 
 The operation preserves vertex count, topology, skin weights, and all relative
 shape-key deltas.  The closed mouth rim is evenly redistributed on an
-area-preserving circle, while three surrounding graph rings inherit a tapered
-version of the boundary displacement so the rim does not form a hard shelf.
+area-preserving circle, while three surrounding face loops are locally
+redistributed and constrained-faired into the fixed outer face surface.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v4_subtle_oval"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 ENTRANCE_TARGET_ASPECT = 1.08
 ENTRANCE_ASPECT_TOLERANCE = 0.015
-TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v3_four_ring_falloff"
+TRANSITION_MARKER = "ADK_MouthFaceTransitionRetopology_v4_concentric_loops"
 TRANSITION_PROPERTY = "ADK_MouthFaceTransitionIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
@@ -420,17 +420,101 @@ def relax_mouth_face_transition(
     coordinates: list[Vector],
     inner_loop: set[int],
     neighbors: list[set[int]],
+    strength: float = 1.0,
 ) -> tuple[list[Vector], dict[str, object]]:
-    """Blend the mouth into the face over four rings with a tapered falloff."""
+    """Redistribute and fair the mouth-to-face loops without changing topology."""
+    if not 0.0 <= strength <= 1.0:
+        raise ValueError("Mouth face-transition strength must be in [0, 1]")
     first_face, second_face, third_face, fourth_face = select_mouth_face_rings(
         mesh, inner_loop, neighbors
     )
-    movable = first_face | second_face | third_face
-    influence = {
-        **{index: 0.75 for index in first_face},
-        **{index: 0.50 for index in second_face},
-        **{index: 0.25 for index in third_face},
+    _, _, inner_lip_ring = select_mouth_ring_stack(mesh, inner_loop, neighbors)
+    movable_rings = (first_face, second_face, third_face)
+    movable = set().union(*movable_rings)
+    ring_lookup = {
+        index: ring_number
+        for ring_number, ring in enumerate(movable_rings)
+        for index in ring
     }
+    base_equalization_factors = (0.70, 0.52, 0.28)
+    base_fairing_factors = (0.55, 0.75, 0.55)
+    base_final_spacing_factors = (0.72, 0.48, 0.24)
+    base_inner_lip_equalization = 0.80
+    equalization_factors = tuple(value * strength for value in base_equalization_factors)
+    fairing_factors = tuple(value * strength for value in base_fairing_factors)
+    final_spacing_factors = tuple(value * strength for value in base_final_spacing_factors)
+    displacement_cap = 0.005 * strength
+    inner_lip_displacement_cap = 0.0035 * strength
+
+    def ordered_ring(ring: set[int]) -> list[int]:
+        return ordered_by_angle(mesh, ring)
+
+    def smooth_periodic(values: list[float], iterations: int = 6) -> list[float]:
+        result = list(values)
+        for _ in range(iterations):
+            result = [
+                result[index] * 0.5
+                + result[(index - 1) % len(result)] * 0.25
+                + result[(index + 1) % len(result)] * 0.25
+                for index in range(len(result))
+            ]
+        return result
+
+    def ellipse_targets(points: list[Vector], ring: set[int]) -> dict[int, Vector]:
+        ordered = ordered_ring(ring)
+        ring_points = [points[index] for index in ordered]
+        center_x = (
+            min(point.x for point in ring_points) + max(point.x for point in ring_points)
+        ) * 0.5
+        center_z = (
+            min(point.z for point in ring_points) + max(point.z for point in ring_points)
+        ) * 0.5
+        radius_x = (
+            max(point.x for point in ring_points) - min(point.x for point in ring_points)
+        ) * 0.5
+        radius_z = (
+            max(point.z for point in ring_points) - min(point.z for point in ring_points)
+        ) * 0.5
+        observed_angles = [
+            math.atan2(
+                (point.z - center_z) / max(radius_z, 1.0e-9),
+                (point.x - center_x) / max(radius_x, 1.0e-9),
+            )
+            for point in ring_points
+        ]
+        step = 2.0 * math.pi / len(ordered)
+        phase = math.atan2(
+            sum(
+                math.sin(angle - position * step)
+                for position, angle in enumerate(observed_angles)
+            ),
+            sum(
+                math.cos(angle - position * step)
+                for position, angle in enumerate(observed_angles)
+            ),
+        )
+        depths = smooth_periodic([point.y for point in ring_points])
+        return {
+            index: Vector(
+                (
+                    center_x + radius_x * math.cos(phase + position * step),
+                    depths[position],
+                    center_z + radius_z * math.sin(phase + position * step),
+                )
+            )
+            for position, index in enumerate(ordered)
+        }
+
+    def edge_length_cv(points: list[Vector], ring: set[int]) -> float:
+        ordered = ordered_ring(ring)
+        lengths = [
+            (points[ordered[(position + 1) % len(ordered)]] - points[index]).length
+            for position, index in enumerate(ordered)
+        ]
+        mean = sum(lengths) / len(lengths)
+        return math.sqrt(
+            sum((length - mean) ** 2 for length in lengths) / len(lengths)
+        ) / mean
 
     def roughness(points: list[Vector]) -> float:
         values = []
@@ -441,42 +525,107 @@ def relax_mouth_face_transition(
             values.append((points[index] - average).length)
         return sum(values) / len(values)
 
-    work = [point.copy() for point in coordinates]
-    for _ in range(6):
-        for factor in (0.45, -0.46):
-            updated = [point.copy() for point in work]
-            for index in movable:
-                average = sum(
-                    (work[linked] for linked in neighbors[index]), Vector()
-                ) / len(neighbors[index])
-                updated[index] = work[index] + (
-                    average - work[index]
-                ) * factor * influence[index]
-            work = updated
+    equalized = [point.copy() for point in coordinates]
+    for ring, factor in zip(movable_rings, equalization_factors):
+        for index, target in ellipse_targets(coordinates, ring).items():
+            equalized[index] = coordinates[index].lerp(target, factor)
 
-    raw_displacements = {index: work[index] - coordinates[index] for index in movable}
-    raw_max = max(delta.length for delta in raw_displacements.values())
-    scale = min(1.0, 0.0018 / raw_max) if raw_max > 0.0 else 1.0
+    ordered_loops = [ordered_ring(ring) for ring in movable_rings]
+    loop_neighbors = {}
+    for loop in ordered_loops:
+        for position, index in enumerate(loop):
+            loop_neighbors[index] = (
+                loop[(position - 1) % len(loop)],
+                loop[(position + 1) % len(loop)],
+            )
+
+    work = [point.copy() for point in equalized]
+    for _ in range(36):
+        updated = [point.copy() for point in work]
+        for index, ring_number in ring_lookup.items():
+            previous, following = loop_neighbors[index]
+            tangent_target = (work[previous] + work[following]) * 0.5
+            radial_neighbors = [
+                linked
+                for linked in neighbors[index]
+                if linked not in movable_rings[ring_number]
+            ]
+            radial_target = (
+                sum((work[linked] for linked in radial_neighbors), Vector())
+                / len(radial_neighbors)
+                if radial_neighbors
+                else work[index]
+            )
+            target = tangent_target * 0.38 + radial_target * 0.62
+            updated[index] = work[index].lerp(target, 0.32)
+        work = updated
+
     result = [point.copy() for point in coordinates]
-    for index, delta in raw_displacements.items():
-        result[index] = coordinates[index] + delta * scale
+    for index, ring_number in ring_lookup.items():
+        target = equalized[index].lerp(work[index], fairing_factors[ring_number])
+        delta = target - coordinates[index]
+        if delta.length > displacement_cap:
+            delta.normalize()
+            delta *= displacement_cap
+        result[index] = coordinates[index] + delta
+
+    spacing_source = [point.copy() for point in result]
+    for ring, factor in zip(movable_rings, final_spacing_factors):
+        for index, target in ellipse_targets(spacing_source, ring).items():
+            candidate = spacing_source[index].lerp(target, factor)
+            delta = candidate - coordinates[index]
+            if delta.length > displacement_cap:
+                delta.normalize()
+                delta *= displacement_cap
+            result[index] = coordinates[index] + delta
+
+    edge_cv_before = [edge_length_cv(coordinates, ring) for ring in movable_rings]
+    edge_cv_after = [edge_length_cv(result, ring) for ring in movable_rings]
+    inner_lip_cv_before = edge_length_cv(coordinates, inner_lip_ring)
+    inner_lip_targets = ellipse_targets(coordinates, inner_lip_ring)
+    for index, target in inner_lip_targets.items():
+        candidate = coordinates[index].lerp(
+            target, base_inner_lip_equalization * strength
+        )
+        delta = candidate - coordinates[index]
+        if delta.length > inner_lip_displacement_cap:
+            delta.normalize()
+            delta *= inner_lip_displacement_cap
+        result[index] = coordinates[index] + delta
+    inner_lip_cv_after = edge_length_cv(result, inner_lip_ring)
 
     before_roughness = roughness(coordinates)
     after_roughness = roughness(result)
-    displacements = [(result[index] - coordinates[index]).length for index in movable]
+    all_moved = movable | inner_lip_ring
+    displacements = [(result[index] - coordinates[index]).length for index in all_moved]
     return result, {
-        "iterations": 6,
-        "lambda_factor": 0.45,
-        "mu_factor": -0.46,
+        "method": "concentric_loop_redistribution_and_constrained_fairing",
+        "fairing_iterations": 36,
+        "fairing_step": 0.32,
+        "tangential_weight": 0.38,
+        "radial_weight": 0.62,
+        "application_strength": strength,
         "first_face_ring_vertices": sorted(first_face),
         "second_face_ring_vertices": sorted(second_face),
         "third_face_ring_vertices": sorted(third_face),
         "fourth_face_boundary_vertices": sorted(fourth_face),
-        "ring_influence": [0.75, 0.50, 0.25, 0.0],
+        "inner_lip_ring_vertices": sorted(inner_lip_ring),
+        "equalization_factors": list(base_equalization_factors),
+        "fairing_factors": list(base_fairing_factors),
+        "final_spacing_factors": list(base_final_spacing_factors),
+        "applied_equalization_factors": list(equalization_factors),
+        "applied_fairing_factors": list(fairing_factors),
+        "applied_final_spacing_factors": list(final_spacing_factors),
+        "inner_lip_equalization_factor": base_inner_lip_equalization,
+        "applied_inner_lip_equalization_factor": base_inner_lip_equalization * strength,
+        "inner_lip_ring_edge_length_cv_before": inner_lip_cv_before,
+        "inner_lip_ring_edge_length_cv_after": inner_lip_cv_after,
+        "ring_edge_length_cv_before": edge_cv_before,
+        "ring_edge_length_cv_after": edge_cv_after,
         "moved_vertices": sum(value > 1.0e-8 for value in displacements),
         "mean_displacement": sum(displacements) / len(displacements),
         "max_displacement": max(displacements),
-        "displacement_scale": scale,
+        "displacement_cap": displacement_cap,
         "laplacian_roughness_before": before_roughness,
         "laplacian_roughness_after": after_roughness,
         "laplacian_roughness_reduction": 1.0 - after_roughness / before_roughness,
@@ -732,11 +881,22 @@ def main() -> None:
         "face_transition_roughness_reduced": transition_operation[
             "laplacian_roughness_reduction"
         ]
-        >= 0.10,
+        >= 0.25,
+        "face_transition_loop_spacing_improved": all(
+            after < before
+            for before, after in zip(
+                transition_operation["ring_edge_length_cv_before"],
+                transition_operation["ring_edge_length_cv_after"],
+            )
+        ),
+        "inner_lip_loop_spacing_improved": transition_operation[
+            "inner_lip_ring_edge_length_cv_after"
+        ]
+        < transition_operation["inner_lip_ring_edge_length_cv_before"],
         "face_transition_max_displacement_bounded": transition_operation[
             "max_displacement"
         ]
-        <= 0.0018 + 1.0e-8,
+        <= 0.005 + 1.0e-8,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

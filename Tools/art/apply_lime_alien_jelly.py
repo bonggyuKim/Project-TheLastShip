@@ -386,6 +386,7 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
             after,
             set(loop),
             neighbors,
+            strength=0.35,
         )
         shape_error_transition = apply_mouth_to_shape_keys(body, after, after_transition)
         after = after_transition

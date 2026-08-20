@@ -202,10 +202,21 @@ def main() -> None:
     mouth_transition = mouth_circle.get("face_transition")
     require(
         mouth_transition is not None
-        and mouth_transition["laplacian_roughness_reduction"] >= 0.05
-        and mouth_transition["max_displacement"] <= 0.0018 + 1.0e-8
-        and mouth_transition["ring_influence"] == [0.75, 0.50, 0.25, 0.0],
-        "Final mouth-to-face transition relaxation regressed",
+        and mouth_transition["application_strength"] == 0.35
+        and mouth_transition["laplacian_roughness_reduction"] >= 0.03
+        and mouth_transition["max_displacement"] <= 0.005 + 1.0e-8
+        and mouth_transition["equalization_factors"] == [0.70, 0.52, 0.28]
+        and mouth_transition["final_spacing_factors"] == [0.72, 0.48, 0.24]
+        and all(
+            after < before
+            for before, after in zip(
+                mouth_transition["ring_edge_length_cv_before"],
+                mouth_transition["ring_edge_length_cv_after"],
+            )
+        )
+        and mouth_transition["inner_lip_ring_edge_length_cv_after"]
+        < mouth_transition["inner_lip_ring_edge_length_cv_before"],
+        "Final mouth-to-face local loop redistribution regressed",
     )
     mouth_cleanup = report.get("mouth_topology_cleanup")
     require(
@@ -268,7 +279,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
-            "1:1 inner ring, 1.08:1 subtle oval entrance, and four-ring face transition falloff",
+            "1:1 inner ring, 1.08:1 subtle oval entrance, and locally redistributed lip/face loops",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",
