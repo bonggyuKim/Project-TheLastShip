@@ -1,6 +1,6 @@
 {
   "source": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256_before": "d4b7addde9a810b164b02207bf5ad921636ed26bf096bb5e26c969e5842b9700",
+  "source_sha256_before": "50223a8420a6aa7300fa1b75999fd59482c09d69f55b2b10bd66f31d305de3a8",
   "shape_keys": 92,
   "mouth_boundary_indices": [
     2281,
@@ -25,26 +25,30 @@
     2284
   ],
   "mouth_entrance_indices": [
-    2379,
-    3190,
-    3189,
-    2278,
-    2277,
-    2285,
-    2288,
-    2292,
-    2294,
-    2440,
-    2437,
-    2434,
-    2425,
-    2423,
-    2399,
-    2393,
-    2391,
-    2387,
-    2383,
-    3194
+    2372,
+    3183,
+    3185,
+    3186,
+    2271,
+    2272,
+    2274,
+    2279,
+    2290,
+    2297,
+    2296,
+    2444,
+    2432,
+    2429,
+    2427,
+    2421,
+    2418,
+    2417,
+    2401,
+    2396,
+    2395,
+    2388,
+    2376,
+    2375
   ],
   "mouth_fan_center_index": 3192,
   "inner": {
@@ -77,54 +81,54 @@
   },
   "entrance": {
     "before": {
-      "center_x": 0.0013139015063643456,
-      "center_z": 0.5145296454429626,
-      "width": 0.05892676301300526,
-      "height": 0.05102109909057617,
-      "width_to_height": 1.154948914534248,
-      "mean_radius": 0.02783623902484475,
-      "radius_cv": 0.05157973838359749,
-      "mean_edge_length": 0.009063169479920028,
-      "edge_length_cv": 0.2586367053563111,
-      "depth_range": 0.02214844524860382
+      "center_x": -0.013602941296994686,
+      "center_z": 0.5244651138782501,
+      "width": 0.0556830707937479,
+      "height": 0.04225283861160278,
+      "width_to_height": 1.3178539625609231,
+      "mean_radius": 0.024340215140637295,
+      "radius_cv": 0.09689347783598189,
+      "mean_edge_length": 0.006722050857493677,
+      "edge_length_cv": 0.16344038654101758,
+      "depth_range": 0.01917126774787903
     },
     "operation": {
-      "target_radius": 0.02741581758207039,
-      "target_phase_radians": -2.8226598586257405,
+      "target_radius": 0.024252668944090887,
+      "target_phase_radians": -2.9121308625100597,
       "target_winding": 1,
       "radius_scale": 1.0,
-      "boundary_vertices": 20,
+      "boundary_vertices": 24,
       "surrounding_ring_vertices": [
-        24,
-        24,
-        24
+        48,
+        44,
+        23
       ],
-      "moved_vertices": 92,
-      "mean_displacement": 0.0014962441713084627,
-      "max_displacement": 0.006615541055152623
+      "moved_vertices": 139,
+      "mean_displacement": 0.001519950889244515,
+      "max_displacement": 0.004198355952996904
     },
     "after": {
-      "center_x": 0.0013139015063643456,
-      "center_z": 0.5145296454429626,
-      "width": 0.0548310112208128,
-      "height": 0.05483102798461914,
-      "width_to_height": 0.999999694264234,
-      "mean_radius": 0.027415819843902667,
-      "radius_cv": 4.25515730976562e-07,
-      "mean_edge_length": 0.00887445623815927,
-      "edge_length_cv": 0.027928630448176332,
-      "depth_range": 0.019867882132530212
+      "center_x": -0.013602940831333399,
+      "center_z": 0.5244651138782501,
+      "width": 0.04847997706383467,
+      "height": 0.04847997426986694,
+      "width_to_height": 1.0000000576313781,
+      "mean_radius": 0.024252668075073897,
+      "radius_cv": 4.409131781396741e-07,
+      "mean_edge_length": 0.006551088375955972,
+      "edge_length_cv": 0.02765477451792533,
+      "depth_range": 0.017818346619606018
     }
   },
   "regression_checks": {
     "topology_unchanged": true,
     "skin_weights_unchanged": true,
-    "shape_key_relative_delta_max_error": 0.0,
+    "shape_key_relative_delta_max_error": 1.1641532182693481e-10,
     "inner_circle_aspect_within_3_percent": true,
     "inner_circle_radius_cv_within_3_percent": true,
     "entrance_circle_aspect_within_3_percent": true,
     "entrance_circle_radius_cv_within_3_percent": true
   },
   "output": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "output_sha256": "50223a8420a6aa7300fa1b75999fd59482c09d69f55b2b10bd66f31d305de3a8"
+  "output_sha256": "ba7bb44f13292202e46d2ff37597bad11e260d4143327e1b93d72d1bb31bf548"
 }

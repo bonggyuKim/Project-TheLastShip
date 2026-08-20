@@ -25,7 +25,7 @@ RIG_NAME = "LastShift_LimeAlien_Rig"
 MOUTH_HINT = Vector((-0.011, -0.160, 0.506))
 MARKER = "ADK_MouthCircleRework_v1"
 BOUNDARY_PROPERTY = "ADK_MouthCircleBoundaryIndices"
-ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v2"
+ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v3_outer_rim"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
@@ -149,17 +149,54 @@ def select_mouth_entrance(
     inner_loop: set[int],
     neighbors: list[set[int]],
 ) -> tuple[set[int], int]:
-    """Return the visible outer mouth entrance and the recessed fan center."""
+    """Return the skin/cavity junction and the recessed fan center.
+
+    The first 20-vertex ring outside ``inner_loop`` is still inside the mouth
+    tube.  Two further front-facing closed edge loops lead to the 24-vertex
+    skin/cavity junction that is actually visible as the entrance.
+    """
     adjacent = set().union(*(neighbors[index] for index in inner_loop)) - inner_loop
     center = max(adjacent, key=lambda index: len(neighbors[index] & inner_loop))
-    entrance = adjacent - {center}
-    if len(entrance) != len(inner_loop):
+    throat = adjacent - {center}
+    if len(throat) != len(inner_loop):
         raise RuntimeError(
-            f"Mouth entrance does not match inner ring: inner={len(inner_loop)}, "
-            f"entrance={len(entrance)}, center={center}"
+            f"Mouth throat does not match inner ring: inner={len(inner_loop)}, "
+            f"throat={len(throat)}, center={center}"
         )
     if len(neighbors[center] & inner_loop) < len(inner_loop) // 2:
         raise RuntimeError("Could not identify the recessed mouth fan center")
+
+    def advance_outward(current: set[int], blocked: set[int]) -> set[int]:
+        candidates = {
+            linked
+            for index in current
+            for linked in neighbors[index]
+            if linked not in current
+            and linked not in blocked
+            and mesh.vertices[linked].co.y < mesh.vertices[index].co.y - 1.0e-3
+        }
+        closed = []
+        for group in components(candidates, neighbors):
+            degrees = {index: len(neighbors[index] & group) for index in group}
+            if 16 <= len(group) <= 32 and all(degree == 2 for degree in degrees.values()):
+                closed.append(group)
+        if not closed:
+            raise RuntimeError(
+                "Could not trace the next closed mouth loop: "
+                f"current={sorted(current)}, candidates={sorted(candidates)}"
+            )
+        return min(
+            closed,
+            key=lambda group: sum(
+                (mesh.vertices[index].co - MOUTH_HINT).length_squared for index in group
+            )
+            / len(group),
+        )
+
+    first_outer = advance_outward(throat, inner_loop | {center})
+    entrance = advance_outward(first_outer, inner_loop | throat | {center})
+    if len(entrance) != 24:
+        raise RuntimeError(f"Expected a 24-vertex outer mouth entrance, got {len(entrance)}")
     return entrance, center
 
 
