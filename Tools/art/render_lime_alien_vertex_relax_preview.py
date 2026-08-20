@@ -51,9 +51,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--blend-output", type=Path, required=True)
-    parser.add_argument("--iterations", type=int, default=3)
-    parser.add_argument("--lambda-factor", type=float, default=0.32)
-    parser.add_argument("--mu-factor", type=float, default=-0.34)
+    parser.add_argument("--iterations", type=int, default=12)
+    parser.add_argument("--lambda-factor", type=float, default=0.80)
+    parser.add_argument("--mu-factor", type=float, default=-0.82)
+    parser.add_argument("--min-displacement-ratio", type=float, default=0.020)
     parser.add_argument("--max-displacement-ratio", type=float, default=0.025)
     return parser.parse_args(raw)
 
@@ -222,8 +223,13 @@ def main() -> None:
         relax_metrics["laplacian_mean_after"] / relax_metrics["laplacian_mean_before"]
     )
     require(relaxed_topology == source_topology, "Vertex relaxation changed topology")
+    require(
+        0.0 <= args.min_displacement_ratio <= args.max_displacement_ratio,
+        "Displacement ratio limits must satisfy 0 <= min <= max",
+    )
     require(relax_metrics["moved_vertices"] > 0, "Vertex relaxation moved no vertices")
     require(relax_metrics["boundary_max_displacement"] < 1.0e-8, "Open boundary moved")
+    require(max_ratio >= args.min_displacement_ratio, "Vertex displacement missed preview target")
     require(max_ratio <= args.max_displacement_ratio, "Vertex displacement exceeded preview limit")
     require(smoothness_reduction > 0.0, "Vertex relaxation did not reduce Laplacian roughness")
 
@@ -311,7 +317,11 @@ def main() -> None:
                 "canonical source remains byte-for-byte geometrically unchanged",
                 "topology counts remain identical",
                 "open mouth boundary vertices remain pinned",
-                f"maximum displacement stays within {args.max_displacement_ratio:.1%} of source diagonal",
+                (
+                    "maximum displacement stays within "
+                    f"{args.min_displacement_ratio:.1%}-{args.max_displacement_ratio:.1%} "
+                    "of source diagonal"
+                ),
             ],
         },
         "topology_before": source_topology,

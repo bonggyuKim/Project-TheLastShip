@@ -10,7 +10,7 @@
       "canonical source remains byte-for-byte geometrically unchanged",
       "topology counts remain identical",
       "open mouth boundary vertices remain pinned",
-      "maximum displacement stays within 2.5% of source diagonal"
+      "maximum displacement stays within 2.0%-2.5% of source diagonal"
     ]
   },
   "topology_before": {
@@ -32,21 +32,21 @@
     "loose_edges": 0
   },
   "relaxation": {
-    "iterations": 3,
-    "lambda_factor": 0.32,
-    "mu_factor": -0.34,
+    "iterations": 12,
+    "lambda_factor": 0.8,
+    "mu_factor": -0.82,
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.0006654572603855324,
-    "p95_displacement": 0.0018843842225063365,
-    "max_displacement": 0.005788445726813732,
+    "mean_displacement": 0.003140239952557906,
+    "p95_displacement": 0.008807625840723886,
+    "max_displacement": 0.026300553751666886,
     "boundary_max_displacement": 0.0,
     "laplacian_mean_before": 0.0033143476910883827,
-    "laplacian_mean_after": 0.0027948870589284166,
+    "laplacian_mean_after": 0.0017740794431804472,
     "source_diagonal": 1.286810045645636,
-    "max_displacement_ratio": 0.004498290751149268,
-    "laplacian_roughness_reduction": 0.15673088057619655
+    "max_displacement_ratio": 0.0204385673244189,
+    "laplacian_roughness_reduction": 0.4647274189275339
   },
   "renders": [
     "lime-alien-vertex-relax-front.png",
