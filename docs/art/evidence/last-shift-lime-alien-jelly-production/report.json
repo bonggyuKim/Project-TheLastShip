@@ -5,6 +5,25 @@
   "output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_Jelly.blend",
   "quad_angle_degrees": 60.0,
   "subdivision_level": 1,
+  "vertex_relaxation": {
+    "iterations": 12,
+    "lambda_factor": 0.8,
+    "mu_factor": -0.82,
+    "movable_vertices": 5675,
+    "boundary_vertices_pinned": 36,
+    "moved_vertices": 5675,
+    "mean_displacement": 0.0031402399525579,
+    "p95_displacement": 0.008807625840723886,
+    "max_displacement": 0.026300553751666886,
+    "max_displacement_ratio": 0.02072940636770836,
+    "boundary_max_displacement": 0.0,
+    "laplacian_mean_before": 0.0033143476910883827,
+    "laplacian_mean_after": 0.0017740794431804472,
+    "laplacian_roughness_reduction": 0.4647274189275339,
+    "shape_keys_translated": 91,
+    "max_shape_delta_error": 1.5359765386647212e-08
+  },
+  "authoring_coordinate_digest": "bed8801453642439f28a45dfe57cf22b7c3f8dcdc60cb4d90f97c81bbbd44e6e",
   "shape_keys_preserved_in_blend": 92,
   "authoring_modifier": "Jelly_Surface_Subdivision_L1",
   "before": {
@@ -25,30 +44,30 @@
   },
   "after_quadify": {
     "vertices": 5711,
-    "edges": 11940,
-    "polygons": 6231,
+    "edges": 12109,
+    "polygons": 6400,
     "triangles": 11382,
     "face_sizes": {
-      "4": 5151,
-      "3": 1080
+      "4": 4982,
+      "3": 1418
     },
-    "quad_ratio": 0.8266730861819933,
-    "smooth_polygons": 6231,
+    "quad_ratio": 0.7784375,
+    "smooth_polygons": 6400,
     "flat_polygons": 0,
     "boundary_edges": 36,
     "interior_nonmanifold_edges": 0,
     "loose_edges": 0
   },
   "runtime_baked": {
-    "vertices": 23882,
-    "edges": 47724,
-    "polygons": 23844,
-    "triangles": 47688,
+    "vertices": 24220,
+    "edges": 48400,
+    "polygons": 24182,
+    "triangles": 48364,
     "face_sizes": {
-      "4": 23844
+      "4": 24182
     },
     "quad_ratio": 1.0,
-    "smooth_polygons": 23844,
+    "smooth_polygons": 24182,
     "flat_polygons": 0,
     "boundary_edges": 72,
     "interior_nonmanifold_edges": 0,
@@ -56,22 +75,22 @@
   },
   "runtime_skin": {
     "vertex_groups": 47,
-    "weighted_vertices": 23882,
+    "weighted_vertices": 24220,
     "unweighted_vertices": 0,
-    "weight_assignments": 107832,
+    "weight_assignments": 109582,
     "min_weight_sum": 0.914271755144,
     "max_weight_sum": 2.9664840288460255
   },
   "fbx_outputs": [
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
-      "bytes": 2215004,
-      "sha256": "2acb9e14ed8de867b483ed97a7988ff9539281c07a2b25a6a663d7a72a8a167b"
+      "bytes": 2249036,
+      "sha256": "64cb689029f9319592d333785c5b85831bd8fcfb0908e82606dad06096fff04c"
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
-      "bytes": 2215004,
-      "sha256": "0d0dc7897e7667afe1a0031f806f6d6838858bcb2f3c3e462d8dd2a8d4bd5498"
+      "bytes": 2249036,
+      "sha256": "6141d8bdfcb7473a15bff4162eb07c645b5e2b31ee21136d601ede168bb04065"
     }
   ],
   "surface_smoothing": {
@@ -90,15 +109,29 @@
     "receiver_visible": true,
     "show_shadows": true,
     "camera_elevation_ratio": 0.28,
-    "bytes": 1099253
+    "bytes": 1096803
+  },
+  "joint_pose_render": {
+    "path": "lime-alien-jelly-production-joint-pose.png",
+    "bytes": 1050949,
+    "controls_degrees": {
+      "thigh_fk.L": -34.0,
+      "shin_fk.L": 68.0,
+      "upper_arm_fk.R": 28.0,
+      "forearm_fk.R": -76.0
+    },
+    "ik_fk": "FK"
   },
   "regression_checks": {
     "source_unchanged": true,
     "canonical_vertex_count_preserved": true,
     "shape_keys_preserved": 92,
+    "shape_key_relative_deltas_preserved": true,
+    "open_boundaries_pinned": true,
+    "surface_roughness_reduced": true,
     "runtime_all_vertices_weighted": true,
     "runtime_interior_nonmanifold_edges": 0,
     "runtime_loose_edges": 0
   },
-  "tradeoff": "Level 1 raises body triangles from 11,382 to 47,688 (4.19x); level 2 is intentionally excluded from production."
+  "tradeoff": "Bounded control-vertex relaxation changes the rest surface while preserving all relative expression deltas. Level 1 raises body triangles from 11,382 to 48,364 (4.25x); level 2 is intentionally excluded from production."
 }

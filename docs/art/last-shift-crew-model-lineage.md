@@ -41,9 +41,10 @@
 
 실제 게임 표시용 젤리 표면은 이 정본을 입력으로 만든
 `LastShiftLimeAlien_UnityExport_Jelly.blend`에 저장한다. 제어 메시의 82.7%를
-쿼드화하고 Catmull-Clark L1을 적용한 `RigifyDeform` / `RigifySoft` FBX가 현재
-런타임 계보다. 본체·눈은 전면 스무스 셰이딩이며 접지 그림자 렌더와 FBX
-재임포트 회귀 결과는 `last-shift-lime-alien-jelly-production` 증거 폴더에 둔다.
+쿼드화한 초기 제작본에서, 2026-08-20 최종본은 제어 정점 완화와 쿼드화
+(77.8%), Catmull-Clark L1을 통합했다. `RigifyDeform` / `RigifySoft` FBX가 현재
+런타임 계보다. 본체·눈은 전면 스무스 셰이딩이며 접지·FK 관절 포즈 렌더와
+FBX 재임포트 회귀 결과는 `last-shift-lime-alien-jelly-production` 증거 폴더에 둔다.
 위치·셰이프키·웨이트 정본은 계속 `UnityExport_LeftToeFixed`다.
 
 ## 좌우 웨이트 현황 (정본 기준, Unity 분할 정점)

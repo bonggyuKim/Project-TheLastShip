@@ -45,6 +45,18 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def coordinate_digest(obj: bpy.types.Object) -> str:
+    digest = hashlib.sha256()
+    for vertex in obj.data.vertices:
+        digest.update(f"{vertex.co.x:.9f},{vertex.co.y:.9f},{vertex.co.z:.9f};".encode())
+    if obj.data.shape_keys:
+        for key in obj.data.shape_keys.key_blocks:
+            digest.update(key.name.encode())
+            for point in key.data:
+                digest.update(f"{point.co.x:.9f},{point.co.y:.9f},{point.co.z:.9f};".encode())
+    return digest.hexdigest()
+
+
 def topology_metrics(obj: bpy.types.Object) -> dict[str, int]:
     mesh = obj.data
     mesh.calc_loop_triangles()
@@ -110,8 +122,8 @@ def verify_fbx(path: Path, expected: dict[str, object]) -> dict[str, object]:
     require(armatures, f"FBX has no armature: {path}")
     body = max(meshes, key=lambda obj: len(obj.data.vertices))
     metrics = topology_metrics(body)
-    require(metrics["vertices"] == 23882, f"Runtime vertex count regressed: {path}")
-    require(metrics["triangles"] == 47688, f"Runtime triangle count regressed: {path}")
+    require(metrics["vertices"] == 24220, f"Runtime vertex count regressed: {path}")
+    require(metrics["triangles"] == 48364, f"Runtime triangle count regressed: {path}")
     require(metrics["flat_polygons"] == 0, f"Runtime FBX lost smooth shading: {path}")
     require(metrics["interior_nonmanifold_edges"] == 0, f"Runtime FBX is non-manifold: {path}")
     weighted_vertices = sum(bool(vertex.groups) for vertex in body.data.vertices)
@@ -155,9 +167,40 @@ def main() -> None:
     require(all(polygon.use_smooth for polygon in eyes.data.polygons), "Eyes lost smooth shading")
     require(report["source_unchanged"], "Production report says canonical source changed")
     require(report["runtime_skin"]["unweighted_vertices"] == 0, "Runtime has unweighted vertices")
+    relaxation = report.get("vertex_relaxation")
+    require(relaxation is not None, "Production report has no integrated vertex relaxation")
+    require(relaxation["moved_vertices"] > 0, "Production vertex relaxation moved no vertices")
+    require(
+        0.020 <= relaxation["max_displacement_ratio"] <= 0.025,
+        "Production vertex relaxation exceeded its silhouette guardrail",
+    )
+    require(
+        relaxation["boundary_max_displacement"] < 1.0e-8,
+        "Open mouth boundary moved during production relaxation",
+    )
+    require(
+        relaxation["laplacian_roughness_reduction"] > 0.40,
+        "Production surface roughness reduction regressed",
+    )
+    require(
+        relaxation["shape_keys_translated"] == 91
+        and relaxation["max_shape_delta_error"] <= 1.0e-6,
+        "Relative shape-key deltas changed during production relaxation",
+    )
+    require(
+        coordinate_digest(body) == report["authoring_coordinate_digest"],
+        "Production authoring coordinates differ from the report",
+    )
 
     shadow_name = report["renders"][2]
     shadow = verify_shadow_image(report_path.parent / shadow_name)
+    joint_pose = report.get("joint_pose_render")
+    require(joint_pose is not None, "Production report has no joint-pose evidence")
+    joint_pose_path = report_path.parent / joint_pose["path"]
+    require(
+        joint_pose_path.exists() and joint_pose_path.stat().st_size == joint_pose["bytes"],
+        "Joint-pose evidence is missing or changed",
+    )
     expected_fbxs = {Path(item["path"]).name: item for item in report["fbx_outputs"]}
     runtime = []
     for path in args.fbx:
@@ -172,14 +215,18 @@ def main() -> None:
         "authoring_body": authoring,
         "shape_keys": shape_keys,
         "subdivision": {"name": modifier.name, "levels": modifier.levels},
+        "vertex_relaxation": relaxation,
         "eyes_all_smooth": True,
         "shadow_evidence": shadow,
+        "joint_pose_evidence": joint_pose,
         "runtime_fbxs": runtime,
         "checks": [
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
+            "bounded vertex relaxation and preserved relative shape-key deltas",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
+            "asymmetric FK elbow and knee stress-pose evidence",
             "both FBX digests, topology, smooth shading, skin groups, and armature",
         ],
     }

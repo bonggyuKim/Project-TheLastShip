@@ -22,4 +22,5 @@ Blender 가 없는 머신(대부분의 개발자 PC, CI)에서는 클론할 때�
 | `Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.blend` | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.fbx` 및 애니메이션 FBX |
 | `Characters/LastShiftLimeAlien/LastShiftLimeAlien_SubdivisionPreview.blend` | 프리뷰 전용 — Unity 수출 대상 아님 |
 | `Characters/LastShiftLimeAlien/LastShiftLimeAlien_VertexRelaxPreview.blend` | 실제 제어 정점 완화 비교 프리뷰 — Unity 수출 대상 아님 |
+| `Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_Jelly.blend` | 정점 완화+Catmull-Clark L1 통합 제작본 — Unity FBX 수출 원본 |
 | `LastShift/SystemHeroes/*/*.blend` | `Assets/DoodleUp/Art/Props/LastShiftSystemHeroes/*.fbx` |

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import bpy
 import bmesh
-from mathutils import Vector
+from mathutils import Quaternion, Vector
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -37,7 +37,12 @@ from render_lime_alien_subdivision_preview import (  # noqa: E402
     add_text,
     duplicate_materials,
     render,
+    set_camera_to_bounds,
     world_bounds,
+)
+from render_lime_alien_vertex_relax_preview import (  # noqa: E402
+    connectivity,
+    laplacian_mean,
 )
 
 
@@ -55,6 +60,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--quad-angle", type=float, default=60.0)
     parser.add_argument("--subdivision-level", type=int, default=1)
+    parser.add_argument("--relax-iterations", type=int, default=12)
+    parser.add_argument("--relax-lambda", type=float, default=0.8)
+    parser.add_argument("--relax-mu", type=float, default=-0.82)
+    parser.add_argument("--min-displacement-ratio", type=float, default=0.020)
+    parser.add_argument("--max-displacement-ratio", type=float, default=0.025)
     return parser.parse_args(raw)
 
 
@@ -148,6 +158,126 @@ def activate(obj: bpy.types.Object) -> None:
     obj.hide_viewport = False
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
+
+
+def apply_shape_preserving_relax(
+    body: bpy.types.Object,
+    *,
+    iterations: int,
+    lambda_factor: float,
+    mu_factor: float,
+    min_displacement_ratio: float,
+    max_displacement_ratio: float,
+) -> dict[str, object]:
+    """Relax the basis while preserving every relative shape-key delta.
+
+    Open boundary vertices (the mouth opening) stay pinned.  Each non-Basis
+    key receives the exact same per-vertex displacement as Basis, so facial
+    expressions do not acquire a different silhouette or lip gap.
+    """
+    if not 1 <= iterations <= 12:
+        raise RuntimeError("--relax-iterations must be in [1, 12]")
+    if not 0.0 < lambda_factor < 1.0:
+        raise RuntimeError("--relax-lambda must be in (0, 1)")
+    if not -1.0 < mu_factor < 0.0:
+        raise RuntimeError("--relax-mu must be in (-1, 0)")
+    if not 0.0 <= min_displacement_ratio <= max_displacement_ratio:
+        raise RuntimeError("Invalid production displacement range")
+
+    activate(body)
+    body.active_shape_key_index = 0
+    shape_keys = body.data.shape_keys.key_blocks if body.data.shape_keys else []
+    if shape_keys and any(abs(key.value) > 1.0e-8 for key in shape_keys):
+        raise RuntimeError("All shape keys must be zero before vertex relaxation")
+
+    mesh = body.data
+    neighbors, boundary = connectivity(mesh)
+    basis_points = shape_keys[0].data if shape_keys else mesh.vertices
+    original = [point.co.copy() for point in basis_points]
+    coordinates = [value.copy() for value in original]
+    shape_deltas = [
+        [point.co.copy() - original[index] for index, point in enumerate(key.data)]
+        for key in shape_keys[1:]
+    ]
+    before_laplacian = laplacian_mean(coordinates, neighbors)
+    movable = [
+        index for index, linked in enumerate(neighbors)
+        if linked and index not in boundary
+    ]
+
+    for _ in range(iterations):
+        for factor in (lambda_factor, mu_factor):
+            current = [value.copy() for value in coordinates]
+            for index in movable:
+                linked = neighbors[index]
+                average = sum((current[item] for item in linked), Vector()) / len(linked)
+                coordinates[index] = current[index] + factor * (average - current[index])
+
+    displacements = [
+        (after - before).length for before, after in zip(original, coordinates)
+    ]
+    moved = sorted(value for value in displacements if value > 1.0e-7)
+    percentile_index = max(0, math.ceil(len(moved) * 0.95) - 1)
+    boundary_max = max((displacements[index] for index in boundary), default=0.0)
+    minimum = Vector(tuple(min(value[axis] for value in original) for axis in range(3)))
+    maximum = Vector(tuple(max(value[axis] for value in original) for axis in range(3)))
+    source_diagonal = (maximum - minimum).length
+    max_ratio = max(displacements, default=0.0) / source_diagonal
+
+    if not moved:
+        raise RuntimeError("Production vertex relaxation moved no vertices")
+    if boundary_max >= 1.0e-8:
+        raise RuntimeError("Production vertex relaxation moved an open boundary")
+    if not min_displacement_ratio <= max_ratio <= max_displacement_ratio:
+        raise RuntimeError(
+            f"Production displacement ratio {max_ratio:.6f} is outside "
+            f"[{min_displacement_ratio:.6f}, {max_displacement_ratio:.6f}]"
+        )
+
+    if shape_keys:
+        for index, coordinate in enumerate(coordinates):
+            shape_keys[0].data[index].co = coordinate
+            mesh.vertices[index].co = coordinate
+        for key, deltas in zip(shape_keys[1:], shape_deltas):
+            for index, delta in enumerate(deltas):
+                key.data[index].co = coordinates[index] + delta
+    else:
+        for vertex, coordinate in zip(mesh.vertices, coordinates):
+            vertex.co = coordinate
+    mesh.update()
+
+    max_shape_delta_error = 0.0
+    for key, deltas in zip(shape_keys[1:], shape_deltas):
+        for index, expected in enumerate(deltas):
+            actual = key.data[index].co - shape_keys[0].data[index].co
+            max_shape_delta_error = max(max_shape_delta_error, (actual - expected).length)
+    if max_shape_delta_error > 1.0e-6:
+        raise RuntimeError(
+            f"Shape-key relative delta changed during relaxation: {max_shape_delta_error}"
+        )
+
+    after_laplacian = laplacian_mean(coordinates, neighbors)
+    roughness_reduction = 1.0 - after_laplacian / before_laplacian
+    if roughness_reduction <= 0.0:
+        raise RuntimeError("Production vertex relaxation did not reduce roughness")
+    return {
+        "iterations": iterations,
+        "lambda_factor": lambda_factor,
+        "mu_factor": mu_factor,
+        "movable_vertices": len(movable),
+        "boundary_vertices_pinned": len(boundary),
+        "moved_vertices": len(moved),
+        "mean_displacement": sum(moved) / len(moved),
+        "p95_displacement": moved[percentile_index],
+        "max_displacement": max(displacements),
+        "max_displacement_ratio": max_ratio,
+        "boundary_max_displacement": boundary_max,
+        "laplacian_mean_before": before_laplacian,
+        "laplacian_mean_after": after_laplacian,
+        "laplacian_roughness_reduction": roughness_reduction,
+        "shape_keys_translated": max(0, len(shape_keys) - 1),
+        "max_shape_delta_error": max_shape_delta_error,
+    }
 
 
 def quadify_preserving_boundaries(body: bpy.types.Object, angle_degrees: float) -> None:
@@ -499,6 +629,106 @@ def create_evidence(
     }
 
 
+def create_joint_pose_evidence(
+    baked: bpy.types.Object,
+    eyes: bpy.types.Object,
+    rig: bpy.types.Object,
+    output_dir: Path,
+) -> dict[str, object]:
+    """Render one asymmetric stress pose to expose elbow and knee pinching."""
+    collection = bpy.data.collections.new("LimeAlien_Jelly_JointPose_Evidence")
+    bpy.context.scene.collection.children.link(collection)
+    pose_body = baked.copy()
+    pose_body.data = baked.data.copy()
+    pose_body.name = "EVIDENCE_Jelly_JointPose_Body"
+    collection.objects.link(pose_body)
+    pose_eyes = eyes.copy()
+    pose_eyes.data = eyes.data.copy()
+    pose_eyes.name = "EVIDENCE_Jelly_JointPose_Eyes"
+    collection.objects.link(pose_eyes)
+    duplicate_materials(pose_body, "JELLY_JOINT_POSE", (0.48, 0.88, 0.18, 1.0))
+
+    for obj in bpy.context.scene.objects:
+        obj.hide_render = True
+    for obj in (pose_body, pose_eyes):
+        obj.hide_render = False
+        obj.hide_viewport = False
+        obj.hide_set(False)
+
+    camera_data = bpy.data.cameras.new("EVIDENCE_JointPose_Camera")
+    camera_data.type = "ORTHO"
+    camera = bpy.data.objects.new("EVIDENCE_JointPose_Camera", camera_data)
+    collection.objects.link(camera)
+    camera.hide_render = False
+
+    controls = {
+        "thigh_fk.L": (Vector((0.0, 0.0, 1.0)), -34.0),
+        "shin_fk.L": (Vector((0.0, 0.0, 1.0)), 68.0),
+        "upper_arm_fk.R": (Vector((0.0, 0.0, 1.0)), 28.0),
+        "forearm_fk.R": (Vector((0.0, 0.0, 1.0)), -76.0),
+    }
+    missing = [name for name in controls if name not in rig.pose.bones]
+    if missing:
+        raise RuntimeError(f"Missing joint-pose controls: {missing}")
+    old_pose_position = rig.data.pose_position
+    old_rotations = {
+        name: (rig.pose.bones[name].rotation_mode, rig.pose.bones[name].rotation_quaternion.copy())
+        for name in controls
+    }
+    parent_controls = ("thigh_parent.L", "upper_arm_parent.R")
+    old_ik_fk = {name: rig.pose.bones[name].get("IK_FK", 1.0) for name in parent_controls}
+    try:
+        rig.data.pose_position = "POSE"
+        for name in parent_controls:
+            rig.pose.bones[name]["IK_FK"] = 1.0
+        for name, (axis, angle) in controls.items():
+            control = rig.pose.bones[name]
+            control.rotation_mode = "QUATERNION"
+            control.rotation_quaternion = Quaternion(axis, math.radians(angle))
+        bpy.context.view_layer.update()
+
+        bpy.context.view_layer.update()
+        minimum, maximum = world_bounds([pose_body, pose_eyes])
+        set_camera_to_bounds(camera, minimum, maximum, horizontal_padding=1.62, vertical_padding=1.90)
+        output = output_dir / "lime-alien-jelly-production-joint-pose.png"
+        render(
+            output,
+            camera,
+            [pose_body],
+            [pose_eyes],
+            [],
+            turntable_degrees=0.0,
+            fit_camera=False,
+            show_labels=False,
+        )
+        if not output.exists() or output.stat().st_size < 10_000:
+            raise RuntimeError("Joint-pose evidence render was not written correctly")
+        return {
+            "path": output.name,
+            "bytes": output.stat().st_size,
+            "controls_degrees": {name: angle for name, (_, angle) in controls.items()},
+            "ik_fk": "FK",
+        }
+    finally:
+        for name, (mode, rotation) in old_rotations.items():
+            control = rig.pose.bones[name]
+            control.rotation_mode = mode
+            control.rotation_quaternion = rotation
+        for name, value in old_ik_fk.items():
+            rig.pose.bones[name]["IK_FK"] = value
+        rig.data.pose_position = old_pose_position
+        bpy.context.view_layer.update()
+        for obj in tuple(collection.objects):
+            data = obj.data
+            bpy.data.objects.remove(obj, do_unlink=True)
+            if data and data.users == 0:
+                if isinstance(data, bpy.types.Mesh):
+                    bpy.data.meshes.remove(data)
+                elif isinstance(data, bpy.types.Camera):
+                    bpy.data.cameras.remove(data)
+        bpy.data.collections.remove(collection)
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -521,18 +751,30 @@ def main() -> None:
         if body.data.shape_keys
         else []
     )
-    coordinate_digest_before = coordinate_digest(body)
+    source_coordinate_digest = coordinate_digest(body)
     before = face_metrics(body.data)
     shade_surface_smooth(eyes)
     require_fully_smooth(eyes, "Eyes")
+
+    relaxation = apply_shape_preserving_relax(
+        body,
+        iterations=args.relax_iterations,
+        lambda_factor=args.relax_lambda,
+        mu_factor=args.relax_mu,
+        min_displacement_ratio=args.min_displacement_ratio,
+        max_displacement_ratio=args.max_displacement_ratio,
+    )
+    relaxed_coordinate_digest = coordinate_digest(body)
+    if relaxed_coordinate_digest == source_coordinate_digest:
+        raise RuntimeError("Production relaxation did not change authoring coordinates")
 
     quadify_preserving_boundaries(body, args.quad_angle)
     after_quadify = face_metrics(body.data)
     require_fully_smooth(body, "Quadified authoring body")
     if after_quadify["vertices"] != before["vertices"]:
         raise RuntimeError("Quad conversion changed canonical vertex count")
-    if coordinate_digest(body) != coordinate_digest_before:
-        raise RuntimeError("Quad conversion changed canonical or shape-key coordinates")
+    if coordinate_digest(body) != relaxed_coordinate_digest:
+        raise RuntimeError("Quad conversion changed relaxed or shape-key coordinates")
     if body.data.shape_keys and [
         key.name for key in body.data.shape_keys.key_blocks
     ] != shape_key_names:
@@ -547,6 +789,9 @@ def main() -> None:
         raise RuntimeError("Baked jelly mesh contains unweighted vertices")
 
     evidence = create_evidence(body, baked, eyes, args.evidence_dir.resolve())
+    joint_pose = create_joint_pose_evidence(
+        baked, eyes, rig, args.evidence_dir.resolve()
+    )
     fbx_outputs: list[dict[str, object]] = []
     for output in args.fbx_output:
         export_fbx(baked, body, eyes, rig, output)
@@ -574,6 +819,8 @@ def main() -> None:
         "output": args.output.as_posix(),
         "quad_angle_degrees": args.quad_angle,
         "subdivision_level": args.subdivision_level,
+        "vertex_relaxation": relaxation,
+        "authoring_coordinate_digest": relaxed_coordinate_digest,
         "shape_keys_preserved_in_blend": len(shape_key_names),
         "authoring_modifier": MODIFIER_NAME,
         "before": before,
@@ -588,17 +835,24 @@ def main() -> None:
         },
         "renders": evidence["renders"],
         "shadow_render": evidence["shadow_render"],
+        "joint_pose_render": joint_pose,
         "regression_checks": {
             "source_unchanged": True,
             "canonical_vertex_count_preserved": after_quadify["vertices"] == before["vertices"],
             "shape_keys_preserved": len(shape_key_names),
+            "shape_key_relative_deltas_preserved": relaxation["max_shape_delta_error"] <= 1.0e-6,
+            "open_boundaries_pinned": relaxation["boundary_max_displacement"] < 1.0e-8,
+            "surface_roughness_reduced": relaxation["laplacian_roughness_reduction"] > 0.0,
             "runtime_all_vertices_weighted": baked_skin["unweighted_vertices"] == 0,
             "runtime_interior_nonmanifold_edges": baked_metrics["interior_nonmanifold_edges"],
             "runtime_loose_edges": baked_metrics["loose_edges"],
         },
         "tradeoff": (
-            "Level 1 raises body triangles from 11,382 to 47,688 (4.19x); "
-            "level 2 is intentionally excluded from production."
+            "Bounded control-vertex relaxation changes the rest surface while preserving "
+            f"all relative expression deltas. Level 1 raises body triangles from "
+            f"{before['triangles']:,} to {baked_metrics['triangles']:,} "
+            f"({baked_metrics['triangles'] / before['triangles']:.2f}x); level 2 is "
+            "intentionally excluded from production."
         ),
     }
     report_path = args.evidence_dir.resolve() / "report.json"
