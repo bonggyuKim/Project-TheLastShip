@@ -1,0 +1,79 @@
+{
+  "source": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "source_sha256": "33440dac5327409f6d3c504af0d5b62f64919cff96e76314501f91b513329d42",
+  "source_unchanged": true,
+  "output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_Jelly.blend",
+  "quad_angle_degrees": 60.0,
+  "subdivision_level": 1,
+  "shape_keys_preserved_in_blend": 92,
+  "authoring_modifier": "Jelly_Surface_Subdivision_L1",
+  "before": {
+    "vertices": 5711,
+    "edges": 15651,
+    "polygons": 9942,
+    "triangles": 11382,
+    "face_sizes": {
+      "3": 8502,
+      "4": 1440
+    },
+    "quad_ratio": 0.14484007242003621,
+    "smooth_polygons": 9942,
+    "boundary_edges": 36,
+    "interior_nonmanifold_edges": 0,
+    "loose_edges": 0
+  },
+  "after_quadify": {
+    "vertices": 5711,
+    "edges": 11940,
+    "polygons": 6231,
+    "triangles": 11382,
+    "face_sizes": {
+      "4": 5151,
+      "3": 1080
+    },
+    "quad_ratio": 0.8266730861819933,
+    "smooth_polygons": 6231,
+    "boundary_edges": 36,
+    "interior_nonmanifold_edges": 0,
+    "loose_edges": 0
+  },
+  "runtime_baked": {
+    "vertices": 23882,
+    "edges": 47724,
+    "polygons": 23844,
+    "triangles": 47688,
+    "face_sizes": {
+      "4": 23844
+    },
+    "quad_ratio": 1.0,
+    "smooth_polygons": 23844,
+    "boundary_edges": 72,
+    "interior_nonmanifold_edges": 0,
+    "loose_edges": 0
+  },
+  "runtime_skin": {
+    "vertex_groups": 47,
+    "weighted_vertices": 23882,
+    "unweighted_vertices": 0,
+    "weight_assignments": 107832,
+    "min_weight_sum": 0.914271755144,
+    "max_weight_sum": 2.9664840288460255
+  },
+  "fbx_outputs": [
+    {
+      "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
+      "bytes": 2215004,
+      "sha256": "7eb357bd925f0f49eeb361e5794cfb0472db78f55843c9dd51dad681a3d15aec"
+    },
+    {
+      "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
+      "bytes": 2215004,
+      "sha256": "fd0740010db0aacadcd8d1df85d5c1693148ad9de118a3a4fc2784925f4e7846"
+    }
+  ],
+  "renders": [
+    "lime-alien-jelly-production-front.png",
+    "lime-alien-jelly-production-oblique.png"
+  ],
+  "tradeoff": "Level 1 raises body triangles from 11,382 to 47,688 (4.19x); level 2 is intentionally excluded from production."
+}

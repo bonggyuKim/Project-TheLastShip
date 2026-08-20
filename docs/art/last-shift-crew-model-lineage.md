@@ -39,6 +39,11 @@
 **주의**: REST 로 저장돼 있어서 `head` 컨트롤을 돌려도 아무것도 안 움직인다.
 포즈 시험을 하려면 먼저 `arm.data.pose_position = 'POSE'` 를 줘야 한다.
 
+실제 게임 표시용 젤리 표면은 이 정본을 입력으로 만든
+`LastShiftLimeAlien_UnityExport_Jelly.blend`에 저장한다. 제어 메시의 82.7%를
+쿼드화하고 Catmull-Clark L1을 적용한 `RigifyDeform` / `RigifySoft` FBX가 현재
+런타임 계보다. 위치·셰이프키·웨이트 정본은 계속 `UnityExport_LeftToeFixed`다.
+
 ## 좌우 웨이트 현황 (정본 기준, Unity 분할 정점)
 
 | 뼈 | 왼쪽 | 오른쪽 | 비 |
