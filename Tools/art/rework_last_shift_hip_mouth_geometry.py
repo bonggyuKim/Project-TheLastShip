@@ -31,7 +31,10 @@ RIG_NAME = "LastShift_LimeAlien_Rig"
 HIP_ROOT = "DEF-thigh.L"
 MOUTH_CENTER = Vector((-0.014025, -0.211263, 0.577113))
 MOUTH_HALF_EXTENT = Vector((0.075, 0.055, 0.045))
-REWORK_MARKER = "ADK_HipMouthGeometryRework_v1"
+REWORK_MARKER = "ADK_HipMouthGeometryRework_v2_strengthened"
+PREVIOUS_REWORK_MARKERS = ("ADK_HipMouthGeometryRework_v1",)
+MIN_HIP_ROUGHNESS_REDUCTION = 0.24
+MIN_MOUTH_ROUGHNESS_REDUCTION = 0.32
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,13 +44,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--analyze-only", action="store_true")
-    parser.add_argument("--iterations", type=int, default=4)
-    parser.add_argument("--lambda-factor", type=float, default=0.32)
-    parser.add_argument("--mu-factor", type=float, default=-0.34)
+    parser.add_argument("--iterations", type=int, default=6)
+    parser.add_argument("--lambda-factor", type=float, default=0.38)
+    parser.add_argument("--mu-factor", type=float, default=-0.40)
     parser.add_argument("--hip-rings", type=int, default=3)
     parser.add_argument("--mouth-rings", type=int, default=4)
-    parser.add_argument("--hip-max-displacement", type=float, default=0.006)
-    parser.add_argument("--mouth-max-displacement", type=float, default=0.0035)
+    parser.add_argument("--hip-max-displacement", type=float, default=0.008)
+    parser.add_argument("--mouth-max-displacement", type=float, default=0.005)
     return parser.parse_args(raw)
 
 
@@ -61,8 +64,16 @@ def require_scene() -> tuple[bpy.types.Object, bpy.types.Object]:
     armatures = [m.object for m in body.modifiers if m.type == "ARMATURE"]
     if armatures != [rig]:
         raise RuntimeError(f"Body armature mismatch: {armatures}")
-    if body.get(REWORK_MARKER):
-        raise RuntimeError("Hip/mouth geometry rework is already applied")
+    applied_markers = [
+        marker
+        for marker in (*PREVIOUS_REWORK_MARKERS, REWORK_MARKER)
+        if body.get(marker)
+    ]
+    if applied_markers:
+        raise RuntimeError(
+            "Hip/mouth geometry rework is already applied; regenerate from the "
+            f"unmodified canonical source instead of stacking passes: {applied_markers}"
+        )
     return body, rig
 
 
@@ -633,6 +644,18 @@ def main() -> None:
         mu_factor=args.mu_factor,
         max_displacement=args.mouth_max_displacement,
     )
+    if hip_relax["roughness_reduction"] < MIN_HIP_ROUGHNESS_REDUCTION:
+        raise RuntimeError(
+            "Strengthened hip correction missed its roughness target: "
+            f"{hip_relax['roughness_reduction']:.6f} < "
+            f"{MIN_HIP_ROUGHNESS_REDUCTION:.6f}"
+        )
+    if mouth_relax["roughness_reduction"] < MIN_MOUTH_ROUGHNESS_REDUCTION:
+        raise RuntimeError(
+            "Strengthened upper-mouth correction missed its roughness target: "
+            f"{mouth_relax['roughness_reduction']:.6f} < "
+            f"{MIN_MOUTH_ROUGHNESS_REDUCTION:.6f}"
+        )
     shape_error = apply_to_shape_keys(body, before_coordinates, mouth_coordinates)
     if shape_error > 1.0e-6:
         raise RuntimeError(f"Relative shape-key delta changed: {shape_error}")
@@ -661,6 +684,10 @@ def main() -> None:
         "left_hip_groin": hip_relax,
         "upper_mouth": mouth_relax,
     }
+    report["strength_contract"] = {
+        "left_hip_groin_minimum_roughness_reduction": MIN_HIP_ROUGHNESS_REDUCTION,
+        "upper_mouth_minimum_roughness_reduction": MIN_MOUTH_ROUGHNESS_REDUCTION,
+    }
     report["after"] = {
         "left_hip_groin": {
             "triangle_aspect": triangle_aspect(mesh, after_coordinates, hip_indices),
@@ -677,6 +704,8 @@ def main() -> None:
         "mouth_opening_max_displacement": opening_displacement,
         "hip_rest_roughness_reduced": hip_relax["roughness_reduction"] > 0.0,
         "upper_mouth_roughness_reduced": mouth_relax["roughness_reduction"] > 0.0,
+        "hip_strength_target_met": hip_relax["roughness_reduction"] >= MIN_HIP_ROUGHNESS_REDUCTION,
+        "upper_mouth_strength_target_met": mouth_relax["roughness_reduction"] >= MIN_MOUTH_ROUGHNESS_REDUCTION,
         "fk_pose_roughness_not_regressed": pose_after["pose_laplacian_mean"] <= pose_before["pose_laplacian_mean"] + 1.0e-6,
         "weight_redistribution_needed": False,
     }
@@ -689,8 +718,9 @@ def main() -> None:
         "mouth-after.png",
     ]
     report["decision"] = (
-        "Absolute roughness in the identical FK pose improves after the rest-surface "
-        "correction, so DEF-thigh.L/pelvis weights remain unchanged."
+        "The strengthened rest-surface correction clears both roughness targets and "
+        "improves absolute roughness in the identical FK pose, so DEF-thigh.L/pelvis "
+        "weights remain unchanged."
     )
 
     output = args.output.resolve()

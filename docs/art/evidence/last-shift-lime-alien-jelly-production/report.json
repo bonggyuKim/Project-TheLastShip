@@ -1,6 +1,6 @@
 {
   "source": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256": "d34c167473006f59b64c4145f2e2fa6787426d486594935fbc2375b008b5c8da",
+  "source_sha256": "57279e2871591e263d077e534248b2191edb99901c03c93c020b35b501f64d43",
   "source_unchanged": true,
   "output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_Jelly.blend",
   "quad_angle_degrees": 60.0,
@@ -12,18 +12,18 @@
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.0031329052508995833,
-    "p95_displacement": 0.008688252713245229,
-    "max_displacement": 0.026300558039688154,
-    "max_displacement_ratio": 0.02072940974741421,
+    "mean_displacement": 0.003126640433696741,
+    "p95_displacement": 0.008633084355848062,
+    "max_displacement": 0.02630057270194914,
+    "max_displacement_ratio": 0.020729421303823596,
     "boundary_max_displacement": 0.0,
-    "laplacian_mean_before": 0.00330467151643147,
-    "laplacian_mean_after": 0.0017739583736814818,
-    "laplacian_roughness_reduction": 0.46319676105143415,
+    "laplacian_mean_before": 0.0032973049372212945,
+    "laplacian_mean_after": 0.0017737643170747408,
+    "laplacian_roughness_reduction": 0.46205633059539597,
     "shape_keys_translated": 91,
     "max_shape_delta_error": 1.5359765386647212e-08
   },
-  "authoring_coordinate_digest": "6edceee1b94d1a784dd9aadc7ca8207db773aeb06f75701d5420ac530945dd89",
+  "authoring_coordinate_digest": "72366b21d3442521812a5418f8c28861b7956c25121937c9aa835a31715779dc",
   "shape_keys_preserved_in_blend": 92,
   "authoring_modifier": "Jelly_Surface_Subdivision_L1",
   "before": {
@@ -85,12 +85,12 @@
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
       "bytes": 2248908,
-      "sha256": "3f75a716b8a2ea8700ba046ccf389218930a7becc851b6f189d34c48f894de2d"
+      "sha256": "3c4f939a7aebca0bd6b5cc262bd77ac2b97b0f7f8e81ae6aeb67f4428dacb8d0"
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
       "bytes": 2248908,
-      "sha256": "c3b8637155325ad14e3688e4a306368b1da913833364cf0ffc315ab15f3050b4"
+      "sha256": "a4ca00c395004e8d4d6b3eebbf1b3059fde2a6103476a78d3cc2f54d9eab9e11"
     }
   ],
   "surface_smoothing": {
@@ -109,11 +109,11 @@
     "receiver_visible": true,
     "show_shadows": true,
     "camera_elevation_ratio": 0.28,
-    "bytes": 1096329
+    "bytes": 1096638
   },
   "joint_pose_render": {
     "path": "lime-alien-jelly-production-joint-pose.png",
-    "bytes": 1050581,
+    "bytes": 1050626,
     "controls_degrees": {
       "thigh_fk.L": -34.0,
       "shin_fk.L": 68.0,

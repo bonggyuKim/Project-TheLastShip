@@ -23,28 +23,28 @@
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.0031329052508995833,
-    "p95_displacement": 0.008688252713245229,
-    "max_displacement": 0.026300558039688154,
-    "max_displacement_ratio": 0.02072940974741421,
+    "mean_displacement": 0.003126640433696741,
+    "p95_displacement": 0.008633084355848062,
+    "max_displacement": 0.02630057270194914,
+    "max_displacement_ratio": 0.020729421303823596,
     "boundary_max_displacement": 0.0,
-    "laplacian_mean_before": 0.00330467151643147,
-    "laplacian_mean_after": 0.0017739583736814818,
-    "laplacian_roughness_reduction": 0.46319676105143415,
+    "laplacian_mean_before": 0.0032973049372212945,
+    "laplacian_mean_after": 0.0017737643170747408,
+    "laplacian_roughness_reduction": 0.46205633059539597,
     "shape_keys_translated": 91,
     "max_shape_delta_error": 1.5359765386647212e-08
   },
   "eyes_all_smooth": true,
   "shadow_evidence": {
     "path": "docs/art/evidence/last-shift-lime-alien-jelly-production/lime-alien-jelly-production-shadow.png",
-    "bytes": 1096329,
+    "bytes": 1096638,
     "width": 1600,
     "height": 900,
     "lower_half_luminance_spread": 0.5232816114827991
   },
   "joint_pose_evidence": {
     "path": "lime-alien-jelly-production-joint-pose.png",
-    "bytes": 1050581,
+    "bytes": 1050626,
     "controls_degrees": {
       "thigh_fk.L": -34.0,
       "shin_fk.L": 68.0,
@@ -56,7 +56,7 @@
   "runtime_fbxs": [
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
-      "sha256": "3f75a716b8a2ea8700ba046ccf389218930a7becc851b6f189d34c48f894de2d",
+      "sha256": "3c4f939a7aebca0bd6b5cc262bd77ac2b97b0f7f8e81ae6aeb67f4428dacb8d0",
       "body": {
         "vertices": 24220,
         "polygons": 24182,
@@ -73,7 +73,7 @@
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
-      "sha256": "c3b8637155325ad14e3688e4a306368b1da913833364cf0ffc315ab15f3050b4",
+      "sha256": "a4ca00c395004e8d4d6b3eebbf1b3059fde2a6103476a78d3cc2f54d9eab9e11",
       "body": {
         "vertices": 24220,
         "polygons": 24182,
