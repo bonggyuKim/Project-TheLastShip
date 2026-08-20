@@ -25,6 +25,8 @@ RIG_NAME = "LastShift_LimeAlien_Rig"
 MOUTH_HINT = Vector((-0.011, -0.160, 0.506))
 MARKER = "ADK_MouthCircleRework_v1"
 BOUNDARY_PROPERTY = "ADK_MouthCircleBoundaryIndices"
+ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v2"
+ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
 
@@ -142,6 +144,38 @@ def ordered_contour(indices: set[int], neighbors: list[set[int]]) -> list[int]:
         previous, current = current, following
 
 
+def select_mouth_entrance(
+    mesh: bpy.types.Mesh,
+    inner_loop: set[int],
+    neighbors: list[set[int]],
+) -> tuple[set[int], int]:
+    """Return the visible outer mouth entrance and the recessed fan center."""
+    adjacent = set().union(*(neighbors[index] for index in inner_loop)) - inner_loop
+    center = max(adjacent, key=lambda index: len(neighbors[index] & inner_loop))
+    entrance = adjacent - {center}
+    if len(entrance) != len(inner_loop):
+        raise RuntimeError(
+            f"Mouth entrance does not match inner ring: inner={len(inner_loop)}, "
+            f"entrance={len(entrance)}, center={center}"
+        )
+    if len(neighbors[center] & inner_loop) < len(inner_loop) // 2:
+        raise RuntimeError("Could not identify the recessed mouth fan center")
+    return entrance, center
+
+
+def ordered_by_angle(mesh: bpy.types.Mesh, indices: set[int]) -> list[int]:
+    points = [mesh.vertices[index].co for index in indices]
+    center_x = sum(point.x for point in points) / len(points)
+    center_z = sum(point.z for point in points) / len(points)
+    return sorted(
+        indices,
+        key=lambda index: math.atan2(
+            mesh.vertices[index].co.z - center_z,
+            mesh.vertices[index].co.x - center_x,
+        ),
+    )
+
+
 def loop_metrics(coordinates: list[Vector], loop: list[int]) -> dict[str, float]:
     points = [coordinates[index] for index in loop]
     center_x = (min(point.x for point in points) + max(point.x for point in points)) * 0.5
@@ -177,8 +211,10 @@ def circularize(
     loop: list[int],
     neighbors: list[set[int]],
     radius_scale: float,
+    blocked_indices: set[int] | None = None,
 ) -> tuple[list[Vector], dict[str, object]]:
     result = [point.copy() for point in coordinates]
+    blocked = blocked_indices or set()
     points = [coordinates[index] for index in loop]
     center_x = (min(point.x for point in points) + max(point.x for point in points)) * 0.5
     center_z = (min(point.z for point in points) + max(point.z for point in points)) * 0.5
@@ -233,6 +269,7 @@ def circularize(
             for index in frontier
             for linked in neighbors[index]
             if linked not in visited
+            and linked not in blocked
             and abs(coordinates[linked].x - center_x) <= half_width * 2.2
             and abs(coordinates[linked].z - center_z) <= max(half_height * 3.2, radius * 2.0)
             and abs(coordinates[linked].y - sum(point.y for point in points) / len(points)) <= 0.10
@@ -386,8 +423,8 @@ def main() -> None:
     rig = bpy.data.objects.get(RIG_NAME)
     if body is None or body.type != "MESH" or rig is None or rig.type != "ARMATURE":
         raise RuntimeError("Canonical lime alien body or rig is missing")
-    if body.get(MARKER):
-        raise RuntimeError("Circular mouth rework is already applied")
+    if body.get(ENTRANCE_MARKER):
+        raise RuntimeError("Circular mouth entrance rework is already applied")
     if body.data.shape_keys and any(abs(key.value) > 1.0e-8 for key in body.data.shape_keys.key_blocks):
         raise RuntimeError("All shape keys must be zero before circular mouth rework")
 
@@ -398,21 +435,54 @@ def main() -> None:
     weights_before = weight_digest(body)
     coordinates_before = [vertex.co.copy() for vertex in mesh.vertices]
     neighbors = connectivity(mesh)
-    mouth = select_mouth_contour(mesh, neighbors)
-    loop = ordered_contour(mouth, neighbors)
-    before_metrics = loop_metrics(coordinates_before, loop)
-    coordinates_after, operation = circularize(
-        coordinates_before, loop, neighbors, args.radius_scale
+    if body.get(MARKER) and body.get(BOUNDARY_PROPERTY):
+        loop = [int(index) for index in body[BOUNDARY_PROPERTY]]
+        apply_inner = False
+    else:
+        mouth = select_mouth_contour(mesh, neighbors)
+        loop = ordered_contour(mouth, neighbors)
+        apply_inner = True
+    entrance, fan_center = select_mouth_entrance(mesh, set(loop), neighbors)
+    entrance_loop = ordered_by_angle(mesh, entrance)
+    inner_before = loop_metrics(coordinates_before, loop)
+    entrance_before = loop_metrics(coordinates_before, entrance_loop)
+    coordinates_work = coordinates_before
+    inner_operation = None
+    if apply_inner:
+        coordinates_work, inner_operation = circularize(
+            coordinates_work,
+            loop,
+            neighbors,
+            args.radius_scale,
+            blocked_indices=set(entrance_loop),
+        )
+    coordinates_after, entrance_operation = circularize(
+        coordinates_work,
+        entrance_loop,
+        neighbors,
+        args.radius_scale,
+        blocked_indices=set(loop) | {fan_center},
     )
-    after_metrics = loop_metrics(coordinates_after, loop)
+    inner_after = loop_metrics(coordinates_after, loop)
+    entrance_after = loop_metrics(coordinates_after, entrance_loop)
     report = {
         "source": source.as_posix(),
         "source_sha256_before": source_sha,
         "shape_keys": len(mesh.shape_keys.key_blocks) if mesh.shape_keys else 0,
         "mouth_boundary_indices": loop,
-        "before": before_metrics,
-        "operation": operation,
-        "after": after_metrics,
+        "mouth_entrance_indices": entrance_loop,
+        "mouth_fan_center_index": fan_center,
+        "inner": {
+            "applied": apply_inner,
+            "before": inner_before,
+            "operation": inner_operation,
+            "after": inner_after,
+        },
+        "entrance": {
+            "before": entrance_before,
+            "operation": entrance_operation,
+            "after": entrance_after,
+        },
     }
     if args.analyze_only:
         args.report.resolve().parent.mkdir(parents=True, exist_ok=True)
@@ -429,21 +499,28 @@ def main() -> None:
         raise RuntimeError("Topology changed during circular mouth rework")
     if weight_digest(body) != weights_before:
         raise RuntimeError("Skin weights changed during circular mouth rework")
-    if abs(after_metrics["width_to_height"] - 1.0) > 0.03:
-        raise RuntimeError(f"Mouth did not become circular: {after_metrics['width_to_height']}")
-    if after_metrics["radius_cv"] > 0.03:
-        raise RuntimeError(f"Circular mouth radius variation is too high: {after_metrics['radius_cv']}")
+    for label, metrics in (("inner", inner_after), ("entrance", entrance_after)):
+        if abs(metrics["width_to_height"] - 1.0) > 0.03:
+            raise RuntimeError(f"Mouth {label} did not become circular: {metrics['width_to_height']}")
+        if metrics["radius_cv"] > 0.03:
+            raise RuntimeError(
+                f"Circular mouth {label} radius variation is too high: {metrics['radius_cv']}"
+            )
     render_mouth(body, evidence / "mouth-circle-after.png")
     render_mouth(body, evidence / "mouth-circle-wire-after.png", wire=True)
 
     body[MARKER] = True
     body[BOUNDARY_PROPERTY] = loop
+    body[ENTRANCE_MARKER] = True
+    body[ENTRANCE_PROPERTY] = entrance_loop
     report["regression_checks"] = {
         "topology_unchanged": topology_digest(mesh) == topology_before,
         "skin_weights_unchanged": weight_digest(body) == weights_before,
         "shape_key_relative_delta_max_error": shape_error,
-        "circle_aspect_within_3_percent": abs(after_metrics["width_to_height"] - 1.0) <= 0.03,
-        "circle_radius_cv_within_3_percent": after_metrics["radius_cv"] <= 0.03,
+        "inner_circle_aspect_within_3_percent": abs(inner_after["width_to_height"] - 1.0) <= 0.03,
+        "inner_circle_radius_cv_within_3_percent": inner_after["radius_cv"] <= 0.03,
+        "entrance_circle_aspect_within_3_percent": abs(entrance_after["width_to_height"] - 1.0) <= 0.03,
+        "entrance_circle_radius_cv_within_3_percent": entrance_after["radius_cv"] <= 0.03,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

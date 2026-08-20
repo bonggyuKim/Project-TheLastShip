@@ -191,7 +191,14 @@ def main() -> None:
     require(
         abs(mouth_circle["after"]["width_to_height"] - 1.0) <= 0.03
         and mouth_circle["after"]["radius_cv"] <= 0.03,
-        "Final authoring mouth ring is not circular",
+        "Final authoring inner mouth ring is not circular",
+    )
+    mouth_entrance = mouth_circle.get("entrance")
+    require(
+        mouth_entrance is not None
+        and abs(mouth_entrance["after"]["width_to_height"] - 1.0) <= 0.03
+        and mouth_entrance["after"]["radius_cv"] <= 0.03,
+        "Final visible mouth entrance is not circular",
     )
     mouth_cleanup = report.get("mouth_topology_cleanup")
     require(
@@ -254,7 +261,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
-            "1:1 circular mouth ring and local mouth quad cleanup",
+            "1:1 circular inner ring and visible mouth entrance with local mouth quad cleanup",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",

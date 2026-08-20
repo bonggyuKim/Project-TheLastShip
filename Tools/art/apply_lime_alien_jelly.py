@@ -46,13 +46,17 @@ from render_lime_alien_vertex_relax_preview import (  # noqa: E402
 )
 from rework_lime_alien_mouth_circle import (  # noqa: E402
     BOUNDARY_PROPERTY as MOUTH_CIRCLE_BOUNDARY_PROPERTY,
+    ENTRANCE_MARKER as MOUTH_ENTRANCE_CIRCLE_MARKER,
+    ENTRANCE_PROPERTY as MOUTH_ENTRANCE_BOUNDARY_PROPERTY,
     MARKER as MOUTH_CIRCLE_MARKER,
     apply_to_shape_keys as apply_mouth_to_shape_keys,
     circularize as circularize_mouth,
     connectivity as mouth_connectivity,
     loop_metrics as mouth_loop_metrics,
+    ordered_by_angle as ordered_mouth_by_angle,
     ordered_contour as ordered_mouth_contour,
     select_mouth_contour,
+    select_mouth_entrance,
 )
 
 
@@ -338,15 +342,48 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
             raise RuntimeError("Stored mouth-circle boundary is not a closed mesh loop")
     else:
         loop = ordered_mouth_contour(select_mouth_contour(mesh, neighbors), neighbors)
+    if not body.get(MOUTH_ENTRANCE_CIRCLE_MARKER):
+        raise RuntimeError("Canonical circular mouth entrance marker is absent")
+    derived_entrance, fan_center = select_mouth_entrance(mesh, set(loop), neighbors)
+    stored_entrance = body.get(MOUTH_ENTRANCE_BOUNDARY_PROPERTY)
+    entrance = (
+        [int(index) for index in stored_entrance]
+        if stored_entrance
+        else ordered_mouth_by_angle(mesh, derived_entrance)
+    )
+    if set(entrance) != derived_entrance:
+        raise RuntimeError("Stored mouth entrance does not match the mesh adjacency")
+
     before = [vertex.co.copy() for vertex in mesh.vertices]
     before_metrics = mouth_loop_metrics(before, loop)
-    after, operation = circularize_mouth(before, loop, neighbors, 1.0)
-    shape_error = apply_mouth_to_shape_keys(body, before, after)
+    entrance_before_metrics = mouth_loop_metrics(before, entrance)
+    after_inner, operation = circularize_mouth(
+        before,
+        loop,
+        neighbors,
+        1.0,
+        blocked_indices=set(entrance),
+    )
+    shape_error_inner = apply_mouth_to_shape_keys(body, before, after_inner)
+    after, entrance_operation = circularize_mouth(
+        after_inner,
+        entrance,
+        neighbors,
+        1.0,
+        blocked_indices=set(loop) | {fan_center},
+    )
+    shape_error_entrance = apply_mouth_to_shape_keys(body, after_inner, after)
+    shape_error = max(shape_error_inner, shape_error_entrance)
     after_metrics = mouth_loop_metrics(after, loop)
+    entrance_after_metrics = mouth_loop_metrics(after, entrance)
     if abs(after_metrics["width_to_height"] - 1.0) > 0.03:
         raise RuntimeError("Post-relax mouth restoration did not preserve a circular aspect")
     if after_metrics["radius_cv"] > 0.03:
         raise RuntimeError("Post-relax mouth restoration left an uneven lip radius")
+    if abs(entrance_after_metrics["width_to_height"] - 1.0) > 0.03:
+        raise RuntimeError("Post-relax mouth entrance is not circular")
+    if entrance_after_metrics["radius_cv"] > 0.03:
+        raise RuntimeError("Post-relax mouth entrance has an uneven radius")
     if shape_error > 1.0e-6:
         raise RuntimeError("Post-relax mouth restoration changed relative shape-key deltas")
     return {
@@ -355,6 +392,12 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
         "before": before_metrics,
         "operation": operation,
         "after": after_metrics,
+        "entrance": {
+            "boundary_vertices": len(entrance),
+            "before": entrance_before_metrics,
+            "operation": entrance_operation,
+            "after": entrance_after_metrics,
+        },
         "shape_key_relative_delta_max_error": shape_error,
     }
 

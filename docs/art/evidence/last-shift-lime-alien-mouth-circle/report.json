@@ -1,6 +1,6 @@
 {
   "source": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256_before": "ee270b544bbe44f291004f03c3ce95f17acf47ccfe57d2d9ce8be96bcb1e0528",
+  "source_sha256_before": "d4b7addde9a810b164b02207bf5ad921636ed26bf096bb5e26c969e5842b9700",
   "shape_keys": 92,
   "mouth_boundary_indices": [
     2281,
@@ -24,52 +24,107 @@
     2286,
     2284
   ],
-  "before": {
-    "center_x": 0.01464842539280653,
-    "center_z": 0.505859375,
-    "width": 0.06640625186264515,
-    "height": 0.04296875,
-    "width_to_height": 1.545454588803378,
-    "mean_radius": 0.027015643604331858,
-    "radius_cv": 0.15464467532829884,
-    "mean_edge_length": 0.009068874892521703,
-    "edge_length_cv": 0.15827556200009524,
-    "depth_range": 0.021484375
+  "mouth_entrance_indices": [
+    2379,
+    3190,
+    3189,
+    2278,
+    2277,
+    2285,
+    2288,
+    2292,
+    2294,
+    2440,
+    2437,
+    2434,
+    2425,
+    2423,
+    2399,
+    2393,
+    2391,
+    2387,
+    2383,
+    3194
+  ],
+  "mouth_fan_center_index": 3192,
+  "inner": {
+    "applied": false,
+    "before": {
+      "center_x": 0.014648424927145243,
+      "center_z": 0.505859375,
+      "width": 0.053394909016788006,
+      "height": 0.05339491367340088,
+      "width_to_height": 0.999999912789205,
+      "mean_radius": 0.026708585668363222,
+      "radius_cv": 3.494311201098092e-07,
+      "mean_edge_length": 0.008625710391264706,
+      "edge_length_cv": 0.020185463281821563,
+      "depth_range": 0.01947021484375
+    },
+    "operation": null,
+    "after": {
+      "center_x": 0.014648424927145243,
+      "center_z": 0.505859375,
+      "width": 0.053394909016788006,
+      "height": 0.05339491367340088,
+      "width_to_height": 0.999999912789205,
+      "mean_radius": 0.026708585668363222,
+      "radius_cv": 3.494311201098092e-07,
+      "mean_edge_length": 0.008625710391264706,
+      "edge_length_cv": 0.020185463281821563,
+      "depth_range": 0.01947021484375
+    }
   },
-  "operation": {
-    "target_radius": 0.02670858305265853,
-    "target_phase_radians": -1.5996645001414833,
-    "target_winding": -1,
-    "radius_scale": 1.0,
-    "boundary_vertices": 20,
-    "surrounding_ring_vertices": [
-      21,
-      24,
-      16
-    ],
-    "moved_vertices": 81,
-    "mean_displacement": 0.002158113218255935,
-    "max_displacement": 0.00834380908540985
-  },
-  "after": {
-    "center_x": 0.014648424927145243,
-    "center_z": 0.505859375,
-    "width": 0.053394909016788006,
-    "height": 0.05339491367340088,
-    "width_to_height": 0.999999912789205,
-    "mean_radius": 0.026708585668363222,
-    "radius_cv": 3.494311201098092e-07,
-    "mean_edge_length": 0.008625710391264706,
-    "edge_length_cv": 0.020185463281821563,
-    "depth_range": 0.01947021484375
+  "entrance": {
+    "before": {
+      "center_x": 0.0013139015063643456,
+      "center_z": 0.5145296454429626,
+      "width": 0.05892676301300526,
+      "height": 0.05102109909057617,
+      "width_to_height": 1.154948914534248,
+      "mean_radius": 0.02783623902484475,
+      "radius_cv": 0.05157973838359749,
+      "mean_edge_length": 0.009063169479920028,
+      "edge_length_cv": 0.2586367053563111,
+      "depth_range": 0.02214844524860382
+    },
+    "operation": {
+      "target_radius": 0.02741581758207039,
+      "target_phase_radians": -2.8226598586257405,
+      "target_winding": 1,
+      "radius_scale": 1.0,
+      "boundary_vertices": 20,
+      "surrounding_ring_vertices": [
+        24,
+        24,
+        24
+      ],
+      "moved_vertices": 92,
+      "mean_displacement": 0.0014962441713084627,
+      "max_displacement": 0.006615541055152623
+    },
+    "after": {
+      "center_x": 0.0013139015063643456,
+      "center_z": 0.5145296454429626,
+      "width": 0.0548310112208128,
+      "height": 0.05483102798461914,
+      "width_to_height": 0.999999694264234,
+      "mean_radius": 0.027415819843902667,
+      "radius_cv": 4.25515730976562e-07,
+      "mean_edge_length": 0.00887445623815927,
+      "edge_length_cv": 0.027928630448176332,
+      "depth_range": 0.019867882132530212
+    }
   },
   "regression_checks": {
     "topology_unchanged": true,
     "skin_weights_unchanged": true,
-    "shape_key_relative_delta_max_error": 5.820766091346741e-11,
-    "circle_aspect_within_3_percent": true,
-    "circle_radius_cv_within_3_percent": true
+    "shape_key_relative_delta_max_error": 0.0,
+    "inner_circle_aspect_within_3_percent": true,
+    "inner_circle_radius_cv_within_3_percent": true,
+    "entrance_circle_aspect_within_3_percent": true,
+    "entrance_circle_radius_cv_within_3_percent": true
   },
   "output": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "output_sha256": "d4b7addde9a810b164b02207bf5ad921636ed26bf096bb5e26c969e5842b9700"
+  "output_sha256": "50223a8420a6aa7300fa1b75999fd59482c09d69f55b2b10bd66f31d305de3a8"
 }
