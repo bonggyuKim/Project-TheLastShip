@@ -607,12 +607,8 @@ namespace DoodleUp.Runtime
         /// 축 둘레 <b>양의</b> 회전이 이 관절이 접혀야 할 쪽인가.
         /// 뼈 끝점을 실제로 조금 돌려 보고, 그 끝점이 캐릭터 앞뒤 어느 쪽으로 가는지로 판단한다.
         /// </summary>
-        private bool HingeBendsPositive(Vector3 twist, Vector3 axis, bool bendsForward)
-        {
-            var moved = Quaternion.AngleAxis(10f, axis) * twist - twist;
-            var forward = Vector3.Dot(moved, transform.forward);
-            return bendsForward ? forward > 0f : forward < 0f;
-        }
+        private bool HingeBendsPositive(Vector3 twist, Vector3 axis, bool bendsForward) =>
+            LastShiftRagdollJointFrame.BendsPositive(twist, axis, transform.forward, bendsForward);
 
         /// <summary>
         /// 비틀림 축에 수직인 두 번째 축. <b>뼈 자신의 정지 로컬 축에서 고른다.</b>
@@ -699,47 +695,15 @@ namespace DoodleUp.Runtime
             return true;
         }
 
-        private Vector3 SwingAxis(Transform bone, Vector3 twist)
-        {
-            var best = Vector3.zero;
-            var bestAlignment = float.MaxValue;
-            for (var i = 0; i < 3; i++)
-            {
-                var candidate = i switch
-                {
-                    0 => bone.right,
-                    1 => bone.up,
-                    _ => bone.forward
-                };
-                var alignment = Mathf.Abs(Vector3.Dot(candidate, twist));
-                if (alignment >= bestAlignment) continue;
-                bestAlignment = alignment;
-                best = candidate;
-            }
-
-            // 비틀림 축 성분을 뺀다. 안 빼면 축 둘이 직교하지 않아 PhysX 가 프레임을 자기 식대로
-            // 다시 세우고, 그러면 한계면이 의도한 자리에서 어긋난다.
-            var swing = best - twist * Vector3.Dot(best, twist);
-            if (swing.sqrMagnitude > 1e-6f) return swing.normalized;
-
-            // 뼈 로컬 축이 전부 비틀림 축과 나란한 퇴화 상황. 캐릭터 기준으로 물러난다.
-            var reference = Mathf.Abs(Vector3.Dot(twist, transform.up)) < 0.95f ? transform.up : transform.forward;
-            return Vector3.Cross(twist, reference).normalized;
-        }
+        private Vector3 SwingAxis(Transform bone, Vector3 twist) =>
+            LastShiftRagdollJointFrame.SwingAxis(bone, twist, transform.up, transform.forward);
 
         private Vector3 TwistDirection(IReadOnlyDictionary<string, Transform> bones, LastShiftRagdollBone spec)
         {
             var bone = bones[spec.BoneName];
-
-            if (spec.TipBoneName != null)
-            {
-                var delta = bones[spec.TipBoneName].position - bone.position;
-                if (delta.sqrMagnitude > 1e-8f) return delta.normalized;
-            }
-
-            // 머리처럼 끝 뼈가 없으면 부모에서 자기 쪽으로 오는 방향이 곧 뼈 방향이다.
-            var fromParent = bone.position - bones[LastShiftRagdollRig.SpecOf(spec.Parent).BoneName].position;
-            return fromParent.sqrMagnitude > 1e-8f ? fromParent.normalized : transform.up;
+            var tip = spec.TipBoneName != null ? bones[spec.TipBoneName] : null;
+            var parent = bones[LastShiftRagdollRig.SpecOf(spec.Parent).BoneName];
+            return LastShiftRagdollJointFrame.TwistDirection(bone, tip, parent, transform.up);
         }
 
         /// <summary>

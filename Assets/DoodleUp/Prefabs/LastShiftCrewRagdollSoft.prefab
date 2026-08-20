@@ -949,73 +949,73 @@ PrefabInstance:
       addedObject: {fileID: 8880351386788647267}
     - targetCorrespondingSourceObject: {fileID: 2146855890772505308, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4658887935349713913}
+      addedObject: {fileID: 5524156961327904378}
     - targetCorrespondingSourceObject: {fileID: -3161994092870568964, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3876245246506872424}
     - targetCorrespondingSourceObject: {fileID: -3161994092870568964, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 866689435616826825}
+      addedObject: {fileID: 576031406213713401}
     - targetCorrespondingSourceObject: {fileID: 2908014230448437529, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 314926665834717506}
     - targetCorrespondingSourceObject: {fileID: 2908014230448437529, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6227550606784153703}
+      addedObject: {fileID: 1370574783349863996}
     - targetCorrespondingSourceObject: {fileID: -8539751058686165274, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3567104171078385556}
     - targetCorrespondingSourceObject: {fileID: -8539751058686165274, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 564682823604491745}
+      addedObject: {fileID: 1147145405758330666}
     - targetCorrespondingSourceObject: {fileID: 2900678651685406512, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3898438340230525774}
     - targetCorrespondingSourceObject: {fileID: 2900678651685406512, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2571145183553923967}
+      addedObject: {fileID: 1610601010820340023}
     - targetCorrespondingSourceObject: {fileID: -2565042586158297577, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2699589090020529806}
     - targetCorrespondingSourceObject: {fileID: -2565042586158297577, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4822009612895163076}
+      addedObject: {fileID: 5782275731841651470}
     - targetCorrespondingSourceObject: {fileID: 8827117875928775972, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7404792325905586745}
     - targetCorrespondingSourceObject: {fileID: 8827117875928775972, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 106666402729918331}
+      addedObject: {fileID: 3160538548485162045}
     - targetCorrespondingSourceObject: {fileID: 5310899653555212904, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6511128529099328236}
     - targetCorrespondingSourceObject: {fileID: 5310899653555212904, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4656480035655669353}
+      addedObject: {fileID: 3410042750663082455}
     - targetCorrespondingSourceObject: {fileID: -5149299847059038174, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 302270898340914541}
     - targetCorrespondingSourceObject: {fileID: -5149299847059038174, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2937072671497782010}
+      addedObject: {fileID: 5681177679676850164}
     - targetCorrespondingSourceObject: {fileID: 9003639125974342490, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5801911413254883416}
     - targetCorrespondingSourceObject: {fileID: 9003639125974342490, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 347492429611000476}
+      addedObject: {fileID: 7444502562170597223}
     - targetCorrespondingSourceObject: {fileID: 1630072362282271518, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7641478008199010734}
     - targetCorrespondingSourceObject: {fileID: 1630072362282271518, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1271546324163512723}
+      addedObject: {fileID: 5281482720307766735}
     - targetCorrespondingSourceObject: {fileID: -6076755794960071400, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7820812523431406041}
     - targetCorrespondingSourceObject: {fileID: -6076755794960071400, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4467594144845763413}
+      addedObject: {fileID: 5838347035486713378}
     - targetCorrespondingSourceObject: {fileID: 1474737309895253037, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7041122510369000716}
@@ -1024,13 +1024,13 @@ PrefabInstance:
       addedObject: {fileID: 7572161670328345813}
     - targetCorrespondingSourceObject: {fileID: 9189347789491377681, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5700771117498126743}
+      addedObject: {fileID: 3510993429005428398}
     - targetCorrespondingSourceObject: {fileID: -439963579939679712, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8186983102843895880}
     - targetCorrespondingSourceObject: {fileID: -439963579939679712, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7763468916847836170}
+      addedObject: {fileID: 1022274675566656615}
   m_SourcePrefab: {fileID: 100100000, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
 --- !u!4 &228003518890830091 stripped
 Transform:
@@ -1069,8 +1069,8 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &4656480035655669353
-CharacterJoint:
+--- !u!59 &3410042750663082455
+HingeJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1080,35 +1080,28 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7404792325905586745}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.71382695, y: 0.30944687, z: -0.62824655}
+  m_Axis: {x: 0.00000028780426, y: -0.00000032782555, z: 1.0000001}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.57543194, y: 0.25214207, z: 0.7780119}
-  m_TwistLimitSpring:
+  m_UseSpring: 0
+  m_Spring:
     spring: 0
     damper: 0
-  m_LowTwistLimit:
-    limit: -90
+    targetPosition: 0
+  m_UseMotor: 0
+  m_Motor:
+    targetVelocity: 0
+    force: 0
+    freeSpin: 0
+  m_UseLimits: 1
+  m_ExtendedLimits: 0
+  m_UseAcceleration: 0
+  m_Limits:
+    min: -5
+    max: 90
     bounciness: 0
+    bounceMinVelocity: 0
     contactDistance: 0
-  m_HighTwistLimit:
-    limit: 0
-    bounciness: 0
-    contactDistance: 0
-  m_SwingLimitSpring:
-    spring: 0
-    damper: 0
-  m_Swing1Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_Swing2Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_EnableProjection: 0
-  m_ProjectionDistance: 0.1
-  m_ProjectionAngle: 180
   m_BreakForce: Infinity
   m_BreakTorque: Infinity
   m_EnableCollision: 0
@@ -1157,8 +1150,8 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &866689435616826825
-CharacterJoint:
+--- !u!59 &576031406213713401
+HingeJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1168,35 +1161,28 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 8880351386788647267}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.9732087, y: 0.1737852, z: -0.15054426}
+  m_Axis: {x: 0.0000000046577497, y: 0.00000023841858, z: 0.9999998}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.054065607, y: 0.46342757, z: 0.88448393}
-  m_TwistLimitSpring:
+  m_UseSpring: 0
+  m_Spring:
     spring: 0
     damper: 0
-  m_LowTwistLimit:
-    limit: -80
+    targetPosition: 0
+  m_UseMotor: 0
+  m_Motor:
+    targetVelocity: 0
+    force: 0
+    freeSpin: 0
+  m_UseLimits: 1
+  m_ExtendedLimits: 0
+  m_UseAcceleration: 0
+  m_Limits:
+    min: -80
+    max: 5
     bounciness: 0
+    bounceMinVelocity: 0
     contactDistance: 0
-  m_HighTwistLimit:
-    limit: 0
-    bounciness: 0
-    contactDistance: 0
-  m_SwingLimitSpring:
-    spring: 0
-    damper: 0
-  m_Swing1Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_Swing2Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_EnableProjection: 0
-  m_ProjectionDistance: 0.1
-  m_ProjectionAngle: 180
   m_BreakForce: Infinity
   m_BreakTorque: Infinity
   m_EnableCollision: 0
@@ -1245,7 +1231,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &4822009612895163076
+--- !u!144 &5782275731841651470
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1256,10 +1242,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 3898438340230525774}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: 0.66436404, y: -0.70929927, z: 0.23561609}
+  m_Axis: {x: 0.0000002682209, y: 1, z: 0.000000029802322}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.7474092, y: 0.63048834, z: -0.2094371}
+  m_SwingAxis: {x: 0, y: -0.00000017881393, z: 1.0000004}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1333,7 +1319,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &7763468916847836170
+--- !u!144 &1022274675566656615
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1344,10 +1330,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7572161670328345813}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: 1, y: 0, z: 0}
+  m_Axis: {x: 0, y: 0.967681, z: 0.25217742}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0, y: -0.3417432, z: 0.9397934}
+  m_SwingAxis: {x: 1, y: 0, z: 0}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1411,7 +1397,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &106666402729918331
+--- !u!144 &3160538548485162045
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1422,10 +1408,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7572161670328345813}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.71382743, y: 0.5513173, z: -0.4318562}
+  m_Axis: {x: -0.00000010430813, y: 1.0000001, z: 0}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.5754317, y: -0.11026302, z: 0.81038296}
+  m_SwingAxis: {x: -0.000000059604645, y: -0.000000059604645, z: 1.0000001}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1489,7 +1475,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &347492429611000476
+--- !u!144 &7444502562170597223
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1500,10 +1486,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7572161670328345813}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.56199723, y: -0.54153126, z: 0.6252223}
+  m_Axis: {x: 0.00000037252903, y: 1, z: -0.0000005364418}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.62532026, y: 0.21661252, z: 0.7497024}
+  m_SwingAxis: {x: 1, y: -0.00000047683716, z: 0}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1572,7 +1558,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &5700771117498126743
+--- !u!144 &3510993429005428398
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1583,10 +1569,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7041122510369000716}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: 1, y: 0, z: 0}
+  m_Axis: {x: 0, y: 0.9788834, z: -0.20441923}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0, y: 0.11179482, z: 0.9937313}
+  m_SwingAxis: {x: 1, y: 0, z: 0}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1655,7 +1641,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &564682823604491745
+--- !u!144 &1147145405758330666
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1666,10 +1652,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7041122510369000716}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.9732084, y: -0.21036406, z: 0.092803136}
+  m_Axis: {x: 0.00000010430813, y: 1, z: 0.00000016391277}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.054066837, y: 0.18292516, z: 0.981639}
+  m_SwingAxis: {x: 0.000000007450581, y: 0.000000014901161, z: 0.99999994}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -1835,8 +1821,8 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &1271546324163512723
-CharacterJoint:
+--- !u!59 &5281482720307766735
+HingeJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1846,35 +1832,28 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 5801911413254883416}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.5619965, y: -0.2822024, z: 0.77751}
+  m_Axis: {x: 1.0000001, y: 0.00000015796252, z: -0.00000027341298}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.62532043, y: 0.47033548, z: 0.6227028}
-  m_TwistLimitSpring:
+  m_UseSpring: 0
+  m_Spring:
     spring: 0
     damper: 0
-  m_LowTwistLimit:
-    limit: -90
+    targetPosition: 0
+  m_UseMotor: 0
+  m_Motor:
+    targetVelocity: 0
+    force: 0
+    freeSpin: 0
+  m_UseLimits: 1
+  m_ExtendedLimits: 0
+  m_UseAcceleration: 0
+  m_Limits:
+    min: -5
+    max: 90
     bounciness: 0
+    bounceMinVelocity: 0
     contactDistance: 0
-  m_HighTwistLimit:
-    limit: 0
-    bounciness: 0
-    contactDistance: 0
-  m_SwingLimitSpring:
-    spring: 0
-    damper: 0
-  m_Swing1Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_Swing2Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_EnableProjection: 0
-  m_ProjectionDistance: 0.1
-  m_ProjectionAngle: 180
   m_BreakForce: Infinity
   m_BreakTorque: Infinity
   m_EnableCollision: 0
@@ -1913,7 +1892,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &4658887935349713913
+--- !u!144 &5524156961327904378
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1924,10 +1903,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7041122510369000716}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.9732083, y: 0.210364, z: -0.092803344}
+  m_Axis: {x: 0.000000029802322, y: 0.99999994, z: 0.0000002682209}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.054067068, y: 0.18292516, z: 0.981639}
+  m_SwingAxis: {x: 1, y: -0.00000011920929, z: -0.000000029802322}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -2001,7 +1980,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &6227550606784153703
+--- !u!144 &1370574783349863996
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2012,10 +1991,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 3876245246506872424}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: 0.66436416, y: 0.709299, z: -0.2356162}
+  m_Axis: {x: -0.00000014901161, y: 0.9999999, z: 0.00000023841858}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.747409, y: 0.63048846, z: -0.20943749}
+  m_SwingAxis: {x: 1.0000001, y: 0.00000043213367, z: 0.00000023841858}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -2079,8 +2058,8 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &2571145183553923967
-CharacterJoint:
+--- !u!59 &1610601010820340023
+HingeJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2090,35 +2069,28 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 3567104171078385556}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.97320867, y: -0.17378522, z: 0.15054455}
+  m_Axis: {x: 1, y: 0.00000014571293, z: -0.00000002050497}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.054065857, y: 0.4634276, z: 0.8844839}
-  m_TwistLimitSpring:
+  m_UseSpring: 0
+  m_Spring:
     spring: 0
     damper: 0
-  m_LowTwistLimit:
-    limit: -80
+    targetPosition: 0
+  m_UseMotor: 0
+  m_Motor:
+    targetVelocity: 0
+    force: 0
+    freeSpin: 0
+  m_UseLimits: 1
+  m_ExtendedLimits: 0
+  m_UseAcceleration: 0
+  m_Limits:
+    min: -80
+    max: 5
     bounciness: 0
+    bounceMinVelocity: 0
     contactDistance: 0
-  m_HighTwistLimit:
-    limit: 0
-    bounciness: 0
-    contactDistance: 0
-  m_SwingLimitSpring:
-    spring: 0
-    damper: 0
-  m_Swing1Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_Swing2Limit:
-    limit: 5
-    bounciness: 0
-    contactDistance: 0
-  m_EnableProjection: 0
-  m_ProjectionDistance: 0.1
-  m_ProjectionAngle: 180
   m_BreakForce: Infinity
   m_BreakTorque: Infinity
   m_EnableCollision: 0
@@ -2162,7 +2134,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &4467594144845763413
+--- !u!144 &5838347035486713378
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2173,10 +2145,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 7641478008199010734}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.5331221, y: -0.40792868, z: 0.7411984}
+  m_Axis: {x: -0.07394219, y: 0.9910106, z: 0.111494265}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: 0.5939753, y: 0.44339976, z: 0.67125994}
+  m_SwingAxis: {x: 0.9972629, y: 0.07347866, z: 0.008266537}
   m_TwistLimitSpring:
     spring: 0
     damper: 0
@@ -2245,7 +2217,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!144 &2937072671497782010
+--- !u!144 &5681177679676850164
 CharacterJoint:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2256,10 +2228,10 @@ CharacterJoint:
   m_ConnectedBody: {fileID: 6511128529099328236}
   m_ConnectedArticulationBody: {fileID: 0}
   m_Anchor: {x: 0, y: 0, z: 0}
-  m_Axis: {x: -0.7734393, y: 0.44951338, z: -0.44691092}
+  m_Axis: {x: -0.10965678, y: 0.9060581, z: 0.4086989}
   m_AutoConfigureConnectedAnchor: 1
   m_ConnectedAnchor: {x: 0, y: 0, z: 0}
-  m_SwingAxis: {x: -0.560708, y: -0.15635175, z: 0.81311786}
+  m_SwingAxis: {x: 0.9939697, y: 0.09995809, z: 0.045088768}
   m_TwistLimitSpring:
     spring: 0
     damper: 0

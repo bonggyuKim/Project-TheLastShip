@@ -70,11 +70,17 @@ namespace DoodleUp.Runtime
             }
         }
 
-        /// <summary>조인트가 직접 잇는 바디 쌍. 이름 쌍으로 들고 있는다.</summary>
+        /// <summary>
+        /// 조인트가 직접 잇는 바디 쌍. 이름 쌍으로 들고 있는다.
+        ///
+        /// <b>종류를 안 가린다.</b> 예전에는 <see cref="CharacterJoint"/> 만 봤는데, 무릎·팔꿈치가
+        /// <see cref="HingeJoint"/> 로 바뀌면 그 쌍이 "조인트로 안 이어진 것" 으로 새어 나가
+        /// 정책이 엉뚱한 쌍을 세게 된다.
+        /// </summary>
         private HashSet<string> LinkedBodies()
         {
             var linked = new HashSet<string>();
-            foreach (var joint in GetComponentsInChildren<CharacterJoint>(true))
+            foreach (var joint in GetComponentsInChildren<Joint>(true))
             {
                 if (joint.connectedBody == null) continue;
                 linked.Add(PairKey(joint.name, joint.connectedBody.name));
