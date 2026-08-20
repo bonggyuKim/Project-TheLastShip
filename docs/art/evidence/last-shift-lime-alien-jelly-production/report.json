@@ -18,6 +18,7 @@
     },
     "quad_ratio": 0.14484007242003621,
     "smooth_polygons": 9942,
+    "flat_polygons": 0,
     "boundary_edges": 36,
     "interior_nonmanifold_edges": 0,
     "loose_edges": 0
@@ -33,6 +34,7 @@
     },
     "quad_ratio": 0.8266730861819933,
     "smooth_polygons": 6231,
+    "flat_polygons": 0,
     "boundary_edges": 36,
     "interior_nonmanifold_edges": 0,
     "loose_edges": 0
@@ -47,6 +49,7 @@
     },
     "quad_ratio": 1.0,
     "smooth_polygons": 23844,
+    "flat_polygons": 0,
     "boundary_edges": 72,
     "interior_nonmanifold_edges": 0,
     "loose_edges": 0
@@ -63,17 +66,39 @@
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
       "bytes": 2215004,
-      "sha256": "7eb357bd925f0f49eeb361e5794cfb0472db78f55843c9dd51dad681a3d15aec"
+      "sha256": "2acb9e14ed8de867b483ed97a7988ff9539281c07a2b25a6a663d7a72a8a167b"
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
       "bytes": 2215004,
-      "sha256": "fd0740010db0aacadcd8d1df85d5c1693148ad9de118a3a4fc2784925f4e7846"
+      "sha256": "0d0dc7897e7667afe1a0031f806f6d6838858bcb2f3c3e462d8dd2a8d4bd5498"
     }
   ],
+  "surface_smoothing": {
+    "authoring_body_all_smooth": true,
+    "runtime_body_all_smooth": true,
+    "eyes_all_smooth": true
+  },
   "renders": [
     "lime-alien-jelly-production-front.png",
-    "lime-alien-jelly-production-oblique.png"
+    "lime-alien-jelly-production-oblique.png",
+    "lime-alien-jelly-production-shadow.png"
   ],
+  "shadow_render": {
+    "engine": "BLENDER_WORKBENCH",
+    "receiver": "EVIDENCE_ShadowReceiver",
+    "receiver_visible": true,
+    "show_shadows": true,
+    "camera_elevation_ratio": 0.28,
+    "bytes": 1099253
+  },
+  "regression_checks": {
+    "source_unchanged": true,
+    "canonical_vertex_count_preserved": true,
+    "shape_keys_preserved": 92,
+    "runtime_all_vertices_weighted": true,
+    "runtime_interior_nonmanifold_edges": 0,
+    "runtime_loose_edges": 0
+  },
   "tradeoff": "Level 1 raises body triangles from 11,382 to 47,688 (4.19x); level 2 is intentionally excluded from production."
 }

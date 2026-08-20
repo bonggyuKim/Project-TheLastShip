@@ -26,6 +26,7 @@ from pathlib import Path
 
 import bpy
 import bmesh
+from mathutils import Vector
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -95,10 +96,26 @@ def face_metrics(mesh: bpy.types.Mesh) -> dict[str, object]:
         "face_sizes": sizes,
         "quad_ratio": quads / len(mesh.polygons) if mesh.polygons else 0.0,
         "smooth_polygons": sum(polygon.use_smooth for polygon in mesh.polygons),
+        "flat_polygons": sum(not polygon.use_smooth for polygon in mesh.polygons),
         "boundary_edges": boundary_edges,
         "interior_nonmanifold_edges": interior_nonmanifold_edges,
         "loose_edges": loose_edges,
     }
+
+
+def shade_surface_smooth(obj: bpy.types.Object) -> None:
+    """Use one continuous normal treatment across the jelly surface."""
+    if obj.type != "MESH":
+        raise RuntimeError(f"Cannot smooth non-mesh object: {obj.name}")
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    obj.data.update()
+
+
+def require_fully_smooth(obj: bpy.types.Object, label: str) -> None:
+    flat = sum(not polygon.use_smooth for polygon in obj.data.polygons)
+    if flat:
+        raise RuntimeError(f"{label} contains {flat} flat-shaded polygons")
 
 
 def evaluated_metrics(obj: bpy.types.Object) -> dict[str, object]:
@@ -155,9 +172,7 @@ def quadify_preserving_boundaries(body: bpy.types.Object, angle_degrees: float) 
         materials=True,
     )
     bpy.ops.object.mode_set(mode="OBJECT")
-    for polygon in body.data.polygons:
-        polygon.use_smooth = True
-    body.data.update()
+    shade_surface_smooth(body)
 
 
 def add_authoring_subdivision(body: bpy.types.Object, level: int) -> None:
@@ -228,8 +243,7 @@ def make_baked_body(
     if old_mesh.users == 0:
         bpy.data.meshes.remove(old_mesh)
 
-    for polygon in baked.data.polygons:
-        polygon.use_smooth = True
+    shade_surface_smooth(baked)
     armature = baked.modifiers.new("Armature", "ARMATURE")
     armature.object = rig
     armature.use_deform_preserve_volume = True
@@ -306,7 +320,7 @@ def create_evidence(
     baked: bpy.types.Object,
     eyes: bpy.types.Object,
     output_dir: Path,
-) -> list[str]:
+) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
     collection = bpy.data.collections.new("LimeAlien_Jelly_Production_Evidence")
     bpy.context.scene.collection.children.link(collection)
@@ -398,6 +412,67 @@ def create_evidence(
         show_labels=False,
     )
 
+    # A slightly elevated three-quarter view and a real receiver plane make the
+    # cast shadow readable.  The comparison views above remain unchanged so
+    # silhouette regressions can still be compared with the previous run.
+    for obj in (base, base_eyes):
+        obj.hide_render = True
+    for label in labels:
+        label.hide_render = True
+    hero_minimum, hero_maximum = world_bounds([final, final_eyes])
+    hero_center_x = (hero_minimum.x + hero_maximum.x) * 0.5
+    for obj in (final, final_eyes):
+        obj.location.x -= hero_center_x
+        obj.rotation_euler.z = math.radians(24.0)
+    bpy.context.view_layer.update()
+    hero_minimum, hero_maximum = world_bounds([final, final_eyes])
+    hero_width = hero_maximum.x - hero_minimum.x
+    hero_depth = hero_maximum.y - hero_minimum.y
+    hero_height = hero_maximum.z - hero_minimum.z
+    hero_center_y = (hero_minimum.y + hero_maximum.y) * 0.5
+    floor_z = hero_minimum.z - hero_height * 0.008
+    receiver_mesh = bpy.data.meshes.new("EVIDENCE_ShadowReceiver_Mesh")
+    receiver_mesh.from_pydata(
+        [
+            (-hero_width * 1.45, hero_center_y - hero_depth * 1.8, floor_z),
+            (hero_width * 1.45, hero_center_y - hero_depth * 1.8, floor_z),
+            (hero_width * 1.45, hero_center_y + hero_depth * 3.2, floor_z),
+            (-hero_width * 1.45, hero_center_y + hero_depth * 3.2, floor_z),
+        ],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    receiver_mesh.update()
+    receiver = bpy.data.objects.new("EVIDENCE_ShadowReceiver", receiver_mesh)
+    collection.objects.link(receiver)
+    receiver.hide_render = False
+    receiver.hide_viewport = False
+    receiver.hide_set(False)
+    receiver_material = bpy.data.materials.new("EVIDENCE_ShadowReceiver_Material")
+    receiver_material.diffuse_color = (0.055, 0.072, 0.09, 1.0)
+    receiver.data.materials.append(receiver_material)
+
+    center = (hero_minimum + hero_maximum) * 0.5
+    camera.data.ortho_scale = hero_height * 1.90
+    camera.location = Vector(
+        (center.x, hero_minimum.y - max(hero_width * 2.4, 8.0), center.z + hero_height * 0.28)
+    )
+    target = Vector((center.x, center.y, center.z))
+    camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
+    shadow = output_dir / "lime-alien-jelly-production-shadow.png"
+    render(
+        shadow,
+        camera,
+        [final],
+        [final_eyes],
+        labels,
+        turntable_degrees=24.0,
+        fit_camera=False,
+        show_labels=False,
+    )
+    if not shadow.exists() or shadow.stat().st_size < 10_000:
+        raise RuntimeError("Shadow evidence render was not written correctly")
+
     for obj in tuple(collection.objects):
         data = obj.data
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -411,7 +486,17 @@ def create_evidence(
     bpy.data.collections.remove(collection)
     body.hide_render = False
     eyes.hide_render = False
-    return [front.name, oblique.name]
+    return {
+        "renders": [front.name, oblique.name, shadow.name],
+        "shadow_render": {
+            "engine": "BLENDER_WORKBENCH",
+            "receiver": "EVIDENCE_ShadowReceiver",
+            "receiver_visible": True,
+            "show_shadows": True,
+            "camera_elevation_ratio": 0.28,
+            "bytes": shadow.stat().st_size,
+        },
+    }
 
 
 def sha256(path: Path) -> str:
@@ -438,9 +523,12 @@ def main() -> None:
     )
     coordinate_digest_before = coordinate_digest(body)
     before = face_metrics(body.data)
+    shade_surface_smooth(eyes)
+    require_fully_smooth(eyes, "Eyes")
 
     quadify_preserving_boundaries(body, args.quad_angle)
     after_quadify = face_metrics(body.data)
+    require_fully_smooth(body, "Quadified authoring body")
     if after_quadify["vertices"] != before["vertices"]:
         raise RuntimeError("Quad conversion changed canonical vertex count")
     if coordinate_digest(body) != coordinate_digest_before:
@@ -453,11 +541,12 @@ def main() -> None:
     add_authoring_subdivision(body, args.subdivision_level)
     baked = make_baked_body(body, rig, args.subdivision_level)
     baked_metrics = face_metrics(baked.data)
+    require_fully_smooth(baked, "Runtime baked body")
     baked_skin = skin_metrics(baked)
     if baked_skin["unweighted_vertices"]:
         raise RuntimeError("Baked jelly mesh contains unweighted vertices")
 
-    renders = create_evidence(body, baked, eyes, args.evidence_dir.resolve())
+    evidence = create_evidence(body, baked, eyes, args.evidence_dir.resolve())
     fbx_outputs: list[dict[str, object]] = []
     for output in args.fbx_output:
         export_fbx(baked, body, eyes, rig, output)
@@ -492,7 +581,21 @@ def main() -> None:
         "runtime_baked": baked_metrics,
         "runtime_skin": baked_skin,
         "fbx_outputs": fbx_outputs,
-        "renders": renders,
+        "surface_smoothing": {
+            "authoring_body_all_smooth": after_quadify["flat_polygons"] == 0,
+            "runtime_body_all_smooth": baked_metrics["flat_polygons"] == 0,
+            "eyes_all_smooth": all(polygon.use_smooth for polygon in eyes.data.polygons),
+        },
+        "renders": evidence["renders"],
+        "shadow_render": evidence["shadow_render"],
+        "regression_checks": {
+            "source_unchanged": True,
+            "canonical_vertex_count_preserved": after_quadify["vertices"] == before["vertices"],
+            "shape_keys_preserved": len(shape_key_names),
+            "runtime_all_vertices_weighted": baked_skin["unweighted_vertices"] == 0,
+            "runtime_interior_nonmanifold_edges": baked_metrics["interior_nonmanifold_edges"],
+            "runtime_loose_edges": baked_metrics["loose_edges"],
+        },
         "tradeoff": (
             "Level 1 raises body triangles from 11,382 to 47,688 (4.19x); "
             "level 2 is intentionally excluded from production."

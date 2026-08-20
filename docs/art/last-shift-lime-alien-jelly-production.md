@@ -9,7 +9,8 @@
   넘지 않아 6,231면 중 5,151면(82.7%)을 쿼드로 전환했다.
 - `Jelly_Surface_Subdivision_L1` Catmull-Clark 1단계를 제작용 blend에
   비파괴 모디파이어로 저장했다.
-- 모든 제어면과 베이크면에 스무스 셰이딩을 적용했다.
+- 본체 제어면 6,231개, 런타임 베이크면 23,844개, 눈 표면 전체에 스무스
+  셰이딩을 강제하고 flat 면이 0개인지 생성 단계에서 검증한다.
 - 런타임 FBX는 L1을 실제 베이크하고 보간된 스킨 웨이트를 유지했다.
 
 | 상태 | 정점 | 삼각형 | 쿼드 비율 |
@@ -35,6 +36,11 @@
 - 정면·사선 비교:
   `lime-alien-jelly-production-front.png`,
   `lime-alien-jelly-production-oblique.png`
+- 접지 그림자 렌더:
+  `lime-alien-jelly-production-shadow.png`
+- 독립 회귀 검증기와 결과:
+  `Tools/art/verify_lime_alien_jelly.py`,
+  `docs/art/evidence/last-shift-lime-alien-jelly-production/regression-report.json`
 
 ## 비용과 육안 판정
 
@@ -42,8 +48,10 @@ L1 본체는 기존보다 4.19배 많은 삼각형을 사용한다. L2는 약 20
 증가하고 프리뷰에서 목·배 요철까지 드러났으므로 제작 경로에서 제외했다.
 
 비교 렌더에서는 머리·목·배의 계단형 면이 줄고 손가락, 발가락, 눈 테두리와
-입 구멍 판독성이 유지된다. Unity의 실제 플레이 카메라와 Idle/Walk, 목 20°,
-무릎·래그돌 극단 자세에서 실루엣과 스킨 변형은 최종 수동 확인이 필요하다.
+입 구멍 판독성이 유지된다. 접지 그림자 렌더는 24° 사선 전신, 약간 내려다보는
+카메라, 실제 수평 리시버를 사용해 발 접점과 왼쪽 투영 그림자를 한 프레임에서
+확인한다. Unity의 실제 플레이 카메라와 Idle/Walk, 목 20°, 무릎·래그돌 극단
+자세에서 실루엣과 스킨 변형은 최종 수동 확인이 필요하다.
 
 재생성 명령:
 
@@ -55,4 +63,16 @@ L1 본체는 기존보다 4.19배 많은 삼각형을 사용한다. L2는 약 20
   --fbx-output 'Assets\DoodleUp\Art\Characters\LastShiftLimeAlien\LastShiftLimeAlien_RigifyDeform.fbx' `
   --fbx-output 'Assets\DoodleUp\Art\Characters\LastShiftLimeAlien\LastShiftLimeAlien_RigifySoft.fbx' `
   --evidence-dir 'docs\art\evidence\last-shift-lime-alien-jelly-production'
+```
+
+회귀 재검증 명령:
+
+```powershell
+& 'D:\blender\blender.exe' --background `
+  'ArtSource\Characters\LastShiftLimeAlien\LastShiftLimeAlien_UnityExport_Jelly.blend' `
+  --python 'Tools\art\verify_lime_alien_jelly.py' -- `
+  --production-report 'docs\art\evidence\last-shift-lime-alien-jelly-production\report.json' `
+  --fbx 'Assets\DoodleUp\Art\Characters\LastShiftLimeAlien\LastShiftLimeAlien_RigifyDeform.fbx' `
+  --fbx 'Assets\DoodleUp\Art\Characters\LastShiftLimeAlien\LastShiftLimeAlien_RigifySoft.fbx' `
+  --output 'docs\art\evidence\last-shift-lime-alien-jelly-production\regression-report.json'
 ```
