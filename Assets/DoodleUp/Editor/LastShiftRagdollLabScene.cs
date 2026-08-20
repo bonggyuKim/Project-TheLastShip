@@ -22,8 +22,22 @@ namespace DoodleUp.Editor
     {
         public const string ScenePath = "Assets/Scenes/LAST_SHIFT_RAGDOLL_LAB.unity";
 
+        /// <summary>
+        /// 승무원 정본 모델.
+        ///
+        /// <b>RigifyDeform 과 변형 결과는 같다.</b> 이쪽에는 소프트 변형본 열
+        /// (<c>DEF-head.soft.*</c>·<c>DEF-belly.soft.*</c>)이 더 들어 있어 머리 웨이트가
+        /// 일곱 뼈로 나뉘지만(2,713 → 498 + soft), 그 열은 <c>DEF-spine.006</c> 의 <b>뻣뻣한
+        /// 자식</b>이고 제약도 드라이버도 없다. 부모와 똑같이 움직이므로 웨이트를 나눈 효과가
+        /// 없다 — 목을 20·46·90도 꺾었을 때 늘어난 삼각형이 32·45·80개로 <b>양쪽이 같다</b>
+        /// (2026-08-19 실측, 몸 렌더러 지정 후).
+        ///
+        /// 그래도 이쪽을 쓰는 이유는 소프트 본이 <b>있어야</b> 나중에 눌림·출렁임을 넣을 손잡이가
+        /// 생기기 때문이다. 목 찢어짐 자체는 이 모델로 안 풀린다 — 래그돌이 머리뼈 하나만 돌리고
+        /// <c>DEF-spine.004</c>·<c>.005</c> 를 아무도 안 움직이는 것이 남은 원인이다.
+        /// </summary>
         public const string CharacterPrefabPath =
-            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx";
+            "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx";
 
         /// <summary>문 통과 폭. 승무원 둘이 동시에 들어가려다 부딪히는 자리를 만드는 값이다.</summary>
         public const float DoorwayGap = 1.2f;

@@ -202,6 +202,32 @@ namespace DoodleUp.Runtime
         };
 
         /// <summary>
+        /// 굽힘을 나눌 때 <b>중간 변형본이 받는 몫</b>(0=부모 그대로, 1=자식 그대로).
+        ///
+        /// <b>등분이 아니다.</b> 래그돌은 목에 바디를 하나(머리)만 주므로 그 사이의
+        /// <c>DEF-spine.004</c>·<c>.005</c> 는 아무도 안 움직인다. 처음에는 등분(1/3, 2/3)으로
+        /// 나눠 줬는데, 블렌더 리그의 실제 배분은 등분이 아니었다 — 아트 실측(2026-08-19,
+        /// <c>head</c> 로컬 Y +30도)에서 <c>DEF-spine.004</c> 는 <b>0도(0%)</b>, <c>DEF-spine.005</c> 는
+        /// 14.994도(<b>49.98%</b>, 설계값 50%)였다. 등분은 <c>.004</c> 를 33% 과회전시키고 있었다.
+        ///
+        /// 여기 없는 중간 뼈는 등분으로 떨어진다 — 팔다리 트위스트본은 아직 실측 전이다.
+        /// </summary>
+        public static readonly (string BoneName, float Share)[] BendShares =
+        {
+            ("DEF-spine.004", 0f),
+            ("DEF-spine.005", 0.5f)
+        };
+
+        /// <summary>표에 있으면 실측 몫, 없으면 등분 몫을 돌려준다.</summary>
+        public static float BendShareOf(string boneName, int index, int midCount)
+        {
+            for (var i = 0; i < BendShares.Length; i++)
+                if (BendShares[i].BoneName == boneName) return BendShares[i].Share;
+
+            return (index + 1f) / (midCount + 1f);
+        }
+
+        /// <summary>
         /// 승무원 한 명의 총 질량(kg). 절대값 자체는 재미에 안 걸리지만 <b>비율</b>은 걸린다 —
         /// 머리가 무거우면 목이 끌려가 코믹해지고, 가벼우면 톡 튀고 만다. 임펄스 세기는 전부
         /// 이 값을 기준으로 잡혀 있어서 여기를 바꾸면 <see cref="LastShiftRagdollTuning"/> 의
