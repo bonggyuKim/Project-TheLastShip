@@ -51,12 +51,14 @@ from rework_lime_alien_mouth_circle import (  # noqa: E402
     ENTRANCE_ASPECT_TOLERANCE as MOUTH_ENTRANCE_ASPECT_TOLERANCE,
     ENTRANCE_TARGET_ASPECT as MOUTH_ENTRANCE_TARGET_ASPECT,
     MARKER as MOUTH_CIRCLE_MARKER,
+    TRANSITION_MARKER as MOUTH_TRANSITION_MARKER,
     apply_to_shape_keys as apply_mouth_to_shape_keys,
     circularize as circularize_mouth,
     connectivity as mouth_connectivity,
     loop_metrics as mouth_loop_metrics,
     ordered_by_angle as ordered_mouth_by_angle,
     ordered_contour as ordered_mouth_contour,
+    relax_mouth_face_transition,
     select_mouth_contour,
     select_mouth_entrance,
 )
@@ -376,7 +378,18 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
         target_aspect=MOUTH_ENTRANCE_TARGET_ASPECT,
     )
     shape_error_entrance = apply_mouth_to_shape_keys(body, after_inner, after)
-    shape_error = max(shape_error_inner, shape_error_entrance)
+    transition_operation = None
+    shape_error_transition = 0.0
+    if body.get(MOUTH_TRANSITION_MARKER):
+        after_transition, transition_operation = relax_mouth_face_transition(
+            mesh,
+            after,
+            set(loop),
+            neighbors,
+        )
+        shape_error_transition = apply_mouth_to_shape_keys(body, after, after_transition)
+        after = after_transition
+    shape_error = max(shape_error_inner, shape_error_entrance, shape_error_transition)
     after_metrics = mouth_loop_metrics(after, loop)
     entrance_after_metrics = mouth_loop_metrics(after, entrance)
     if abs(after_metrics["width_to_height"] - 1.0) > 0.03:
@@ -402,6 +415,7 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
             "operation": entrance_operation,
             "after": entrance_after_metrics,
         },
+        "face_transition": transition_operation,
         "shape_key_relative_delta_max_error": shape_error,
     }
 

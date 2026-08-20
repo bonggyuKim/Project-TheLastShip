@@ -199,6 +199,14 @@ def main() -> None:
         and abs(mouth_entrance["after"]["width_to_height"] - 1.08) <= 0.015,
         "Final visible mouth entrance is not the intended subtle oval",
     )
+    mouth_transition = mouth_circle.get("face_transition")
+    require(
+        mouth_transition is not None
+        and mouth_transition["laplacian_roughness_reduction"] >= 0.05
+        and mouth_transition["laplacian_roughness_after"] <= 0.0020
+        and mouth_transition["max_displacement"] <= 0.0015 + 1.0e-8,
+        "Final mouth-to-face transition relaxation regressed",
+    )
     mouth_cleanup = report.get("mouth_topology_cleanup")
     require(
         mouth_cleanup is not None and mouth_cleanup["converted_triangle_pairs"] > 0,
@@ -260,7 +268,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
-            "1:1 inner ring and 1.08:1 subtle oval visible mouth entrance with local mouth quad cleanup",
+            "1:1 inner ring, 1.08:1 subtle oval entrance, and relaxed two-ring face transition",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",

@@ -1,6 +1,6 @@
 {
   "source": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256_before": "ba7bb44f13292202e46d2ff37597bad11e260d4143327e1b93d72d1bb31bf548",
+  "source_sha256_before": "332d8f86c5800b53adfeed25069fcdb72095867d660b59409dee9da663885804",
   "shape_keys": 92,
   "mouth_boundary_indices": [
     2281,
@@ -80,34 +80,20 @@
     }
   },
   "entrance": {
+    "applied": false,
     "before": {
-      "center_x": -0.013602940831333399,
+      "center_x": -0.013602940365672112,
       "center_z": 0.5244651138782501,
-      "width": 0.04847997706383467,
-      "height": 0.04847997426986694,
-      "width_to_height": 1.0000000576313781,
-      "mean_radius": 0.024252668075073897,
-      "radius_cv": 4.409131781396741e-07,
-      "mean_edge_length": 0.006551088375955972,
-      "edge_length_cv": 0.02765477451792533,
-      "depth_range": 0.017818346619606018
+      "width": 0.05035552754998207,
+      "height": 0.04662543535232544,
+      "width_to_height": 1.0800012304329207,
+      "mean_radius": 0.02426691147244588,
+      "radius_cv": 0.027182591954931317,
+      "mean_edge_length": 0.0065222610313627446,
+      "edge_length_cv": 0.04758239858875836,
+      "depth_range": 0.016744181513786316
     },
-    "operation": {
-      "target_radius": 0.024239987833425392,
-      "target_phase_radians": -2.9121307225851325,
-      "target_winding": 1,
-      "radius_scale": 1.0,
-      "target_aspect": 1.08,
-      "boundary_vertices": 24,
-      "surrounding_ring_vertices": [
-        48,
-        44,
-        23
-      ],
-      "moved_vertices": 139,
-      "mean_displacement": 0.0004943416645685431,
-      "max_displacement": 0.0011337519922890742
-    },
+    "operation": null,
     "after": {
       "center_x": -0.013602940365672112,
       "center_z": 0.5244651138782501,
@@ -121,14 +107,80 @@
       "depth_range": 0.016744181513786316
     }
   },
+  "face_transition": {
+    "iterations": 5,
+    "lambda_factor": 0.35,
+    "mu_factor": -0.36,
+    "first_face_ring_vertices": [
+      2266,
+      2269,
+      2270,
+      2280,
+      2298,
+      2299,
+      2300,
+      2353,
+      2369,
+      2370,
+      2371,
+      2374,
+      2377,
+      2400,
+      2402,
+      2410,
+      2414,
+      2415,
+      2416,
+      2430,
+      2431,
+      2433,
+      3182,
+      3184
+    ],
+    "second_face_ring_vertices": [
+      1930,
+      1931,
+      1932,
+      1933,
+      1935,
+      2016,
+      2257,
+      2258,
+      2260,
+      2265,
+      2267,
+      2344,
+      2345,
+      2351,
+      2352,
+      2354,
+      2367,
+      2368,
+      2403,
+      2404,
+      2406,
+      2411,
+      2412,
+      2413
+    ],
+    "moved_vertices": 48,
+    "mean_displacement": 0.0007257635356294262,
+    "max_displacement": 0.001499989780467079,
+    "displacement_scale": 0.6941801600069896,
+    "laplacian_roughness_before": 0.0025685528535190406,
+    "laplacian_roughness_after": 0.0019512912388175655,
+    "laplacian_roughness_reduction": 0.24031493603715304
+  },
   "regression_checks": {
     "topology_unchanged": true,
     "skin_weights_unchanged": true,
     "shape_key_relative_delta_max_error": 0.0,
     "inner_circle_aspect_within_3_percent": true,
     "inner_circle_radius_cv_within_3_percent": true,
-    "entrance_aspect_matches_subtle_oval": true
+    "entrance_aspect_matches_subtle_oval": true,
+    "face_transition_roughness_reduced": true,
+    "face_transition_max_displacement_bounded": true
   },
   "output": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "output_sha256": "332d8f86c5800b53adfeed25069fcdb72095867d660b59409dee9da663885804"
+  "output_sha256": "b5a348d771cb718b583e1d5a51a7cc3223d0c967d0dc990367f56ae5b48ad3b9"
 }

@@ -29,6 +29,8 @@ ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v4_subtle_oval"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 ENTRANCE_TARGET_ASPECT = 1.08
 ENTRANCE_ASPECT_TOLERANCE = 0.015
+TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v1"
+TRANSITION_PROPERTY = "ADK_MouthFaceTransitionIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
 
@@ -146,11 +148,11 @@ def ordered_contour(indices: set[int], neighbors: list[set[int]]) -> list[int]:
         previous, current = current, following
 
 
-def select_mouth_entrance(
+def select_mouth_ring_stack(
     mesh: bpy.types.Mesh,
     inner_loop: set[int],
     neighbors: list[set[int]],
-) -> tuple[set[int], int]:
+) -> tuple[set[int], int, set[int]]:
     """Return the skin/cavity junction and the recessed fan center.
 
     The first 20-vertex ring outside ``inner_loop`` is still inside the mouth
@@ -199,7 +201,53 @@ def select_mouth_entrance(
     entrance = advance_outward(first_outer, inner_loop | throat | {center})
     if len(entrance) != 24:
         raise RuntimeError(f"Expected a 24-vertex outer mouth entrance, got {len(entrance)}")
+    return entrance, center, first_outer
+
+
+def select_mouth_entrance(
+    mesh: bpy.types.Mesh,
+    inner_loop: set[int],
+    neighbors: list[set[int]],
+) -> tuple[set[int], int]:
+    entrance, center, _ = select_mouth_ring_stack(mesh, inner_loop, neighbors)
     return entrance, center
+
+
+def select_mouth_face_rings(
+    mesh: bpy.types.Mesh,
+    inner_loop: set[int],
+    neighbors: list[set[int]],
+) -> tuple[set[int], set[int]]:
+    """Select the two face-side rings immediately outside the visible rim."""
+    entrance, _, first_outer = select_mouth_ring_stack(mesh, inner_loop, neighbors)
+
+    def in_face_patch(index: int, outer: bool = False) -> bool:
+        point = mesh.vertices[index].co
+        x_limit = (-0.10, 0.08) if outer else (-0.09, 0.07)
+        z_limit = (0.44, 0.59) if outer else (0.45, 0.58)
+        return x_limit[0] < point.x < x_limit[1] and z_limit[0] < point.z < z_limit[1]
+
+    first_face = {
+        linked
+        for index in entrance
+        for linked in neighbors[index]
+        if linked not in entrance and linked not in first_outer and in_face_patch(linked)
+    }
+    second_face = {
+        linked
+        for index in first_face
+        for linked in neighbors[index]
+        if linked not in first_face
+        and linked not in entrance
+        and linked not in first_outer
+        and in_face_patch(linked, outer=True)
+    }
+    if len(first_face) != 24 or len(second_face) != 24:
+        raise RuntimeError(
+            "Could not isolate the two 24-vertex face transition rings: "
+            f"first={len(first_face)}, second={len(second_face)}"
+        )
+    return first_face, second_face
 
 
 def ordered_by_angle(mesh: bpy.types.Mesh, indices: set[int]) -> list[int]:
@@ -343,6 +391,62 @@ def circularize(
     }
 
 
+def relax_mouth_face_transition(
+    mesh: bpy.types.Mesh,
+    coordinates: list[Vector],
+    inner_loop: set[int],
+    neighbors: list[set[int]],
+) -> tuple[list[Vector], dict[str, object]]:
+    """Relax only the first two face-side rings while keeping the rim fixed."""
+    first_face, second_face = select_mouth_face_rings(mesh, inner_loop, neighbors)
+    movable = first_face | second_face
+
+    def roughness(points: list[Vector]) -> float:
+        values = []
+        for index in movable:
+            average = sum((points[linked] for linked in neighbors[index]), Vector()) / len(
+                neighbors[index]
+            )
+            values.append((points[index] - average).length)
+        return sum(values) / len(values)
+
+    work = [point.copy() for point in coordinates]
+    for _ in range(5):
+        for factor in (0.35, -0.36):
+            updated = [point.copy() for point in work]
+            for index in movable:
+                average = sum(
+                    (work[linked] for linked in neighbors[index]), Vector()
+                ) / len(neighbors[index])
+                updated[index] = work[index] + (average - work[index]) * factor
+            work = updated
+
+    raw_displacements = {index: work[index] - coordinates[index] for index in movable}
+    raw_max = max(delta.length for delta in raw_displacements.values())
+    scale = min(1.0, 0.0015 / raw_max) if raw_max > 0.0 else 1.0
+    result = [point.copy() for point in coordinates]
+    for index, delta in raw_displacements.items():
+        result[index] = coordinates[index] + delta * scale
+
+    before_roughness = roughness(coordinates)
+    after_roughness = roughness(result)
+    displacements = [(result[index] - coordinates[index]).length for index in movable]
+    return result, {
+        "iterations": 5,
+        "lambda_factor": 0.35,
+        "mu_factor": -0.36,
+        "first_face_ring_vertices": sorted(first_face),
+        "second_face_ring_vertices": sorted(second_face),
+        "moved_vertices": sum(value > 1.0e-8 for value in displacements),
+        "mean_displacement": sum(displacements) / len(displacements),
+        "max_displacement": max(displacements),
+        "displacement_scale": scale,
+        "laplacian_roughness_before": before_roughness,
+        "laplacian_roughness_after": after_roughness,
+        "laplacian_roughness_reduction": 1.0 - after_roughness / before_roughness,
+    }
+
+
 def apply_to_shape_keys(
     body: bpy.types.Object,
     before: list[Vector],
@@ -466,8 +570,8 @@ def main() -> None:
     rig = bpy.data.objects.get(RIG_NAME)
     if body is None or body.type != "MESH" or rig is None or rig.type != "ARMATURE":
         raise RuntimeError("Canonical lime alien body or rig is missing")
-    if body.get(ENTRANCE_MARKER):
-        raise RuntimeError("Circular mouth entrance rework is already applied")
+    if body.get(TRANSITION_MARKER):
+        raise RuntimeError("Mouth-to-face transition relaxation is already applied")
     if body.data.shape_keys and any(abs(key.value) > 1.0e-8 for key in body.data.shape_keys.key_blocks):
         raise RuntimeError("All shape keys must be zero before circular mouth rework")
 
@@ -487,6 +591,7 @@ def main() -> None:
         apply_inner = True
     entrance, fan_center = select_mouth_entrance(mesh, set(loop), neighbors)
     entrance_loop = ordered_by_angle(mesh, entrance)
+    apply_entrance = not body.get(ENTRANCE_MARKER)
     inner_before = loop_metrics(coordinates_before, loop)
     entrance_before = loop_metrics(coordinates_before, entrance_loop)
     coordinates_work = coordinates_before
@@ -499,13 +604,22 @@ def main() -> None:
             args.radius_scale,
             blocked_indices=set(entrance_loop),
         )
-    coordinates_after, entrance_operation = circularize(
-        coordinates_work,
-        entrance_loop,
+    coordinates_after = coordinates_work
+    entrance_operation = None
+    if apply_entrance:
+        coordinates_after, entrance_operation = circularize(
+            coordinates_work,
+            entrance_loop,
+            neighbors,
+            args.radius_scale,
+            blocked_indices=set(loop) | {fan_center},
+            target_aspect=ENTRANCE_TARGET_ASPECT,
+        )
+    coordinates_after, transition_operation = relax_mouth_face_transition(
+        mesh,
+        coordinates_after,
+        set(loop),
         neighbors,
-        args.radius_scale,
-        blocked_indices=set(loop) | {fan_center},
-        target_aspect=ENTRANCE_TARGET_ASPECT,
     )
     inner_after = loop_metrics(coordinates_after, loop)
     entrance_after = loop_metrics(coordinates_after, entrance_loop)
@@ -523,10 +637,12 @@ def main() -> None:
             "after": inner_after,
         },
         "entrance": {
+            "applied": apply_entrance,
             "before": entrance_before,
             "operation": entrance_operation,
             "after": entrance_after,
         },
+        "face_transition": transition_operation,
     }
     if args.analyze_only:
         args.report.resolve().parent.mkdir(parents=True, exist_ok=True)
@@ -560,6 +676,11 @@ def main() -> None:
     body[BOUNDARY_PROPERTY] = loop
     body[ENTRANCE_MARKER] = True
     body[ENTRANCE_PROPERTY] = entrance_loop
+    body[TRANSITION_MARKER] = True
+    body[TRANSITION_PROPERTY] = (
+        transition_operation["first_face_ring_vertices"]
+        + transition_operation["second_face_ring_vertices"]
+    )
     report["regression_checks"] = {
         "topology_unchanged": topology_digest(mesh) == topology_before,
         "skin_weights_unchanged": weight_digest(body) == weights_before,
@@ -570,6 +691,14 @@ def main() -> None:
             entrance_after["width_to_height"] - ENTRANCE_TARGET_ASPECT
         )
         <= ENTRANCE_ASPECT_TOLERANCE,
+        "face_transition_roughness_reduced": transition_operation[
+            "laplacian_roughness_reduction"
+        ]
+        >= 0.10,
+        "face_transition_max_displacement_bounded": transition_operation[
+            "max_displacement"
+        ]
+        <= 0.0015 + 1.0e-8,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
