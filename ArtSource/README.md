@@ -20,4 +20,5 @@ Blender 가 없는 머신(대부분의 개발자 PC, CI)에서는 클론할 때�
 | --- | --- |
 | `Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigged.blend` | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigged.fbx` |
 | `Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.blend` | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_Rigify_Test.fbx` 및 애니메이션 FBX |
+| `Characters/LastShiftLimeAlien/LastShiftLimeAlien_SubdivisionPreview.blend` | 프리뷰 전용 — Unity 수출 대상 아님 |
 | `LastShift/SystemHeroes/*/*.blend` | `Assets/DoodleUp/Art/Props/LastShiftSystemHeroes/*.fbx` |

@@ -1,0 +1,39 @@
+{
+  "source": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "canonical_body": "LastShift_LimeAlien_Body",
+  "source_digest_before": "aa0b93be0cc3d4df0f23f13e9984ee37d48afba45aea38771cd4a12d1b8f4b85",
+  "source_digest_after": "aa0b93be0cc3d4df0f23f13e9984ee37d48afba45aea38771cd4a12d1b8f4b85",
+  "source_unchanged": true,
+  "stages": [
+    {
+      "vertices": 5711,
+      "edges": 15651,
+      "polygons": 9942,
+      "triangles": 11382,
+      "name": "BASE",
+      "subdivision_level": 0
+    },
+    {
+      "vertices": 31304,
+      "edges": 62568,
+      "polygons": 31266,
+      "triangles": 62532,
+      "name": "JELLY 1",
+      "subdivision_level": 1
+    },
+    {
+      "vertices": 125138,
+      "edges": 250200,
+      "polygons": 125064,
+      "triangles": 250128,
+      "name": "JELLY 2",
+      "subdivision_level": 2
+    }
+  ],
+  "renders": [
+    "lime-alien-subdivision-front.png",
+    "lime-alien-subdivision-oblique.png"
+  ],
+  "blend_output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_SubdivisionPreview.blend",
+  "decision_note": "Level 1 is the production candidate. Level 2 is a silhouette reference only; its approximately 22x triangle expansion is not a runtime recommendation."
+}

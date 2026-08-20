@@ -56,6 +56,11 @@ LastShift*.png
 # Agent/tool local state
 .claude/
 probe.cs
+__pycache__/
+*.py[cod]
+
+# Blender local save backups
+*.blend1
 
 # Player executable emitted to the repo root
 LastShiftNetworkFinal.exe
