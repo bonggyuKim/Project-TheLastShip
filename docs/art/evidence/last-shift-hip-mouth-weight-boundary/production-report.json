@@ -1,0 +1,127 @@
+{
+  "blend": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_Jelly.blend",
+  "sha256": "7b27d542a9d271d5b77d6d98710cda39f9e3b4aa644a2a0372463934800b18ae",
+  "body": "LastShift_LimeAlien_Body",
+  "rig": "LastShift_LimeAlien_Rig",
+  "pose_position_during_measurement": "REST",
+  "regions": {
+    "left_hip_groin": {
+      "bounds": [
+        [
+          -0.18199999690055846,
+          -0.21500000089406968,
+          0.15499998450279234
+        ],
+        [
+          -0.01699999690055847,
+          0.04499999910593033,
+          0.33999998450279234
+        ]
+      ],
+      "metrics": {
+        "vertices": 119,
+        "internal_edges": 213,
+        "moving_groups": [
+          "DEF-foot.L",
+          "DEF-shin.L",
+          "DEF-shin.L.001",
+          "DEF-thigh.L",
+          "DEF-thigh.L.001",
+          "DEF-toe.L"
+        ],
+        "moving_fraction": {
+          "min": 0.0,
+          "max": 1.0,
+          "mean": 0.46029733440925236
+        },
+        "edge_gradient": {
+          "max": 0.2730822016621772,
+          "mean": 0.05896583865135287,
+          "edges_over_0_25": 2,
+          "edges_over_0_50": 0
+        },
+        "dominant_group_counts": {
+          "DEF-pelvis.L": 8,
+          "DEF-shoulder.L": 10,
+          "DEF-spine": 1,
+          "DEF-spine.001": 1,
+          "DEF-thigh.L": 63,
+          "DEF-thigh.L.001": 9,
+          "DEF-upper_arm.L": 16,
+          "DEF-upper_arm.L.001": 11
+        },
+        "aggregate_deform_weights": {
+          "DEF-thigh.L": 34.05618520081043,
+          "DEF-pelvis.L": 19.69074810668826,
+          "DEF-thigh.L.001": 14.751146718859673,
+          "DEF-upper_arm.L": 13.785912139341235,
+          "DEF-upper_arm.L.001": 12.257493829354644,
+          "DEF-shoulder.L": 6.932760974392295,
+          "DEF-spine": 2.4784651547670364,
+          "DEF-spine.001": 2.1746653728187084,
+          "DEF-breast.L": 1.6789928609505296,
+          "DEF-shin.L": 1.495590515434742,
+          "DEF-spine.002": 0.36234131269156933,
+          "DEF-thigh.R": 0.3399457558989525,
+          "DEF-pelvis.R": 0.33943019807338715,
+          "DEF-forearm.L": 0.30526470951735973,
+          "DEF-belly.soft.front": 0.07130768708884716,
+          "DEF-thigh.R.001": 0.06226566061377525,
+          "DEF-belly.soft.L": 0.0283146845176816,
+          "DEF-shin.L.001": 0.026843087747693062,
+          "DEF-spine.003": 0.02028348296880722,
+          "DEF-spine.004": 0.014187120832502842,
+          "DEF-belly.soft.back": 0.0025549960555508733
+        },
+        "all_vertices_weighted": true
+      }
+    },
+    "upper_mouth": {
+      "bounds": [
+        [
+          -0.08902499999999999,
+          -0.266263,
+          0.532113
+        ],
+        [
+          0.060975,
+          -0.156263,
+          0.622113
+        ]
+      ],
+      "metrics": {
+        "vertices": 498,
+        "internal_edges": 975,
+        "moving_groups": [
+          "DEF-head.soft.eye"
+        ],
+        "moving_fraction": {
+          "min": 0.32281768321990967,
+          "max": 1.0,
+          "mean": 0.9634798483159432
+        },
+        "edge_gradient": {
+          "max": 0.3686340770031741,
+          "mean": 0.012307994317527065,
+          "edges_over_0_25": 5,
+          "edges_over_0_50": 0
+        },
+        "dominant_group_counts": {
+          "DEF-head.soft.eye": 496,
+          "DEF-spine.006": 2
+        },
+        "aggregate_deform_weights": {
+          "DEF-head.soft.eye": 479.81296467781067,
+          "DEF-spine.006": 9.283348368480802,
+          "DEF-spine.005": 8.903687295038253
+        },
+        "all_vertices_weighted": true
+      }
+    }
+  },
+  "interpretation_contract": {
+    "weight_boundary": "edge_gradient measures only deform-weight discontinuity",
+    "rest_surface": "a visible REST-pose dent or wrinkle is geometry/topology evidence, not skin-weight evidence",
+    "manual_evidence_required": true
+  }
+}
