@@ -23,14 +23,14 @@
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.003112427661808229,
+    "mean_displacement": 0.003112545451248072,
     "p95_displacement": 0.008612313638613289,
-    "max_displacement": 0.02542388159672071,
-    "max_displacement_ratio": 0.020038436378151312,
+    "max_displacement": 0.025354663879201066,
+    "max_displacement_ratio": 0.019983880789403715,
     "boundary_max_displacement": 0.0,
-    "laplacian_mean_before": 0.003284137315842951,
-    "laplacian_mean_after": 0.0017721381916187152,
-    "laplacian_roughness_reduction": 0.4603946116778451,
+    "laplacian_mean_before": 0.003284258833007889,
+    "laplacian_mean_after": 0.0017720986287574334,
+    "laplacian_roughness_reduction": 0.4604266232163996,
     "shape_keys_translated": 91,
     "max_shape_delta_error": 1.5359765386647212e-08
   },
@@ -38,22 +38,23 @@
     "applied": true,
     "boundary_vertices": 20,
     "before": {
-      "center_x": 0.00885694520547986,
-      "center_z": 0.5104808062314987,
-      "width": 0.036208043806254864,
-      "height": 0.03926566243171692,
-      "width_to_height": 0.9221299620048621,
-      "mean_radius": 0.018481292764881238,
-      "radius_cv": 0.07933045775113819,
-      "mean_edge_length": 0.008240227283092465,
-      "edge_length_cv": 0.21166731680133397,
-      "depth_range": 0.02430829405784607
+      "center_x": 0.008832992985844612,
+      "center_z": 0.510460376739502,
+      "width": 0.03652995824813843,
+      "height": 0.03888058662414551,
+      "width_to_height": 0.9395423634234135,
+      "mean_radius": 0.01847968814926179,
+      "radius_cv": 0.07732181601580466,
+      "mean_edge_length": 0.00823223662256426,
+      "edge_length_cv": 0.21309278125830206,
+      "depth_range": 0.024141579866409302
     },
     "operation": {
-      "target_radius": 0.018852936279325445,
-      "target_phase_radians": -1.5831205785377724,
+      "target_radius": 0.018843475038081252,
+      "target_phase_radians": -1.5827821617450097,
       "target_winding": -1,
       "radius_scale": 1.0,
+      "target_aspect": 1.0,
       "boundary_vertices": 20,
       "surrounding_ring_vertices": [
         21,
@@ -61,40 +62,41 @@
         0
       ],
       "moved_vertices": 61,
-      "mean_displacement": 0.0020082246783838633,
-      "max_displacement": 0.006890183517156163
+      "mean_displacement": 0.001980118405161792,
+      "max_displacement": 0.006926158717198129
     },
     "after": {
-      "center_x": 0.008856945671141148,
-      "center_z": 0.5104808211326599,
-      "width": 0.03770300932228565,
-      "height": 0.03770303726196289,
-      "width_to_height": 0.9999992589542046,
-      "mean_radius": 0.018852936069455126,
-      "radius_cv": 9.536446320849553e-07,
-      "mean_edge_length": 0.00614996752850299,
-      "edge_length_cv": 0.039731088943235064,
-      "depth_range": 0.014663934707641602
+      "center_x": 0.008832992985844612,
+      "center_z": 0.5104603618383408,
+      "width": 0.03768424317240715,
+      "height": 0.037684231996536255,
+      "width_to_height": 1.0000002965662376,
+      "mean_radius": 0.018843474400399674,
+      "radius_cv": 6.637787307154452e-07,
+      "mean_edge_length": 0.006141288426313616,
+      "edge_length_cv": 0.03884651803782588,
+      "depth_range": 0.014497697353363037
     },
     "entrance": {
       "boundary_vertices": 24,
       "before": {
-        "center_x": -0.013456983957439661,
-        "center_z": 0.5237602442502975,
-        "width": 0.05384173523634672,
-        "height": 0.05264487862586975,
-        "width_to_height": 1.0227345307220224,
-        "mean_radius": 0.0266049095693722,
-        "radius_cv": 0.031480245818038856,
-        "mean_edge_length": 0.008321026888193877,
-        "edge_length_cv": 0.15448889887953965,
-        "depth_range": 0.024794802069664
+        "center_x": -0.013448244892060757,
+        "center_z": 0.5237320363521576,
+        "width": 0.05517522431910038,
+        "height": 0.05125647783279419,
+        "width_to_height": 1.0764536825782234,
+        "mean_radius": 0.026599664436091835,
+        "radius_cv": 0.043445803921961394,
+        "mean_edge_length": 0.008307218123674324,
+        "edge_length_cv": 0.15796259078557195,
+        "depth_range": 0.02402767539024353
       },
       "operation": {
-        "target_radius": 0.026619971903270707,
-        "target_phase_radians": -2.9276512424851333,
+        "target_radius": 0.026589883707114136,
+        "target_phase_radians": -2.9279936717030353,
         "target_winding": 1,
         "radius_scale": 1.0,
+        "target_aspect": 1.08,
         "boundary_vertices": 24,
         "surrounding_ring_vertices": [
           48,
@@ -102,20 +104,20 @@
           23
         ],
         "moved_vertices": 139,
-        "mean_displacement": 0.0009249211659174309,
-        "max_displacement": 0.004576336830073951
+        "mean_displacement": 0.0009242571496461457,
+        "max_displacement": 0.004564642885952868
       },
       "after": {
-        "center_x": -0.013456983491778374,
-        "center_z": 0.5237602293491364,
-        "width": 0.05317898467183113,
-        "height": 0.05317896604537964,
-        "width_to_height": 1.0000003502597525,
-        "mean_radius": 0.026619969364094078,
-        "radius_cv": 5.120513479690796e-07,
-        "mean_edge_length": 0.007162287566160159,
-        "edge_length_cv": 0.019388567352238133,
-        "depth_range": 0.019355028867721558
+        "center_x": -0.013448243960738182,
+        "center_z": 0.5237320363521576,
+        "width": 0.05520184710621834,
+        "height": 0.0511128306388855,
+        "width_to_height": 1.0799998046717845,
+        "mean_radius": 0.026619414631395527,
+        "radius_cv": 0.027182524039281196,
+        "mean_edge_length": 0.0071436172994000435,
+        "edge_length_cv": 0.03995466884072784,
+        "depth_range": 0.018603339791297913
       }
     },
     "shape_key_relative_delta_max_error": 1.1641532182693481e-10
@@ -144,14 +146,14 @@
   "eyes_all_smooth": true,
   "shadow_evidence": {
     "path": "docs/art/evidence/last-shift-lime-alien-jelly-production/lime-alien-jelly-production-shadow.png",
-    "bytes": 1056743,
+    "bytes": 1056823,
     "width": 1600,
     "height": 900,
     "lower_half_luminance_spread": 0.473139611057937
   },
   "joint_pose_evidence": {
     "path": "lime-alien-jelly-production-joint-pose.png",
-    "bytes": 1050510,
+    "bytes": 1050949,
     "controls_degrees": {
       "thigh_fk.L": -34.0,
       "shin_fk.L": 68.0,
@@ -163,7 +165,7 @@
   "runtime_fbxs": [
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
-      "sha256": "63d9254d59d26ad8ca383c740b1347e8376bf4aff96c335cd4a2c29702243e6e",
+      "sha256": "cfdeb9a8c2b61294cf6ecabb9bb5b77caaa2be7b691388e8ff9830e5f8e248d2",
       "body": {
         "vertices": 24034,
         "polygons": 23996,
@@ -180,7 +182,7 @@
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
-      "sha256": "0cb9e3dbb7f880e20c0e8ab78f8f37698649933227a484cae37569bf3c29651c",
+      "sha256": "af42c12799a1b8ffb5b6e881074afe7299dab87b759372111ea8fef53ea59785",
       "body": {
         "vertices": 24034,
         "polygons": 23996,
@@ -200,7 +202,7 @@
     "authoring topology and smooth shading",
     "92 shape keys and REST rig",
     "bounded vertex relaxation and preserved relative shape-key deltas",
-    "1:1 circular inner ring and visible mouth entrance with local mouth quad cleanup",
+    "1:1 inner ring and 1.08:1 subtle oval visible mouth entrance with local mouth quad cleanup",
     "Catmull-Clark L1 contract",
     "cast-shadow evidence value separation",
     "asymmetric FK elbow and knee stress-pose evidence",

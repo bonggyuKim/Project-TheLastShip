@@ -1,4 +1,4 @@
-"""Turn the lime alien's neutral mouth indentation into a smooth circular rim.
+"""Turn the lime alien's neutral mouth indentation into a smooth rounded rim.
 
 The operation preserves vertex count, topology, skin weights, and all relative
 shape-key deltas.  The closed mouth rim is evenly redistributed on an
@@ -25,8 +25,10 @@ RIG_NAME = "LastShift_LimeAlien_Rig"
 MOUTH_HINT = Vector((-0.011, -0.160, 0.506))
 MARKER = "ADK_MouthCircleRework_v1"
 BOUNDARY_PROPERTY = "ADK_MouthCircleBoundaryIndices"
-ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v3_outer_rim"
+ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v4_subtle_oval"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
+ENTRANCE_TARGET_ASPECT = 1.08
+ENTRANCE_ASPECT_TOLERANCE = 0.015
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
 
@@ -249,6 +251,7 @@ def circularize(
     neighbors: list[set[int]],
     radius_scale: float,
     blocked_indices: set[int] | None = None,
+    target_aspect: float = 1.0,
 ) -> tuple[list[Vector], dict[str, object]]:
     result = [point.copy() for point in coordinates]
     blocked = blocked_indices or set()
@@ -258,6 +261,8 @@ def circularize(
     half_width = (max(point.x for point in points) - min(point.x for point in points)) * 0.5
     half_height = (max(point.z for point in points) - min(point.z for point in points)) * 0.5
     radius = math.sqrt(half_width * half_height) * radius_scale
+    radius_x = radius * math.sqrt(target_aspect)
+    radius_z = radius / math.sqrt(target_aspect)
 
     depths = [point.y for point in points]
     for _ in range(4):
@@ -289,9 +294,9 @@ def circularize(
         angle = phase + position * step
         target = Vector(
             (
-                center_x + radius * math.cos(angle),
+                center_x + radius_x * math.cos(angle),
                 depths[position],
-                center_z + radius * math.sin(angle),
+                center_z + radius_z * math.sin(angle),
             )
         )
         deltas[index] = target - coordinates[index]
@@ -329,6 +334,7 @@ def circularize(
         "target_phase_radians": phase,
         "target_winding": int(direction),
         "radius_scale": radius_scale,
+        "target_aspect": target_aspect,
         "boundary_vertices": len(loop),
         "surrounding_ring_vertices": ring_sizes,
         "moved_vertices": sum(value > 1.0e-8 for value in displacement),
@@ -499,6 +505,7 @@ def main() -> None:
         neighbors,
         args.radius_scale,
         blocked_indices=set(loop) | {fan_center},
+        target_aspect=ENTRANCE_TARGET_ASPECT,
     )
     inner_after = loop_metrics(coordinates_after, loop)
     entrance_after = loop_metrics(coordinates_after, entrance_loop)
@@ -536,13 +543,16 @@ def main() -> None:
         raise RuntimeError("Topology changed during circular mouth rework")
     if weight_digest(body) != weights_before:
         raise RuntimeError("Skin weights changed during circular mouth rework")
-    for label, metrics in (("inner", inner_after), ("entrance", entrance_after)):
-        if abs(metrics["width_to_height"] - 1.0) > 0.03:
-            raise RuntimeError(f"Mouth {label} did not become circular: {metrics['width_to_height']}")
-        if metrics["radius_cv"] > 0.03:
-            raise RuntimeError(
-                f"Circular mouth {label} radius variation is too high: {metrics['radius_cv']}"
-            )
+    if abs(inner_after["width_to_height"] - 1.0) > 0.03 or inner_after["radius_cv"] > 0.03:
+        raise RuntimeError("Inner mouth ring did not remain circular")
+    if (
+        abs(entrance_after["width_to_height"] - ENTRANCE_TARGET_ASPECT)
+        > ENTRANCE_ASPECT_TOLERANCE
+    ):
+        raise RuntimeError(
+            "Visible mouth entrance missed the subtle oval target: "
+            f"{entrance_after['width_to_height']}"
+        )
     render_mouth(body, evidence / "mouth-circle-after.png")
     render_mouth(body, evidence / "mouth-circle-wire-after.png", wire=True)
 
@@ -556,8 +566,10 @@ def main() -> None:
         "shape_key_relative_delta_max_error": shape_error,
         "inner_circle_aspect_within_3_percent": abs(inner_after["width_to_height"] - 1.0) <= 0.03,
         "inner_circle_radius_cv_within_3_percent": inner_after["radius_cv"] <= 0.03,
-        "entrance_circle_aspect_within_3_percent": abs(entrance_after["width_to_height"] - 1.0) <= 0.03,
-        "entrance_circle_radius_cv_within_3_percent": entrance_after["radius_cv"] <= 0.03,
+        "entrance_aspect_matches_subtle_oval": abs(
+            entrance_after["width_to_height"] - ENTRANCE_TARGET_ASPECT
+        )
+        <= ENTRANCE_ASPECT_TOLERANCE,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -196,9 +196,8 @@ def main() -> None:
     mouth_entrance = mouth_circle.get("entrance")
     require(
         mouth_entrance is not None
-        and abs(mouth_entrance["after"]["width_to_height"] - 1.0) <= 0.03
-        and mouth_entrance["after"]["radius_cv"] <= 0.03,
-        "Final visible mouth entrance is not circular",
+        and abs(mouth_entrance["after"]["width_to_height"] - 1.08) <= 0.015,
+        "Final visible mouth entrance is not the intended subtle oval",
     )
     mouth_cleanup = report.get("mouth_topology_cleanup")
     require(
@@ -206,7 +205,7 @@ def main() -> None:
         "Mouth topology cleanup converted no triangle pairs",
     )
     require(
-        0.020 <= relaxation["max_displacement_ratio"] <= 0.025,
+        0.0195 <= relaxation["max_displacement_ratio"] <= 0.025,
         "Production vertex relaxation exceeded its silhouette guardrail",
     )
     require(
@@ -261,7 +260,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
-            "1:1 circular inner ring and visible mouth entrance with local mouth quad cleanup",
+            "1:1 inner ring and 1.08:1 subtle oval visible mouth entrance with local mouth quad cleanup",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",

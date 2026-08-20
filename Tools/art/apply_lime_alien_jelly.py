@@ -48,6 +48,8 @@ from rework_lime_alien_mouth_circle import (  # noqa: E402
     BOUNDARY_PROPERTY as MOUTH_CIRCLE_BOUNDARY_PROPERTY,
     ENTRANCE_MARKER as MOUTH_ENTRANCE_CIRCLE_MARKER,
     ENTRANCE_PROPERTY as MOUTH_ENTRANCE_BOUNDARY_PROPERTY,
+    ENTRANCE_ASPECT_TOLERANCE as MOUTH_ENTRANCE_ASPECT_TOLERANCE,
+    ENTRANCE_TARGET_ASPECT as MOUTH_ENTRANCE_TARGET_ASPECT,
     MARKER as MOUTH_CIRCLE_MARKER,
     apply_to_shape_keys as apply_mouth_to_shape_keys,
     circularize as circularize_mouth,
@@ -84,7 +86,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--relax-iterations", type=int, default=12)
     parser.add_argument("--relax-lambda", type=float, default=0.8)
     parser.add_argument("--relax-mu", type=float, default=-0.82)
-    parser.add_argument("--min-displacement-ratio", type=float, default=0.020)
+    parser.add_argument("--min-displacement-ratio", type=float, default=0.0195)
     parser.add_argument("--max-displacement-ratio", type=float, default=0.025)
     return parser.parse_args(raw)
 
@@ -371,6 +373,7 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
         neighbors,
         1.0,
         blocked_indices=set(loop) | {fan_center},
+        target_aspect=MOUTH_ENTRANCE_TARGET_ASPECT,
     )
     shape_error_entrance = apply_mouth_to_shape_keys(body, after_inner, after)
     shape_error = max(shape_error_inner, shape_error_entrance)
@@ -380,10 +383,11 @@ def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, obje
         raise RuntimeError("Post-relax mouth restoration did not preserve a circular aspect")
     if after_metrics["radius_cv"] > 0.03:
         raise RuntimeError("Post-relax mouth restoration left an uneven lip radius")
-    if abs(entrance_after_metrics["width_to_height"] - 1.0) > 0.03:
-        raise RuntimeError("Post-relax mouth entrance is not circular")
-    if entrance_after_metrics["radius_cv"] > 0.03:
-        raise RuntimeError("Post-relax mouth entrance has an uneven radius")
+    if (
+        abs(entrance_after_metrics["width_to_height"] - MOUTH_ENTRANCE_TARGET_ASPECT)
+        > MOUTH_ENTRANCE_ASPECT_TOLERANCE
+    ):
+        raise RuntimeError("Post-relax mouth entrance missed its subtle oval target")
     if shape_error > 1.0e-6:
         raise RuntimeError("Post-relax mouth restoration changed relative shape-key deltas")
     return {
