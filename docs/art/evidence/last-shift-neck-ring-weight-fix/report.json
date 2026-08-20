@@ -1,0 +1,96 @@
+{
+  "source": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-64452f37-c94a-489e-a139-731bcceee30f-20260819162239\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test.blend",
+  "mode": "apply",
+  "mesh": "LastShift_LimeAlien_RigifyMesh",
+  "rig": "rig",
+  "control": "head",
+  "stress_degrees": 60.0,
+  "solution": {
+    "response_model": {
+      "DEF-spine.004": 0.0,
+      "DEF-spine.005": 0.5,
+      "DEF-spine.006": 1.0
+    },
+    "basis": {
+      "DEF-spine.004": "(1-t)^2",
+      "DEF-spine.005": "2t(1-t)",
+      "DEF-spine.006": "t^2"
+    },
+    "transition_vertices": 360,
+    "changed_vertices": 360,
+    "target_totals_before": {
+      "DEF-spine.004": 52.28620179835707,
+      "DEF-spine.005": 172.34008514514426,
+      "DEF-spine.006": 2410.660859898315
+    },
+    "target_totals_after": {
+      "DEF-spine.004": 82.67350790802766,
+      "DEF-spine.005": 111.56547292580304,
+      "DEF-spine.006": 2441.048166007986
+    },
+    "per_vertex_target_total_delta_max": 2.220446049250313e-16,
+    "effective_response_delta_max": 1.1102230246251565e-16
+  },
+  "stress_before": {
+    "X": {
+      "edges": 861,
+      "max_stretch_ratio": 4.6232341093100855,
+      "min_stretch_ratio": 0.16504478703674888,
+      "p95_absolute_strain": 2.802661628812388,
+      "mean_absolute_strain": 0.7939257353212413,
+      "edges_over_1p5x": 345,
+      "edges_under_0p67x": 63
+    },
+    "Y": {
+      "edges": 861,
+      "max_stretch_ratio": 2.2194194978496715,
+      "min_stretch_ratio": 0.3695715907869845,
+      "p95_absolute_strain": 0.9621584383639461,
+      "mean_absolute_strain": 0.34765786721565956,
+      "edges_over_1p5x": 222,
+      "edges_under_0p67x": 68
+    },
+    "Z": {
+      "edges": 861,
+      "max_stretch_ratio": 5.102533096598948,
+      "min_stretch_ratio": 0.07366023378297172,
+      "p95_absolute_strain": 2.6999341878978047,
+      "mean_absolute_strain": 0.7213099141273824,
+      "edges_over_1p5x": 326,
+      "edges_under_0p67x": 35
+    }
+  },
+  "output": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-64452f37-c94a-489e-a139-731bcceee30f-20260819162239\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_Rigify_Test.blend",
+  "stress_after": {
+    "X": {
+      "edges": 861,
+      "max_stretch_ratio": 3.3698245719550277,
+      "min_stretch_ratio": 0.3099997699022557,
+      "p95_absolute_strain": 1.7075583702605144,
+      "mean_absolute_strain": 0.5938559963208723,
+      "edges_over_1p5x": 361,
+      "edges_under_0p67x": 70
+    },
+    "Y": {
+      "edges": 861,
+      "max_stretch_ratio": 2.2095166759350144,
+      "min_stretch_ratio": 0.3886741769863131,
+      "p95_absolute_strain": 0.9471244238062153,
+      "mean_absolute_strain": 0.33763156552862905,
+      "edges_over_1p5x": 205,
+      "edges_under_0p67x": 74
+    },
+    "Z": {
+      "edges": 861,
+      "max_stretch_ratio": 3.7370792128250176,
+      "min_stretch_ratio": 0.09227287743997417,
+      "p95_absolute_strain": 1.7121462734395498,
+      "mean_absolute_strain": 0.5898513271627597,
+      "edges_over_1p5x": 346,
+      "edges_under_0p67x": 61
+    }
+  },
+  "per_vertex_target_total_delta_max_after_apply": 3.166496753692627e-08,
+  "non_target_weights_unchanged": true,
+  "mesh_positions_unchanged": true
+}

@@ -276,7 +276,7 @@ AI는 초기 네트워크 골격을 빠르게 만들었지만 권한, 보간, �
 
 - root → pelvis → spine → chest → head 중심 계층
 - 팔·다리 변형 체인과 2-bone IK, pole control
-- 5,772개 결합 메시 정점의 웨이트 할당 확인
+- 입 내부 고립 삼각형 제거 후 5,769개 결합 메시 정점의 웨이트 할당 확인
 - 정점당 최대 4개 이하 bone influence
 - 자동 웨이트 후 topology-neighbor 기반 국소 smoothing
 - 위치·회전 0, scale 1로 runtime transform 정규화
