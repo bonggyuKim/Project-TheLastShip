@@ -39,6 +39,15 @@ namespace DoodleUp.Editor
         public const string CharacterPrefabPath =
             "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx";
 
+        /// <summary>
+        /// <b>저장된 씬에 실제로 들어 있는 것.</b> 콜라이더·조인트를 손으로 잡은 프리팹이라
+        /// 이 빌더가 만드는 것(FBX + 프록시 빌더)과 다르다 — <see cref="Rebuild"/> 를 돌리면
+        /// 손으로 잡은 열다섯이 사라진다. 낙하 실측(<see cref="LastShiftRagdollFallProbe"/>)과
+        /// 굽힘 몫 실측(<see cref="LastShiftRagdollBendShareProbe"/>)은 <b>씬을 그대로</b> 열어
+        /// 이쪽을 잰다. 사용자가 여는 것이 그쪽이기 때문이다.
+        /// </summary>
+        public const string RagdollPrefabPath = "Assets/DoodleUp/Prefabs/LastShiftCrewRagdollSoft.prefab";
+
         /// <summary>문 통과 폭. 승무원 둘이 동시에 들어가려다 부딪히는 자리를 만드는 값이다.</summary>
         public const float DoorwayGap = 1.2f;
 

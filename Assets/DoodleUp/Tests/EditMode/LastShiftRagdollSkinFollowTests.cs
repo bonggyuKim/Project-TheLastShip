@@ -120,13 +120,14 @@ namespace DoodleUp.Tests.EditMode
 
             follow.Apply();
 
-            // 등분이 아니라 아트 실측값이다 — DEF-spine.004 는 0%, DEF-spine.005 는 50%
-            // (2026-08-19, head 로컬 Y +30도에서 0.000도 / 14.994도). 등분(33%/67%)은
-            // .004 를 33% 과회전시키고 있었다.
+            // 등분이 아니라 실측값이다 — DEF-spine.004 는 40%, DEF-spine.005 는 25%
+            // (2026-08-21, LastShiftRagdollBendShareProbe). 등분(33%/67%)은 .005 를 크게
+            // 과회전시키고 있었다. 2026-08-19 의 0%/50% 은 굽힘이 회전만 나뉘던 때의 값이라
+            // 지금 구조에서는 안 맞는다 — 표를 손으로 고치지 말고 프로브를 다시 돌려라.
             var expectedNeck = bend * LastShiftRagdollRig.BendShareOf("DEF-spine.004", 0, 2);
             var expectedLower = bend * LastShiftRagdollRig.BendShareOf("DEF-spine.005", 1, 2);
-            Assert.That(expectedNeck, Is.EqualTo(0f).Within(0.01f), "실측 표에서 .004 몫이 0 이 아니다.");
-            Assert.That(expectedLower, Is.EqualTo(bend * 0.5f).Within(0.01f), "실측 표에서 .005 몫이 50% 가 아니다.");
+            Assert.That(expectedNeck, Is.EqualTo(bend * 0.40f).Within(0.01f), "실측 표에서 .004 몫이 40% 가 아니다.");
+            Assert.That(expectedLower, Is.EqualTo(bend * 0.25f).Within(0.01f), "실측 표에서 .005 몫이 25% 가 아니다.");
             Assert.That(Quaternion.Angle(restNeck, neck.rotation), Is.EqualTo(expectedNeck).Within(1f),
                 "가슴에 가까운 목뼈가 실측 몫과 다르게 돌았다.");
             Assert.That(Quaternion.Angle(restLower, lower.rotation), Is.EqualTo(expectedLower).Within(1f),
@@ -149,6 +150,62 @@ namespace DoodleUp.Tests.EditMode
 
             Assert.That(follow.SegmentCount, Is.EqualTo(0),
                 "계층으로 안 이어진 부위에 구간이 생겼다 — 제어본을 돌리게 된다.");
+        }
+
+        [Test]
+        public void MidBoneRidesBothEndsNotJustTheParent()
+        {
+            // <b>낙하 때 메시가 무너지던 원인이 이것이었다(2026-08-21).</b> 중간 뼈에 회전만 나눠
+            // 주면 그 뼈가 제자리에서 돌면서 끝이 호를 그리며 물러나는데, 자식(바디 있는 뼈)은
+            // 물리가 정한 자리로 도로 씌워진다. 둘 사이가 벌어진 채 남고 그게 늘어난 삼각형이 된다.
+            // 위치도 같은 몫으로 섞으면 그 벌어짐이 구간 전체에 펴진다.
+            var subject = InstantiateCrew();
+            var chest = FindBone(subject, LastShiftRagdollRig.ChestBoneName);
+            var head = FindBone(subject, LastShiftRagdollRig.HeadBoneName);
+            MakeBody(chest);
+            MakeBody(head);
+
+            var follow = subject.AddComponent<LastShiftRagdollSkinFollow>();
+            follow.Capture();
+
+            var lower = FindBone(subject, "DEF-spine.005");
+            var restLower = lower.position;
+            var restHead = head.position;
+
+            // 머리만 옆으로 크게 옮긴다 — 회전 없이 옮겨야 "회전만 나눠 주는" 구현과 갈린다.
+            head.position = restHead + new Vector3(0.35f, 0f, 0f);
+
+            follow.Apply();
+
+            var share = LastShiftRagdollRig.BendShareOf("DEF-spine.005", 1, 2);
+            var moved = Vector3.Distance(lower.position, restLower);
+            Assert.That(moved, Is.EqualTo(0.35f * share).Within(0.005f),
+                "중간 뼈가 자식이 간 만큼을 제 몫으로 안 따라갔다 — 그 차이가 그대로 스킨에서 늘어난다.");
+        }
+
+        [Test]
+        public void EveryMidBoneHasAMeasuredBendShare()
+        {
+            // 등분 대체값은 추정치다. 리그가 바뀌어 새 중간 뼈가 생기면 아무 말 없이 추정치로
+            // 돌아가고, 그 순간 낙하에서 다시 무너진다 — 실측 표가 비었는지를 여기서 잡는다.
+            // 새로 걸리면 Last Shift/Prototype/Probe Bend Shares 를 돌려 표를 갱신하라.
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LastShiftRagdollLabScene.RagdollPrefabPath);
+            Assert.That(prefab, Is.Not.Null, $"래그돌 프리팹이 없다: {LastShiftRagdollLabScene.RagdollPrefabPath}");
+
+            _instance = Object.Instantiate(prefab);
+            var follow = _instance.GetComponent<LastShiftRagdollSkinFollow>();
+            Assert.That(follow, Is.Not.Null, "프리팹에서 SkinFollow 가 빠졌다 — 이러면 스킨이 통째로 찢어진다.");
+            follow.Capture();
+
+            Assert.That(follow.SegmentCount, Is.GreaterThan(0), "구간이 하나도 안 잡혔다 — 뼈 이름 규칙이 바뀌었다.");
+
+            for (var segment = 0; segment < follow.SegmentCount; segment++)
+            for (var mid = 0; mid < follow.MidBoneCount(segment); mid++)
+            {
+                var name = follow.MidBoneName(segment, mid);
+                Assert.That(LastShiftRagdollRig.HasMeasuredBendShare(name), Is.True,
+                    $"중간 뼈 '{name}' 의 굽힘 몫이 실측 표에 없다 — 등분 추정치로 떨어진다.");
+            }
         }
 
         private static void MakeBody(Transform bone)

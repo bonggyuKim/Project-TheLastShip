@@ -44,6 +44,13 @@ namespace DoodleUp.Runtime
         private readonly List<Link> _links = new List<Link>();
         private readonly List<Segment> _segments = new List<Segment>();
 
+        /// <summary>
+        /// 굽힘 몫을 표 대신 이것으로 읽는다. <b>측정 도구 전용이다</b> —
+        /// <see cref="LastShiftRagdollBendShareProbe"/> 가 몫을 쓸어 보며 찢어짐을 재고,
+        /// 그 결과가 <see cref="LastShiftRagdollRig.BendShares"/> 표가 된다. 비어 있으면 표를 쓴다.
+        /// </summary>
+        private Dictionary<string, float> _shareOverride;
+
         /// <summary>물리가 자리를 정하는 뼈들. 얕은 것부터 — 되돌릴 때 부모를 먼저 놓아야 한다.</summary>
         private readonly List<Transform> _driven = new List<Transform>();
         private Vector3[] _drivenPositions = System.Array.Empty<Vector3>();
@@ -60,6 +67,19 @@ namespace DoodleUp.Runtime
 
         /// <summary>구간 하나가 품은 중간 뼈 수. 목 구간이 둘(.004·.005)인지 검사가 이것으로 본다.</summary>
         public int MidBoneCount(int segment) => _segments[segment].MidCount;
+
+        /// <summary>구간에 낀 중간 뼈 이름. 측정 도구가 몫을 이름으로 걸기 위해 읽는다.</summary>
+        public string MidBoneName(int segment, int mid) => _segments[segment].MidName(mid);
+
+        /// <summary>
+        /// 굽힘 몫을 표 대신 준 값으로 읽게 한다. 넘긴 뒤 <see cref="Capture"/> 가 다시 돈다 —
+        /// 몫은 구간을 만들 때 굳으므로 다시 안 잡으면 안 먹는다.
+        /// </summary>
+        public void OverrideBendShares(Dictionary<string, float> shares)
+        {
+            _shareOverride = shares;
+            Capture();
+        }
 
         private void Awake()
         {
@@ -136,7 +156,16 @@ namespace DoodleUp.Runtime
                 if (parent == null || mids.Count == 0) continue;
 
                 mids.Reverse();  // 부모 → 자식 순서로 세운다
-                _segments.Add(new Segment(parent, mids.ToArray(), child));
+                var array = mids.ToArray();
+                var shares = new float[array.Length];
+                for (var i = 0; i < array.Length; i++)
+                {
+                    shares[i] = _shareOverride != null && _shareOverride.TryGetValue(array[i].name, out var given)
+                        ? given
+                        : LastShiftRagdollRig.BendShareOf(array[i].name, i, array.Length);
+                }
+
+                _segments.Add(new Segment(parent, array, child, shares));
             }
         }
 
@@ -207,33 +236,62 @@ namespace DoodleUp.Runtime
         }
 
         /// <summary>
-        /// 바디 있는 두 뼈와 그 사이에 낀 변형본들. 양 끝이 정지 포즈에서 <b>얼마나 돌았는지</b>를
-        /// 재서, 그 사이를 등분한 회전을 중간 뼈에 준다.
+        /// 바디 있는 두 뼈와 그 사이에 낀 변형본들. 양 끝이 정지 포즈에서 <b>얼마나 움직였는지</b>를
+        /// 재서, 그 사이를 나눈 포즈를 중간 뼈에 준다.
         ///
-        /// 위치는 안 건드린다 — 중간 뼈는 부모(바디 있는 뼈)의 자식이라 위치가 이미 따라와 있고,
-        /// 월드 위치를 손대면 뼈 길이가 늘어나 오히려 메시가 찢어진다.
+        /// <b>회전만 나눠 주면 안 된다(2026-08-21).</b> 처음에는 위치를 일부러 안 건드렸다 —
+        /// "중간 뼈는 부모의 자식이라 위치가 따라와 있다"는 이유였는데, 그게 성립하려면 부모 쪽
+        /// 계층이 자식 쪽 물리 포즈까지 데려다줘야 한다. 실제로는 안 데려다준다. 중간 뼈를 제자리에서
+        /// 돌리면 그 끝이 <b>호를 그리며</b> 물러나는데, 자식(바디 있는 뼈)은 물리가 정한 자리로
+        /// 도로 씌워지므로 둘 사이가 벌어진 채 남는다. 그 벌어짐이 그대로 늘어난 삼각형이 된다.
+        ///
+        /// 실측(저장된 랩 씬을 그냥 떨어뜨렸을 때, 착지 최악 프레임): 늘어난 삼각형 436개 ·
+        /// 최악 배율 ×11.6. 그 436개가 전부 여기 중간 뼈들에 몰려 있었다 —
+        /// <c>DEF-spine</c> 80 · <c>DEF-shin.L</c>+<c>DEF-thigh.L.001</c> 68 · <c>DEF-spine.001</c> 49.
+        /// 그 자리의 조인트 이탈은 <b>0.19cm</b> 였다. 관절이 벌어져서 생긴 것이 아니라는 뜻이다.
+        ///
+        /// <b>그래서 위치도 같은 몫으로 섞는다.</b> 중간 뼈의 정지 월드 위치를 양 끝의 강체 변환으로
+        /// 각각 옮긴 뒤 몫만큼 <c>Lerp</c> 한다 — <see cref="Link"/> 가 하는 계산을 소스 하나가 아니라
+        /// 둘 사이에서 하는 것이다. 뼈 길이가 변하는 것은 맞지만, 그것이 바로 원하는 것이다:
+        /// 양 끝이 벌어진 만큼을 고리 하나에 몰지 않고 구간 전체에 펴 준다.
+        ///
+        /// <b>양 끝 포즈를 먼저 읽는다.</b> 자식은 중간 뼈의 자손이라, 중간 뼈를 옮기는 순간 끌려간다.
         /// </summary>
         private readonly struct Segment
         {
-            public Segment(Transform parent, Transform[] mids, Transform child)
+            public Segment(Transform parent, Transform[] mids, Transform child, float[] shares)
             {
+                _shares = shares;
                 _parent = parent;
                 _child = child;
                 _mids = mids;
                 _parentRest = parent.rotation;
+                _parentRestPosition = parent.position;
                 _childRest = child.rotation;
+                _childRestPosition = child.position;
                 _midRest = new Quaternion[mids.Length];
-                for (var i = 0; i < mids.Length; i++) _midRest[i] = mids[i].rotation;
+                _midRestPosition = new Vector3[mids.Length];
+                for (var i = 0; i < mids.Length; i++)
+                {
+                    _midRest[i] = mids[i].rotation;
+                    _midRestPosition[i] = mids[i].position;
+                }
             }
 
             private readonly Transform _parent;
             private readonly Transform _child;
             private readonly Transform[] _mids;
+            private readonly float[] _shares;
             private readonly Quaternion _parentRest;
+            private readonly Vector3 _parentRestPosition;
             private readonly Quaternion _childRest;
+            private readonly Vector3 _childRestPosition;
             private readonly Quaternion[] _midRest;
+            private readonly Vector3[] _midRestPosition;
 
             public int MidCount => _mids.Length;
+
+            public string MidName(int index) => _mids[index].name;
 
             public void Bend()
             {
@@ -241,12 +299,19 @@ namespace DoodleUp.Runtime
 
                 var fromParent = _parent.rotation * Quaternion.Inverse(_parentRest);
                 var fromChild = _child.rotation * Quaternion.Inverse(_childRest);
+                var parentOrigin = _parent.position;
+                var childOrigin = _child.position;
 
                 for (var i = 0; i < _mids.Length; i++)
                 {
                     if (_mids[i] == null) continue;
-                    var share = LastShiftRagdollRig.BendShareOf(_mids[i].name, i, _mids.Length);
-                    _mids[i].rotation = Quaternion.Slerp(fromParent, fromChild, share) * _midRest[i];
+                    var share = _shares[i];
+                    _mids[i].SetPositionAndRotation(
+                        Vector3.Lerp(
+                            parentOrigin + fromParent * (_midRestPosition[i] - _parentRestPosition),
+                            childOrigin + fromChild * (_midRestPosition[i] - _childRestPosition),
+                            share),
+                        Quaternion.Slerp(fromParent, fromChild, share) * _midRest[i]);
                 }
             }
         }

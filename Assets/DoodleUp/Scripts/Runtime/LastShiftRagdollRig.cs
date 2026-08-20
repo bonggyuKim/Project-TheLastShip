@@ -210,12 +210,34 @@ namespace DoodleUp.Runtime
         /// <c>head</c> 로컬 Y +30도)에서 <c>DEF-spine.004</c> 는 <b>0도(0%)</b>, <c>DEF-spine.005</c> 는
         /// 14.994도(<b>49.98%</b>, 설계값 50%)였다. 등분은 <c>.004</c> 를 33% 과회전시키고 있었다.
         ///
-        /// 여기 없는 중간 뼈는 등분으로 떨어진다 — 팔다리 트위스트본은 아직 실측 전이다.
+        /// <b>나머지 열도 실측으로 채웠다(2026-08-21).</b> 등분으로 두던 팔다리·허리 트위스트본이
+        /// 낙하 때 메시가 무너지던 자리와 정확히 겹쳤다 — 착지 최악 프레임에서 늘어난 삼각형 436개가
+        /// 전부 이 뼈들에 몰려 있었고, 그 자리의 조인트 이탈은 0.19cm 였다(관절이 벌어져서 생긴 것이
+        /// 아니라는 뜻이다). <see cref="LastShiftRagdollBendShareProbe"/> 가 뼈마다 몫을 0~1 로 쓸며
+        /// 늘어난 삼각형을 세고 최솟값을 고른 결과다. 구간 합계 5,667 → 3,430.
+        ///
+        /// <b>목 몫이 0/50 에서 40/25 로 바뀐 이유.</b> 2026-08-19 실측은 굽힘이 <b>회전만</b> 나뉘던
+        /// 때 잰 값이다. 지금은 위치도 같은 몫으로 섞으므로 같은 몫이 다른 결과를 낸다. 표를 손으로
+        /// 고치지 말고 <see cref="LastShiftRagdollBendShareProbe"/> 를 다시 돌려라.
+        ///
+        /// <b>좌우 값이 다른 것은 오타가 아니다.</b> 왼다리는 어떤 몫을 줘도 안 낫는다 —
+        /// 같은 부호·같은 각도에서 왼 발목 1,339 대 오른 발목 10, 왼 무릎 1,133 대 오른 무릎 47 이다.
+        /// 몫으로 지울 수 있는 몫이 아니라 <b>웨이트</b> 문제라 아트에 넘겼다.
         /// </summary>
         public static readonly (string BoneName, float Share)[] BendShares =
         {
-            ("DEF-spine.004", 0f),
-            ("DEF-spine.005", 0.5f)
+            ("DEF-spine.001", 0.15f),
+            ("DEF-spine.002", 0.30f),
+            ("DEF-spine.004", 0.40f),
+            ("DEF-spine.005", 0.25f),
+            ("DEF-thigh.L.001", 1.00f),
+            ("DEF-thigh.R.001", 0.60f),
+            ("DEF-shin.L.001", 0.30f),
+            ("DEF-shin.R.001", 0.35f),
+            ("DEF-upper_arm.L.001", 0.20f),
+            ("DEF-upper_arm.R.001", 0.10f),
+            ("DEF-forearm.L.001", 0.25f),
+            ("DEF-forearm.R.001", 0.15f)
         };
 
         /// <summary>표에 있으면 실측 몫, 없으면 등분 몫을 돌려준다.</summary>
@@ -225,6 +247,18 @@ namespace DoodleUp.Runtime
                 if (BendShares[i].BoneName == boneName) return BendShares[i].Share;
 
             return (index + 1f) / (midCount + 1f);
+        }
+
+        /// <summary>
+        /// 이 뼈의 몫이 실측값인가. 등분 대체값은 <b>추정치</b>라, 리그가 바뀌어 새 중간 뼈가
+        /// 생기면 아무 말 없이 추정치로 돌아간다 — 검사가 이것으로 그 순간을 잡는다.
+        /// </summary>
+        public static bool HasMeasuredBendShare(string boneName)
+        {
+            for (var i = 0; i < BendShares.Length; i++)
+                if (BendShares[i].BoneName == boneName) return true;
+
+            return false;
         }
 
         /// <summary>
