@@ -1,0 +1,63 @@
+{
+  "source": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "canonical_body": "LastShift_LimeAlien_Body",
+  "source_digest_before": "aa0b93be0cc3d4df0f23f13e9984ee37d48afba45aea38771cd4a12d1b8f4b85",
+  "source_digest_after": "aa0b93be0cc3d4df0f23f13e9984ee37d48afba45aea38771cd4a12d1b8f4b85",
+  "source_unchanged": true,
+  "guardrail_profile": {
+    "relaxed": "preview copy may change actual basis coordinates",
+    "retained": [
+      "canonical source remains byte-for-byte geometrically unchanged",
+      "topology counts remain identical",
+      "open mouth boundary vertices remain pinned",
+      "maximum displacement stays within 2.5% of source diagonal"
+    ]
+  },
+  "topology_before": {
+    "vertices": 5711,
+    "edges": 15651,
+    "polygons": 9942,
+    "triangles": 11382,
+    "boundary_edges": 36,
+    "interior_nonmanifold_edges": 0,
+    "loose_edges": 0
+  },
+  "topology_after": {
+    "vertices": 5711,
+    "edges": 15651,
+    "polygons": 9942,
+    "triangles": 11382,
+    "boundary_edges": 36,
+    "interior_nonmanifold_edges": 0,
+    "loose_edges": 0
+  },
+  "relaxation": {
+    "iterations": 3,
+    "lambda_factor": 0.32,
+    "mu_factor": -0.34,
+    "movable_vertices": 5675,
+    "boundary_vertices_pinned": 36,
+    "moved_vertices": 5675,
+    "mean_displacement": 0.0006654572603855324,
+    "p95_displacement": 0.0018843842225063365,
+    "max_displacement": 0.005788445726813732,
+    "boundary_max_displacement": 0.0,
+    "laplacian_mean_before": 0.0033143476910883827,
+    "laplacian_mean_after": 0.0027948870589284166,
+    "source_diagonal": 1.286810045645636,
+    "max_displacement_ratio": 0.004498290751149268,
+    "laplacian_roughness_reduction": 0.15673088057619655
+  },
+  "renders": [
+    "lime-alien-vertex-relax-front.png",
+    "lime-alien-vertex-relax-oblique.png",
+    "lime-alien-vertex-relax-wire.png"
+  ],
+  "visual_review": {
+    "silhouette": "head, belly, hands, and feet remain readable at front and 24-degree oblique views",
+    "surface": "eye surround, neck, forearms, and thighs show reduced faceting on the relaxed copy",
+    "retained_detail": "eye rim, open mouth, fingers, and toes remain distinct"
+  },
+  "blend_output": "ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_VertexRelaxPreview.blend",
+  "decision_note": "This preview isolates actual control-vertex relaxation at the original 11.4K-triangle cost. It is evidence for visual review, not a replacement for the current production FBXs."
+}
