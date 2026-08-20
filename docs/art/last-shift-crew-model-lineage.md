@@ -7,9 +7,14 @@
 | 역할 | 경로 |
 | --- | --- |
 | **작업용 blend (정본)** | `ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend` |
-| **Unity 가 쓰는 FBX** | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx` |
+| **Unity 네트워크 플레이어 FBX** | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx` |
+| **Unity 래그돌 랩 FBX** | `Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx` |
 
-FBX 는 위 blend 에서 뽑는다. 경로는 `LastShiftRagdollLabScene.CharacterPrefabPath` 가 들고 있다.
+두 FBX는 모두 위 blend에서 뽑는다. `RigifyDeform`은 실제 네트워크 플레이어와
+`LastShiftCrewRagdoll.prefab`, `RigifySoft`는 래그돌 랩과
+`LastShiftCrewRagdollSoft.prefab`이 기존 GUID로 참조하므로 경로만 둘로 유지한다.
+2026-08-20 재수출 뒤 둘의 임포트 메시·본·웨이트 digest는 동일하다. 서로 다른
+모델 계보로 다시 갈라 작업하지 않는다.
 
 **다른 파일에 작업하지 말 것.** 아래 셋은 과거 계보이고 Unity 는 안 쓴다.
 
@@ -45,9 +50,10 @@ FBX 는 위 blend 에서 뽑는다. 경로는 `LastShiftRagdollLabScene.Characte
 | `DEF-thigh` | 93.6 | 93.8 | 1.00 |
 | `DEF-thigh.001` | 90.2 | 67.6 | 1.33 |
 
-## 남은 작업 — 목 링 하나
+## 목 링 해결 기록
 
-`DEF-spine.004` · `.005` ↔ `.006` 전이대가 좁아 목이 찢어진다.
+`DEF-spine.004` · `.005` ↔ `.006` 전이대가 좁아 목이 찢어지던 문제는
+`Tools/art/rework_lime_alien_canonical.py`로 정본에서 해결했다.
 축을 섞어 재면 목이 버티는 각이 **8도**다(허벅지·무릎·발·팔꿈치·손 60도, 어깨 40도, 가슴 15~20도).
 
 가장 직접적인 증거 — 터진 자리 최악 모서리 양끝 정점, 정지 상태에서 0.93cm 거리:
@@ -72,10 +78,14 @@ B : DEF-spine.006=0.65  DEF-head.soft.eye=0.35            <- 목뼈 웨이트 0
 `.005` 로 옮기는데, `Rigify_Test` 계보에서는 개선이었지만 이 계보에서는 찢어지는
 `.004`↔`.006` 경계를 오히려 날카롭게 만든다. **계보가 다르면 같은 스크립트가 반대로 간다.**
 
-### 판정 기준
+### 판정 결과
 
-블렌더에서 `DEF-spine.006` 만 20도 돌렸을 때 늘어난 삼각형이 크게 줄면 성공이다(현재 32개).
-Unity 반영과 재측정은 이쪽에서 한다. FBX 재수출 불필요 — blend 만 고치면 된다.
+블렌더에서 `DEF-spine.006`만 직접 돌려 Unity의 변형 경계를 재현했다. `X+20°`
+늘어난 삼각형은 `32 → 0`, ±3축 20°는 전부 `0`, ±3축 46°도 전부 `0`이다.
+90° 극단 자세도 모든 축에서 최악 신장과 찢김 수가 감소했다. 변경은 급격한
+이동 영향도 경계에서 네 링 확장한 299정점에 한정했고, 비대상 deform 웨이트와
+정점 위치는 그대로다. 수치와 근접 렌더는
+`docs/art/evidence/last-shift-lime-alien-canonical-rework/`에 있다.
 
 ## 수출 절차
 

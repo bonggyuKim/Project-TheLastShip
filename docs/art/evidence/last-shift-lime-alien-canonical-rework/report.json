@@ -1,0 +1,1511 @@
+{
+  "source": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-315efded-5bbb-4aba-99b4-c76dd949c7db-20260820011250\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "canonical_objects": {
+    "body": "LastShift_LimeAlien_Body",
+    "eyes": "LastShift_LimeAlien_Eyes",
+    "rig": "LastShift_LimeAlien_Rig"
+  },
+  "mesh": {
+    "vertices": 5711,
+    "edges": 15651,
+    "polygons": 9942,
+    "triangles": 11382,
+    "components": [
+      4221,
+      1490
+    ],
+    "smooth_polygons": 9942,
+    "digest": "db31506c978ea7f148a3be44b5099f04ff14c06422d2eb79a9eff3c8726f1b7d"
+  },
+  "rig": {
+    "bones": 232,
+    "deform_bones": 45
+  },
+  "mouth": {
+    "isolated_faces": []
+  },
+  "neck_group_totals": {
+    "DEF-spine.003": 19.05917478131596,
+    "DEF-spine.004": 52.559067086316645,
+    "DEF-spine.005": 54.92116223089397,
+    "DEF-spine.006": 385.7026696500834
+  },
+  "neck_poses": {
+    "X-1_20": {
+      "torn_triangles": 40,
+      "worst_stretch_ratio": 8.333402471142199,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X-1_46": {
+      "torn_triangles": 53,
+      "worst_stretch_ratio": 18.507854707641116,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X-1_90": {
+      "torn_triangles": 82,
+      "worst_stretch_ratio": 33.3593928150141,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X+1_20": {
+      "torn_triangles": 32,
+      "worst_stretch_ratio": 8.127929301990163,
+      "torn_vertices": [
+        {
+          "vertex": 1930,
+          "coordinate": [
+            -0.0361328125,
+            -0.2314453125,
+            0.49609375
+          ],
+          "moving_weight": 0.13430508971214294,
+          "weights": {
+            "DEF-spine.003": 0.085596,
+            "DEF-spine.004": 0.398556,
+            "DEF-spine.005": 0.173507,
+            "DEF-spine.006": 0.134305,
+            "DEF-breast.L": 0.091971,
+            "DEF-breast.R": 0.055672,
+            "CORR_NeckTransition": 0.961914,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 1932,
+          "coordinate": [
+            -0.0458984375,
+            -0.2275390625,
+            0.501953125
+          ],
+          "moving_weight": 0.14845994114875793,
+          "weights": {
+            "DEF-spine.003": 0.076502,
+            "DEF-spine.004": 0.386287,
+            "DEF-spine.005": 0.192212,
+            "DEF-spine.006": 0.14846,
+            "DEF-breast.L": 0.094763,
+            "DEF-breast.R": 0.046046,
+            "CORR_NeckTransition": 0.925293,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 1933,
+          "coordinate": [
+            -0.0517578125,
+            -0.2255859375,
+            0.5078125
+          ],
+          "moving_weight": 0.16278591752052307,
+          "weights": {
+            "DEF-spine.003": 0.069195,
+            "DEF-spine.004": 0.371995,
+            "DEF-spine.005": 0.210581,
+            "DEF-spine.006": 0.162786,
+            "DEF-breast.L": 0.093037,
+            "DEF-breast.R": 0.037385,
+            "CORR_NeckTransition": 0.888672,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 1934,
+          "coordinate": [
+            -0.0634765625,
+            -0.2177734524011612,
+            0.51171875
+          ],
+          "moving_weight": 0.18022166192531586,
+          "weights": {
+            "DEF-spine.003": 0.05733,
+            "DEF-spine.004": 0.352152,
+            "DEF-spine.005": 0.233011,
+            "DEF-spine.006": 0.180222,
+            "DEF-breast.L": 0.096456,
+            "DEF-breast.R": 0.02143,
+            "CORR_NeckTransition": 0.864258,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 1935,
+          "coordinate": [
+            -0.0537109375,
+            -0.2236328125,
+            0.515625
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.573099,
+            "CORR_NeckTransition": 0.839844,
+            "DEF-head.soft.eye": 0.426901,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2255,
+          "coordinate": [
+            0.0341796912252903,
+            -0.2529296875,
+            0.5234375
+          ],
+          "moving_weight": 1.0000000298023224,
+          "weights": {
+            "DEF-spine.006": 0.509881,
+            "CORR_NeckTransition": 0.791016,
+            "DEF-head.soft.eye": 0.490119,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2257,
+          "coordinate": [
+            0.0205078162252903,
+            -0.2509765625,
+            0.505859375
+          ],
+          "moving_weight": 0.17839853465557098,
+          "weights": {
+            "DEF-spine.003": 0.075729,
+            "DEF-spine.004": 0.329589,
+            "DEF-spine.005": 0.193369,
+            "DEF-spine.006": 0.178399,
+            "DEF-breast.L": 0.047627,
+            "DEF-breast.R": 0.104682,
+            "CORR_NeckTransition": 0.900879,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2258,
+          "coordinate": [
+            0.012695315293967724,
+            -0.2490234375,
+            0.498046875
+          ],
+          "moving_weight": 0.15555071830749512,
+          "weights": {
+            "DEF-spine.003": 0.081823,
+            "DEF-spine.004": 0.360512,
+            "DEF-spine.005": 0.175239,
+            "DEF-spine.006": 0.155551,
+            "DEF-breast.L": 0.054221,
+            "DEF-breast.R": 0.100064,
+            "CORR_NeckTransition": 0.949707,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2266,
+          "coordinate": [
+            -0.006835935637354851,
+            -0.2412109375,
+            0.501953125
+          ],
+          "moving_weight": 0.14436300098896027,
+          "weights": {
+            "DEF-spine.003": 0.095362,
+            "DEF-spine.004": 0.369281,
+            "DEF-spine.005": 0.181407,
+            "DEF-spine.006": 0.144363,
+            "DEF-breast.L": 0.065839,
+            "DEF-breast.R": 0.082144,
+            "CORR_NeckTransition": 0.925293,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2269,
+          "coordinate": [
+            -0.01660156063735485,
+            -0.2373046875,
+            0.501953125
+          ],
+          "moving_weight": 0.14054518938064575,
+          "weights": {
+            "DEF-spine.003": 0.097601,
+            "DEF-spine.004": 0.37338,
+            "DEF-spine.005": 0.182479,
+            "DEF-spine.006": 0.140545,
+            "DEF-breast.L": 0.074504,
+            "DEF-breast.R": 0.072698,
+            "CORR_NeckTransition": 0.925293,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2270,
+          "coordinate": [
+            -0.02441406063735485,
+            -0.2353515625,
+            0.501953125
+          ],
+          "moving_weight": 0.14006420969963074,
+          "weights": {
+            "DEF-spine.003": 0.094672,
+            "DEF-spine.004": 0.378016,
+            "DEF-spine.005": 0.183566,
+            "DEF-spine.006": 0.140064,
+            "DEF-breast.L": 0.080988,
+            "DEF-breast.R": 0.065511,
+            "CORR_NeckTransition": 0.925293,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2271,
+          "coordinate": [
+            -0.0205078125,
+            -0.2294921875,
+            0.505859375
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.620558,
+            "CORR_NeckTransition": 0.900879,
+            "DEF-head.soft.eye": 0.379442,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2272,
+          "coordinate": [
+            -0.0146484375,
+            -0.2314453125,
+            0.50390625
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.642284,
+            "CORR_NeckTransition": 0.913086,
+            "DEF-head.soft.eye": 0.357716,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2273,
+          "coordinate": [
+            -0.0185546875,
+            -0.2236328125,
+            0.50390625
+          ],
+          "moving_weight": 0.15314160287380219,
+          "weights": {
+            "DEF-spine.003": 0.106083,
+            "DEF-spine.004": 0.335013,
+            "DEF-spine.005": 0.211801,
+            "DEF-spine.006": 0.153142,
+            "DEF-breast.L": 0.078409,
+            "DEF-breast.R": 0.069242,
+            "CORR_NeckTransition": 0.913086,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2274,
+          "coordinate": [
+            -0.006835936568677425,
+            -0.2353515625,
+            0.50390625
+          ],
+          "moving_weight": 1.0000000298023224,
+          "weights": {
+            "DEF-spine.006": 0.64244,
+            "CORR_NeckTransition": 0.913086,
+            "DEF-head.soft.eye": 0.35756,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2275,
+          "coordinate": [
+            -0.0126953125,
+            -0.2255859375,
+            0.50390625
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.649785,
+            "CORR_NeckTransition": 0.913086,
+            "DEF-head.soft.eye": 0.350215,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2277,
+          "coordinate": [
+            0.0029296816792339087,
+            -0.1806640625,
+            0.4921875
+          ],
+          "moving_weight": 0.12610319256782532,
+          "weights": {
+            "DEF-spine.003": 0.164319,
+            "DEF-spine.004": 0.324569,
+            "DEF-spine.005": 0.242821,
+            "DEF-spine.006": 0.126103,
+            "DEF-breast.L": 0.031953,
+            "DEF-breast.R": 0.075917,
+            "CORR_NeckTransition": 0.986328,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2278,
+          "coordinate": [
+            -0.006835944019258022,
+            -0.1767578125,
+            0.4921875
+          ],
+          "moving_weight": 0.12445218116044998,
+          "weights": {
+            "DEF-spine.003": 0.165889,
+            "DEF-spine.004": 0.329016,
+            "DEF-spine.005": 0.247127,
+            "DEF-spine.006": 0.124452,
+            "DEF-breast.L": 0.036413,
+            "DEF-breast.R": 0.066517,
+            "CORR_NeckTransition": 0.986328,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2279,
+          "coordinate": [
+            0.0009765635477378964,
+            -0.2373046875,
+            0.505859375
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.622806,
+            "CORR_NeckTransition": 0.900879,
+            "DEF-head.soft.eye": 0.377194,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2280,
+          "coordinate": [
+            -0.0009765606373548508,
+            -0.2431640625,
+            0.50390625
+          ],
+          "moving_weight": 0.15185900032520294,
+          "weights": {
+            "DEF-spine.003": 0.092305,
+            "DEF-spine.004": 0.358356,
+            "DEF-spine.005": 0.186449,
+            "DEF-spine.006": 0.151859,
+            "DEF-breast.L": 0.061017,
+            "DEF-breast.R": 0.087932,
+            "CORR_NeckTransition": 0.913086,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2290,
+          "coordinate": [
+            0.004882813896983862,
+            -0.2412109375,
+            0.5078125
+          ],
+          "moving_weight": 1.0000000298023224,
+          "weights": {
+            "DEF-spine.006": 0.604594,
+            "CORR_NeckTransition": 0.888672,
+            "DEF-head.soft.eye": 0.395406,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2298,
+          "coordinate": [
+            0.0068359398283064365,
+            -0.2470703125,
+            0.505859375
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.642469,
+            "CORR_NeckTransition": 0.900879,
+            "DEF-head.soft.eye": 0.357531,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2299,
+          "coordinate": [
+            0.01269531436264515,
+            -0.2470703125,
+            0.509765625
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.600199,
+            "CORR_NeckTransition": 0.876465,
+            "DEF-head.soft.eye": 0.399801,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2338,
+          "coordinate": [
+            0.0341796912252903,
+            -0.2529296875,
+            0.509765625
+          ],
+          "moving_weight": 0.1984652727842331,
+          "weights": {
+            "DEF-spine.003": 0.066365,
+            "DEF-spine.004": 0.306526,
+            "DEF-spine.005": 0.2008,
+            "DEF-spine.006": 0.198465,
+            "DEF-shoulder.R": 0.004665,
+            "DEF-breast.L": 0.035039,
+            "DEF-breast.R": 0.114064,
+            "CORR_NeckTransition": 0.876465,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2345,
+          "coordinate": [
+            0.02441406436264515,
+            -0.2509765625,
+            0.513671875
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.591822,
+            "CORR_NeckTransition": 0.852051,
+            "DEF-head.soft.eye": 0.408178,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2366,
+          "coordinate": [
+            -0.0634765625,
+            -0.2177734524011612,
+            0.525390625
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.499191,
+            "CORR_NeckTransition": 0.778809,
+            "DEF-head.soft.eye": 0.500809,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2370,
+          "coordinate": [
+            -0.0439453125,
+            -0.2275390625,
+            0.513671875
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.558615,
+            "CORR_NeckTransition": 0.852051,
+            "DEF-head.soft.eye": 0.441385,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2382,
+          "coordinate": [
+            -0.0361328162252903,
+            -0.2197265625,
+            0.533203125
+          ],
+          "moving_weight": 0.9999999701976776,
+          "weights": {
+            "DEF-spine.006": 0.306402,
+            "CORR_NeckTransition": 0.72998,
+            "DEF-head.soft.eye": 0.693598,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2383,
+          "coordinate": [
+            -0.030273444950580597,
+            -0.1728515625,
+            0.521484375
+          ],
+          "moving_weight": 0.1729177087545395,
+          "weights": {
+            "DEF-spine.003": 0.103662,
+            "DEF-spine.004": 0.292477,
+            "DEF-spine.005": 0.300915,
+            "DEF-spine.006": 0.172918,
+            "DEF-breast.L": 0.051934,
+            "DEF-breast.R": 0.053953,
+            "CORR_NeckTransition": 0.803223,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2386,
+          "coordinate": [
+            -0.008789075538516045,
+            -0.1337890625,
+            0.521484375
+          ],
+          "moving_weight": 0.0989292711019516,
+          "weights": {
+            "DEF-spine.003": 0.057093,
+            "DEF-spine.004": 0.300133,
+            "DEF-spine.005": 0.470794,
+            "DEF-spine.006": 0.098929,
+            "DEF-breast.R": 0.02822,
+            "CORR_NeckTransition": 0.803223,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 2387,
+          "coordinate": [
+            -0.026367194950580597,
+            -0.1748046875,
+            0.52734375
+          ],
+          "moving_weight": 1.0000000298023224,
+          "weights": {
+            "DEF-spine.006": 0.613695,
+            "CORR_NeckTransition": 0.766602,
+            "DEF-head.soft.eye": 0.386305,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 3182,
+          "coordinate": [
+            -0.0380859375,
+            -0.2294921875,
+            0.5078125
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.621791,
+            "CORR_NeckTransition": 0.888672,
+            "DEF-head.soft.eye": 0.378209,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 3184,
+          "coordinate": [
+            -0.0322265625,
+            -0.2333984375,
+            0.50390625
+          ],
+          "moving_weight": 0.14419977366924286,
+          "weights": {
+            "DEF-spine.003": 0.089484,
+            "DEF-spine.004": 0.378051,
+            "DEF-spine.005": 0.189633,
+            "DEF-spine.006": 0.1442,
+            "DEF-breast.L": 0.085672,
+            "DEF-breast.R": 0.058787,
+            "CORR_NeckTransition": 0.913086,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 3185,
+          "coordinate": [
+            -0.0341796875,
+            -0.2275390625,
+            0.509765625
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.590125,
+            "CORR_NeckTransition": 0.876465,
+            "DEF-head.soft.eye": 0.409875,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 3186,
+          "coordinate": [
+            -0.0283203125,
+            -0.2275390625,
+            0.5078125
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.606425,
+            "CORR_NeckTransition": 0.888672,
+            "DEF-head.soft.eye": 0.393575,
+            "BellySoft_Goal": 1.0
+          }
+        },
+        {
+          "vertex": 3187,
+          "coordinate": [
+            -0.02636718936264515,
+            -0.2216796875,
+            0.5078125
+          ],
+          "moving_weight": 1.0,
+          "weights": {
+            "DEF-spine.006": 0.612663,
+            "CORR_NeckTransition": 0.888672,
+            "DEF-head.soft.eye": 0.387337,
+            "BellySoft_Goal": 1.0
+          }
+        }
+      ],
+      "worst": [
+        {
+          "triangle": 4512,
+          "vertices": [
+            2279,
+            2274,
+            2266
+          ],
+          "ratio": 8.127929301990163,
+          "weights": {
+            "2279": {
+              "DEF-spine.006": 0.622806,
+              "CORR_NeckTransition": 0.900879,
+              "DEF-head.soft.eye": 0.377194,
+              "BellySoft_Goal": 1.0
+            },
+            "2274": {
+              "DEF-spine.006": 0.64244,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.35756,
+              "BellySoft_Goal": 1.0
+            },
+            "2266": {
+              "DEF-spine.003": 0.095362,
+              "DEF-spine.004": 0.369281,
+              "DEF-spine.005": 0.181407,
+              "DEF-spine.006": 0.144363,
+              "DEF-breast.L": 0.065839,
+              "DEF-breast.R": 0.082144,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4504,
+          "vertices": [
+            2269,
+            2266,
+            2274
+          ],
+          "ratio": 8.127929301990163,
+          "weights": {
+            "2269": {
+              "DEF-spine.003": 0.097601,
+              "DEF-spine.004": 0.37338,
+              "DEF-spine.005": 0.182479,
+              "DEF-spine.006": 0.140545,
+              "DEF-breast.L": 0.074504,
+              "DEF-breast.R": 0.072698,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            },
+            "2266": {
+              "DEF-spine.003": 0.095362,
+              "DEF-spine.004": 0.369281,
+              "DEF-spine.005": 0.181407,
+              "DEF-spine.006": 0.144363,
+              "DEF-breast.L": 0.065839,
+              "DEF-breast.R": 0.082144,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            },
+            "2274": {
+              "DEF-spine.006": 0.64244,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.35756,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4514,
+          "vertices": [
+            2279,
+            2266,
+            2280
+          ],
+          "ratio": 7.734663184659424,
+          "weights": {
+            "2279": {
+              "DEF-spine.006": 0.622806,
+              "CORR_NeckTransition": 0.900879,
+              "DEF-head.soft.eye": 0.377194,
+              "BellySoft_Goal": 1.0
+            },
+            "2266": {
+              "DEF-spine.003": 0.095362,
+              "DEF-spine.004": 0.369281,
+              "DEF-spine.005": 0.181407,
+              "DEF-spine.006": 0.144363,
+              "DEF-breast.L": 0.065839,
+              "DEF-breast.R": 0.082144,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            },
+            "2280": {
+              "DEF-spine.003": 0.092305,
+              "DEF-spine.004": 0.358356,
+              "DEF-spine.005": 0.186449,
+              "DEF-spine.006": 0.151859,
+              "DEF-breast.L": 0.061017,
+              "DEF-breast.R": 0.087932,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4534,
+          "vertices": [
+            2290,
+            2279,
+            2280
+          ],
+          "ratio": 7.734663184659424,
+          "weights": {
+            "2290": {
+              "DEF-spine.006": 0.604594,
+              "CORR_NeckTransition": 0.888672,
+              "DEF-head.soft.eye": 0.395406,
+              "BellySoft_Goal": 1.0
+            },
+            "2279": {
+              "DEF-spine.006": 0.622806,
+              "CORR_NeckTransition": 0.900879,
+              "DEF-head.soft.eye": 0.377194,
+              "BellySoft_Goal": 1.0
+            },
+            "2280": {
+              "DEF-spine.003": 0.092305,
+              "DEF-spine.004": 0.358356,
+              "DEF-spine.005": 0.186449,
+              "DEF-spine.006": 0.151859,
+              "DEF-breast.L": 0.061017,
+              "DEF-breast.R": 0.087932,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4502,
+          "vertices": [
+            2271,
+            2269,
+            2272
+          ],
+          "ratio": 7.629880311176012,
+          "weights": {
+            "2271": {
+              "DEF-spine.006": 0.620558,
+              "CORR_NeckTransition": 0.900879,
+              "DEF-head.soft.eye": 0.379442,
+              "BellySoft_Goal": 1.0
+            },
+            "2269": {
+              "DEF-spine.003": 0.097601,
+              "DEF-spine.004": 0.37338,
+              "DEF-spine.005": 0.182479,
+              "DEF-spine.006": 0.140545,
+              "DEF-breast.L": 0.074504,
+              "DEF-breast.R": 0.072698,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            },
+            "2272": {
+              "DEF-spine.006": 0.642284,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.357716,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4505,
+          "vertices": [
+            2269,
+            2274,
+            2272
+          ],
+          "ratio": 7.629880311176012,
+          "weights": {
+            "2269": {
+              "DEF-spine.003": 0.097601,
+              "DEF-spine.004": 0.37338,
+              "DEF-spine.005": 0.182479,
+              "DEF-spine.006": 0.140545,
+              "DEF-breast.L": 0.074504,
+              "DEF-breast.R": 0.072698,
+              "CORR_NeckTransition": 0.925293,
+              "BellySoft_Goal": 1.0
+            },
+            "2274": {
+              "DEF-spine.006": 0.64244,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.35756,
+              "BellySoft_Goal": 1.0
+            },
+            "2272": {
+              "DEF-spine.006": 0.642284,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.357716,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4506,
+          "vertices": [
+            2273,
+            2272,
+            2275
+          ],
+          "ratio": 7.498239965191828,
+          "weights": {
+            "2273": {
+              "DEF-spine.003": 0.106083,
+              "DEF-spine.004": 0.335013,
+              "DEF-spine.005": 0.211801,
+              "DEF-spine.006": 0.153142,
+              "DEF-breast.L": 0.078409,
+              "DEF-breast.R": 0.069242,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            },
+            "2272": {
+              "DEF-spine.006": 0.642284,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.357716,
+              "BellySoft_Goal": 1.0
+            },
+            "2275": {
+              "DEF-spine.006": 0.649785,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.350215,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4509,
+          "vertices": [
+            2273,
+            2275,
+            2277
+          ],
+          "ratio": 7.498239965191828,
+          "weights": {
+            "2273": {
+              "DEF-spine.003": 0.106083,
+              "DEF-spine.004": 0.335013,
+              "DEF-spine.005": 0.211801,
+              "DEF-spine.006": 0.153142,
+              "DEF-breast.L": 0.078409,
+              "DEF-breast.R": 0.069242,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            },
+            "2275": {
+              "DEF-spine.006": 0.649785,
+              "CORR_NeckTransition": 0.913086,
+              "DEF-head.soft.eye": 0.350215,
+              "BellySoft_Goal": 1.0
+            },
+            "2277": {
+              "DEF-spine.003": 0.164319,
+              "DEF-spine.004": 0.324569,
+              "DEF-spine.005": 0.242821,
+              "DEF-spine.006": 0.126103,
+              "DEF-breast.L": 0.031953,
+              "DEF-breast.R": 0.075917,
+              "CORR_NeckTransition": 0.986328,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        }
+      ]
+    },
+    "X+1_46": {
+      "torn_triangles": 47,
+      "worst_stretch_ratio": 18.31465779668947,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X+1_90": {
+      "torn_triangles": 85,
+      "worst_stretch_ratio": 33.21082382253438,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_20": {
+      "torn_triangles": 36,
+      "worst_stretch_ratio": 7.015223012140737,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_46": {
+      "torn_triangles": 49,
+      "worst_stretch_ratio": 15.608420264528748,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_90": {
+      "torn_triangles": 74,
+      "worst_stretch_ratio": 28.170998331099902,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_20": {
+      "torn_triangles": 37,
+      "worst_stretch_ratio": 7.288925180411032,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_46": {
+      "torn_triangles": 49,
+      "worst_stretch_ratio": 15.540640807037589,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_90": {
+      "torn_triangles": 61,
+      "worst_stretch_ratio": 28.11885236778441,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_20": {
+      "torn_triangles": 26,
+      "worst_stretch_ratio": 4.544526411807845,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_46": {
+      "torn_triangles": 42,
+      "worst_stretch_ratio": 9.966198745330956,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_90": {
+      "torn_triangles": 56,
+      "worst_stretch_ratio": 17.92871317038346,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_20": {
+      "torn_triangles": 22,
+      "worst_stretch_ratio": 5.106929751091368,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_46": {
+      "torn_triangles": 41,
+      "worst_stretch_ratio": 10.240755794079005,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_90": {
+      "torn_triangles": 56,
+      "worst_stretch_ratio": 17.863671434251124,
+      "torn_vertices": [],
+      "worst": []
+    }
+  },
+  "neck_rework": {
+    "seam_edges": 89,
+    "candidate_vertices": 299,
+    "changed_vertices": 299,
+    "clamped_vertices": 0,
+    "rings": 4,
+    "iterations": 20,
+    "strength": 0.6,
+    "moving_fraction_before": {
+      "min": 0.021663948161463137,
+      "max": 1.0
+    },
+    "moving_fraction_after": {
+      "min": 0.040966864082065825,
+      "max": 0.9944063614917271
+    },
+    "total_deform_weight_delta_max": 3.725290298461914E-08,
+    "non_target_deform_weight_delta_max": 0.0
+  },
+  "neck_poses_after": {
+    "X-1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.879874563846202,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X-1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.984166432051774,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X-1_90": {
+      "torn_triangles": 47,
+      "worst_stretch_ratio": 4.505015371346858,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X+1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.794824747142272,
+      "torn_vertices": [],
+      "worst": [
+        {
+          "triangle": 4062,
+          "vertices": [
+            2056,
+            2097,
+            2057
+          ],
+          "ratio": 1.794824747142272,
+          "weights": {
+            "2056": {
+              "DEF-spine.003": 0.069615,
+              "DEF-spine.004": 0.080774,
+              "DEF-spine.005": 0.22158,
+              "DEF-spine.006": 0.422988,
+              "DEF-shoulder.L": 0.065216,
+              "DEF-shoulder.R": 0.004112,
+              "DEF-breast.L": 0.014886,
+              "DEF-breast.R": 0.043147,
+              "CORR_NeckTransition": 0.9625,
+              "BellySoft_Goal": 1.0
+            },
+            "2097": {
+              "DEF-spine.003": 0.055752,
+              "DEF-spine.004": 0.088342,
+              "DEF-spine.005": 0.237674,
+              "DEF-spine.006": 0.430486,
+              "DEF-shoulder.L": 0.069994,
+              "DEF-breast.L": 0.049884,
+              "DEF-breast.R": 0.001276,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            },
+            "2057": {
+              "DEF-spine.003": 0.045841,
+              "DEF-spine.004": 0.064373,
+              "DEF-spine.005": 0.162507,
+              "DEF-spine.006": 0.565779,
+              "DEF-shoulder.L": 0.04353,
+              "DEF-breast.L": 0.000143,
+              "DEF-breast.R": 0.032907,
+              "CORR_NeckTransition": 0.949707,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4067,
+          "vertices": [
+            2056,
+            2057,
+            2060
+          ],
+          "ratio": 1.794824747142272,
+          "weights": {
+            "2056": {
+              "DEF-spine.003": 0.069615,
+              "DEF-spine.004": 0.080774,
+              "DEF-spine.005": 0.22158,
+              "DEF-spine.006": 0.422988,
+              "DEF-shoulder.L": 0.065216,
+              "DEF-shoulder.R": 0.004112,
+              "DEF-breast.L": 0.014886,
+              "DEF-breast.R": 0.043147,
+              "CORR_NeckTransition": 0.9625,
+              "BellySoft_Goal": 1.0
+            },
+            "2057": {
+              "DEF-spine.003": 0.045841,
+              "DEF-spine.004": 0.064373,
+              "DEF-spine.005": 0.162507,
+              "DEF-spine.006": 0.565779,
+              "DEF-shoulder.L": 0.04353,
+              "DEF-breast.L": 0.000143,
+              "DEF-breast.R": 0.032907,
+              "CORR_NeckTransition": 0.949707,
+              "BellySoft_Goal": 1.0
+            },
+            "2060": {
+              "DEF-spine.003": 0.071914,
+              "DEF-spine.004": 0.080621,
+              "DEF-spine.005": 0.198919,
+              "DEF-spine.006": 0.405927,
+              "DEF-shoulder.L": 0.055639,
+              "DEF-shoulder.R": 0.037209,
+              "DEF-breast.R": 0.08127,
+              "CORR_NeckTransition": 0.923437,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4154,
+          "vertices": [
+            2097,
+            2096,
+            2057
+          ],
+          "ratio": 1.668112149984617,
+          "weights": {
+            "2097": {
+              "DEF-spine.003": 0.055752,
+              "DEF-spine.004": 0.088342,
+              "DEF-spine.005": 0.237674,
+              "DEF-spine.006": 0.430486,
+              "DEF-shoulder.L": 0.069994,
+              "DEF-breast.L": 0.049884,
+              "DEF-breast.R": 0.001276,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            },
+            "2096": {
+              "DEF-spine.003": 0.037688,
+              "DEF-spine.004": 0.063233,
+              "DEF-spine.005": 0.162234,
+              "DEF-spine.006": 0.598479,
+              "DEF-shoulder.L": 0.044326,
+              "DEF-breast.L": 0.020705,
+              "CORR_NeckTransition": 0.900879,
+              "BellySoft_Goal": 1.0
+            },
+            "2057": {
+              "DEF-spine.003": 0.045841,
+              "DEF-spine.004": 0.064373,
+              "DEF-spine.005": 0.162507,
+              "DEF-spine.006": 0.565779,
+              "DEF-shoulder.L": 0.04353,
+              "DEF-breast.L": 0.000143,
+              "DEF-breast.R": 0.032907,
+              "CORR_NeckTransition": 0.949707,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4153,
+          "vertices": [
+            2090,
+            2096,
+            2097
+          ],
+          "ratio": 1.668112149984617,
+          "weights": {
+            "2090": {
+              "DEF-spine.003": 0.033689,
+              "DEF-spine.004": 0.080079,
+              "DEF-spine.005": 0.187886,
+              "DEF-spine.006": 0.542738,
+              "DEF-shoulder.L": 0.056887,
+              "DEF-breast.L": 0.058969,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            },
+            "2096": {
+              "DEF-spine.003": 0.037688,
+              "DEF-spine.004": 0.063233,
+              "DEF-spine.005": 0.162234,
+              "DEF-spine.006": 0.598479,
+              "DEF-shoulder.L": 0.044326,
+              "DEF-breast.L": 0.020705,
+              "CORR_NeckTransition": 0.900879,
+              "BellySoft_Goal": 1.0
+            },
+            "2097": {
+              "DEF-spine.003": 0.055752,
+              "DEF-spine.004": 0.088342,
+              "DEF-spine.005": 0.237674,
+              "DEF-spine.006": 0.430486,
+              "DEF-shoulder.L": 0.069994,
+              "DEF-breast.L": 0.049884,
+              "DEF-breast.R": 0.001276,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4068,
+          "vertices": [
+            2060,
+            2057,
+            2104
+          ],
+          "ratio": 1.6369023294916587,
+          "weights": {
+            "2060": {
+              "DEF-spine.003": 0.071914,
+              "DEF-spine.004": 0.080621,
+              "DEF-spine.005": 0.198919,
+              "DEF-spine.006": 0.405927,
+              "DEF-shoulder.L": 0.055639,
+              "DEF-shoulder.R": 0.037209,
+              "DEF-breast.R": 0.08127,
+              "CORR_NeckTransition": 0.923437,
+              "BellySoft_Goal": 1.0
+            },
+            "2057": {
+              "DEF-spine.003": 0.045841,
+              "DEF-spine.004": 0.064373,
+              "DEF-spine.005": 0.162507,
+              "DEF-spine.006": 0.565779,
+              "DEF-shoulder.L": 0.04353,
+              "DEF-breast.L": 0.000143,
+              "DEF-breast.R": 0.032907,
+              "CORR_NeckTransition": 0.949707,
+              "BellySoft_Goal": 1.0
+            },
+            "2104": {
+              "DEF-spine.003": 0.043815,
+              "DEF-spine.004": 0.065278,
+              "DEF-spine.005": 0.147904,
+              "DEF-spine.006": 0.550655,
+              "DEF-shoulder.L": 0.030347,
+              "DEF-shoulder.R": 0.020004,
+              "DEF-breast.R": 0.069652,
+              "CORR_NeckTransition": 0.986328,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4069,
+          "vertices": [
+            2060,
+            2104,
+            2061
+          ],
+          "ratio": 1.6369023294916587,
+          "weights": {
+            "2060": {
+              "DEF-spine.003": 0.071914,
+              "DEF-spine.004": 0.080621,
+              "DEF-spine.005": 0.198919,
+              "DEF-spine.006": 0.405927,
+              "DEF-shoulder.L": 0.055639,
+              "DEF-shoulder.R": 0.037209,
+              "DEF-breast.R": 0.08127,
+              "CORR_NeckTransition": 0.923437,
+              "BellySoft_Goal": 1.0
+            },
+            "2104": {
+              "DEF-spine.003": 0.043815,
+              "DEF-spine.004": 0.065278,
+              "DEF-spine.005": 0.147904,
+              "DEF-spine.006": 0.550655,
+              "DEF-shoulder.L": 0.030347,
+              "DEF-shoulder.R": 0.020004,
+              "DEF-breast.R": 0.069652,
+              "CORR_NeckTransition": 0.986328,
+              "BellySoft_Goal": 1.0
+            },
+            "2061": {
+              "DEF-spine.003": 0.063569,
+              "DEF-spine.004": 0.077499,
+              "DEF-spine.005": 0.169861,
+              "DEF-spine.006": 0.390469,
+              "DEF-shoulder.L": 0.038399,
+              "DEF-shoulder.R": 0.063625,
+              "DEF-breast.R": 0.12961,
+              "CORR_NeckTransition": 0.884375,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4053,
+          "vertices": [
+            2090,
+            2097,
+            2051
+          ],
+          "ratio": 1.5512003505119285,
+          "weights": {
+            "2090": {
+              "DEF-spine.003": 0.033689,
+              "DEF-spine.004": 0.080079,
+              "DEF-spine.005": 0.187886,
+              "DEF-spine.006": 0.542738,
+              "DEF-shoulder.L": 0.056887,
+              "DEF-breast.L": 0.058969,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            },
+            "2097": {
+              "DEF-spine.003": 0.055752,
+              "DEF-spine.004": 0.088342,
+              "DEF-spine.005": 0.237674,
+              "DEF-spine.006": 0.430486,
+              "DEF-shoulder.L": 0.069994,
+              "DEF-breast.L": 0.049884,
+              "DEF-breast.R": 0.001276,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            },
+            "2051": {
+              "DEF-spine.003": 0.044269,
+              "DEF-spine.004": 0.107284,
+              "DEF-spine.005": 0.246838,
+              "DEF-spine.006": 0.393931,
+              "DEF-shoulder.L": 0.079878,
+              "DEF-breast.L": 0.081403,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        },
+        {
+          "triangle": 4140,
+          "vertices": [
+            2051,
+            2089,
+            2090
+          ],
+          "ratio": 1.5512003505119285,
+          "weights": {
+            "2051": {
+              "DEF-spine.003": 0.044269,
+              "DEF-spine.004": 0.107284,
+              "DEF-spine.005": 0.246838,
+              "DEF-spine.006": 0.393931,
+              "DEF-shoulder.L": 0.079878,
+              "DEF-breast.L": 0.081403,
+              "CORR_NeckTransition": 0.998535,
+              "BellySoft_Goal": 1.0
+            },
+            "2089": {
+              "DEF-spine.004": 0.084548,
+              "DEF-spine.005": 0.185644,
+              "DEF-spine.006": 0.561367,
+              "DEF-shoulder.L": 0.047322,
+              "DEF-breast.L": 0.073578,
+              "CORR_NeckTransition": 0.864258,
+              "BellySoft_Goal": 1.0
+            },
+            "2090": {
+              "DEF-spine.003": 0.033689,
+              "DEF-spine.004": 0.080079,
+              "DEF-spine.005": 0.187886,
+              "DEF-spine.006": 0.542738,
+              "DEF-shoulder.L": 0.056887,
+              "DEF-breast.L": 0.058969,
+              "CORR_NeckTransition": 0.913086,
+              "BellySoft_Goal": 1.0
+            }
+          }
+        }
+      ]
+    },
+    "X+1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.7757799888112054,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "X+1_90": {
+      "torn_triangles": 15,
+      "worst_stretch_ratio": 3.9939429919273763,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.5791572139089642,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.4200788954220545,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y-1_90": {
+      "torn_triangles": 20,
+      "worst_stretch_ratio": 3.874691921874168,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.571516231494187,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.5139852532167275,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Y+1_90": {
+      "torn_triangles": 14,
+      "worst_stretch_ratio": 3.954214834363346,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.6795927051436188,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.5151546849085786,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z-1_90": {
+      "torn_triangles": 4,
+      "worst_stretch_ratio": 3.5202611630364724,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_20": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 1.6268712097077616,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_46": {
+      "torn_triangles": 0,
+      "worst_stretch_ratio": 2.354619832314117,
+      "torn_vertices": [],
+      "worst": []
+    },
+    "Z+1_90": {
+      "torn_triangles": 6,
+      "worst_stretch_ratio": 3.148267419406355,
+      "torn_vertices": [],
+      "worst": []
+    }
+  },
+  "mesh_digest_before": "db31506c978ea7f148a3be44b5099f04ff14c06422d2eb79a9eff3c8726f1b7d",
+  "mesh_digest_after": "d84c8d3b274a7fc08c860f40b8b984db9e19865000316eda1c208d341ddb492a",
+  "output": "D:\\.adk\\worktrees\\Project-DoodleUp\\card-315efded-5bbb-4aba-99b4-c76dd949c7db-20260820011250\\ArtSource\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
+  "fbx_outputs": [
+    "D:\\.adk\\worktrees\\Project-DoodleUp\\card-315efded-5bbb-4aba-99b4-c76dd949c7db-20260820011250\\Assets\\DoodleUp\\Art\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_RigifyDeform.fbx",
+    "D:\\.adk\\worktrees\\Project-DoodleUp\\card-315efded-5bbb-4aba-99b4-c76dd949c7db-20260820011250\\Assets\\DoodleUp\\Art\\Characters\\LastShiftLimeAlien\\LastShiftLimeAlien_RigifySoft.fbx"
+  ]
+}
