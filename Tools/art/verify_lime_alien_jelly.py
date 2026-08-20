@@ -202,9 +202,9 @@ def main() -> None:
     mouth_transition = mouth_circle.get("face_transition")
     require(
         mouth_transition is not None
-        and mouth_transition["laplacian_roughness_reduction"] >= 0.05
-        and mouth_transition["laplacian_roughness_after"] <= 0.0020
-        and mouth_transition["max_displacement"] <= 0.0015 + 1.0e-8,
+        and mouth_transition["laplacian_roughness_reduction"] >= 0.08
+        and mouth_transition["laplacian_roughness_after"] <= 0.00185
+        and mouth_transition["max_displacement"] <= 0.0022 + 1.0e-8,
         "Final mouth-to-face transition relaxation regressed",
     )
     mouth_cleanup = report.get("mouth_topology_cleanup")

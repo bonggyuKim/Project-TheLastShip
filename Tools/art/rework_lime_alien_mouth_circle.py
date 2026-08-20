@@ -29,7 +29,7 @@ ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v4_subtle_oval"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 ENTRANCE_TARGET_ASPECT = 1.08
 ENTRANCE_ASPECT_TOLERANCE = 0.015
-TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v1"
+TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v2_stronger"
 TRANSITION_PROPERTY = "ADK_MouthFaceTransitionIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
@@ -411,8 +411,8 @@ def relax_mouth_face_transition(
         return sum(values) / len(values)
 
     work = [point.copy() for point in coordinates]
-    for _ in range(5):
-        for factor in (0.35, -0.36):
+    for _ in range(6):
+        for factor in (0.45, -0.46):
             updated = [point.copy() for point in work]
             for index in movable:
                 average = sum(
@@ -423,7 +423,7 @@ def relax_mouth_face_transition(
 
     raw_displacements = {index: work[index] - coordinates[index] for index in movable}
     raw_max = max(delta.length for delta in raw_displacements.values())
-    scale = min(1.0, 0.0015 / raw_max) if raw_max > 0.0 else 1.0
+    scale = min(1.0, 0.0022 / raw_max) if raw_max > 0.0 else 1.0
     result = [point.copy() for point in coordinates]
     for index, delta in raw_displacements.items():
         result[index] = coordinates[index] + delta * scale
@@ -432,9 +432,9 @@ def relax_mouth_face_transition(
     after_roughness = roughness(result)
     displacements = [(result[index] - coordinates[index]).length for index in movable]
     return result, {
-        "iterations": 5,
-        "lambda_factor": 0.35,
-        "mu_factor": -0.36,
+        "iterations": 6,
+        "lambda_factor": 0.45,
+        "mu_factor": -0.46,
         "first_face_ring_vertices": sorted(first_face),
         "second_face_ring_vertices": sorted(second_face),
         "moved_vertices": sum(value > 1.0e-8 for value in displacements),
@@ -698,7 +698,7 @@ def main() -> None:
         "face_transition_max_displacement_bounded": transition_operation[
             "max_displacement"
         ]
-        <= 0.0015 + 1.0e-8,
+        <= 0.0022 + 1.0e-8,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

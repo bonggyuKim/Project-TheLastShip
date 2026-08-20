@@ -23,14 +23,14 @@
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.0031100127424332383,
+    "mean_displacement": 0.0031080117864580007,
     "p95_displacement": 0.008612313638613289,
-    "max_displacement": 0.02537919853963258,
-    "max_displacement_ratio": 0.020003218364991696,
+    "max_displacement": 0.025438254728801273,
+    "max_displacement_ratio": 0.02004976490372108,
     "boundary_max_displacement": 0.0,
-    "laplacian_mean_before": 0.0032793703917074475,
-    "laplacian_mean_after": 0.001771976582605537,
-    "laplacian_roughness_reduction": 0.4596595166296742,
+    "laplacian_mean_before": 0.003274319026882698,
+    "laplacian_mean_after": 0.0017717216283494744,
+    "laplacian_roughness_reduction": 0.45890378616031346,
     "shape_keys_translated": 91,
     "max_shape_delta_error": 1.501712528671799e-08
   },
@@ -38,20 +38,20 @@
     "applied": true,
     "boundary_vertices": 20,
     "before": {
-      "center_x": 0.00882615428417921,
-      "center_z": 0.5104651898145676,
-      "width": 0.036519477143883705,
-      "height": 0.03887644410133362,
-      "width_to_height": 0.9393728770227455,
-      "mean_radius": 0.01847735989080488,
-      "radius_cv": 0.07735626376387321,
-      "mean_edge_length": 0.008231317216572895,
-      "edge_length_cv": 0.21313701624934553,
-      "depth_range": 0.024132952094078064
+      "center_x": 0.008813338819891214,
+      "center_z": 0.5104733854532242,
+      "width": 0.03650593664497137,
+      "height": 0.03886422514915466,
+      "width_to_height": 0.9393198115971035,
+      "mean_radius": 0.018472924939284867,
+      "radius_cv": 0.07740343851536746,
+      "mean_edge_length": 0.008229850810712497,
+      "edge_length_cv": 0.21324686602394463,
+      "depth_range": 0.024118930101394653
     },
     "operation": {
-      "target_radius": 0.018839767858138044,
-      "target_phase_radians": -1.5829049125586305,
+      "target_radius": 0.018833314505490948,
+      "target_phase_radians": -1.5831973917331224,
       "target_winding": -1,
       "radius_scale": 1.0,
       "target_aspect": 1.0,
@@ -62,38 +62,38 @@
         0
       ],
       "moved_vertices": 61,
-      "mean_displacement": 0.001981564635507268,
-      "max_displacement": 0.006921452895883371
+      "mean_displacement": 0.001985398376872095,
+      "max_displacement": 0.006916061956037231
     },
     "after": {
-      "center_x": 0.008826153818517923,
-      "center_z": 0.5104651749134064,
-      "width": 0.03767677303403616,
-      "height": 0.03767675161361694,
-      "width_to_height": 1.0000005685314763,
-      "mean_radius": 0.01883976647576468,
-      "radius_cv": 7.566142876654199e-07,
-      "mean_edge_length": 0.006140139674440057,
-      "edge_length_cv": 0.03886803726463598,
-      "depth_range": 0.014494910836219788
+      "center_x": 0.008813339285552502,
+      "center_z": 0.5104734003543854,
+      "width": 0.03766373358666897,
+      "height": 0.03766375780105591,
+      "width_to_height": 0.9999993570905201,
+      "mean_radius": 0.01883331714871738,
+      "radius_cv": 6.958189625384032e-07,
+      "mean_edge_length": 0.0061381454229548224,
+      "edge_length_cv": 0.03890220037187629,
+      "depth_range": 0.01449015736579895
     },
     "entrance": {
       "boundary_vertices": 24,
       "before": {
-        "center_x": -0.013432478997856379,
-        "center_z": 0.5237004607915878,
-        "width": 0.055264766328036785,
-        "height": 0.05129554867744446,
-        "width_to_height": 1.0773793779953789,
-        "mean_radius": 0.02663814261441176,
-        "radius_cv": 0.04373755275529733,
-        "mean_edge_length": 0.008311692591772463,
-        "edge_length_cv": 0.1593027603823445,
-        "depth_range": 0.024025022983551025
+        "center_x": -0.013408401515334845,
+        "center_z": 0.5236393511295319,
+        "width": 0.05536485929042101,
+        "height": 0.05133587121963501,
+        "width_to_height": 1.0784829004566496,
+        "mean_radius": 0.02669465823588282,
+        "radius_cv": 0.04431395793610028,
+        "mean_edge_length": 0.008313508233863544,
+        "edge_length_cv": 0.1617555632073573,
+        "depth_range": 0.0240023136138916
       },
       "operation": {
-        "target_radius": 0.026621591384285256,
-        "target_phase_radians": -2.927469255507103,
+        "target_radius": 0.026656159169253294,
+        "target_phase_radians": -2.926235597593407,
         "target_winding": 1,
         "radius_scale": 1.0,
         "target_aspect": 1.08,
@@ -104,26 +104,26 @@
           23
         ],
         "moved_vertices": 139,
-        "mean_displacement": 0.0009265357076410162,
-        "max_displacement": 0.004544726549764563
+        "mean_displacement": 0.0009371333333198781,
+        "max_displacement": 0.0044823341732705725
       },
       "after": {
-        "center_x": -0.013432478997856379,
-        "center_z": 0.5237004458904266,
-        "width": 0.05526906531304121,
-        "height": 0.051175057888031006,
-        "width_to_height": 1.0800000545962787,
-        "mean_radius": 0.02665115647291134,
-        "radius_cv": 0.027182575426499815,
-        "mean_edge_length": 0.0071522928150474984,
-        "edge_length_cv": 0.04004312989884111,
-        "depth_range": 0.01862773299217224
+        "center_x": -0.013408401980996132,
+        "center_z": 0.5236393362283707,
+        "width": 0.055344048887491226,
+        "height": 0.05124446749687195,
+        "width_to_height": 1.0800004681650663,
+        "mean_radius": 0.026685761816141268,
+        "radius_cv": 0.02718258214337253,
+        "mean_edge_length": 0.00716186036848798,
+        "edge_length_cv": 0.04018007535450687,
+        "depth_range": 0.018657878041267395
       }
     },
     "face_transition": {
-      "iterations": 5,
-      "lambda_factor": 0.35,
-      "mu_factor": -0.36,
+      "iterations": 6,
+      "lambda_factor": 0.45,
+      "mu_factor": -0.46,
       "first_face_ring_vertices": [
         2266,
         2269,
@@ -177,14 +177,14 @@
         2413
       ],
       "moved_vertices": 48,
-      "mean_displacement": 0.00042094854236376505,
-      "max_displacement": 0.001184960959723272,
+      "mean_displacement": 0.0007736822691048149,
+      "max_displacement": 0.0020612393835385857,
       "displacement_scale": 1.0,
-      "laplacian_roughness_before": 0.002103549663594728,
-      "laplacian_roughness_after": 0.0019713020580194576,
-      "laplacian_roughness_reduction": 0.06286878216570091
+      "laplacian_roughness_before": 0.002083069019535907,
+      "laplacian_roughness_after": 0.0018248694933089057,
+      "laplacian_roughness_reduction": 0.12395149839275432
     },
-    "shape_key_relative_delta_max_error": 1.1641532182693481e-10
+    "shape_key_relative_delta_max_error": 0.0
   },
   "mouth_topology_cleanup": {
     "angle_degrees": 89.0,
@@ -210,14 +210,14 @@
   "eyes_all_smooth": true,
   "shadow_evidence": {
     "path": "docs/art/evidence/last-shift-lime-alien-jelly-production/lime-alien-jelly-production-shadow.png",
-    "bytes": 1056947,
+    "bytes": 1056957,
     "width": 1600,
     "height": 900,
     "lower_half_luminance_spread": 0.473139611057937
   },
   "joint_pose_evidence": {
     "path": "lime-alien-jelly-production-joint-pose.png",
-    "bytes": 1050919,
+    "bytes": 1051440,
     "controls_degrees": {
       "thigh_fk.L": -34.0,
       "shin_fk.L": 68.0,
@@ -229,7 +229,7 @@
   "runtime_fbxs": [
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
-      "sha256": "50ebf55a2db30ba003160c6acb6c4af05e14dde532de72bac828f3bcdd8b71dc",
+      "sha256": "60c8c1337c5bd40968e57c08c9b27d58697b2e566529291eb725c4e100e25d8d",
       "body": {
         "vertices": 24032,
         "polygons": 23994,
@@ -246,7 +246,7 @@
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
-      "sha256": "2b3e6f8479190902e71b87f35845220c65a28556739b8a456048c36d01baccf5",
+      "sha256": "40bfcc79af278b0c22e95d4248a165392e117cb3fa3fae85db6122099e43231d",
       "body": {
         "vertices": 24032,
         "polygons": 23994,

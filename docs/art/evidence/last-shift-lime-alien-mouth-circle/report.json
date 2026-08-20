@@ -1,6 +1,6 @@
 {
   "source": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256_before": "332d8f86c5800b53adfeed25069fcdb72095867d660b59409dee9da663885804",
+  "source_sha256_before": "b5a348d771cb718b583e1d5a51a7cc3223d0c967d0dc990367f56ae5b48ad3b9",
   "shape_keys": 92,
   "mouth_boundary_indices": [
     2281,
@@ -108,9 +108,9 @@
     }
   },
   "face_transition": {
-    "iterations": 5,
-    "lambda_factor": 0.35,
-    "mu_factor": -0.36,
+    "iterations": 6,
+    "lambda_factor": 0.45,
+    "mu_factor": -0.46,
     "first_face_ring_vertices": [
       2266,
       2269,
@@ -164,12 +164,12 @@
       2413
     ],
     "moved_vertices": 48,
-    "mean_displacement": 0.0007257635356294262,
-    "max_displacement": 0.001499989780467079,
-    "displacement_scale": 0.6941801600069896,
-    "laplacian_roughness_before": 0.0025685528535190406,
-    "laplacian_roughness_after": 0.0019512912388175655,
-    "laplacian_roughness_reduction": 0.24031493603715304
+    "mean_displacement": 0.0010522909903803118,
+    "max_displacement": 0.0021999911478473473,
+    "displacement_scale": 0.9329402213984689,
+    "laplacian_roughness_before": 0.0019512912388175655,
+    "laplacian_roughness_after": 0.0012715009102316909,
+    "laplacian_roughness_reduction": 0.34837973699805613
   },
   "regression_checks": {
     "topology_unchanged": true,
@@ -182,5 +182,5 @@
     "face_transition_max_displacement_bounded": true
   },
   "output": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "output_sha256": "b5a348d771cb718b583e1d5a51a7cc3223d0c967d0dc990367f56ae5b48ad3b9"
+  "output_sha256": "e9fdee1c4c5226d483ae010c50b18478a4456f803ed1540f87e64f34e15db2ce"
 }
