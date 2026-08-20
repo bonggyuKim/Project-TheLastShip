@@ -1,6 +1,6 @@
 {
   "source": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "source_sha256_before": "b5a348d771cb718b583e1d5a51a7cc3223d0c967d0dc990367f56ae5b48ad3b9",
+  "source_sha256_before": "332d8f86c5800b53adfeed25069fcdb72095867d660b59409dee9da663885804",
   "shape_keys": 92,
   "mouth_boundary_indices": [
     2281,
@@ -163,13 +163,69 @@
       2412,
       2413
     ],
-    "moved_vertices": 48,
-    "mean_displacement": 0.0010522909903803118,
-    "max_displacement": 0.0021999911478473473,
-    "displacement_scale": 0.9329402213984689,
-    "laplacian_roughness_before": 0.0019512912388175655,
-    "laplacian_roughness_after": 0.0012715009102316909,
-    "laplacian_roughness_reduction": 0.34837973699805613
+    "third_face_ring_vertices": [
+      1927,
+      1928,
+      1929,
+      1934,
+      2013,
+      2014,
+      2015,
+      2254,
+      2255,
+      2256,
+      2259,
+      2262,
+      2264,
+      2268,
+      2338,
+      2340,
+      2343,
+      2349,
+      2350,
+      2365,
+      2366,
+      2405,
+      2407
+    ],
+    "fourth_face_boundary_vertices": [
+      1922,
+      1923,
+      1924,
+      1926,
+      2004,
+      2010,
+      2012,
+      2017,
+      2023,
+      2249,
+      2250,
+      2251,
+      2252,
+      2253,
+      2261,
+      2263,
+      2339,
+      2341,
+      2346,
+      2362,
+      2363,
+      2364,
+      2408
+    ],
+    "ring_influence": [
+      0.75,
+      0.5,
+      0.25,
+      0.0
+    ],
+    "moved_vertices": 71,
+    "mean_displacement": 0.000521321128958986,
+    "max_displacement": 0.0017999974296665378,
+    "displacement_scale": 0.7981240587189176,
+    "laplacian_roughness_before": 0.00279688542225908,
+    "laplacian_roughness_after": 0.0023532418788340427,
+    "laplacian_roughness_reduction": 0.1586205641083076
   },
   "regression_checks": {
     "topology_unchanged": true,
@@ -182,5 +238,5 @@
     "face_transition_max_displacement_bounded": true
   },
   "output": "D:/.adk/worktrees/Project-DoodleUp/card-b55d906d-0716-49d8-9cbd-f5c903ab3257-20260820081908/ArtSource/Characters/LastShiftLimeAlien/LastShiftLimeAlien_UnityExport_LeftToeFixed.blend",
-  "output_sha256": "e9fdee1c4c5226d483ae010c50b18478a4456f803ed1540f87e64f34e15db2ce"
+  "output_sha256": "749a179247098f8c13590e63974d1ab12831c71e41f4723272e9f79eb029e62a"
 }

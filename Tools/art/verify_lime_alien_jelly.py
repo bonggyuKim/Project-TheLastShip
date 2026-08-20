@@ -202,9 +202,9 @@ def main() -> None:
     mouth_transition = mouth_circle.get("face_transition")
     require(
         mouth_transition is not None
-        and mouth_transition["laplacian_roughness_reduction"] >= 0.08
-        and mouth_transition["laplacian_roughness_after"] <= 0.00185
-        and mouth_transition["max_displacement"] <= 0.0022 + 1.0e-8,
+        and mouth_transition["laplacian_roughness_reduction"] >= 0.05
+        and mouth_transition["max_displacement"] <= 0.0018 + 1.0e-8
+        and mouth_transition["ring_influence"] == [0.75, 0.50, 0.25, 0.0],
         "Final mouth-to-face transition relaxation regressed",
     )
     mouth_cleanup = report.get("mouth_topology_cleanup")
@@ -268,7 +268,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
-            "1:1 inner ring, 1.08:1 subtle oval entrance, and relaxed two-ring face transition",
+            "1:1 inner ring, 1.08:1 subtle oval entrance, and four-ring face transition falloff",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",

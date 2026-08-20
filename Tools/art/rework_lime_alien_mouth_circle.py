@@ -29,7 +29,7 @@ ENTRANCE_MARKER = "ADK_MouthEntranceCircleRework_v4_subtle_oval"
 ENTRANCE_PROPERTY = "ADK_MouthEntranceBoundaryIndices"
 ENTRANCE_TARGET_ASPECT = 1.08
 ENTRANCE_ASPECT_TOLERANCE = 0.015
-TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v2_stronger"
+TRANSITION_MARKER = "ADK_MouthFaceTransitionRelax_v3_four_ring_falloff"
 TRANSITION_PROPERTY = "ADK_MouthFaceTransitionIndices"
 RING_FALLOFF = (0.66, 0.36, 0.16)
 
@@ -217,8 +217,8 @@ def select_mouth_face_rings(
     mesh: bpy.types.Mesh,
     inner_loop: set[int],
     neighbors: list[set[int]],
-) -> tuple[set[int], set[int]]:
-    """Select the two face-side rings immediately outside the visible rim."""
+) -> tuple[set[int], set[int], set[int], set[int]]:
+    """Select four successive face-side rings outside the visible rim."""
     entrance, _, first_outer = select_mouth_ring_stack(mesh, inner_loop, neighbors)
 
     def in_face_patch(index: int, outer: bool = False) -> bool:
@@ -242,12 +242,36 @@ def select_mouth_face_rings(
         and linked not in first_outer
         and in_face_patch(linked, outer=True)
     }
-    if len(first_face) != 24 or len(second_face) != 24:
+    third_face = {
+        linked
+        for index in second_face
+        for linked in neighbors[index]
+        if linked not in first_face
+        and linked not in second_face
+        and linked not in entrance
+        and linked not in first_outer
+        and -0.12 < mesh.vertices[linked].co.x < 0.10
+        and 0.42 < mesh.vertices[linked].co.z < 0.61
+    }
+    fourth_face = {
+        linked
+        for index in third_face
+        for linked in neighbors[index]
+        if linked not in first_face
+        and linked not in second_face
+        and linked not in third_face
+        and linked not in entrance
+        and linked not in first_outer
+        and -0.14 < mesh.vertices[linked].co.x < 0.12
+        and 0.40 < mesh.vertices[linked].co.z < 0.63
+    }
+    sizes = tuple(map(len, (first_face, second_face, third_face, fourth_face)))
+    if sizes != (24, 24, 23, 23):
         raise RuntimeError(
-            "Could not isolate the two 24-vertex face transition rings: "
-            f"first={len(first_face)}, second={len(second_face)}"
+            "Could not isolate the four mouth-to-face transition rings: "
+            f"sizes={sizes}"
         )
-    return first_face, second_face
+    return first_face, second_face, third_face, fourth_face
 
 
 def ordered_by_angle(mesh: bpy.types.Mesh, indices: set[int]) -> list[int]:
@@ -397,9 +421,16 @@ def relax_mouth_face_transition(
     inner_loop: set[int],
     neighbors: list[set[int]],
 ) -> tuple[list[Vector], dict[str, object]]:
-    """Relax only the first two face-side rings while keeping the rim fixed."""
-    first_face, second_face = select_mouth_face_rings(mesh, inner_loop, neighbors)
-    movable = first_face | second_face
+    """Blend the mouth into the face over four rings with a tapered falloff."""
+    first_face, second_face, third_face, fourth_face = select_mouth_face_rings(
+        mesh, inner_loop, neighbors
+    )
+    movable = first_face | second_face | third_face
+    influence = {
+        **{index: 0.75 for index in first_face},
+        **{index: 0.50 for index in second_face},
+        **{index: 0.25 for index in third_face},
+    }
 
     def roughness(points: list[Vector]) -> float:
         values = []
@@ -418,12 +449,14 @@ def relax_mouth_face_transition(
                 average = sum(
                     (work[linked] for linked in neighbors[index]), Vector()
                 ) / len(neighbors[index])
-                updated[index] = work[index] + (average - work[index]) * factor
+                updated[index] = work[index] + (
+                    average - work[index]
+                ) * factor * influence[index]
             work = updated
 
     raw_displacements = {index: work[index] - coordinates[index] for index in movable}
     raw_max = max(delta.length for delta in raw_displacements.values())
-    scale = min(1.0, 0.0022 / raw_max) if raw_max > 0.0 else 1.0
+    scale = min(1.0, 0.0018 / raw_max) if raw_max > 0.0 else 1.0
     result = [point.copy() for point in coordinates]
     for index, delta in raw_displacements.items():
         result[index] = coordinates[index] + delta * scale
@@ -437,6 +470,9 @@ def relax_mouth_face_transition(
         "mu_factor": -0.46,
         "first_face_ring_vertices": sorted(first_face),
         "second_face_ring_vertices": sorted(second_face),
+        "third_face_ring_vertices": sorted(third_face),
+        "fourth_face_boundary_vertices": sorted(fourth_face),
+        "ring_influence": [0.75, 0.50, 0.25, 0.0],
         "moved_vertices": sum(value > 1.0e-8 for value in displacements),
         "mean_displacement": sum(displacements) / len(displacements),
         "max_displacement": max(displacements),
@@ -680,6 +716,8 @@ def main() -> None:
     body[TRANSITION_PROPERTY] = (
         transition_operation["first_face_ring_vertices"]
         + transition_operation["second_face_ring_vertices"]
+        + transition_operation["third_face_ring_vertices"]
+        + transition_operation["fourth_face_boundary_vertices"]
     )
     report["regression_checks"] = {
         "topology_unchanged": topology_digest(mesh) == topology_before,
@@ -698,7 +736,7 @@ def main() -> None:
         "face_transition_max_displacement_bounded": transition_operation[
             "max_displacement"
         ]
-        <= 0.0022 + 1.0e-8,
+        <= 0.0018 + 1.0e-8,
     }
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

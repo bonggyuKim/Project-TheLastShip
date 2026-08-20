@@ -23,35 +23,35 @@
     "movable_vertices": 5675,
     "boundary_vertices_pinned": 36,
     "moved_vertices": 5675,
-    "mean_displacement": 0.0031080117864580007,
+    "mean_displacement": 0.003110087092919094,
     "p95_displacement": 0.008612313638613289,
-    "max_displacement": 0.025438254728801273,
-    "max_displacement_ratio": 0.02004976490372108,
+    "max_displacement": 0.025388666066497128,
+    "max_displacement_ratio": 0.02001068042124821,
     "boundary_max_displacement": 0.0,
-    "laplacian_mean_before": 0.003274319026882698,
-    "laplacian_mean_after": 0.0017717216283494744,
-    "laplacian_roughness_reduction": 0.45890378616031346,
+    "laplacian_mean_before": 0.003279024498431138,
+    "laplacian_mean_after": 0.0017719306677372586,
+    "laplacian_roughness_reduction": 0.45961652052766133,
     "shape_keys_translated": 91,
-    "max_shape_delta_error": 1.501712528671799e-08
+    "max_shape_delta_error": 1.5359765386647212e-08
   },
   "mouth_circle_post_relaxation": {
     "applied": true,
     "boundary_vertices": 20,
     "before": {
-      "center_x": 0.008813338819891214,
-      "center_z": 0.5104733854532242,
-      "width": 0.03650593664497137,
-      "height": 0.03886422514915466,
-      "width_to_height": 0.9393198115971035,
-      "mean_radius": 0.018472924939284867,
-      "radius_cv": 0.07740343851536746,
-      "mean_edge_length": 0.008229850810712497,
-      "edge_length_cv": 0.21324686602394463,
-      "depth_range": 0.024118930101394653
+      "center_x": 0.008822459261864424,
+      "center_z": 0.5104669779539108,
+      "width": 0.036501542665064335,
+      "height": 0.03886750340461731,
+      "width_to_height": 0.9391275350278375,
+      "mean_radius": 0.018470685413033695,
+      "radius_cv": 0.07743989541857542,
+      "mean_edge_length": 0.008229005544549795,
+      "edge_length_cv": 0.2131504320944157,
+      "depth_range": 0.024126634001731873
     },
     "operation": {
-      "target_radius": 0.018833314505490948,
-      "target_phase_radians": -1.5831973917331224,
+      "target_radius": 0.018832975294733517,
+      "target_phase_radians": -1.5829063446927507,
       "target_winding": -1,
       "radius_scale": 1.0,
       "target_aspect": 1.0,
@@ -62,38 +62,38 @@
         0
       ],
       "moved_vertices": 61,
-      "mean_displacement": 0.001985398376872095,
-      "max_displacement": 0.006916061956037231
+      "mean_displacement": 0.0019816959785188344,
+      "max_displacement": 0.006921826232546952
     },
     "after": {
-      "center_x": 0.008813339285552502,
-      "center_z": 0.5104734003543854,
-      "width": 0.03766373358666897,
-      "height": 0.03766375780105591,
-      "width_to_height": 0.9999993570905201,
-      "mean_radius": 0.01883331714871738,
-      "radius_cv": 6.958189625384032e-07,
-      "mean_edge_length": 0.0061381454229548224,
-      "edge_length_cv": 0.03890220037187629,
-      "depth_range": 0.01449015736579895
+      "center_x": 0.008822459261864424,
+      "center_z": 0.5104669630527496,
+      "width": 0.03766318876296282,
+      "height": 0.037663161754608154,
+      "width_to_height": 1.0000007171026914,
+      "mean_radius": 0.01883297584868738,
+      "radius_cv": 7.346227473099529e-07,
+      "mean_edge_length": 0.006137919036820178,
+      "edge_length_cv": 0.03886738522905321,
+      "depth_range": 0.014489874243736267
     },
     "entrance": {
       "boundary_vertices": 24,
       "before": {
-        "center_x": -0.013408401515334845,
-        "center_z": 0.5236393511295319,
-        "width": 0.05536485929042101,
-        "height": 0.05133587121963501,
-        "width_to_height": 1.0784829004566496,
-        "mean_radius": 0.02669465823588282,
-        "radius_cv": 0.04431395793610028,
-        "mean_edge_length": 0.008313508233863544,
-        "edge_length_cv": 0.1617555632073573,
-        "depth_range": 0.0240023136138916
+        "center_x": -0.013415447901934385,
+        "center_z": 0.5237036198377609,
+        "width": 0.05536320898681879,
+        "height": 0.05136016011238098,
+        "width_to_height": 1.0779407397811602,
+        "mean_radius": 0.02667685350125695,
+        "radius_cv": 0.04370360099027186,
+        "mean_edge_length": 0.008319623171810588,
+        "edge_length_cv": 0.15979207332231207,
+        "depth_range": 0.024026960134506226
       },
       "operation": {
-        "target_radius": 0.026656159169253294,
-        "target_phase_radians": -2.926235597593407,
+        "target_radius": 0.026662067051797685,
+        "target_phase_radians": -2.927342762945835,
         "target_winding": 1,
         "radius_scale": 1.0,
         "target_aspect": 1.08,
@@ -104,20 +104,20 @@
           23
         ],
         "moved_vertices": 139,
-        "mean_displacement": 0.0009371333333198781,
-        "max_displacement": 0.0044823341732705725
+        "mean_displacement": 0.0009249883081640416,
+        "max_displacement": 0.0045525666959881275
       },
       "after": {
-        "center_x": -0.013408401980996132,
-        "center_z": 0.5236393362283707,
-        "width": 0.055344048887491226,
-        "height": 0.05124446749687195,
-        "width_to_height": 1.0800004681650663,
-        "mean_radius": 0.026685761816141268,
-        "radius_cv": 0.02718258214337253,
-        "mean_edge_length": 0.00716186036848798,
-        "edge_length_cv": 0.04018007535450687,
-        "depth_range": 0.018657878041267395
+        "center_x": -0.01341544883325696,
+        "center_z": 0.5237036347389221,
+        "width": 0.05535343196243048,
+        "height": 0.05125319957733154,
+        "width_to_height": 1.0799995399099416,
+        "mean_radius": 0.02669168018942654,
+        "radius_cv": 0.027182507129622693,
+        "mean_edge_length": 0.007163151799708042,
+        "edge_length_cv": 0.04012708889321646,
+        "depth_range": 0.018648013472557068
       }
     },
     "face_transition": {
@@ -176,15 +176,71 @@
         2412,
         2413
       ],
-      "moved_vertices": 48,
-      "mean_displacement": 0.0007736822691048149,
-      "max_displacement": 0.0020612393835385857,
+      "third_face_ring_vertices": [
+        1927,
+        1928,
+        1929,
+        1934,
+        2013,
+        2014,
+        2015,
+        2254,
+        2255,
+        2256,
+        2259,
+        2262,
+        2264,
+        2268,
+        2338,
+        2340,
+        2343,
+        2349,
+        2350,
+        2365,
+        2366,
+        2405,
+        2407
+      ],
+      "fourth_face_boundary_vertices": [
+        1922,
+        1923,
+        1924,
+        1926,
+        2004,
+        2010,
+        2012,
+        2017,
+        2023,
+        2249,
+        2250,
+        2251,
+        2252,
+        2253,
+        2261,
+        2263,
+        2339,
+        2341,
+        2346,
+        2362,
+        2363,
+        2364,
+        2408
+      ],
+      "ring_influence": [
+        0.75,
+        0.5,
+        0.25,
+        0.0
+      ],
+      "moved_vertices": 71,
+      "mean_displacement": 0.0003586427306369126,
+      "max_displacement": 0.001415558889358493,
       "displacement_scale": 1.0,
-      "laplacian_roughness_before": 0.002083069019535907,
-      "laplacian_roughness_after": 0.0018248694933089057,
-      "laplacian_roughness_reduction": 0.12395149839275432
+      "laplacian_roughness_before": 0.0017299894822661716,
+      "laplacian_roughness_after": 0.001633331910771457,
+      "laplacian_roughness_reduction": 0.05587176828849827
     },
-    "shape_key_relative_delta_max_error": 0.0
+    "shape_key_relative_delta_max_error": 1.1641532182693481e-10
   },
   "mouth_topology_cleanup": {
     "angle_degrees": 89.0,
@@ -210,14 +266,14 @@
   "eyes_all_smooth": true,
   "shadow_evidence": {
     "path": "docs/art/evidence/last-shift-lime-alien-jelly-production/lime-alien-jelly-production-shadow.png",
-    "bytes": 1056957,
+    "bytes": 1056969,
     "width": 1600,
     "height": 900,
     "lower_half_luminance_spread": 0.473139611057937
   },
   "joint_pose_evidence": {
     "path": "lime-alien-jelly-production-joint-pose.png",
-    "bytes": 1051440,
+    "bytes": 1051303,
     "controls_degrees": {
       "thigh_fk.L": -34.0,
       "shin_fk.L": 68.0,
@@ -229,7 +285,7 @@
   "runtime_fbxs": [
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifyDeform.fbx",
-      "sha256": "60c8c1337c5bd40968e57c08c9b27d58697b2e566529291eb725c4e100e25d8d",
+      "sha256": "bc13fc6864fd9d1430fe85e05ffa4e5387e2710c717878323a8291b27ad8cc73",
       "body": {
         "vertices": 24032,
         "polygons": 23994,
@@ -246,7 +302,7 @@
     },
     {
       "path": "Assets/DoodleUp/Art/Characters/LastShiftLimeAlien/LastShiftLimeAlien_RigifySoft.fbx",
-      "sha256": "40bfcc79af278b0c22e95d4248a165392e117cb3fa3fae85db6122099e43231d",
+      "sha256": "e868c4e3cc195151606211371d8c5b1d4c35d305611be318b3d2fcc147f299e3",
       "body": {
         "vertices": 24032,
         "polygons": 23994,
@@ -266,7 +322,7 @@
     "authoring topology and smooth shading",
     "92 shape keys and REST rig",
     "bounded vertex relaxation and preserved relative shape-key deltas",
-    "1:1 inner ring, 1.08:1 subtle oval entrance, and relaxed two-ring face transition",
+    "1:1 inner ring, 1.08:1 subtle oval entrance, and four-ring face transition falloff",
     "Catmull-Clark L1 contract",
     "cast-shadow evidence value separation",
     "asymmetric FK elbow and knee stress-pose evidence",
