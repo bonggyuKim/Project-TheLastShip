@@ -29,11 +29,15 @@ from mathutils import Quaternion, Vector
 BODY_NAME = "LastShift_LimeAlien_Body"
 RIG_NAME = "LastShift_LimeAlien_Rig"
 HIP_ROOT = "DEF-thigh.L"
+HIP_LOWER_EXTENT = 0.08
 MOUTH_CENTER = Vector((-0.014025, -0.211263, 0.577113))
 MOUTH_HALF_EXTENT = Vector((0.075, 0.055, 0.045))
-REWORK_MARKER = "ADK_HipMouthGeometryRework_v2_strengthened"
-PREVIOUS_REWORK_MARKERS = ("ADK_HipMouthGeometryRework_v1",)
-MIN_HIP_ROUGHNESS_REDUCTION = 0.24
+REWORK_MARKER = "ADK_HipMouthGeometryRework_v3_leg_strengthened"
+PREVIOUS_REWORK_MARKERS = (
+    "ADK_HipMouthGeometryRework_v1",
+    "ADK_HipMouthGeometryRework_v2_strengthened",
+)
+MIN_HIP_ROUGHNESS_REDUCTION = 0.40
 MIN_MOUTH_ROUGHNESS_REDUCTION = 0.32
 
 
@@ -44,12 +48,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--analyze-only", action="store_true")
-    parser.add_argument("--iterations", type=int, default=6)
-    parser.add_argument("--lambda-factor", type=float, default=0.38)
-    parser.add_argument("--mu-factor", type=float, default=-0.40)
+    parser.add_argument("--hip-iterations", type=int, default=12)
+    parser.add_argument("--hip-lambda-factor", type=float, default=0.8)
+    parser.add_argument("--hip-mu-factor", type=float, default=-0.82)
+    parser.add_argument("--mouth-iterations", type=int, default=6)
+    parser.add_argument("--mouth-lambda-factor", type=float, default=0.38)
+    parser.add_argument("--mouth-mu-factor", type=float, default=-0.40)
     parser.add_argument("--hip-rings", type=int, default=3)
     parser.add_argument("--mouth-rings", type=int, default=4)
-    parser.add_argument("--hip-max-displacement", type=float, default=0.008)
+    parser.add_argument("--hip-max-displacement", type=float, default=0.012)
     parser.add_argument("--mouth-max-displacement", type=float, default=0.005)
     return parser.parse_args(raw)
 
@@ -175,7 +182,7 @@ def select_hip_region(
     if hip is None:
         raise RuntimeError(f"Missing hip bone: {HIP_ROOT}")
     joint = hip.head_local
-    minimum = Vector((joint.x - 0.11, joint.y - 0.13, joint.z - 0.08))
+    minimum = Vector((joint.x - 0.11, joint.y - 0.13, joint.z - HIP_LOWER_EXTENT))
     maximum = Vector((joint.x + 0.055, joint.y + 0.13, joint.z + 0.105))
     thigh_names = descendants(rig, HIP_ROOT)
     allowed: set[int] = set()
@@ -573,10 +580,14 @@ def render_closeup(
 
 def main() -> None:
     args = parse_args()
-    if not 1 <= args.iterations <= 8:
-        raise RuntimeError("--iterations must be in [1, 8]")
-    if not 0.0 < args.lambda_factor < 1.0 or not -1.0 < args.mu_factor < 0.0:
-        raise RuntimeError("Invalid Taubin factors")
+    if not 1 <= args.hip_iterations <= 12:
+        raise RuntimeError("--hip-iterations must be in [1, 12]")
+    if not 1 <= args.mouth_iterations <= 12:
+        raise RuntimeError("--mouth-iterations must be in [1, 12]")
+    if not 0.0 < args.hip_lambda_factor < 1.0 or not -1.0 < args.hip_mu_factor < 0.0:
+        raise RuntimeError("Invalid hip Taubin factors")
+    if not 0.0 < args.mouth_lambda_factor < 1.0 or not -1.0 < args.mouth_mu_factor < 0.0:
+        raise RuntimeError("Invalid mouth Taubin factors")
     if not args.analyze_only and args.output is None:
         raise RuntimeError("--output is required unless --analyze-only is used")
 
@@ -630,18 +641,18 @@ def main() -> None:
         before_coordinates,
         neighbors,
         hip_masks,
-        iterations=args.iterations,
-        lambda_factor=args.lambda_factor,
-        mu_factor=args.mu_factor,
+        iterations=args.hip_iterations,
+        lambda_factor=args.hip_lambda_factor,
+        mu_factor=args.hip_mu_factor,
         max_displacement=args.hip_max_displacement,
     )
     mouth_coordinates, mouth_relax = masked_taubin(
         hip_coordinates,
         neighbors,
         mouth_masks,
-        iterations=args.iterations,
-        lambda_factor=args.lambda_factor,
-        mu_factor=args.mu_factor,
+        iterations=args.mouth_iterations,
+        lambda_factor=args.mouth_lambda_factor,
+        mu_factor=args.mouth_mu_factor,
         max_displacement=args.mouth_max_displacement,
     )
     if hip_relax["roughness_reduction"] < MIN_HIP_ROUGHNESS_REDUCTION:
@@ -678,6 +689,8 @@ def main() -> None:
     pose_before = report["before"]["left_hip_groin"]["pose"]
     if pose_after["pose_laplacian_mean"] > pose_before["pose_laplacian_mean"] + 1.0e-6:
         raise RuntimeError("Absolute FK-pose roughness regressed after the geometry correction")
+    if pose_after["max_edge_stretch_ratio"] > pose_before["max_edge_stretch_ratio"] + 1.0e-6:
+        raise RuntimeError("Worst FK-pose edge stretch regressed after the geometry correction")
 
     body[REWORK_MARKER] = True
     report["relaxation"] = {
@@ -707,6 +720,7 @@ def main() -> None:
         "hip_strength_target_met": hip_relax["roughness_reduction"] >= MIN_HIP_ROUGHNESS_REDUCTION,
         "upper_mouth_strength_target_met": mouth_relax["roughness_reduction"] >= MIN_MOUTH_ROUGHNESS_REDUCTION,
         "fk_pose_roughness_not_regressed": pose_after["pose_laplacian_mean"] <= pose_before["pose_laplacian_mean"] + 1.0e-6,
+        "fk_pose_worst_edge_stretch_not_regressed": pose_after["max_edge_stretch_ratio"] <= pose_before["max_edge_stretch_ratio"] + 1.0e-6,
         "weight_redistribution_needed": False,
     }
     report["evidence"] = [
@@ -718,9 +732,9 @@ def main() -> None:
         "mouth-after.png",
     ]
     report["decision"] = (
-        "The strengthened rest-surface correction clears both roughness targets and "
-        "improves absolute roughness in the identical FK pose, so DEF-thigh.L/pelvis "
-        "weights remain unchanged."
+        "The leg-only strength increase clears the hip roughness target and improves "
+        "absolute roughness in the identical FK pose, so DEF-thigh.L/pelvis weights "
+        "remain unchanged. Upper-mouth settings stay at the preceding v2 strength."
     )
 
     output = args.output.resolve()

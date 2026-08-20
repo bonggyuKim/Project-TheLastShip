@@ -157,6 +157,7 @@ def render(
     turntable_degrees: float,
     fit_camera: bool,
     show_labels: bool,
+    show_cavity: bool = True,
 ) -> None:
     for body, eye in zip(bodies, eyes):
         body.rotation_euler.z = math.radians(turntable_degrees)
@@ -176,7 +177,7 @@ def render(
     scene.display.shading.studio_light = "paint.sl"
     scene.display.shading.color_type = "MATERIAL"
     scene.display.shading.show_shadows = True
-    scene.display.shading.show_cavity = True
+    scene.display.shading.show_cavity = show_cavity
     scene.display.shading.cavity_type = "BOTH"
     scene.display.shading.curvature_ridge_factor = 1.35
     scene.display.shading.curvature_valley_factor = 1.15

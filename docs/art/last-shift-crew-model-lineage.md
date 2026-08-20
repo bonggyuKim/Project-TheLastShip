@@ -34,8 +34,10 @@
 3. `Tools/art/fix_lime_alien_left_toe_weights.py` 로 왼발 발가락 웨이트 수정
 4. `Tools/art/rework_last_shift_left_knee_weights.py` 로 왼 무릎 전이 웨이트 수정
 5. `Tools/art/rework_last_shift_hip_mouth_geometry.py` 로 왼 사타구니 3링과
-   윗입술 4링의 강화된 REST 형상 완화(6회 `0.38/-0.40`, 입구 경계·웨이트·
-   상대 셰이프키 고정)
+   윗입술 4링의 강화된 REST 형상 완화(왼다리 12회 `0.8/-0.82`, 윗입술
+   6회 `0.38/-0.40`, 입구 경계·웨이트·상대 셰이프키 고정)
+6. `Tools/art/rework_lime_alien_mouth_circle.py` 로 실제 닫힌 입 함몰의 20정점
+   립 링을 면적 보존 정원으로 재배치하고 주변 3링을 감쇠 연결
 
 뼈 232개(소프트 변형본 `DEF-head.soft.*` · `DEF-belly.soft.*` 열 개 포함). 아마추어는 REST 포즈로 저장돼 있다.
 
@@ -43,9 +45,9 @@
 포즈 시험을 하려면 먼저 `arm.data.pose_position = 'POSE'` 를 줘야 한다.
 
 실제 게임 표시용 젤리 표면은 이 정본을 입력으로 만든
-`LastShiftLimeAlien_UnityExport_Jelly.blend`에 저장한다. 제어 메시의 82.7%를
-쿼드화한 초기 제작본에서, 2026-08-20 최종본은 제어 정점 완화와 쿼드화
-(77.8%), Catmull-Clark L1을 통합했다. `RigifyDeform` / `RigifySoft` FBX가 현재
+`LastShiftLimeAlien_UnityExport_Jelly.blend`에 저장한다. 2026-08-20 최종본은
+제어 정점 완화, 입의 1:1 정원 복원, 국소 쿼드화(80.4%), Catmull-Clark L1을
+통합했다. `RigifyDeform` / `RigifySoft` FBX가 현재
 런타임 계보다. 본체·눈은 전면 스무스 셰이딩이며 접지·FK 관절 포즈 렌더와
 FBX 재임포트 회귀 결과는 `last-shift-lime-alien-jelly-production` 증거 폴더에 둔다.
 위치·셰이프키·웨이트 정본은 계속 `UnityExport_LeftToeFixed`다.

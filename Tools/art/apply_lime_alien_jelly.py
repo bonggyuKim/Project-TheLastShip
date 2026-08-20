@@ -44,12 +44,28 @@ from render_lime_alien_vertex_relax_preview import (  # noqa: E402
     connectivity,
     laplacian_mean,
 )
+from rework_lime_alien_mouth_circle import (  # noqa: E402
+    BOUNDARY_PROPERTY as MOUTH_CIRCLE_BOUNDARY_PROPERTY,
+    MARKER as MOUTH_CIRCLE_MARKER,
+    apply_to_shape_keys as apply_mouth_to_shape_keys,
+    circularize as circularize_mouth,
+    connectivity as mouth_connectivity,
+    loop_metrics as mouth_loop_metrics,
+    ordered_contour as ordered_mouth_contour,
+    select_mouth_contour,
+)
 
 
 BODY_NAME = "LastShift_LimeAlien_Body"
 EYES_NAME = "LastShift_LimeAlien_Eyes"
 RIG_NAME = "LastShift_LimeAlien_Rig"
 MODIFIER_NAME = "Jelly_Surface_Subdivision_L1"
+LOCAL_QUAD_GROUP_TOKENS = ("shin", "foot", "toe", "forearm", "hand")
+MOUTH_QUAD_BOUNDS = {
+    "x": (-0.090, 0.070),
+    "y": (-0.205, -0.110),
+    "z": (0.445, 0.565),
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,6 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fbx-output", type=Path, action="append", default=[])
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--quad-angle", type=float, default=60.0)
+    parser.add_argument("--local-deform-quad-angle", type=float, default=70.0)
     parser.add_argument("--subdivision-level", type=int, default=1)
     parser.add_argument("--relax-iterations", type=int, default=12)
     parser.add_argument("--relax-lambda", type=float, default=0.8)
@@ -303,6 +320,177 @@ def quadify_preserving_boundaries(body: bpy.types.Object, angle_degrees: float) 
     )
     bpy.ops.object.mode_set(mode="OBJECT")
     shade_surface_smooth(body)
+
+
+def restore_circular_mouth_after_relax(body: bpy.types.Object) -> dict[str, object]:
+    """Reassert the authored circular lip ring after whole-body relaxation."""
+    if not body.get(MOUTH_CIRCLE_MARKER):
+        return {"applied": False, "reason": "canonical mouth-circle marker absent"}
+    mesh = body.data
+    neighbors = mouth_connectivity(mesh)
+    stored_loop = body.get(MOUTH_CIRCLE_BOUNDARY_PROPERTY)
+    if stored_loop:
+        loop = [int(index) for index in stored_loop]
+        if len(loop) < 16 or any(
+            loop[(position + 1) % len(loop)] not in neighbors[index]
+            for position, index in enumerate(loop)
+        ):
+            raise RuntimeError("Stored mouth-circle boundary is not a closed mesh loop")
+    else:
+        loop = ordered_mouth_contour(select_mouth_contour(mesh, neighbors), neighbors)
+    before = [vertex.co.copy() for vertex in mesh.vertices]
+    before_metrics = mouth_loop_metrics(before, loop)
+    after, operation = circularize_mouth(before, loop, neighbors, 1.0)
+    shape_error = apply_mouth_to_shape_keys(body, before, after)
+    after_metrics = mouth_loop_metrics(after, loop)
+    if abs(after_metrics["width_to_height"] - 1.0) > 0.03:
+        raise RuntimeError("Post-relax mouth restoration did not preserve a circular aspect")
+    if after_metrics["radius_cv"] > 0.03:
+        raise RuntimeError("Post-relax mouth restoration left an uneven lip radius")
+    if shape_error > 1.0e-6:
+        raise RuntimeError("Post-relax mouth restoration changed relative shape-key deltas")
+    return {
+        "applied": True,
+        "boundary_vertices": len(loop),
+        "before": before_metrics,
+        "operation": operation,
+        "after": after_metrics,
+        "shape_key_relative_delta_max_error": shape_error,
+    }
+
+
+def quadify_deform_regions(
+    body: bpy.types.Object,
+    angle_degrees: float,
+    *,
+    minimum_influence: float = 0.15,
+) -> dict[str, object]:
+    """Join safe residual triangle pairs around wrists, ankles, and mouth.
+
+    The production-wide pass deliberately stops at 60 degrees.  A bounded 70
+    degree follow-up is limited to forearm/hand and shin/foot/toe influences,
+    plus the circular mouth indentation, where the remaining diagonal pairs
+    make the runtime wire needlessly noisy.
+    This changes faces only: vertices, shape-key points, UV boundaries, seams,
+    sharp edges, materials, and skin assignments stay untouched.
+    """
+    if not 60.0 <= angle_degrees <= 70.0:
+        raise RuntimeError("--local-deform-quad-angle must be in [60, 70]")
+    if body.data.shape_keys and any(
+        abs(key.value) > 1.0e-8 for key in body.data.shape_keys.key_blocks
+    ):
+        raise RuntimeError("All canonical shape keys must be zero before topology work")
+
+    group_names = {group.index: group.name.lower() for group in body.vertex_groups}
+    targeted_vertices: set[int] = set()
+    for vertex in body.data.vertices:
+        influence = sum(
+            item.weight
+            for item in vertex.groups
+            if any(
+                token in group_names.get(item.group, "")
+                for token in LOCAL_QUAD_GROUP_TOKENS
+            )
+        )
+        if influence >= minimum_influence:
+            targeted_vertices.add(vertex.index)
+        coordinate = vertex.co
+        if (
+            MOUTH_QUAD_BOUNDS["x"][0] <= coordinate.x <= MOUTH_QUAD_BOUNDS["x"][1]
+            and MOUTH_QUAD_BOUNDS["y"][0] <= coordinate.y <= MOUTH_QUAD_BOUNDS["y"][1]
+            and MOUTH_QUAD_BOUNDS["z"][0] <= coordinate.z <= MOUTH_QUAD_BOUNDS["z"][1]
+        ):
+            targeted_vertices.add(vertex.index)
+
+    activate(body)
+    selected_triangles = 0
+    for polygon in body.data.polygons:
+        polygon.select = len(polygon.vertices) == 3 and sum(
+            index in targeted_vertices for index in polygon.vertices
+        ) >= 2
+        selected_triangles += int(polygon.select)
+    polygons_before = len(body.data.polygons)
+    triangles_before = sum(len(polygon.vertices) == 3 for polygon in body.data.polygons)
+
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.tris_convert_to_quads(
+        face_threshold=math.radians(angle_degrees),
+        shape_threshold=math.radians(angle_degrees),
+        uvs=True,
+        vcols=True,
+        seam=True,
+        sharp=True,
+        materials=True,
+    )
+    bpy.ops.object.mode_set(mode="OBJECT")
+    shade_surface_smooth(body)
+
+    polygons_after = len(body.data.polygons)
+    triangles_after = sum(len(polygon.vertices) == 3 for polygon in body.data.polygons)
+    converted_pairs = polygons_before - polygons_after
+    if triangles_before - triangles_after != converted_pairs * 2:
+        raise RuntimeError("Local deform quad cleanup changed unexpected face types")
+    return {
+        "angle_degrees": angle_degrees,
+        "minimum_influence": minimum_influence,
+        "group_tokens": list(LOCAL_QUAD_GROUP_TOKENS),
+        "mouth_bounds": MOUTH_QUAD_BOUNDS,
+        "targeted_vertices": len(targeted_vertices),
+        "selected_triangles": selected_triangles,
+        "converted_triangle_pairs": converted_pairs,
+        "triangles_removed": triangles_before - triangles_after,
+    }
+
+
+def quadify_mouth_region(body: bpy.types.Object, angle_degrees: float = 89.0) -> dict[str, object]:
+    """Pair residual mouth-fan triangles without crossing authored boundaries."""
+    if not 70.0 < angle_degrees < 90.0:
+        raise RuntimeError("Mouth quad angle must be in (70, 90)")
+    targeted = {
+        vertex.index
+        for vertex in body.data.vertices
+        if MOUTH_QUAD_BOUNDS["x"][0] <= vertex.co.x <= MOUTH_QUAD_BOUNDS["x"][1]
+        and MOUTH_QUAD_BOUNDS["y"][0] <= vertex.co.y <= MOUTH_QUAD_BOUNDS["y"][1]
+        and MOUTH_QUAD_BOUNDS["z"][0] <= vertex.co.z <= MOUTH_QUAD_BOUNDS["z"][1]
+    }
+    activate(body)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    selected = 0
+    for polygon in body.data.polygons:
+        polygon.select = len(polygon.vertices) == 3 and all(
+            index in targeted for index in polygon.vertices
+        )
+        selected += int(polygon.select)
+    body.data.update()
+    polygons_before = len(body.data.polygons)
+    triangles_before = sum(len(polygon.vertices) == 3 for polygon in body.data.polygons)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.tris_convert_to_quads(
+        face_threshold=math.radians(angle_degrees),
+        shape_threshold=math.radians(angle_degrees),
+        uvs=True,
+        vcols=True,
+        seam=True,
+        sharp=True,
+        materials=True,
+    )
+    bpy.ops.object.mode_set(mode="OBJECT")
+    polygons_after = len(body.data.polygons)
+    triangles_after = sum(len(polygon.vertices) == 3 for polygon in body.data.polygons)
+    converted = polygons_before - polygons_after
+    if triangles_before - triangles_after != converted * 2:
+        raise RuntimeError("Mouth quad cleanup changed unexpected face types")
+    shade_surface_smooth(body)
+    return {
+        "angle_degrees": angle_degrees,
+        "bounds": MOUTH_QUAD_BOUNDS,
+        "targeted_vertices": len(targeted),
+        "selected_triangles": selected,
+        "converted_triangle_pairs": converted,
+        "triangles_removed": triangles_before - triangles_after,
+    }
 
 
 def add_authoring_subdivision(body: bpy.types.Object, level: int) -> None:
@@ -590,15 +778,21 @@ def create_evidence(
     target = Vector((center.x, center.y, center.z))
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
     shadow = output_dir / "lime-alien-jelly-production-shadow.png"
+    # The detached evidence-eye copy does not follow the production rig and can
+    # land at the character origin, where it reads as a black crotch sphere.
+    # Omit that evidence-only copy from the full-body shadow plate; runtime eye
+    # export and the dedicated posed evidence remain unchanged.
+    final_eyes.hide_render = True
     render(
         shadow,
         camera,
         [final],
-        [final_eyes],
+        [],
         labels,
         turntable_degrees=24.0,
         fit_camera=False,
         show_labels=False,
+        show_cavity=False,
     )
     if not shadow.exists() or shadow.stat().st_size < 10_000:
         raise RuntimeError("Shadow evidence render was not written correctly")
@@ -623,6 +817,8 @@ def create_evidence(
             "receiver": "EVIDENCE_ShadowReceiver",
             "receiver_visible": True,
             "show_shadows": True,
+            "show_cavity": False,
+            "detached_eye_copy_hidden": True,
             "camera_elevation_ratio": 0.28,
             "bytes": shadow.stat().st_size,
         },
@@ -764,11 +960,16 @@ def main() -> None:
         min_displacement_ratio=args.min_displacement_ratio,
         max_displacement_ratio=args.max_displacement_ratio,
     )
+    mouth_circle_post_relaxation = restore_circular_mouth_after_relax(body)
     relaxed_coordinate_digest = coordinate_digest(body)
     if relaxed_coordinate_digest == source_coordinate_digest:
         raise RuntimeError("Production relaxation did not change authoring coordinates")
 
     quadify_preserving_boundaries(body, args.quad_angle)
+    local_topology_cleanup = quadify_deform_regions(
+        body, args.local_deform_quad_angle
+    )
+    mouth_topology_cleanup = quadify_mouth_region(body)
     after_quadify = face_metrics(body.data)
     require_fully_smooth(body, "Quadified authoring body")
     if after_quadify["vertices"] != before["vertices"]:
@@ -818,8 +1019,11 @@ def main() -> None:
         "source_unchanged": True,
         "output": args.output.as_posix(),
         "quad_angle_degrees": args.quad_angle,
+        "local_topology_cleanup": local_topology_cleanup,
+        "mouth_topology_cleanup": mouth_topology_cleanup,
         "subdivision_level": args.subdivision_level,
         "vertex_relaxation": relaxation,
+        "mouth_circle_post_relaxation": mouth_circle_post_relaxation,
         "authoring_coordinate_digest": relaxed_coordinate_digest,
         "shape_keys_preserved_in_blend": len(shape_key_names),
         "authoring_modifier": MODIFIER_NAME,

@@ -109,7 +109,11 @@ def verify_shadow_image(path: Path) -> dict[str, object]:
         bpy.data.images.remove(image)
 
 
-def verify_fbx(path: Path, expected: dict[str, object]) -> dict[str, object]:
+def verify_fbx(
+    path: Path,
+    expected: dict[str, object],
+    expected_runtime: dict[str, object],
+) -> dict[str, object]:
     resolved = path.resolve()
     require(resolved.exists(), f"Missing runtime FBX: {path}")
     require(sha256(resolved) == expected["sha256"], f"FBX digest mismatch: {path}")
@@ -122,8 +126,14 @@ def verify_fbx(path: Path, expected: dict[str, object]) -> dict[str, object]:
     require(armatures, f"FBX has no armature: {path}")
     body = max(meshes, key=lambda obj: len(obj.data.vertices))
     metrics = topology_metrics(body)
-    require(metrics["vertices"] == 24220, f"Runtime vertex count regressed: {path}")
-    require(metrics["triangles"] == 48364, f"Runtime triangle count regressed: {path}")
+    require(
+        metrics["vertices"] == expected_runtime["vertices"],
+        f"Runtime vertex count differs from production report: {path}",
+    )
+    require(
+        metrics["triangles"] == expected_runtime["triangles"],
+        f"Runtime triangle count differs from production report: {path}",
+    )
     require(metrics["flat_polygons"] == 0, f"Runtime FBX lost smooth shading: {path}")
     require(metrics["interior_nonmanifold_edges"] == 0, f"Runtime FBX is non-manifold: {path}")
     weighted_vertices = sum(bool(vertex.groups) for vertex in body.data.vertices)
@@ -170,13 +180,31 @@ def main() -> None:
     relaxation = report.get("vertex_relaxation")
     require(relaxation is not None, "Production report has no integrated vertex relaxation")
     require(relaxation["moved_vertices"] > 0, "Production vertex relaxation moved no vertices")
+    local_cleanup = report.get("local_topology_cleanup")
+    require(local_cleanup is not None, "Production report has no local topology cleanup")
+    require(
+        local_cleanup["converted_triangle_pairs"] > 0,
+        "Local topology cleanup converted no triangle pairs",
+    )
+    mouth_circle = report.get("mouth_circle_post_relaxation")
+    require(mouth_circle is not None and mouth_circle.get("applied"), "Circular mouth was not restored after relaxation")
+    require(
+        abs(mouth_circle["after"]["width_to_height"] - 1.0) <= 0.03
+        and mouth_circle["after"]["radius_cv"] <= 0.03,
+        "Final authoring mouth ring is not circular",
+    )
+    mouth_cleanup = report.get("mouth_topology_cleanup")
+    require(
+        mouth_cleanup is not None and mouth_cleanup["converted_triangle_pairs"] > 0,
+        "Mouth topology cleanup converted no triangle pairs",
+    )
     require(
         0.020 <= relaxation["max_displacement_ratio"] <= 0.025,
         "Production vertex relaxation exceeded its silhouette guardrail",
     )
     require(
         relaxation["boundary_max_displacement"] < 1.0e-8,
-        "Open mouth boundary moved during production relaxation",
+        "Open mesh boundary moved during production relaxation",
     )
     require(
         relaxation["laplacian_roughness_reduction"] > 0.40,
@@ -206,7 +234,7 @@ def main() -> None:
     for path in args.fbx:
         expected = expected_fbxs.get(path.name)
         require(expected is not None, f"FBX is absent from production report: {path}")
-        runtime.append(verify_fbx(path, expected))
+        runtime.append(verify_fbx(path, expected, report["runtime_baked"]))
     require(len(runtime) == 2, "Both runtime FBXs must be regression-tested")
 
     receipt = {
@@ -216,6 +244,8 @@ def main() -> None:
         "shape_keys": shape_keys,
         "subdivision": {"name": modifier.name, "levels": modifier.levels},
         "vertex_relaxation": relaxation,
+        "mouth_circle_post_relaxation": mouth_circle,
+        "mouth_topology_cleanup": mouth_cleanup,
         "eyes_all_smooth": True,
         "shadow_evidence": shadow,
         "joint_pose_evidence": joint_pose,
@@ -224,6 +254,7 @@ def main() -> None:
             "authoring topology and smooth shading",
             "92 shape keys and REST rig",
             "bounded vertex relaxation and preserved relative shape-key deltas",
+            "1:1 circular mouth ring and local mouth quad cleanup",
             "Catmull-Clark L1 contract",
             "cast-shadow evidence value separation",
             "asymmetric FK elbow and knee stress-pose evidence",
