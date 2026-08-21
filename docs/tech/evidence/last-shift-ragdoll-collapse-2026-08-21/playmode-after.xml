@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.1117254">
+  <test-suite type="TestSuite" id="1084" name="Doodle Up DU-02" fullname="Doodle Up DU-02" runstate="Runnable" testcasecount="56" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.111725" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1077" name="DoodleUp.Tests.PlayMode.dll" fullname="D:/.adk/worktrees/Project-DoodleUp/card-c0672ad5-9ee7-44f1-8a5d-6c967ab9e8f2-20260821010042/Library/ScriptAssemblies/DoodleUp.Tests.PlayMode.dll" runstate="Runnable" testcasecount="56" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.098574" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="58232" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1078" name="DoodleUp" fullname="DoodleUp" runstate="Runnable" testcasecount="56" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.094616" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1079" name="Tests" fullname="DoodleUp.Tests" runstate="Runnable" testcasecount="56" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.091920" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1080" name="PlayMode" fullname="DoodleUp.Tests.PlayMode" runstate="Runnable" testcasecount="56" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.089455" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1042" name="LastShiftRagdollCollapsePlayModeTests" fullname="DoodleUp.Tests.PlayMode.LastShiftRagdollCollapsePlayModeTests" classname="DoodleUp.Tests.PlayMode.LastShiftRagdollCollapsePlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.081565" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1043" name="DroppedCrewKeepsItsSilhouetteAndJointLimits" fullname="DoodleUp.Tests.PlayMode.LastShiftRagdollCollapsePlayModeTests.DroppedCrewKeepsItsSilhouetteAndJointLimits" methodname="DroppedCrewKeepsItsSilhouetteAndJointLimits" classname="DoodleUp.Tests.PlayMode.LastShiftRagdollCollapsePlayModeTests" runstate="Runnable" seed="1450134239" result="Passed" start-time="2026-08-21 01:45:20Z" end-time="2026-08-21 01:45:24Z" duration="4.067157" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[[LAST_SHIFT_RAGDOLL_PLAYMODE] worst=DEF-thigh.R.swing2 55.8/35.0 (+20.8deg) minTorsoSpan=0.983 settledLimb=0.420(DEF-foot.L)
+Saving results to: C:/Users/kkkkk/AppData/LocalLow/DoodleUp/Doodle Up DU-02\TestResults.xml
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
