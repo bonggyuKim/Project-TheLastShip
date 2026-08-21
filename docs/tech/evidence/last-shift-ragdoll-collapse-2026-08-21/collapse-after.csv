@@ -1,0 +1,4 @@
+case,worstJoint,worstAxis,worstDeg,worstLimit,worstExcess,minTorsoSpan,minLimbSpan,foldedLimb,settleTorsoSpan,settleLimbSpan
+fall,DEF-foot.R,swing1,44.2,30.0,14.2,0.974,0.318,DEF-foot.L,0.996,1.000
+shove,DEF-hand.L,swing1,48.3,30.0,18.3,0.981,0.110,DEF-foot.L,0.993,0.129
+drop,DEF-thigh.R,swing2,57.1,35.0,22.1,0.983,0.313,DEF-foot.L,0.984,0.785

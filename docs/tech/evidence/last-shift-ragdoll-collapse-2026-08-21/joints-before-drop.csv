@@ -1,0 +1,15 @@
+joint,kind,worstAxis,worstDeg,limit,excess,twistDeg,swing1Deg,swing2Deg
+DEF-thigh.L,ball,swing1,56.4,30.0,26.4,20.6,4.4,-3.1
+DEF-shin.L,hinge,bend,-89.0,-80.0,9.0,-39.8,-0.2,0.0
+DEF-foot.L,ball,swing1,86.9,30.0,56.9,-25.5,21.2,20.1
+DEF-thigh.R,ball,swing2,27.9,10.0,17.9,-13.2,19.8,-5.1
+DEF-shin.R,hinge,offAxis,21.4,0.0,21.4,-79.9,-0.1,0.3
+DEF-foot.R,ball,twist,82.7,30.0,52.7,12.4,6.0,-17.0
+DEF-upper_arm.L,ball,twist,56.6,50.0,6.6,48.6,9.4,15.6
+DEF-forearm.L,hinge,offAxis,5.7,0.0,5.7,-4.9,-0.4,0.0
+DEF-hand.L,ball,swing2,45.4,20.0,25.4,-42.0,-21.7,17.8
+DEF-upper_arm.R,ball,twist,-10.6,-10.0,0.6,-9.9,-36.2,-3.1
+DEF-forearm.R,hinge,offAxis,6.4,0.0,6.4,3.1,-1.8,0.2
+DEF-hand.R,ball,swing2,34.6,20.0,14.6,-44.6,27.8,-13.8
+DEF-spine.003,ball,swing1,16.9,15.0,1.9,-16.7,-13.6,5.2
+DEF-spine.006,ball,swing1,22.3,20.0,2.3,-5.1,16.7,4.4

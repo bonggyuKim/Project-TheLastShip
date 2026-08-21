@@ -16,15 +16,25 @@ namespace DoodleUp.Editor
     /// 한계가 엉뚱한 자유도를 막고, 정작 접히는 방향은 안 막는다. 그래서 넘어질 때 어느 관절도
     /// "한계 초과" 로 안 찍히면서 팔다리가 몸통까지 접혀 들어갔다(왼발이 골반까지 거리의 19%).
     ///
-    /// <b>한계 숫자는 안 바꾼다.</b> 프리팹의 한계는 <see cref="LastShiftRagdollSkinLimits"/> 가
-    /// <c>min(원본, 스킨여유)</c> 로 이 프리팹에 맞춰 잡아 둔 값이다. 축과 한계를 한꺼번에 바꾸면
-    /// 나아졌는지 나빠졌는지를 못 가른다. 여기서는 <b>축만</b> 고친다.
+    /// <b>한계는 표에서 다시 읽는다.</b> 프리팹의 한계는 <see cref="LastShiftRagdollSkinLimits"/> 가
+    /// <c>min(원본, 스킨여유)</c> 로 잡는 값이고, 이 도구는 그 표를 그대로 다시 굽는다 —
+    /// 조인트에 지금 걸려 있는 숫자를 베껴 쓰지 않는다. (처음에는 "축과 한계를 한꺼번에 바꾸면
+    /// 나아졌는지 나빠졌는지를 못 가른다"는 이유로 베껴 썼는데, 그 결정이 이 카드를 재오픈시켰다 —
+    /// 아래를 보라.)
     ///
     /// <b>무릎·팔꿈치는 경첩으로 바꾼다.</b> 그 둘의 한계는 스윙 5/5 에 비틀림 80~90도인데,
     /// 이것은 "비틀림 축을 굽힘 축으로 쓰는 경첩"을 <see cref="CharacterJoint"/> 로 흉내 낸 것이다.
     /// 축을 규칙대로 뼈 방향에 맞추면 그 흉내가 깨져 다리가 막대가 된다. 프록시 빌더는 이미
     /// 같은 이유로 <see cref="HingeJoint"/> 를 쓴다(커밋 <c>62134a4</c>: CharacterJoint 로 두면
     /// 한계 85도인 무릎이 175도까지 접혔다). 같은 결정을 프리팹에도 적용한다.
+    ///
+    /// <b>축·한계·바디 설정을 한 번에 굽는다(2026-08-21 추가).</b> 처음에는 축만 고치고 한계는
+    /// 일부러 안 건드렸는데, 그 한계 숫자들은 <b>축이 어긋나 있던 때</b> 손으로 잡은 값이라
+    /// 축을 돌리는 순간 같은 숫자가 다른 자유도에 걸렸다 — 엉덩이에서 옛 축 기준 "굽힘" 이던
+    /// <c>-20..70</c> 이 넓적다리를 제 축 둘레로 90도 돌리는 허가가 됐고, 사용자가 본 화면은
+    /// 고치기 <b>전보다 심했다</b>. 그래서 <see cref="LastShiftRagdollSkinLimits"/> 의 한계와
+    /// <see cref="LastShiftRagdollBodySetup"/>(솔버 반복·디페네트레이션 — 직렬화가 안 되는 값들)을
+    /// 여기서 같이 넣는다. 갈라 두면 그 반쪽 상태가 또 나온다.
     ///
     /// 되돌릴 수 있게 만들었다 — 다시 돌려도 같은 결과가 나오고(멱등), 무엇을 바꿨는지 표로 찍는다.
     /// </summary>
@@ -51,6 +61,17 @@ namespace DoodleUp.Editor
 
                 if (write)
                 {
+                    // <b>축과 한계와 바디 설정은 한 번에 같이 간다.</b> 2026-08-21 에 축만 고치고
+                    // 한계를 그대로 뒀더니 프리팹이 반만 고쳐진 채로 나갔다 — 같은 숫자가 다른
+                    // 자유도에 걸려 엉덩이가 90도 돌아갔고, 사용자가 본 것은 <b>더 심해진</b>
+                    // 붕괴였다. 셋을 갈라 두면 그 반쪽 상태가 또 나온다.
+                    foreach (var line in LastShiftRagdollSkinLimits.Apply(root)) log.Add($"limit,{line.Trim()}");
+                    if (root.GetComponent<LastShiftRagdollBodySetup>() == null)
+                    {
+                        root.AddComponent<LastShiftRagdollBodySetup>();
+                        log.Add("body,setup,added,-,solver/depenetration");
+                    }
+
                     PrefabUtility.SaveAsPrefabAsset(root, path);
                     AssetDatabase.SaveAssets();
                 }
