@@ -88,6 +88,10 @@ namespace DoodleUp.Editor
             var selfCollision = subject.GetComponent<LastShiftRagdollSelfCollision>();
             var follow = subject.GetComponent<LastShiftRagdollSkinFollow>();
             if (selfCollision != null) selfCollision.Apply();
+            // 플레이가 아니면 Awake 가 안 도므로 바디 안정화 설정도 손으로 밟는다.
+            // 이것을 빼면 검사만 Unity 기본 솔버로 돌아 실제와 다른 값이 나온다.
+            var bodySetup = subject.GetComponent<LastShiftRagdollBodySetup>();
+            if (bodySetup != null) bodySetup.Apply();
             if (follow != null) follow.Capture();
 
             // 헤드리스에서 스킨 행렬은 프레임당 한 번만 갱신된다. 물리를 손으로 밟으며
@@ -208,6 +212,10 @@ namespace DoodleUp.Editor
             var selfCollision = subject.GetComponent<LastShiftRagdollSelfCollision>();
             var follow = subject.GetComponent<LastShiftRagdollSkinFollow>();
             if (selfCollision != null) selfCollision.Apply();
+            // 플레이가 아니면 Awake 가 안 도므로 바디 안정화 설정도 손으로 밟는다.
+            // 이것을 빼면 검사만 Unity 기본 솔버로 돌아 실제와 다른 값이 나온다.
+            var bodySetup = subject.GetComponent<LastShiftRagdollBodySetup>();
+            if (bodySetup != null) bodySetup.Apply();
             if (follow != null) follow.Capture();
 
             var bodies = new List<Rigidbody>(subject.GetComponentsInChildren<Rigidbody>(true));
@@ -388,6 +396,13 @@ namespace DoodleUp.Editor
         ///
         /// 재는 값은 스윙과 비틀림이 <b>합성된</b> 회전이므로 상한도 합으로 잡는다
         /// (<c>angle(q1·q2) ≤ angle(q1)+angle(q2)</c>). 경첩은 한 축뿐이라 한계 폭을 그대로 쓴다.
+        ///
+        /// <b>이 자로는 새는 자유도를 못 본다(2026-08-21).</b> 분모가 합계라 엉덩이
+        /// (스윙 <c>30/10</c> · 비틀림 <c>-20..70</c>)의 예산이 100도가 되고, 다리가 <b>스윙으로
+        /// 56도</b> 벌어져도 <c>0.56배 — 한계 안</c> 으로 찍힌다. 실제로 그렇게 찍히는 동안 화면에서는
+        /// 다리가 개구리처럼 퍼져 있었다. 자유도별로 갈라 보려면
+        /// <see cref="LastShiftRagdollCollapseProbe"/> 와 <see cref="LastShiftRagdollJointLimitTracker"/>
+        /// 를 쓴다. 여기는 앞선 측정값과 비교할 수 있게 자를 안 바꾸고 남겨 둔 것이다.
         /// 판단 기준은 <see cref="LastShiftRagdollLimitCheck"/> 와 같게 뒀다 — 두 도구가 다른 자를
         /// 쓰면 값을 비교할 수 없다.
         /// </summary>

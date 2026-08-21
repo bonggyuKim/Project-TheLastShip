@@ -171,6 +171,10 @@ namespace DoodleUp.Editor
 
             // 에디터에서는 Awake 가 안 돈다. 플레이와 같은 순서로 손으로 밟는다.
             if (selfCollision != null) selfCollision.Apply();
+            // 플레이가 아니면 Awake 가 안 도므로 바디 안정화 설정도 손으로 밟는다.
+            // 이것을 빼면 검사만 Unity 기본 솔버로 돌아 실제와 다른 값이 나온다.
+            var bodySetup = subject.GetComponent<LastShiftRagdollBodySetup>();
+            if (bodySetup != null) bodySetup.Apply();
             if (follow != null)
             {
                 follow.DistributeBendEnabled = followMode == Follow.Full;
