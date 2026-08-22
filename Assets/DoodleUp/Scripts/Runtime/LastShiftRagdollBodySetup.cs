@@ -32,6 +32,28 @@ namespace DoodleUp.Runtime
         /// <summary>경첩이 달린 바디의 반복 배수. <see cref="LastShiftRagdoll"/> 과 같은 값이다.</summary>
         public const int HingeSolverBoost = 4;
 
+        /// <summary>
+        /// 슬립 임계. <b>튜닝값을 안 쓰고 엔진 기본값을 쓴다.</b>
+        ///
+        /// <see cref="LastShiftRagdollTuning.SleepThreshold"/> 가 Unity 기본(<c>0.005</c>)의 열 배인
+        /// <c>0.05</c> 인 데는 이유가 있다 — <see cref="LastShiftRagdoll"/> 이 <b>중력을 매 물리 스텝
+        /// 손으로 넣어서</b> 바디가 계속 깨어 있고, 기본값으로는 정지 판정에 사실상 도달하지 않는다.
+        /// 그 필드 주석에도 그렇게 적혀 있다.
+        ///
+        /// <b>이 프리팹은 그 경로가 아니다.</b> 손으로 얹은 승무원은 <c>useGravity = 1</c> 로 엔진
+        /// 중력을 받으므로 그 전제가 성립하지 않는다. 열 배 임계를 그대로 옮기면 정착 도중 바디가
+        /// 훨씬 일찍 정지 판정에 들어가 <b>덜 정착한 자세로 굳는다</b>.
+        ///
+        /// <b>실측(2026-08-22, PlayMode).</b> 4초 정착 뒤 같은 바디체크를 먹였을 때 골반 이동:
+        /// <c>0.05</c> 에서 <b>0.024m</b>, <c>0.005</c> 에서 <b>0.075m</b>. 잠든 바디 수는 두 경우
+        /// 모두 <c>0/15</c> 였다 — 그러니 이 값은 "래그돌이 얼어붙는" 원인은 아니고, <b>반응의 크기를
+        /// 3분의 1로 깎는</b> 값이다. 얼어붙어 보인 진짜 이유는 랩 씬에 미는 수단이 없던 것이고,
+        /// 그쪽은 <see cref="LastShiftRagdollSoftLab"/> 이 맡는다.
+        ///
+        /// 솔버 반복·디페네트레이션은 저중력과 무관한 안정화값이라 그대로 튜닝에서 가져온다.
+        /// </summary>
+        public const float SleepThreshold = 0.005f;
+
         /// <summary>설정을 입힌 바디 수. 0 이면 정책이 안 돈 것이다 — 검사가 이 값을 본다.</summary>
         public int ConfiguredBodies { get; private set; }
 
@@ -59,7 +81,7 @@ namespace DoodleUp.Runtime
                 body.solverVelocityIterations = tuning.SolverVelocityIterations * boost;
                 body.maxDepenetrationVelocity = tuning.MaxDepenetrationSpeed;
                 body.angularDamping = tuning.AngularDamping;
-                body.sleepThreshold = tuning.SleepThreshold;
+                body.sleepThreshold = SleepThreshold;
 
                 ConfiguredBodies++;
                 if (boost > 1) BoostedBodies++;
