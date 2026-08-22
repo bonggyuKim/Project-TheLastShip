@@ -947,6 +947,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1810804030503358686}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2730732658451753506}
     - targetCorrespondingSourceObject: {fileID: 2146855890772505308, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8880351386788647267}
@@ -1772,6 +1775,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 622ebcfbcfcd08247a7105b479799e10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DoodleUp.Runtime::DoodleUp.Runtime.LastShiftRagdollBodySetup
+--- !u!114 &2730732658451753506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5512256597465893125}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0c67e4e4fb8e8479867ff29d4cf632, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DoodleUp.Runtime::DoodleUp.Runtime.LastShiftRagdollSoftLab
+  impactHeading: {x: 0, y: 0, z: -1}
+  blastOrigin: {x: 0, y: 0.2, z: 1.6}
+  grabStrength: 60
+  grabDamping: 8
+  showHud: 1
+  followCamera: 1
 --- !u!1 &6109485010503166073 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1474737309895253037, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}

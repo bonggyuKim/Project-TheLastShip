@@ -58,6 +58,24 @@ namespace DoodleUp.Tests.PlayMode
         /// </summary>
         private const float MinSettledLimbSpan = 0.10f;
 
+        /// <summary>미는 검사에서 완전히 정착할 때까지 기다리는 시간(초). 잠들고도 남는 길이다.</summary>
+        private const float SettleSeconds = 4f;
+
+        /// <summary>민 뒤 반응을 보는 시간(초).</summary>
+        private const float ShoveObservedSeconds = 1.5f;
+
+        /// <summary>
+        /// 밀었을 때 골반이 최소한 이만큼은 움직여야 한다(m).
+        ///
+        /// <b>화면에서 알아볼 수 있는 크기여야 한다.</b> 승무원 키가 1m 남짓이니 골반이 25cm 움직이면
+        /// 몸 하나의 4분의 1이다. 전신 밀침(<c>2 m/s</c>)의 실측 이동은 이보다 훨씬 크고,
+        /// 가슴만 때렸을 때는 <c>0.075m</c> 였다 — 그 둘을 가르는 자리에 둔다.
+        /// </summary>
+        private const float MinShoveTravel = 0.25f;
+
+        /// <summary>손으로 얹은 바디 수. 부위가 통째로 빠지면 여기서 걸린다.</summary>
+        private const int ExpectedBodies = 15;
+
         private readonly List<GameObject> _spawned = new List<GameObject>();
 
         [TearDown]
@@ -171,11 +189,134 @@ namespace DoodleUp.Tests.PlayMode
         }
 
         /// <summary>
+        /// <b>정착한 뒤에도 밀면 눈에 보이게 움직이는가.</b>
+        ///
+        /// 2026-08-22 사용자 보고 "래그돌인데 넘어뜨려도 아무 변화가 없다" 를 그대로 검사로 옮긴 것이다.
+        /// 원인은 둘이었고 둘 다 여기서 물린다.
+        /// <list type="number">
+        /// <item><see cref="LastShiftRagdollBodySetup"/> 가 저중력 프록시용 슬립 임계
+        /// (<c>0.05</c>, Unity 기본의 열 배)를 엔진 중력으로 도는 이 프리팹에 그대로 얹어
+        /// 정착 도중 잠가 버렸다.</item>
+        /// <item>랩 씬에 조작 주체가 아예 없어서 <b>밀 수단이 없었다</b>
+        /// (<see cref="LastShiftRagdollSoftLab"/> 이 그것을 채운다).</item>
+        /// </list>
+        ///
+        /// <b>정착까지 기다린 뒤에 민다.</b> 떨어지는 중에 밀면 잠들 틈이 없어 이 버그를 못 잡는다 —
+        /// 사용자가 겪은 것은 "다 넘어져 누운 다음" 이다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SettledCrewStillRespondsToAShove()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            _spawned.Add(floor);
+            floor.name = "TestFloor";
+            floor.transform.position = new Vector3(0f, -0.5f, 0f);
+            floor.transform.localScale = new Vector3(40f, 1f, 40f);
+
+            var subject = Spawn(0f);
+            yield return null;
+
+            var lab = subject.GetComponent<LastShiftRagdollSoftLab>();
+            Assert.That(lab, Is.Not.Null,
+                "프리팹에 LastShiftRagdollSoftLab 이 없다 — 플레이에서 승무원을 밀 수단이 없다는 뜻이다.");
+
+            var bodies = new List<Rigidbody>(subject.GetComponentsInChildren<Rigidbody>(true));
+            var pelvis = Find(bodies, LastShiftRagdollRig.PelvisBoneName);
+            Assert.That(pelvis, Is.Not.Null, "골반 바디를 못 찾았다.");
+
+            // 완전히 정착할 때까지 둔다. 여기서 잠들어도 된다 — 깨울 수 있어야 하는 것이 요점이다.
+            var settleSteps = Mathf.CeilToInt(SettleSeconds / Time.fixedDeltaTime);
+            for (var s = 0; s < settleSteps; s++) yield return new WaitForFixedUpdate();
+
+            var sleepingBefore = lab.SleepingBodies();
+            var before = pelvis.transform.position;
+
+            lab.BodyCheck();
+
+            var pushSteps = Mathf.CeilToInt(ShoveObservedSeconds / Time.fixedDeltaTime);
+            var travelled = 0f;
+            for (var s = 0; s < pushSteps; s++)
+            {
+                yield return new WaitForFixedUpdate();
+                travelled = Mathf.Max(travelled, Vector3.Distance(pelvis.transform.position, before));
+            }
+
+            Debug.Log($"[LAST_SHIFT_RAGDOLL_SHOVE] sleepingBeforeShove={sleepingBefore}/{bodies.Count} "
+                      + $"pelvisTravel={travelled:F3}m action={lab.LastAction}");
+
+            Assert.That(travelled, Is.GreaterThan(MinShoveTravel),
+                $"정착한 승무원을 밀었는데 골반이 {travelled:F3}m 밖에 안 움직였다"
+                + $"(밀기 전 잠든 바디 {sleepingBefore}/{bodies.Count}). "
+                + "화면에서는 '래그돌인데 아무 반응이 없다' 로 보인다.");
+
+            Assert.That(sleepingBefore, Is.EqualTo(0),
+                $"정착만 했을 뿐인데 바디 {sleepingBefore}/{bodies.Count} 개가 잠들어 있다. "
+                + "잠든 바디는 씬 뷰에서 트랜스폼을 끌어도 안 깨어난다"
+                + "(autoSyncTransforms = 0 이라 그 대입이 PhysX 로 안 넘어간다).");
+
+            // 설정 자체도 못 박는다. 위 두 줄이 '왜' 깨졌는지를 이 줄이 말해 준다.
+            foreach (var body in bodies)
+            {
+                Assert.That(body.sleepThreshold, Is.EqualTo(LastShiftRagdollBodySetup.SleepThreshold).Within(1e-4f),
+                    $"'{body.name}' 의 슬립 임계가 {body.sleepThreshold:F4} 다. 저중력 프록시용 값"
+                    + "(LastShiftRagdollTuning.SleepThreshold)을 엔진 중력 프리팹에 얹으면 정착 도중 잠긴다.");
+            }
+        }
+
+        /// <summary>
+        /// <b>부위마다 콜라이더가 붙어 있는가.</b>
+        ///
+        /// 사용자가 "콜라이더 설정이 안 보인다" 고 한 것은 콜라이더가 <c>DEF-</c> 뼈가 아니라
+        /// 그 밑의 <c>*_Col</c> 자식에 달려 있어서였다 — 뼈를 클릭하면 인스펙터가 비어 보인다.
+        /// 지워진 것이 아니라는 근거를 검사로 남긴다. <b>바디에 붙은 콜라이더</b>를 세므로
+        /// 자식에 있든 같은 오브젝트에 있든 상관없이 물리적으로 맞는 것만 통과한다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryRagdollBodyKeepsACollider()
+        {
+            var subject = Spawn(0f);
+            yield return null;
+
+            var bodies = new List<Rigidbody>(subject.GetComponentsInChildren<Rigidbody>(true));
+            Assert.That(bodies, Has.Count.EqualTo(ExpectedBodies),
+                $"래그돌 바디가 {bodies.Count} 개다 — {ExpectedBodies} 개여야 한다.");
+
+            var naked = new List<string>();
+            var total = 0;
+            foreach (var body in bodies)
+            {
+                var mine = 0;
+                foreach (var collider in body.GetComponentsInChildren<Collider>(true))
+                {
+                    // 자식 바디가 가져간 콜라이더는 이 바디 것이 아니다.
+                    if (collider.attachedRigidbody != body) continue;
+                    if (!collider.enabled) continue;
+                    mine++;
+                }
+
+                total += mine;
+                if (mine == 0) naked.Add(body.name);
+            }
+
+            Debug.Log($"[LAST_SHIFT_RAGDOLL_COLLIDERS] bodies={bodies.Count} colliders={total}");
+
+            Assert.That(naked, Is.Empty,
+                "콜라이더가 하나도 안 붙은 바디가 있다: " + string.Join(", ", naked));
+            Assert.That(total, Is.GreaterThanOrEqualTo(ExpectedBodies),
+                $"살아 있는 콜라이더가 {total} 개다 — 바디 수({ExpectedBodies})보다 적으면 부위 하나가 비어 있다.");
+        }
+
+        /// <summary>
         /// 프리팹을 애셋 경로로 읽는다. <b>이 픽스처는 에디터 전용이다</b> — 랩 프리팹은
         /// <c>Resources</c> 밖에 있고, 프로토타입 애셋을 빌드에 실으려고 옮길 이유가 없다.
         /// 플레이어에서 돌면 조용히 통과하는 대신 건너뛴다.
         /// </summary>
         private GameObject Spawn()
+        {
+            return Spawn(DropRise);
+        }
+
+        private GameObject Spawn(float rise)
         {
 #if UNITY_EDITOR
             var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(PrefabResourcePath);
@@ -188,7 +329,7 @@ namespace DoodleUp.Tests.PlayMode
             var instance = Object.Instantiate(prefab);
             instance.name = "RagdollSubject";
             // 씬의 배치 높이 + 낙하 충격용 들어 올림. 물리가 돌기 전이라 이 대입은 PhysX 에 그대로 반영된다.
-            instance.transform.position = new Vector3(0f, 0.304f + DropRise, 0f);
+            instance.transform.position = new Vector3(0f, 0.304f + rise, 0f);
             _spawned.Add(instance);
             return instance;
         }
