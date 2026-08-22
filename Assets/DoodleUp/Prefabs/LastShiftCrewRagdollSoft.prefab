@@ -883,6 +883,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: LastShiftCrewRagdollSoft
       objectReference: {fileID: 0}
+    - target: {fileID: 8490360972519677707, guid: e771a2f8e725c4b41a497c84612e41bf, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

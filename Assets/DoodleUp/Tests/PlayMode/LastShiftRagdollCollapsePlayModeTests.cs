@@ -76,6 +76,18 @@ namespace DoodleUp.Tests.PlayMode
         /// <summary>손으로 얹은 바디 수. 부위가 통째로 빠지면 여기서 걸린다.</summary>
         private const int ExpectedBodies = 15;
 
+        /// <summary>
+        /// 바운드 검사에서 승무원을 들어 올리는 높이(m). 사용자가 실제로 그렇게 테스트한다 —
+        /// 2026-08-22 보고 시점의 랩 씬 루트가 <c>y=11.57</c> 이었고 바디는 바닥에 있었다.
+        /// </summary>
+        private const float HighDropRise = 8f;
+
+        /// <summary>
+        /// 렌더러 바운드 중심이 골반에서 이보다 멀면 <b>몸을 안 감싸고 있는</b> 것이다(m).
+        /// 승무원 키가 1m 남짓이라 1m 는 몸 하나 크기다.
+        /// </summary>
+        private const float MaxBoundsOffsetFromBody = 1f;
+
         private readonly List<GameObject> _spawned = new List<GameObject>();
 
         [TearDown]
@@ -304,6 +316,65 @@ namespace DoodleUp.Tests.PlayMode
                 "콜라이더가 하나도 안 붙은 바디가 있다: " + string.Join(", ", naked));
             Assert.That(total, Is.GreaterThanOrEqualTo(ExpectedBodies),
                 $"살아 있는 콜라이더가 {total} 개다 — 바디 수({ExpectedBodies})보다 적으면 부위 하나가 비어 있다.");
+        }
+
+        /// <summary>
+        /// <b>스킨드 메시 바운드가 루트가 아니라 뼈를 따라가는가.</b>
+        ///
+        /// 2026-08-22 사용자 보고 "래그돌이 Play 중 한 번씩 화면에서 안 보인다" 를 옮긴 것이다.
+        /// 원인은 컬링이었다 — <c>updateWhenOffscreen</c> 이 꺼져 있으면 스킨드 메시의 바운드는
+        /// 임포트된 바인드 포즈 바운드를 <b>루트 본에 얹어</b> 계산하고, 뼈가 실제로 간 자리를 안 본다.
+        /// 래그돌은 루트를 안 움직이고 뼈만 물리로 옮기므로 둘이 갈라진다. 보고 시점 실측:
+        /// 루트 <c>y=11.57</c>, 골반 <c>y=0.26</c>, 바운드 중심이 몸에서 <c>12.04m</c> 떨어져
+        /// <c>isVisible=False</c> 였다. 렌더러도 머티리얼도 레이어도 멀쩡했다.
+        ///
+        /// <b>플래그만 보지 않는다.</b> 값이 켜져 있어도 바운드가 실제로 몸을 감싸는지는 다른 문제라,
+        /// 높은 곳에서 떨어뜨려 루트와 몸을 <b>일부러 갈라 놓고</b> 바운드가 어느 쪽에 붙는지 잰다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SkinnedMeshBoundsFollowTheBonesNotTheRoot()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            _spawned.Add(floor);
+            floor.name = "TestFloor";
+            floor.transform.position = new Vector3(0f, -0.5f, 0f);
+            floor.transform.localScale = new Vector3(40f, 1f, 40f);
+
+            var subject = Spawn(HighDropRise);
+            yield return null;
+
+            var skin = subject.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            Assert.That(skin, Is.Not.Null, "승무원에 SkinnedMeshRenderer 가 없다.");
+            Assert.That(skin.updateWhenOffscreen, Is.True,
+                "updateWhenOffscreen 이 꺼져 있다. 래그돌이 뼈를 루트에서 멀리 옮기면 "
+                + "바운드가 루트에 남아 프러스텀 컬링으로 캐릭터가 통째로 안 보인다.");
+
+            var bodies = new List<Rigidbody>(subject.GetComponentsInChildren<Rigidbody>(true));
+            var pelvis = Find(bodies, LastShiftRagdollRig.PelvisBoneName);
+            Assert.That(pelvis, Is.Not.Null, "골반 바디를 못 찾았다.");
+
+            var steps = Mathf.CeilToInt(SettleSeconds / Time.fixedDeltaTime);
+            for (var s = 0; s < steps; s++) yield return new WaitForFixedUpdate();
+
+            // 렌더 프레임을 한 번 더 돌려야 바운드 재계산이 반영된다.
+            yield return null;
+
+            var fromBody = Vector3.Distance(skin.bounds.center, pelvis.transform.position);
+            var fromRoot = Vector3.Distance(skin.bounds.center, subject.transform.position);
+
+            Debug.Log($"[LAST_SHIFT_RAGDOLL_BOUNDS] root={subject.transform.position.y:F2} "
+                      + $"pelvis={pelvis.transform.position.y:F2} boundsCenter={skin.bounds.center} "
+                      + $"fromBody={fromBody:F2} fromRoot={fromRoot:F2}");
+
+            // 루트와 몸이 실제로 갈라졌는지 먼저 본다 — 안 갈라졌으면 이 검사는 아무것도 안 잰 것이다.
+            Assert.That(fromRoot, Is.GreaterThan(MaxBoundsOffsetFromBody * 2f),
+                $"루트와 바운드가 {fromRoot:F2}m 밖에 안 떨어졌다 — 승무원이 안 떨어진 것이라 "
+                + "이 검사가 컬링 조건을 재현하지 못했다.");
+
+            Assert.That(fromBody, Is.LessThan(MaxBoundsOffsetFromBody),
+                $"렌더러 바운드 중심이 골반에서 {fromBody:F2}m 떨어져 있다(루트에서는 {fromRoot:F2}m). "
+                + "바운드가 몸이 아니라 루트를 따라가면 카메라가 몸을 보고 있어도 컬링돼 "
+                + "'캐릭터가 한 번씩 안 보인다' 가 된다.");
         }
 
         /// <summary>
